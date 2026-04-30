@@ -49,12 +49,12 @@ Do not tick a task unless:
 ## 1. Current snapshot
 
 ### Current active checkpoint
-- Status: `[-]`
-- Checkpoint: `G — Resolver-first execution flow`
-- Subtask: `G5 — Mirror the same flow in GUI`
+- Status: `[ ]`
+- Checkpoint: `H — Migrate local`
+- Subtask: `H1 — Port origin resolution to resolver`
 - Owner: `Tromador`
 - Started: `2026-04-30`
-- Goal: `Resolve command inputs before heavy TradeDB paths.`
+- Goal: `Deliver the first clear user-visible performance win.`
 
 ### Current blocker
 - Status: `[x]`
@@ -65,11 +65,11 @@ Do not tick a task unless:
 ### Last updated
 - Date: `2026-04-30`
 - By: `Tromador + Claude`
-- Session summary: `G4 complete. station_cmd and shipvendor_cmd moved from LEGACY_HANDLE (wantsTradeDB=False) to Needs.NOTHING — both are deprecated no-ops that touch no backend. LEGACY_HANDLE docstring clarified as transitional shim only. Needs.NOTHING test extended to cover all three no-op commands (update_cmd, station_cmd, shipvendor_cmd).`
+- Session summary: `G5 complete and accepted. _execute_td_command in td_exec.py updated to mirror CLI capability-aware backend selection: RESOLVER → TradeORM only; LEGACY_HANDLE → TradeDB(load=False); FULL_LEGACY → TradeDB(load=True); NOTHING → no backend. Finally block updated to close torm independently when not aliased as tdb. Four unit tests added covering all four tiers including belt-and-braces NOTHING coverage. Checkpoint G complete.`
 
 ### Last known good rollback point
-- Commit: `0f785462`
-- Notes: `Post-G4 accepted state. 290 tests passing on 2026-04-30.`
+- Commit: `104f6d68`
+- Notes: `Post-G5 accepted state. Checkpoint G complete.`
 
 ---
 
@@ -98,7 +98,7 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 - [x] D — Remove `Added`
 - [x] E — Collapse `RareItem` into `Item`
 - [x] F — Resolver contract and parity tests
-- [ ] G — Resolver-first execution flow
+- [x] G — Resolver-first execution flow
 - [ ] H — Migrate `local`
 - [ ] I — Migrate `market`, `buy`, `sell`
 - [ ] J — Split `TradeDB` by capability
@@ -367,9 +367,9 @@ Resolve command inputs before heavy legacy load.
 - [x] G4. Keep `TradeDB(load=False)` only as transitional shim
   - Status note: station_cmd and shipvendor_cmd moved from wantsTradeDB=False (LEGACY_HANDLE) to Needs.NOTHING — both are deprecated no-ops that touch no backend. LEGACY_HANDLE docstring updated to make transitional intent explicit. Needs.NOTHING test extended to cover all three no-op commands.
   - Evidence: tradedangerous/commands/station_cmd.py; tradedangerous/commands/shipvendor_cmd.py; tradedangerous/commands/commandenv.py; tests/test_commandenv.py
-- [ ] G5. Mirror the same flow in GUI
-  - Status note:
-  - Evidence:
+- [x] G5. Mirror the same flow in GUI
+  - Status note: _execute_td_command updated to mirror CLI capability-aware backend selection. TradeORM import added. Finally block closes torm independently when not aliased as tdb. Four unit tests covering all four tiers including NOTHING.
+  - Evidence: tradedangerous/guiapp/td_exec.py; tests/test_gui_td_exec.py; commits 4bc36483, 104f6d68
 
 ### Notes
 -
@@ -741,10 +741,10 @@ Use this as the short “what is already definitely done” section for quick sc
   - Date completed: `2026-04-29`
   - Commit: `1896bdaf` (partial matching fixes); `1ca25bc4` (test cleanup)
   - Notes: `RESOLVER_CONTRACT.md written and locked. 53 legacy parity tests. TradeORM lookup_system/station/place all implement exact + partial matching with two-step ILIKE candidate narrowing and Python-side tier matching mirroring the legacy resolver. 177 tests passing.`
-- [x] Milestone: `Checkpoint G G1–G4 complete`
+- [x] Milestone: `Checkpoint G complete — resolver-first execution flow`
   - Date completed: `2026-04-30`
-  - Commit: `0f785462` (G4); `2c697f35` (G3); `305e2fa6` (G2); `1a20e8a5` (G1)
-  - Notes: `G1: Needs capability enum (NOTHING/RESOLVER/LEGACY_HANDLE/FULL_LEGACY). G2: --near/--from/--to resolved via checkFromToNearORM(). G3: --avoid/--via resolved via checkAvoidsORM()/checkViasORM(); normalize_str() added to TradeORM. G4: station_cmd and shipvendor_cmd moved from LEGACY_HANDLE to Needs.NOTHING; LEGACY_HANDLE docstring clarified as transitional shim only.`
+  - Commit: `104f6d68` (G5); `0f785462` (G4); `2c697f35` (G3); `305e2fa6` (G2); `1a20e8a5` (G1)
+  - Notes: `G1: Needs capability enum (NOTHING/RESOLVER/LEGACY_HANDLE/FULL_LEGACY). G2: --near/--from/--to resolved via checkFromToNearORM(). G3: --avoid/--via resolved via checkAvoidsORM()/checkViasORM(); normalize_str() added to TradeORM. G4: station_cmd and shipvendor_cmd moved from LEGACY_HANDLE to Needs.NOTHING; LEGACY_HANDLE docstring clarified as transitional shim only. G5: GUI _execute_td_command mirrors CLI capability-aware backend selection; four unit tests covering all four tiers.`
 
 ---
 
