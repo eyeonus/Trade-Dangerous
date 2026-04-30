@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 from tradedangerous.guiapp.td_exec import (
     GuiCommandRequest,
@@ -154,3 +155,99 @@ def test_td_exec_snapshot_helpers_convert_live_objects_to_plain_data():
             'jump_path': ['Sol', 'LHS 380'],
         }],
     }]
+
+
+def _make_fake_cmdenv(*, needs_resolver, needs_legacy_db, needs_full_load):
+    """Minimal fake CommandEnv for backend-selection tests."""
+    env = MagicMock()
+    env.needs_resolver = needs_resolver
+    env.needs_legacy_db = needs_legacy_db
+    env.needs_full_load = needs_full_load
+    env.wantsTradeDB = needs_legacy_db
+    env.usesTradeData = False
+    env.run.return_value = None
+    env.preflight = None
+    return env
+
+
+def test_execute_td_command_uses_tradeorm_for_resolver_commands():
+    """RESOLVER commands get TradeORM; TradeDB is not constructed."""
+    fake_cmdenv = _make_fake_cmdenv(
+        needs_resolver=True, needs_legacy_db=False, needs_full_load=False
+    )
+    request = GuiCommandRequest(command='trade')
+    mock_torm = MagicMock()
+    mock_torm.close = MagicMock()
+
+    with (
+        patch(
+            'tradedangerous.guiapp.td_exec.commands.CommandIndex.parse',
+            return_value=fake_cmdenv,
+        ),
+        patch(
+            'tradedangerous.guiapp.td_exec.TradeORM',
+            return_value=mock_torm,
+        ) as torm_cls,
+        patch('tradedangerous.guiapp.td_exec.tradedb.TradeDB') as tdb_cls,
+    ):
+        TdExecutor()._execute_td_command(request, ['trade.py', 'trade', 'Sol', 'Sol'])
+
+    torm_cls.assert_called_once()
+    tdb_cls.assert_not_called()
+    mock_torm.close.assert_called_once_with(final=True)
+
+
+def test_execute_td_command_uses_tradedb_full_load_for_full_legacy_commands():
+    """FULL_LEGACY commands get TradeDB(load=True); TradeORM is not constructed."""
+    fake_cmdenv = _make_fake_cmdenv(
+        needs_resolver=False, needs_legacy_db=True, needs_full_load=True
+    )
+    request = GuiCommandRequest(command='run')
+    mock_tdb = MagicMock()
+    mock_tdb.tradingStationCount = 10
+    mock_tdb.close = MagicMock()
+
+    with (
+        patch(
+            'tradedangerous.guiapp.td_exec.commands.CommandIndex.parse',
+            return_value=fake_cmdenv,
+        ),
+        patch('tradedangerous.guiapp.td_exec.TradeORM') as torm_cls,
+        patch(
+            'tradedangerous.guiapp.td_exec.tradedb.TradeDB',
+            return_value=mock_tdb,
+        ) as tdb_cls,
+    ):
+        TdExecutor()._execute_td_command(request, ['trade.py', 'run'])
+
+    torm_cls.assert_not_called()
+    tdb_cls.assert_called_once_with(fake_cmdenv, load=True)
+    mock_tdb.close.assert_called_once_with(final=True)
+
+
+def test_execute_td_command_uses_tradedb_no_load_for_legacy_handle_commands():
+    """LEGACY_HANDLE commands get TradeDB(load=False); TradeORM is not constructed."""
+    fake_cmdenv = _make_fake_cmdenv(
+        needs_resolver=False, needs_legacy_db=True, needs_full_load=False
+    )
+    request = GuiCommandRequest(command='import')
+    mock_tdb = MagicMock()
+    mock_tdb.tradingStationCount = 10
+    mock_tdb.close = MagicMock()
+
+    with (
+        patch(
+            'tradedangerous.guiapp.td_exec.commands.CommandIndex.parse',
+            return_value=fake_cmdenv,
+        ),
+        patch('tradedangerous.guiapp.td_exec.TradeORM') as torm_cls,
+        patch(
+            'tradedangerous.guiapp.td_exec.tradedb.TradeDB',
+            return_value=mock_tdb,
+        ) as tdb_cls,
+    ):
+        TdExecutor()._execute_td_command(request, ['trade.py', 'import'])
+
+    torm_cls.assert_not_called()
+    tdb_cls.assert_called_once_with(fake_cmdenv, load=False)
+    mock_tdb.close.assert_called_once_with(final=True)
