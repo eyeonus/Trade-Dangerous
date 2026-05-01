@@ -9,7 +9,7 @@ from datetime import datetime, timezone, timedelta
 import pytest
 import typing
 
-from . import utils
+from tradedangerous.db import utils
 
 if typing.TYPE_CHECKING:
     from typing import Any
