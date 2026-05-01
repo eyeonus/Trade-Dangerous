@@ -49,9 +49,9 @@ Do not tick a task unless:
 ## 1. Current snapshot
 
 ### Current active checkpoint
-- Status: `[ ]`
+- Status: `[-]`
 - Checkpoint: `I — Migrate market, buy, sell`
-- Subtask: `I1 — Build lightweight item lookup service`
+- Subtask: `I2 — Migrate market`
 - Owner: `Tromador`
 - Started: `2026-04-30`
 - Goal: `Move obvious preload-bound trading commands off full preload.`
@@ -63,13 +63,13 @@ Do not tick a task unless:
 - Needed to unblock: `none`
 
 ### Last updated
-- Date: `2026-04-30`
+- Date: `2026-05-01`
 - By: `Tromador + Claude`
-- Session summary: `Checkpoint H complete. local_cmd.py rewritten to RESOLVER tier: SQL bounding-box pre-filter + Python sphere check replaces genSystemsInRange(); all station flag filters pushed to SQL; fleet/odyssey resolved via type_id; --trading via EXISTS subquery; age/count via StationItem aggregate. Render updated for ORM attribute names throughout. H5 benchmark: 0.85s warm vs 6.98s baseline (~8× improvement). One deliberate ORM behaviour change noted: Mkt column in --detail reads station.market directly from DB; legacy path coerced it to Y when itemCount > 0. --trading filter is unaffected.`
+- Session summary: `I1 complete. Verified TradeORM.lookup_item() is sufficient for the item-name-resolution use case in sell and buy. Two narrow additions made to TradeORM: lookup_category() (exact CI match via idx_category_by_name + _list_search fallback) and item_by_id() (PK lookup, raises LookupError on miss). 10 new tests across TestLookupCategory and TestItemById.`
 
 ### Last known good rollback point
-- Commit: `45148695`
-- Notes: `Post-H accepted state. Checkpoint H complete.`
+- Commit: `0b8384b6`
+- Notes: `Post-I1 accepted state. lookup_category() and item_by_id() added to TradeORM with tests.`
 
 ---
 
@@ -419,9 +419,9 @@ Move obvious preload-bound trading commands off full preload.
 - GUI path still uses the same core logic
 
 ### Tasks
-- [ ] I1. Build lightweight item lookup service
-  - Status note:
-  - Evidence:
+- [x] I1. Build lightweight item lookup service
+  - Status note: `Verified lookup_item() is sufficient for item-name-resolution in sell and buy. Added lookup_category() (exact CI + _list_search fallback, returns orm.Category with items relationship) and item_by_id() (PK lookup, LookupError on miss) to TradeORM. 10 new tests.`
+  - Evidence: `tradedangerous/tradeorm.py`; `tests/test_tradeorm_lookup_db.py`; commits `cc054bb4`, `0b8384b6`
 - [ ] I2. Migrate `market`
   - Status note:
   - Evidence:
