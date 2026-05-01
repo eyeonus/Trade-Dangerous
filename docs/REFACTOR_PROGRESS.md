@@ -51,7 +51,7 @@ Do not tick a task unless:
 ### Current active checkpoint
 - Status: `[-]`
 - Checkpoint: `I — Migrate market, buy, sell`
-- Subtask: `I2 — Migrate market`
+- Subtask: `I3 — Migrate buy`
 - Owner: `Tromador`
 - Started: `2026-04-30`
 - Goal: `Move obvious preload-bound trading commands off full preload.`
@@ -65,11 +65,11 @@ Do not tick a task unless:
 ### Last updated
 - Date: `2026-05-01`
 - By: `Tromador + Claude`
-- Session summary: `I1 complete. Verified TradeORM.lookup_item() is sufficient for the item-name-resolution use case in sell and buy. Two narrow additions made to TradeORM: lookup_category() (exact CI match via idx_category_by_name + _list_search fallback) and item_by_id() (PK lookup, raises LookupError on miss). 10 new tests across TestLookupCategory and TestItemById.`
+- Session summary: `I2 complete. market_cmd.py migrated to Needs.RESOLVER: Session(bind=tdb.engine) → tdb.session, origin.ID → station_id, itemByID → item_by_id(), sort keys and render attributes updated to ORM names. Polish: early no-rows exit plus context-aware filtered-empty guard (buying/selling/unfiltered variants, all include origin.name). Smoke-tested live: market instantaneous, market --detail 578ms warm. 377 tests passing.`
 
 ### Last known good rollback point
-- Commit: `0b8384b6`
-- Notes: `Post-I1 accepted state. lookup_category() and item_by_id() added to TradeORM with tests.`
+- Commit: `91ec8160`
+- Notes: `Post-I2 accepted state. market_cmd.py fully on RESOLVER tier with error-message polish.`
 
 ---
 
@@ -100,7 +100,7 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 - [x] F — Resolver contract and parity tests
 - [x] G — Resolver-first execution flow
 - [x] H — Migrate `local`
-- [ ] I — Migrate `market`, `buy`, `sell`
+- [-] I — Migrate `market`, `buy`, `sell`
 - [ ] J — Split `TradeDB` by capability
 - [ ] K — Reduce `TradeCalc` setup cost
 - [ ] L — Migrate `olddata`, `nav`, `rares`
@@ -422,9 +422,9 @@ Move obvious preload-bound trading commands off full preload.
 - [x] I1. Build lightweight item lookup service
   - Status note: `Verified lookup_item() is sufficient for item-name-resolution in sell and buy. Added lookup_category() (exact CI + _list_search fallback, returns orm.Category with items relationship) and item_by_id() (PK lookup, LookupError on miss) to TradeORM. 10 new tests.`
   - Evidence: `tradedangerous/tradeorm.py`; `tests/test_tradeorm_lookup_db.py`; commits `cc054bb4`, `0b8384b6`
-- [ ] I2. Migrate `market`
-  - Status note:
-  - Evidence:
+- [x] I2. Migrate `market`
+  - Status note: `market_cmd.py migrated to Needs.RESOLVER. tdb.session used throughout; station_id, item_by_id(), ORM attribute names in sort/render. Polish: early no-rows exit; context-aware filtered-empty errors include origin.name. Smoke-tested live: instantaneous for basic queries, 578ms warm for --detail. 377 tests passing.`
+  - Evidence: `tradedangerous/commands/market_cmd.py`; commits `5542bfd6`, `91ec8160`
 - [ ] I3. Migrate `buy`
   - Status note:
   - Evidence:

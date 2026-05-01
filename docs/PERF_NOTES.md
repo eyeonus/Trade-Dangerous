@@ -256,3 +256,24 @@ Still pending:
 
 #### Caveats
 - `Mkt` column in `--detail` mode reads `station.market` directly from DB. Legacy `_loadStations()` coerced this to `Y` in-memory when `itemCount > 0`. The `--trading` filter is correct (uses EXISTS over StationItem); only the rendered display of the raw flag differs for edge-case stations where the flag and data disagree. Deliberate ORM behaviour change, not a regression.
+
+### Checkpoint I — Migrate `market`, `buy`, `sell`
+
+#### I2 — `market` (2026-05-01, live SQLite)
+
+##### Before (checkpoint A warm baseline, 2026-04-17)
+- `market`: not individually timed in checkpoint A baseline; estimated comparable to `local` (~6–7s warm) given same full-preload path.
+
+##### After (post-I2 warm, 2026-05-01, live SQLite)
+- `trade market "Colonia/Jaques Station"`: effectively instantaneous (sub-100ms, user description: "press enter, instant joy")
+- `trade market "Colonia/Jaques Station" --detail`: 578ms warm
+
+##### Improvement
+- Basic query: preload overhead eliminated entirely; perceived as instant.
+- `--detail` variant: 578ms includes two additional aggregate queries (avg buy/sell per visible item).
+
+##### Mechanism
+- `needs = Needs.RESOLVER`: full `TradeDB.load()` no longer invoked.
+- `tdb.session` (SQLAlchemy ORM session) replaces ad-hoc `Session(bind=tdb.engine)`.
+- StationItem rows fetched via single parameterised SQL query; item objects resolved via identity-map PK lookup (`item_by_id()`).
+- No in-memory commodity index or station dict traversal.
