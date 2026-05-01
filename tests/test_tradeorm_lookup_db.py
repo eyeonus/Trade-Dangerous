@@ -598,3 +598,55 @@ class TestLookupItem:
     def test_lookup_item_not_found(self, isolated_torm):
         with pytest.raises(LookupError):
             isolated_torm.lookup_item("xyzzy_no_such_item")
+
+
+class TestLookupCategory:
+
+    def test_exact_match(self, isolated_torm):
+        cat = isolated_torm.lookup_category("Metals")
+        assert cat.name == "Metals"
+
+    def test_case_insensitive(self, isolated_torm):
+        cat = isolated_torm.lookup_category("metals")
+        assert cat.name == "Metals"
+
+    def test_partial_match(self, isolated_torm):
+        # "Chem" is a prefix of "Chemicals" — no exact CI hit, so _list_search
+        # finds it via normalised partial match.
+        cat = isolated_torm.lookup_category("Chem")
+        assert cat.name == "Chemicals"
+
+    def test_not_found_raises_lookup_error(self, isolated_torm):
+        with pytest.raises(LookupError):
+            isolated_torm.lookup_category("xyzzy_no_such_category")
+
+    def test_passthrough_orm_category(self, isolated_torm):
+        cat = isolated_torm.lookup_category("Metals")
+        assert isolated_torm.lookup_category(cat) is cat
+
+    def test_non_string_raises_type_error(self, isolated_torm):
+        with pytest.raises(TypeError):
+            isolated_torm.lookup_category(42)
+
+    def test_items_relationship_accessible(self, isolated_torm):
+        # The returned Category's .items can be iterated without triggering
+        # session errors; Metals contains known items from the fixture.
+        cat = isolated_torm.lookup_category("Metals")
+        names = {item.name for item in cat.items}
+        assert "Gold" in names
+
+
+class TestItemById:
+
+    def test_known_id_returns_correct_item(self, isolated_torm):
+        # item_id 128049154 is Gold (Metals) in the fixture.
+        item = isolated_torm.item_by_id(128049154)
+        assert item.name == "Gold"
+
+    def test_category_relationship_accessible(self, isolated_torm):
+        item = isolated_torm.item_by_id(128049154)
+        assert item.category.name == "Metals"
+
+    def test_unknown_id_raises_lookup_error(self, isolated_torm):
+        with pytest.raises(LookupError):
+            isolated_torm.item_by_id(999999999)
