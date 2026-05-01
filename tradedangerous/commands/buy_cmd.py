@@ -1,12 +1,16 @@
 from __future__ import annotations
+import math
 from collections import defaultdict
 
-from sqlalchemy import text
+from sqlalchemy import func, text
+from sqlalchemy.orm import joinedload
 
+from tradedangerous.db import orm_models as orm
+from tradedangerous.db.utils import age_in_days
 from tradedangerous.formatting import RowFormat, max_len
-from tradedangerous.tradedb import Station, System, TradeDB
+from tradedangerous.tradedb import TradeDB
 
-from .commandenv import ResultRow
+from .commandenv import Needs, ResultRow
 from .exceptions import CommandLineError, NoDataError
 from .parsing import (
     AvoidPlacesArgument, BlackMarketSwitch, FleetCarrierArgument, MutuallyExclusiveGroup,
@@ -18,6 +22,31 @@ from .parsing import (
 ITEM_MODE = "Item"
 SHIP_MODE = "Ship"
 
+# type_id constants for fleet carrier / Odyssey detection (mirrors local_cmd)
+_CARRIER_TYPE_IDS = frozenset((24, 0))
+_ODYSSEY_TYPE_ID = 25
+
+
+def _fleet_state(station: orm.Station) -> str:
+    return 'Y' if station.type_id in _CARRIER_TYPE_IDS else 'N'
+
+
+def _odyssey_state(station: orm.Station) -> str:
+    return 'Y' if station.type_id == _ODYSSEY_TYPE_ID else 'N'
+
+
+def _dist_from_star(station: orm.Station) -> str:
+    ls = station.ls_from_star
+    if not ls:
+        return '?'
+    if ls < 1000:
+        return f'{ls:n}'
+    if ls < 10000:
+        return f'{ls / 1000:.2f}K'
+    if ls < 1000000:
+        return f'{int(ls / 1000):n}K'
+    return f'{ls / (365*24*60*60):.2f}ly'
+
 
 ######################################################################
 # Parser config
@@ -25,7 +54,7 @@ SHIP_MODE = "Ship"
 help = 'Find places to buy a given item within range of a given station.'
 name = 'buy'
 epilog = None
-wantsTradeDB = True
+needs = Needs.RESOLVER
 arguments = (
     ParseArgument(
         'name',
@@ -142,27 +171,27 @@ def get_lookup_list(cmdenv, tdb):
     # thing, the remaining arguments are all sourced from the same pool.
     # Thus: [food, cobra, metals] is illegal but [metals, hydrogen] is legal.
     mode = None
-    
+
     queries = {}
     for name in names:
         if mode is not SHIP_MODE:
             # Either no mode selected yet or we are in ITEM_MODE.
             # Consider categories first.
             try:
-                category = tdb.lookupCategory(name)
+                category = tdb.lookup_category(name)
                 for item in category.items:
-                    names.append(item.name())
-                    queries[item.ID] = item
+                    names.append(item.name)
+                    queries[item.item_id] = item
                 mode = ITEM_MODE
                 continue
             except LookupError:
                 pass
-            
+
             # Item names secondary.
             try:
-                item = tdb.lookupItem(name)
-                cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
-                queries[item.ID] = item
+                item = tdb.lookup_item(name)
+                cmdenv.DEBUG0("Looking up item {} (#{})", item.name, item.item_id)
+                queries[item.item_id] = item
                 mode = ITEM_MODE
                 continue
             except LookupError:
@@ -171,12 +200,12 @@ def get_lookup_list(cmdenv, tdb):
                         "Unrecognized item: {}".format(name)
                     )
                 pass
-        
+
         # Either no mode selected yet or we are in SHIP_MODE.
         try:
-            ship = tdb.lookupShip(name)
-            cmdenv.DEBUG0("Looking up ship {} (#{})", ship.name(), ship.ID)
-            queries[ship.ID] = ship
+            ship = tdb.lookup_ship(name)
+            cmdenv.DEBUG0("Looking up ship {} (#{})", ship.name, ship.ship_id)
+            queries[ship.ship_id] = ship
             mode = SHIP_MODE
             continue
         except LookupError:
@@ -187,10 +216,10 @@ def get_lookup_list(cmdenv, tdb):
             raise CommandLineError(
                 "Unrecognized ship: {}".format(name)
             )
-    
+
     if cmdenv.rare and mode is SHIP_MODE:
         raise CommandLineError("--rare cannot be used with ships")
-    
+
     return queries, mode
 
 
@@ -204,7 +233,7 @@ def sql_query(cmdenv, tdb, queries, mode):
         * Item:   (item_id, station_id, supply_price, supply_units)
     """
     ids = list(queries.keys())
-    
+
     # Build a stable, named-parameter IN(...) list
     params = {}
     placeholders = []
@@ -213,7 +242,7 @@ def sql_query(cmdenv, tdb, queries, mode):
         placeholders.append(f":{key}")
         params[key] = val
     id_list_sql = ",".join(placeholders)
-    
+
     if mode is SHIP_MODE:
         columns = "s.ship_id, s.station_id, sh.cost, 1"
         tables = "ShipVendor AS s JOIN Ship AS sh ON sh.ship_id = s.ship_id"
@@ -241,17 +270,12 @@ def sql_query(cmdenv, tdb, queries, mode):
         if cmdenv.gt:
             constraints.append("(s.supply_price > :gt)")
             params["gt"] = cmdenv.gt
-    
+
     where_clause = " AND ".join(constraints)
     stmt = f"SELECT DISTINCT {columns} FROM {tables} WHERE {where_clause}"
     cmdenv.DEBUG0('SQL: {} ; params={}', stmt, params)
-    
-    # Eagerly fetch to avoid closed cursor when iterating later.
-    with tdb.engine.connect() as conn:
-        result = conn.execute(text(stmt), params)
-        rows = result.fetchall()
-    return rows
 
+    return tdb.session.execute(text(stmt), params).fetchall()
 
 
 ######################################################################
@@ -262,17 +286,17 @@ def run(results, cmdenv, tdb):
     if cmdenv.lt and cmdenv.gt:
         if cmdenv.lt <= cmdenv.gt:
             raise CommandLineError("--gt must be lower than --lt")
-    
+
     # Find out what we're looking for.
     queries, mode = get_lookup_list(cmdenv, tdb)
     cmdenv.DEBUG0("{} query: {}", mode, queries.values())
-    
+
     if cmdenv.rare and cmdenv.oneStop and not queries:
         raise CommandLineError("--one-stop requires one or more named items when using --rare")
-    
-    avoidSystems = {s for s in cmdenv.avoidPlaces if isinstance(s, System)}
-    avoidStations = {s for s in cmdenv.avoidPlaces if isinstance(s, Station)}
-    
+
+    avoidSystems = {s for s in cmdenv.avoidPlaces if isinstance(s, orm.System)}
+    avoidStations = {s for s in cmdenv.avoidPlaces if isinstance(s, orm.Station)}
+
     # Summarize
     results.summary = ResultRow()
     results.summary.mode = mode
@@ -280,7 +304,7 @@ def run(results, cmdenv, tdb):
     results.summary.oneStop = cmdenv.oneStop
     results.summary.avoidSystems = avoidSystems
     results.summary.avoidStations = avoidStations
-    
+
     # In single mode with detail enabled, add average reports.
     # Thus if you're looking up "algae" or the "asp", it'll
     # tell you the average/ship cost.
@@ -290,28 +314,29 @@ def run(results, cmdenv, tdb):
         if mode is SHIP_MODE:
             results.summary.avg = first.cost
         else:
-            # Portable AVG with named bind; eager scalar fetch
-            with tdb.engine.connect() as conn:
-                avg_val = conn.execute(
-                    text("""
-                        SELECT AVG(si.supply_price) AS avg_price
-                          FROM StationItem AS si
-                         WHERE si.item_id = :item_id AND si.supply_price > 0
-                    """),
-                    {"item_id": first.ID},
-                ).scalar()
+            avg_val = tdb.session.execute(
+                text("""
+                    SELECT AVG(si.supply_price) AS avg_price
+                      FROM StationItem AS si
+                     WHERE si.item_id = :item_id AND si.supply_price > 0
+                """),
+                {"item_id": first.item_id},
+            ).scalar()
             results.summary.avg = int(avg_val or 0)
-    
+
     # System-based search
     nearSystem = cmdenv.nearSystem
     if nearSystem:
         maxLy = cmdenv.maxLyPer or cmdenv.maxSystemLinkLy
         results.summary.near = nearSystem
         results.summary.ly = maxLy
-        distanceFn = nearSystem.distanceTo
+        nx, ny, nz = nearSystem.pos_x, nearSystem.pos_y, nearSystem.pos_z
+        distanceFn = lambda sys: math.sqrt(  # noqa: E731
+            (nx - sys.pos_x) ** 2 + (ny - sys.pos_y) ** 2 + (nz - sys.pos_z) ** 2
+        )
     else:
         distanceFn = None
-    
+
     oneStopMode = cmdenv.oneStop
     padSize = cmdenv.padSize
     planetary = cmdenv.planetary
@@ -320,44 +345,74 @@ def run(results, cmdenv, tdb):
     wantNoPlanet = cmdenv.noPlanet
     wantBlackMarket = cmdenv.blackMarket
     mls = cmdenv.maxLs
-    
+
+    # Fetch raw SQL results then bulk-load the matching stations.
+    raw_rows = sql_query(cmdenv, tdb, queries, mode)
+
+    station_ids = list({r[1] for r in raw_rows})
+    _stations = (
+        tdb.session.query(orm.Station)
+        .options(joinedload(orm.Station.system))
+        .filter(orm.Station.station_id.in_(station_ids))
+        .all()
+    )
+    station_by_id = {s.station_id: s for s in _stations}
+
+    # Age data is needed for item mode: display column + optional --age filter.
+    if mode is not SHIP_MODE and station_ids:
+        _age_rows = (
+            tdb.session.query(
+                orm.StationItem.station_id,
+                func.avg(
+                    age_in_days(tdb.session, orm.StationItem.modified)
+                ).label('data_age'),
+            )
+            .filter(orm.StationItem.station_id.in_(station_ids))
+            .group_by(orm.StationItem.station_id)
+            .all()
+        )
+        age_by_id = {r.station_id: r.data_age for r in _age_rows}
+    else:
+        age_by_id = {}
+
     stations = defaultdict(list)
-    stationByID = tdb.stationByID
-    
-    cur = sql_query(cmdenv, tdb, queries, mode)
-    for (ID, stationID, price, units) in cur:
-        station = stationByID[stationID]
-        if padSize and not station.checkPadSize(padSize):
+
+    for (ID, stationID, price, units) in raw_rows:
+        station = station_by_id.get(stationID)
+        if station is None:
             continue
-        if planetary and not station.checkPlanetary(planetary):
+        if padSize and station.max_pad_size not in padSize:
             continue
-        if fleet and not station.checkFleet(fleet):
+        if planetary and station.planetary not in planetary:
             continue
-        if odyssey and not station.checkOdyssey(odyssey):
+        if fleet and _fleet_state(station) not in fleet:
+            continue
+        if odyssey and _odyssey_state(station) not in odyssey:
             continue
         if wantNoPlanet and station.planetary != 'N':
             continue
-        if wantBlackMarket and station.blackMarket != 'Y':
+        if wantBlackMarket and station.blackmarket != 'Y':
             continue
         if station in avoidStations:
             continue
         if station.system in avoidSystems:
             continue
-        maxAge, stnAge = cmdenv.maxAge, station.dataAge or float("inf")
-        if maxAge and stnAge > maxAge:
+        data_age = age_by_id.get(stationID)
+        maxAge = cmdenv.maxAge
+        if maxAge and (data_age is None or data_age > maxAge):
             continue
-        
+
         item = queries.get(ID)
         if item is None:
-            item = tdb.itemByID.get(ID)
-            if item is None:
+            try:
+                item = tdb.item_by_id(ID)
+            except LookupError:
                 continue
-        
+
         row = ResultRow()
         row.station = station
         if mls:
-            distanceFromStar = station.lsFromStar
-            if distanceFromStar > mls:
+            if station.ls_from_star > mls:
                 continue
         if distanceFn:
             distance = distanceFn(row.station.system)
@@ -367,7 +422,7 @@ def run(results, cmdenv, tdb):
         row.item = item
         row.price = price
         row.units = units
-        row.age = station.itemDataAgeStr
+        row.age = f"{data_age:7.2f}" if data_age is not None else "-"
         if oneStopMode:
             stationRows = stations[stationID]
             stationRows.append(row)
@@ -375,15 +430,15 @@ def run(results, cmdenv, tdb):
                 results.rows.extend(stationRows)
         else:
             results.rows.append(row)
-    
+
     if not results.rows:
         if oneStopMode and len(stations):
             raise NoDataError("No one-stop stations found")
         raise NoDataError("No available items found")
-    
+
     if oneStopMode and not singleMode:
-        results.rows.sort(key = lambda result: result.item.name())
-    results.rows.sort(key = lambda result: result.station.name())
+        results.rows.sort(key = lambda result: result.item.name)
+    results.rows.sort(key = lambda result: result.station.dbname())
     if cmdenv.sortByUnits:
         results.summary.sort = "units"
         results.rows.sort(key = lambda result: result.price)
@@ -396,13 +451,12 @@ def run(results, cmdenv, tdb):
         if nearSystem and not cmdenv.sortByPrice:
             results.summary.sort = "Ly"
             results.rows.sort(key = lambda result: result.dist)
-    
+
     limit = cmdenv.limit or 0
     if limit > 0:
         results.rows = results.rows[:limit]
-    
-    return results
 
+    return results
 
 
 #######################################################################
@@ -412,15 +466,15 @@ def run(results, cmdenv, tdb):
 def render(results, cmdenv, tdb):
     mode = results.summary.mode
     singleMode = len(results.summary.queries) == 1
-    maxStnLen = max_len(results.rows, key = lambda row: row.station.name())
-    
+    maxStnLen = max_len(results.rows, key = lambda row: row.station.dbname())
+
     stnRowFmt = RowFormat()
     stnRowFmt.addColumn('Station', '<', maxStnLen,
-            key = lambda row: row.station.name())
+            key = lambda row: row.station.dbname())
     if not singleMode:
-        maxItmLen = max_len(results.rows, key = lambda row: row.item.name(cmdenv.detail))
+        maxItmLen = max_len(results.rows, key = lambda row: row.item.dbname(cmdenv.detail))
         stnRowFmt.addColumn(results.summary.mode, '<', maxItmLen,
-                key = lambda row: row.item.name(cmdenv.detail)
+                key = lambda row: row.item.dbname(cmdenv.detail)
         )
     if mode is not SHIP_MODE or not singleMode:
         stnRowFmt.addColumn('Cost', '>', 10, 'n',
@@ -428,34 +482,34 @@ def render(results, cmdenv, tdb):
     if mode is not SHIP_MODE:
         stnRowFmt.addColumn('Units', '>', 10,
                 key = lambda row: '{:n}'.format(row.units) if row.units >= 0 else '?')
-    
+
     if cmdenv.nearSystem:
         stnRowFmt.addColumn('DistLy', '>', 6, '.2f',
                 key = lambda row: row.dist)
-    
+
     if mode is not SHIP_MODE:
         stnRowFmt.addColumn('Age/days', '>', 7,
                 key = lambda row: row.age)
     stnRowFmt.addColumn("StnLs", '>', 10,
-            key = lambda row: row.station.distFromStar())
+            key = lambda row: _dist_from_star(row.station))
     stnRowFmt.addColumn('B/mkt', '>', 4,
-            key = lambda row: TradeDB.marketStates[row.station.blackMarket])
+            key = lambda row: TradeDB.marketStates[row.station.blackmarket])
     stnRowFmt.addColumn("Pad", '>', '3',
-            key = lambda row: TradeDB.padSizes[row.station.maxPadSize])
+            key = lambda row: TradeDB.padSizes[row.station.max_pad_size])
     stnRowFmt.addColumn("Plt", '>', '3',
             key = lambda row: TradeDB.planetStates[row.station.planetary])
     stnRowFmt.addColumn("Flc", '>', '3',
-            key = lambda row: TradeDB.fleetStates[row.station.fleet])
+            key = lambda row: TradeDB.fleetStates[_fleet_state(row.station)])
     stnRowFmt.addColumn("Ody", '>', '3',
-            key = lambda row: TradeDB.odysseyStates[row.station.odyssey])
-    
+            key = lambda row: TradeDB.odysseyStates[_odyssey_state(row.station)])
+
     if not cmdenv.quiet:
         heading, underline = stnRowFmt.heading()
         print(heading, underline, sep = '\n')
-    
+
     for row in results.rows:
         print(stnRowFmt.format(row))
-    
+
     if singleMode and cmdenv.detail:
         msg = "-- Ship Cost" if mode is SHIP_MODE else "-- Average"
         print(f"{msg:{maxStnLen}} {results.summary.avg:>10n}")
