@@ -719,6 +719,48 @@ class TradeORM:
             raise LookupError(f"unknown item: {name!r}")
         return self._list_search("Item", name, all_items, key=lambda i: i.name)
 
+    def lookup_category(self, name: str | orm.Category) -> orm.Category:
+        """Exact-then-normalised category lookup by name.
+
+        Mirrors TradeDB.lookupCategory / listSearch. Exact CI match is tried
+        first (fast path, uses idx_category_by_name). Normalised fallback
+        scans all categories in Python via _list_search. The category
+        catalogue is tiny (~16 rows) so a full scan is acceptable.
+        """
+        if isinstance(name, orm.Category):
+            return name
+        if not isinstance(name, str):
+            raise TypeError(f"lookup_category requires a str, got {type(name).__name__!r}")
+
+        # Exact CI match — fast path.
+        results = (
+            self.session.query(orm.Category)
+            .filter(orm.Category.name == name)
+            .all()
+        )
+        if results:
+            if len(results) == 1:
+                return results[0]
+            raise AmbiguityError("Category", name, results, key=lambda c: c.name)
+
+        # Full catalogue scan with Python-side normalised matching.
+        all_cats = self.session.query(orm.Category).all()
+        if not all_cats:
+            raise LookupError(f"unknown category: {name!r}")
+        return self._list_search("Category", name, all_cats, key=lambda c: c.name)
+
+    def item_by_id(self, item_id: int) -> orm.Item:
+        """Look up an Item by its primary key.
+
+        Mirrors TradeDB.itemByID[ID]. Uses the SQLAlchemy identity map when
+        the item is already loaded in the session; otherwise issues a PK
+        query. Raises LookupError if the item_id does not exist.
+        """
+        item = self.session.get(orm.Item, item_id)
+        if item is None:
+            raise LookupError(f"unknown item id: {item_id!r}")
+        return item
+
     @staticmethod
     def _split_system_index(name: str) -> tuple[str, int | None]:
         """ Split 'Name@N' into ('Name', N); returns (name, None) if no valid suffix. """
