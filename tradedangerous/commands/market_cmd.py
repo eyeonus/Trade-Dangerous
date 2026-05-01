@@ -94,6 +94,11 @@ def run(results, cmdenv, tdb):
     )
 
     rows = tdb.session.execute(stmt).fetchall()
+    if not rows:
+        raise CommandLineError(
+            "No items available for trade at {}".format(origin.name)
+        )
+
     avg_buying = {}
     avg_selling = {}
     visible_buy_ids = set()
@@ -179,7 +184,18 @@ def run(results, cmdenv, tdb):
             results.rows.append(row)
 
     if not results.rows:
-        raise CommandLineError("No items found")
+        if buying:
+            raise CommandLineError(
+                "No items to buy at {}".format(origin.name)
+            )
+        elif selling:
+            raise CommandLineError(
+                "No items for sale at {}".format(origin.name)
+            )
+        else:
+            raise CommandLineError(
+                "No items available for trade at {}".format(origin.name)
+            )
 
     results.rows.sort(key=lambda row: row.item.name)
     results.rows.sort(key=lambda row: row.item.category.name)
