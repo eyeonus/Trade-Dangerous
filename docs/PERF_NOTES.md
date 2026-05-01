@@ -277,3 +277,27 @@ Still pending:
 - `tdb.session` (SQLAlchemy ORM session) replaces ad-hoc `Session(bind=tdb.engine)`.
 - StationItem rows fetched via single parameterised SQL query; item objects resolved via identity-map PK lookup (`item_by_id()`).
 - No in-memory commodity index or station dict traversal.
+
+#### I3 — `buy` (2026-05-02, live SQLite)
+
+##### Before (checkpoint A warm baseline, 2026-04-17)
+- `buy`: 6.79s cold, 7.10s warm
+
+##### After (post-I3, 2026-05-02, live SQLite)
+- `trade buy "Fruit and Vegetables" --near "Colonia" --ly 20 --supply 1 --limit 20`
+- Warm: ~1.8s (two measurements: 1737ms, 1888ms)
+- Cold: ~13.3s (two measurements post-reboot: 13348ms, 13347ms)
+
+##### Warm improvement
+- ~4× faster warm. Full preload eliminated.
+
+##### Cold regression — OPEN
+- Cold is ~2× worse than legacy baseline. Under investigation.
+- Suspected cause: bulk station `IN(N)` query and/or unconditional age query running against the full global match set for a high-volume commodity. "Fruit and Vegetables" matches a very large number of stations globally.
+- Note: the up-front age query runs even when `--age` is not specified; fixing this is the likely first step.
+
+##### Mechanism
+- `needs = Needs.RESOLVER`: full `TradeDB.load()` no longer invoked.
+- SQL query returns matching (item_id, station_id, price, units); stations bulk-loaded via ORM with `joinedload(system)`.
+- Fleet/Odyssey state derived from `type_id`.
+- Distance filter applied in Python from ORM System `pos_x/y/z`.
