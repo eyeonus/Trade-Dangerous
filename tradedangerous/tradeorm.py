@@ -749,6 +749,35 @@ class TradeORM:
             raise LookupError(f"unknown category: {name!r}")
         return self._list_search("Category", name, all_cats, key=lambda c: c.name)
 
+    def lookup_ship(self, name: str | orm.Ship) -> orm.Ship:
+        """Exact-then-normalised ship lookup by name.
+
+        Mirrors TradeDB.lookupShip. Exact CI match is tried first (fast path).
+        Normalised fallback scans the full ship catalogue via _list_search.
+        The ship catalogue is small (~40 rows) so a full scan is acceptable.
+        """
+        if isinstance(name, orm.Ship):
+            return name
+        if not isinstance(name, str):
+            raise TypeError(f"lookup_ship requires a str, got {type(name).__name__!r}")
+
+        # Exact CI match — fast path.
+        results = (
+            self.session.query(orm.Ship)
+            .filter(orm.Ship.name == name)
+            .all()
+        )
+        if results:
+            if len(results) == 1:
+                return results[0]
+            raise AmbiguityError("Ship", name, results, key=lambda s: s.name)
+
+        # Full catalogue scan with Python-side normalised matching.
+        all_ships = self.session.query(orm.Ship).all()
+        if not all_ships:
+            raise LookupError(f"unknown ship: {name!r}")
+        return self._list_search("Ship", name, all_ships, key=lambda s: s.name)
+
     def item_by_id(self, item_id: int) -> orm.Item:
         """Look up an Item by its primary key.
 

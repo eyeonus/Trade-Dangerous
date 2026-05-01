@@ -650,3 +650,40 @@ class TestItemById:
     def test_unknown_id_raises_lookup_error(self, isolated_torm):
         with pytest.raises(LookupError):
             isolated_torm.item_by_id(999999999)
+
+
+class TestLookupShip:
+
+    def test_exact_match_returns_ship(self, isolated_torm):
+        ship = isolated_torm.lookup_ship("Sidewinder")
+        assert ship.name == "Sidewinder"
+
+    def test_case_insensitive_exact_match(self, isolated_torm):
+        ship = isolated_torm.lookup_ship("sidewinder")
+        assert ship.name == "Sidewinder"
+
+    def test_partial_match(self, isolated_torm):
+        # "Anaconda" is unique; partial "Anac" should resolve to it.
+        ship = isolated_torm.lookup_ship("Anac")
+        assert ship.name == "Anaconda"
+
+    def test_not_found_raises_lookup_error(self, isolated_torm):
+        with pytest.raises(LookupError):
+            isolated_torm.lookup_ship("xyzzy_no_such_ship")
+
+    def test_ambiguous_partial_raises_ambiguity_error(self, isolated_torm):
+        # "Cobra" matches Cobra MkIII, Cobra MkIV, Cobra MkV.
+        with pytest.raises(AmbiguityError):
+            isolated_torm.lookup_ship("Cobra")
+
+    def test_passthrough_orm_ship(self, isolated_torm):
+        ship = isolated_torm.lookup_ship("Sidewinder")
+        assert isolated_torm.lookup_ship(ship) is ship
+
+    def test_non_string_raises_type_error(self, isolated_torm):
+        with pytest.raises(TypeError):
+            isolated_torm.lookup_ship(42)
+
+    def test_ship_id_is_integer(self, isolated_torm):
+        ship = isolated_torm.lookup_ship("Sidewinder")
+        assert isinstance(ship.ship_id, int)
