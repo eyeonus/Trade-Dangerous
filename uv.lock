@@ -2509,7 +2509,7 @@ requires-dist = [
     { name = "ijson", specifier = ">=3.1" },
     { name = "importlib-metadata", specifier = ">=1" },
     { name = "ipython", marker = "extra == 'dev-extras'" },
-    { name = "nicegui" },
+    { name = "nicegui", specifier = "<3.11" },
     { name = "orjson", specifier = ">=3.11.5" },
     { name = "pythonnet", marker = "python_full_version == '3.14.*' and sys_platform == 'win32'", specifier = "==3.1.0rc0" },
     { name = "pywebview" },
