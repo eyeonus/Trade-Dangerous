@@ -2,7 +2,7 @@ from __future__ import annotations
 import math
 from collections import defaultdict
 
-from sqlalchemy import func, literal, text
+from sqlalchemy import literal, text
 from sqlalchemy.orm import joinedload
 
 from tradedangerous.db import orm_models as orm
