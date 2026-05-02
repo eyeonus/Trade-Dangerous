@@ -288,7 +288,13 @@ def run(results, cmdenv, tdb):
         results.rows.append(row)
 
     if not results.rows:
-        raise NoDataError("No available items found")
+        if nearSystem:
+            raise NoDataError(
+                "No buyers for {} found within {:.0f}ly of {}".format(
+                    item.name, maxLy, nearSystem.name
+                )
+            )
+        raise NoDataError("No buyers for {} found".format(item.name))
 
     results.summary.sort = "Price"
     results.rows.sort(key=lambda result: result.demand, reverse=True)
