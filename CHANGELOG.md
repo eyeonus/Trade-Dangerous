@@ -2,6 +2,34 @@
 
 <!-- version list -->
 
+## v12.22.3 (2026-05-02)
+
+### Bug Fixes
+
+- **gui**: Pin NiceGUI below native activation API break
+  ([`291da24`](https://github.com/eyeonus/Trade-Dangerous/commit/291da24ad4e7a3c1a9bda24bc8aa2375889f088d))
+
+Pin NiceGUI below 3.11 on live because NiceGUI 3.11 passes an additional native_favicon argument to
+  native-mode activation. Our native close-handler shim still uses the NiceGUI 3.10 signature,
+  causing tradegui startup to fail with:
+
+TypeError: _activate_native_mode_with_close_handler() takes from 8 to 9 positional arguments but 10
+  were given
+
+This is a live containment fix only. v13/refactor will implement a proper compatibility update to
+  the native activation shim rather than relying on the dependency pin long-term.
+
+### Documentation
+
+- Add fixtures procedure
+  ([`d9e252d`](https://github.com/eyeonus/Trade-Dangerous/commit/d9e252daa5592b6957141a75149b9cd2fae9d852))
+
+- Update Create_Fixtures.md with regex cleanup instructions
+  ([`a6d0289`](https://github.com/eyeonus/Trade-Dangerous/commit/a6d028939997766c1e03abe2dac1f07439474e57))
+
+Added regex instructions for cleaning up system names in fixtures.
+
+
 ## v12.22.2 (2026-04-26)
 
 ### Bug Fixes
