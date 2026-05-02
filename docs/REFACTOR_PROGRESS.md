@@ -51,25 +51,25 @@ Do not tick a task unless:
 ### Current active checkpoint
 - Status: `[-]`
 - Checkpoint: `I — Migrate market, buy, sell`
-- Subtask: `I3 — Migrate buy`
+- Subtask: `I4 — Migrate sell`
 - Owner: `Tromador`
 - Started: `2026-04-30`
 - Goal: `Move obvious preload-bound trading commands off full preload.`
 
 ### Current blocker
-- Status: `[!]`
-- Blocker: `buy cold-start regression — ~13.3s cold vs ~6.8s legacy baseline.`
-- Impact: `I3 warm timing is good (~1.8s vs 7.1s legacy). Cold is under investigation before I3 is closed.`
-- Needed to unblock: `Diagnosis of cold-start cost in buy_cmd.py; likely the bulk station IN() query or up-front age query against the full match set.`
+- Status: `[ ]`
+- Blocker: `None currently recorded.`
+- Impact: `I3 buy cold-start regression is resolved; continue with remaining Checkpoint I command migration.`
+- Needed to unblock: `None.`
 
 ### Last updated
 - Date: `2026-05-02`
-- By: `Tromador + Claude`
-- Session summary: `I3 buy_cmd.py migration committed (8c70847f). lookup_ship() added to TradeORM. Warm timing good (~1.8s vs 7.1s legacy). Cold start regressed (~13.3s vs ~6.8s legacy); under investigation. 385 tests passing.`
+- By: `Tromador + assistant`
+- Session summary: `I3 buy cold-start regression fixed. buy now constrains near-system searches by materialised nearby station IDs before probing StationItem or ShipVendor, applies --age during StationItem lookup, avoids unconditional station-wide age aggregation, chunks station hydration, and tolerates unknown ship costs during sorting. Canonical buy cold-ish timing improved to 3.88s vs 6.79s legacy baseline and ~13.3s regressed I3 state. Ship near Sol cold-ish timing measured at 1.51s. pytest clean.`
 
 ### Last known good rollback point
-- Commit: `8c70847f`
-- Notes: `Post-I3 code state. buy_cmd.py on RESOLVER tier; cold-start performance open question.`
+- Commit: `759e96d5`
+- Notes: `Accepted working tree after buy cold-path fix.`
 
 ---
 
@@ -425,9 +425,9 @@ Move obvious preload-bound trading commands off full preload.
 - [x] I2. Migrate `market`
   - Status note: `market_cmd.py migrated to Needs.RESOLVER. tdb.session used throughout; station_id, item_by_id(), ORM attribute names in sort/render. Polish: early no-rows exit; context-aware filtered-empty errors include origin.name. Smoke-tested live: instantaneous for basic queries, 578ms warm for --detail. 377 tests passing.`
   - Evidence: `tradedangerous/commands/market_cmd.py`; commits `5542bfd6`, `91ec8160`
-- [-] I3. Migrate `buy`
-  - Status note: `buy_cmd.py migrated to Needs.RESOLVER. lookup_ship() added to TradeORM. Warm timing good (~1.8s vs 7.1s legacy). Cold-start regression (~13.3s vs ~6.8s) under investigation — likely up-front age query or bulk station IN() against the full global match set. 385 tests passing.`
-  - Evidence: `tradedangerous/commands/buy_cmd.py`, `tradedangerous/tradeorm.py`; commits `ea279202`, `8c70847f`
+- [x] I3. Migrate `buy`
+  - Status note: `buy_cmd.py migrated to Needs.RESOLVER. lookup_ship() added to TradeORM. Cold-start regression fixed by constraining near-system searches before StationItem/ShipVendor probing, applying --age during StationItem lookup, removing unconditional station-wide age aggregation, chunking station hydration, and tolerating unknown ship costs during sorting. Canonical buy cold-ish timing now 3.88s vs 6.79s legacy baseline and ~13.3s regressed I3 state. Ship near Sol cold-ish timing now 1.51s. pytest clean.`
+  - Evidence: `tradedangerous/commands/buy_cmd.py`, `tradedangerous/tradeorm.py`; commits `ea279202`, `8c70847f`, `759e96d5`
 - [ ] I4. Migrate `sell`
   - Status note:
   - Evidence:

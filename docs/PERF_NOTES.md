@@ -280,24 +280,55 @@ Still pending:
 
 #### I3 — `buy` (2026-05-02, live SQLite)
 
-##### Before (checkpoint A warm baseline, 2026-04-17)
+##### Before (checkpoint A baseline, 2026-04-17)
 - `buy`: 6.79s cold, 7.10s warm
+- Command:
+```text
+trade buy "Fruit and Vegetables" --near "Colonia" --ly 20 --supply 1 --limit 20
+```
 
-##### After (post-I3, 2026-05-02, live SQLite)
-- `trade buy "Fruit and Vegetables" --near "Colonia" --ly 20 --supply 1 --limit 20`
-- Warm: ~1.8s (two measurements: 1737ms, 1888ms)
+##### Regressed I3 state
 - Cold: ~13.3s (two measurements post-reboot: 13348ms, 13347ms)
+- Warm: ~1.8s (two measurements: 1737ms, 1888ms)
+- Root cause: the first migrated buy path expanded broad candidate sets before enough filtering was applied. It also performed station-wide age aggregation unconditionally and applied `--near` too late for high-volume item/ship searches.
 
-##### Warm improvement
-- ~4× faster warm. Full preload eliminated.
+##### Fixed I3 state
+- Command:
+```text
+trade buy "Fruit and Vegetables" --near "Colonia" --ly 20 --supply 1 --limit 20
+```
+- Cold-ish: 3.88s
+- Warm: ~1.0s
+- Result: faster than checkpoint A legacy cold and warm baselines.
 
-##### Cold regression — OPEN
-- Cold is ~2× worse than legacy baseline. Under investigation.
-- Suspected cause: bulk station `IN(N)` query and/or unconditional age query running against the full global match set for a high-volume commodity. "Fruit and Vegetables" matches a very large number of stations globally.
-- Note: the up-front age query runs even when `--age` is not specified; fixing this is the likely first step.
+##### Age-filtered evidence
+- Command:
+```text
+trade buy "Fruit and Vegetables" --near "Colonia" --ly 20 --supply 1 --limit 20 --age 3
+```
+- Cold-ish: 3.77s
+- Notes: after station-first narrowing, `--age` is no longer the dominant performance lever for this localised single-commodity search.
+
+##### Ship-mode evidence
+- Command:
+```text
+trade buy "Cobra Mk III" --near "Sol" --ly 50 --limit 20
+```
+- Cold-ish: 1.51s
+- Notes: ship availability search now uses the same near-station-first candidate narrowing and no longer expands global ShipVendor candidates before applying the spatial constraint.
+
+##### Improvement
+- Canonical buy cold: 6.79s legacy baseline → 3.88s fixed I3 (~43% faster).
+- Canonical buy warm: 7.10s legacy baseline → ~1.0s fixed I3 (~7× faster).
+- Regressed I3 cold: ~13.3s → 3.88s fixed I3 (~71% faster).
 
 ##### Mechanism
 - `needs = Needs.RESOLVER`: full `TradeDB.load()` no longer invoked.
-- SQL query returns matching (item_id, station_id, price, units); stations bulk-loaded via ORM with `joinedload(system)`.
-- Fleet/Odyssey state derived from `type_id`.
-- Distance filter applied in Python from ORM System `pos_x/y/z`.
+- `--near` searches materialise nearby station IDs first, then probe `StationItem` or `ShipVendor` only for those station chunks.
+- `--age` is applied during `StationItem` lookup rather than after broad result expansion.
+- Unconditional station-wide age aggregation was removed.
+- Station hydration is chunked defensively to avoid backend parameter limits.
+- Ship sorting tolerates unknown ship costs.
+- Fleet/Odyssey state is derived from `type_id`.
+- Exact sphere distance check remains in Python after the database-side bounding-box cut.
+- Validation: buy smoke tests passed; ship mode passed; `pytest` clean.
