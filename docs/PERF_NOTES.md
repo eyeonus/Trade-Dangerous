@@ -332,3 +332,29 @@ trade buy "Cobra Mk III" --near "Sol" --ly 50 --limit 20
 - Fleet/Odyssey state is derived from `type_id`.
 - Exact sphere distance check remains in Python after the database-side bounding-box cut.
 - Validation: buy smoke tests passed; ship mode passed; `pytest` clean.
+
+#### I4 — `sell` (2026-05-03, live SQLite)
+
+##### Before (checkpoint A baseline, 2026-04-17)
+- `sell`: 7.29s cold, 7.77s warm
+- Command:
+```text
+trade sell "Fruit and Vegetables" --near "Colonia" --ly-per 20 --demand 1 --limit 20
+```
+
+##### After (post-I4, 2026-05-03, live SQLite)
+- Cold: 1.23s
+- Warm: 0.82s
+
+##### Improvement
+- Cold: 7.29s → 1.23s (~6× faster).
+- Warm: 7.77s → 0.82s (~9.5× faster).
+
+##### Mechanism
+- `needs = Needs.RESOLVER`: full `TradeDB.load()` no longer invoked.
+- `--near` bounding-box materialises nearby station IDs before `StationItem` is queried.
+- `--age`, `--demand`, `--lt`, `--gt` filters pushed into SQL.
+- Station hydration chunked at 900 via `joinedload(orm.Station.system)`.
+- Legacy station wrapper methods replaced with ORM attributes and `type_id`-based fleet/odyssey helpers.
+- Context-aware `NoDataError` includes item name and near-system.
+- Validation: `pytest` clean.

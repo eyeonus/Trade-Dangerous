@@ -50,26 +50,26 @@ Do not tick a task unless:
 
 ### Current active checkpoint
 - Status: `[-]`
-- Checkpoint: `I — Migrate market, buy, sell`
-- Subtask: `I4 — Migrate sell`
+- Checkpoint: `J — Split TradeDB by capability`
+- Subtask: `J1 — Create explicit sub-loaders`
 - Owner: `Tromador`
-- Started: `2026-04-30`
-- Goal: `Move obvious preload-bound trading commands off full preload.`
+- Started: `2026-05-03`
+- Goal: `Turn TradeDB into a selective compatibility layer.`
 
 ### Current blocker
 - Status: `[ ]`
 - Blocker: `None currently recorded.`
-- Impact: `I3 buy cold-start regression is resolved; continue with remaining Checkpoint I command migration.`
+- Impact: `Checkpoint I complete. Proceeding to J.`
 - Needed to unblock: `None.`
 
 ### Last updated
-- Date: `2026-05-02`
+- Date: `2026-05-03`
 - By: `Tromador + assistant`
-- Session summary: `I3 buy cold-start regression fixed. buy now constrains near-system searches by materialised nearby station IDs before probing StationItem or ShipVendor, applies --age during StationItem lookup, avoids unconditional station-wide age aggregation, chunks station hydration, and tolerates unknown ship costs during sorting. Canonical buy cold-ish timing improved to 3.88s vs 6.79s legacy baseline and ~13.3s regressed I3 state. Ship near Sol cold-ish timing measured at 1.51s. pytest clean.`
+- Session summary: `I4 sell migrated to Needs.RESOLVER. Spatial bounding-box narrows StationItem candidates before querying; age/demand/price filters pushed into SQL; station hydration chunked via joinedload. Context-aware NoDataError messages added. Cold 7.29s → 1.23s (~6×), warm 7.77s → 0.82s (~9.5×). pytest clean. Checkpoint I complete.`
 
 ### Last known good rollback point
-- Commit: `759e96d5`
-- Notes: `Accepted working tree after buy cold-path fix.`
+- Commit: `af6e7327`
+- Notes: `Accepted working tree after sell migration and error message polish.`
 
 ---
 
@@ -100,7 +100,7 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 - [x] F — Resolver contract and parity tests
 - [x] G — Resolver-first execution flow
 - [x] H — Migrate `local`
-- [-] I — Migrate `market`, `buy`, `sell`
+- [x] I — Migrate `market`, `buy`, `sell`
 - [ ] J — Split `TradeDB` by capability
 - [ ] K — Reduce `TradeCalc` setup cost
 - [ ] L — Migrate `olddata`, `nav`, `rares`
@@ -428,12 +428,12 @@ Move obvious preload-bound trading commands off full preload.
 - [x] I3. Migrate `buy`
   - Status note: `buy_cmd.py migrated to Needs.RESOLVER. lookup_ship() added to TradeORM. Cold-start regression fixed by constraining near-system searches before StationItem/ShipVendor probing, applying --age during StationItem lookup, removing unconditional station-wide age aggregation, chunking station hydration, and tolerating unknown ship costs during sorting. Canonical buy cold-ish timing now 3.88s vs 6.79s legacy baseline and ~13.3s regressed I3 state. Ship near Sol cold-ish timing now 1.51s. pytest clean.`
   - Evidence: `tradedangerous/commands/buy_cmd.py`, `tradedangerous/tradeorm.py`; commits `ea279202`, `8c70847f`, `759e96d5`
-- [ ] I4. Migrate `sell`
-  - Status note:
-  - Evidence:
-- [ ] I5. Benchmark each command separately
-  - Status note:
-  - Evidence:
+- [x] I4. Migrate `sell`
+  - Status note: `sell_cmd.py migrated to Needs.RESOLVER. Spatial bounding-box materialises nearby station IDs before StationItem is queried. Age, demand, and price filters pushed into SQL. Station hydration chunked at 900 via joinedload. Legacy station wrapper methods replaced with ORM attributes and type_id-based helpers. Context-aware NoDataError includes item name and near-system. Cold 7.29s → 1.23s (~6×), warm 7.77s → 0.82s (~9.5×). pytest clean.`
+  - Evidence: `tradedangerous/commands/sell_cmd.py`; commits `8858ba45`, `af6e7327`
+- [x] I5. Benchmark each command separately
+  - Status note: `Before/after timing evidence recorded for each migrated command: market (instantaneous warm / 578ms --detail), buy (6.79s → 3.88s cold, 7.10s → ~1.0s warm), sell (7.29s → 1.23s cold, 7.77s → 0.82s warm).`
+  - Evidence: `docs/PERF_NOTES.md`
 
 ### Notes
 -
@@ -749,6 +749,10 @@ Use this as the short “what is already definitely done” section for quick sc
   - Date completed: `2026-04-30`
   - Commit: `45148695`
   - Notes: `local_cmd.py rewritten: SQL bounding-box + Python sphere check replaces genSystemsInRange(); all station filters pushed to SQL; fleet/odyssey via type_id; --trading via EXISTS; age/count via StationItem aggregate. 294 tests passing. H5 benchmark: 0.85s warm vs 6.98s warm baseline (~8×). Deliberate ORM behaviour change: Mkt display reads raw station.market; legacy coerced to Y when itemCount > 0. --trading filter is correct and unaffected.`
+- [x] Milestone: `Checkpoint I complete — market, buy, sell migrated to RESOLVER tier`
+  - Date completed: `2026-05-03`
+  - Commit: `af6e7327` (sell closeout); `759e96d5` (buy cold-path fix); `91ec8160` (market polish)
+  - Notes: `market: effectively instantaneous warm, 578ms for --detail. buy: 6.79s → 3.88s cold, 7.10s → ~1.0s warm; cold-start regression during I3 fixed by spatial candidate narrowing before StationItem probe. sell: 7.29s → 1.23s cold, 7.77s → 0.82s warm. All three commands on Needs.RESOLVER; no full TradeDB.load() invoked. pytest clean throughout.`
 
 ---
 
