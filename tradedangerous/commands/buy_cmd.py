@@ -2,7 +2,7 @@ from __future__ import annotations
 import math
 from collections import defaultdict
 
-from sqlalchemy import func, text
+from sqlalchemy import func, literal, text
 from sqlalchemy.orm import joinedload
 
 from tradedangerous.db import orm_models as orm
@@ -222,60 +222,117 @@ def get_lookup_list(cmdenv, tdb):
 
     return queries, mode
 
+def _near_station_ids(cmdenv, tdb) -> list[int] | None:
+    """
+    Return station IDs inside the --near bounding box.
+
+    This deliberately forces the first major cut to be spatial. The later
+    Python sphere check remains authoritative; this only narrows the database
+    probe to stations plausibly within range before StationItem/ShipVendor is
+    queried.
+    """
+    near_system = cmdenv.nearSystem
+    if not near_system:
+        return None
+
+    max_ly = cmdenv.maxLyPer or cmdenv.maxSystemLinkLy
+    rows = (
+        tdb.session.query(orm.Station.station_id)
+        .join(orm.System, orm.System.system_id == orm.Station.system_id)
+        .filter(orm.System.pos_x.between(
+            near_system.pos_x - max_ly,
+            near_system.pos_x + max_ly,
+        ))
+        .filter(orm.System.pos_y.between(
+            near_system.pos_y - max_ly,
+            near_system.pos_y + max_ly,
+        ))
+        .filter(orm.System.pos_z.between(
+            near_system.pos_z - max_ly,
+            near_system.pos_z + max_ly,
+        ))
+        .all()
+    )
+    return [r.station_id for r in rows]
 
 def sql_query(cmdenv, tdb, queries, mode):
     """
     Backend-portable query builder.
-    - Uses named binds (':param') instead of SQLite '?'.
+    - Composes through SQLAlchemy rather than handwritten SQL.
     - Materializes rows eagerly to avoid closed-cursor issues.
     - Preserves return shapes:
         * Ship:   (ship_id, station_id, cost, 1)
-        * Item:   (item_id, station_id, supply_price, supply_units)
+        * Item:   (item_id, station_id, supply_price, supply_units, age)
     """
     ids = list(queries.keys())
+    near_station_ids = _near_station_ids(cmdenv, tdb)
+    if near_station_ids == []:
+        return []
 
-    # Build a stable, named-parameter IN(...) list
-    params = {}
-    placeholders = []
-    for i, val in enumerate(ids):
-        key = f"id{i}"
-        placeholders.append(f":{key}")
-        params[key] = val
-    id_list_sql = ",".join(placeholders)
+    def build_query(station_id_chunk: list[int] | None = None):
+        if mode is SHIP_MODE:
+            query = (
+                tdb.session.query(
+                    orm.ShipVendor.ship_id,
+                    orm.ShipVendor.station_id,
+                    orm.Ship.cost,
+                    literal(1),
+                )
+                .join(orm.Ship, orm.Ship.ship_id == orm.ShipVendor.ship_id)
+                .filter(orm.ShipVendor.ship_id.in_(ids))
+            )
+            if station_id_chunk is not None:
+                query = query.filter(
+                    orm.ShipVendor.station_id.in_(station_id_chunk)
+                )
+            return query.distinct()
 
-    if mode is SHIP_MODE:
-        columns = "s.ship_id, s.station_id, sh.cost, 1"
-        tables = "ShipVendor AS s JOIN Ship AS sh ON sh.ship_id = s.ship_id"
-        constraints = [f"(s.ship_id IN ({id_list_sql}))"]
-    else:
-        columns = "s.item_id, s.station_id, s.supply_price, s.supply_units"
+        age_expr = age_in_days(tdb.session, orm.StationItem.modified)
+        query = tdb.session.query(
+            orm.StationItem.item_id,
+            orm.StationItem.station_id,
+            orm.StationItem.supply_price,
+            orm.StationItem.supply_units,
+            age_expr.label("data_age"),
+        )
         if cmdenv.rare:
-            tables = "StationItem AS s JOIN Item AS i ON i.item_id = s.item_id"
-        else:
-            tables = "StationItem AS s"
-        constraints = [
-            "(s.supply_price > 0)",  # preserves index intent across backends
-        ]
+            query = query.join(
+                orm.Item,
+                orm.Item.item_id == orm.StationItem.item_id,
+            )
+        if station_id_chunk is not None:
+            query = query.filter(
+                orm.StationItem.station_id.in_(station_id_chunk)
+            )
+        query = query.filter(orm.StationItem.supply_price > 0)
         if ids:
-            constraints.insert(0, f"(s.item_id IN ({id_list_sql}))")
+            query = query.filter(orm.StationItem.item_id.in_(ids))
         if cmdenv.rare:
-            constraints.append("(i.rare_station_id IS NOT NULL)")
-            constraints.append("(s.supply_units > 0)")
+            query = query.filter(orm.Item.rare_station_id.isnot(None))
+            query = query.filter(orm.StationItem.supply_units > 0)
+        if cmdenv.maxAge:
+            query = query.filter(age_expr <= cmdenv.maxAge)
         if cmdenv.supply:
-            constraints.append("(s.supply_units >= :supply)")
-            params["supply"] = cmdenv.supply
+            query = query.filter(orm.StationItem.supply_units >= cmdenv.supply)
         if cmdenv.lt:
-            constraints.append("(s.supply_price < :lt)")
-            params["lt"] = cmdenv.lt
+            query = query.filter(orm.StationItem.supply_price < cmdenv.lt)
         if cmdenv.gt:
-            constraints.append("(s.supply_price > :gt)")
-            params["gt"] = cmdenv.gt
+            query = query.filter(orm.StationItem.supply_price > cmdenv.gt)
+        return query.distinct()
 
-    where_clause = " AND ".join(constraints)
-    stmt = f"SELECT DISTINCT {columns} FROM {tables} WHERE {where_clause}"
-    cmdenv.DEBUG0('SQL: {} ; params={}', stmt, params)
+    if near_station_ids is None:
+        query = build_query()
+        cmdenv.DEBUG0("SQL: {}", query)
+        return query.all()
 
-    return tdb.session.execute(text(stmt), params).fetchall()
+    rows = []
+    for offset in range(0, len(near_station_ids), 900):
+        station_id_chunk = near_station_ids[offset:offset + 900]
+        query = build_query(station_id_chunk)
+        cmdenv.DEBUG0("SQL: {}", query)
+        rows.extend(query.all())
+
+    return rows
 
 
 ######################################################################
@@ -350,34 +407,25 @@ def run(results, cmdenv, tdb):
     raw_rows = sql_query(cmdenv, tdb, queries, mode)
 
     station_ids = list({r[1] for r in raw_rows})
-    _stations = (
-        tdb.session.query(orm.Station)
-        .options(joinedload(orm.Station.system))
-        .filter(orm.Station.station_id.in_(station_ids))
-        .all()
-    )
-    station_by_id = {s.station_id: s for s in _stations}
-
-    # Age data is needed for item mode: display column + optional --age filter.
-    if mode is not SHIP_MODE and station_ids:
-        _age_rows = (
-            tdb.session.query(
-                orm.StationItem.station_id,
-                func.avg(
-                    age_in_days(tdb.session, orm.StationItem.modified)
-                ).label('data_age'),
-            )
-            .filter(orm.StationItem.station_id.in_(station_ids))
-            .group_by(orm.StationItem.station_id)
+    station_by_id = {}
+    for offset in range(0, len(station_ids), 900):
+        station_id_chunk = station_ids[offset:offset + 900]
+        _stations = (
+            tdb.session.query(orm.Station)
+            .options(joinedload(orm.Station.system))
+            .filter(orm.Station.station_id.in_(station_id_chunk))
             .all()
         )
-        age_by_id = {r.station_id: r.data_age for r in _age_rows}
-    else:
-        age_by_id = {}
+        station_by_id.update({s.station_id: s for s in _stations})
 
     stations = defaultdict(list)
 
-    for (ID, stationID, price, units) in raw_rows:
+    for row_data in raw_rows:
+        if mode is SHIP_MODE:
+            ID, stationID, price, units = row_data
+            data_age = None
+        else:
+            ID, stationID, price, units, data_age = row_data
         station = station_by_id.get(stationID)
         if station is None:
             continue
@@ -396,10 +444,6 @@ def run(results, cmdenv, tdb):
         if station in avoidStations:
             continue
         if station.system in avoidSystems:
-            continue
-        data_age = age_by_id.get(stationID)
-        maxAge = cmdenv.maxAge
-        if maxAge and (data_age is None or data_age > maxAge):
             continue
 
         item = queries.get(ID)
@@ -447,7 +491,11 @@ def run(results, cmdenv, tdb):
         if not oneStopMode:
             results.summary.sort = "Price"
             results.rows.sort(key = lambda result: result.units, reverse = True)
-            results.rows.sort(key = lambda result: result.price)
+            results.rows.sort(
+                key=lambda result: (
+                    result.price if result.price is not None else float("inf")
+                )
+            )
         if nearSystem and not cmdenv.sortByPrice:
             results.summary.sort = "Ly"
             results.rows.sort(key = lambda result: result.dist)
