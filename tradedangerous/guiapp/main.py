@@ -6,6 +6,7 @@ import _thread
 import argparse
 import multiprocessing
 import os
+from pathlib import Path
 import socket
 import signal
 import sys
@@ -165,14 +166,15 @@ def _open_window_with_close_handler(
     method_queue: Any,
     response_queue: Any,
     event_sender: Any,
+    native_favicon: str | Path | None,
     shared_state: Any,
 ) -> None:
     from nicegui import core, helpers
-    from nicegui.native import native_mode
-
+    from nicegui.native import native_mode, window_icon
+    
     while not helpers.is_port_open(host, port):
         time.sleep(0.1)
-
+    
     window_kwargs = {
         'url': f'{protocol}://{host}:{port}',
         'title': title,
@@ -185,12 +187,24 @@ def _open_window_with_close_handler(
     native_mode.webview.settings.update(**core.app.native.settings)
     window = native_mode.webview.create_window(**window_kwargs)
     assert window is not None
-
+    
     closed = Event()
     window.events.closed += closed.set
     if shared_state is not None:
         _bind_native_close_handler(window, shared_state)
     native_mode._bind_pywebview_events(window, event_sender)
+    
+    if sys.platform == 'win32' and native_favicon is not None:
+        def on_shown() -> None:
+            window_icon.apply_icon(
+                window.native.Handle.ToInt32(),
+                title,
+                str(native_favicon),
+            )
+            window.events.shown -= on_shown
+        
+        window.events.shown += on_shown
+    
     native_mode._start_window_method_executor(
         window,
         method_queue,
@@ -198,7 +212,6 @@ def _open_window_with_close_handler(
         closed,
     )
     native_mode.webview.start(**core.app.native.start_args)
-
 
 # This is a local shim around NiceGUI's native activation path. It exists only
 # to thread our shared close-state into the spawned pywebview process without
@@ -213,9 +226,10 @@ def _activate_native_mode_with_close_handler(
     fullscreen: bool,
     frameless: bool,
     shutdown_event: Any = None,
+    native_favicon: str | Path | None = None,
 ) -> None:
     global _ORIGINAL_NATIVE_ACTIVATE
-
+    
     if _NATIVE_WINDOW_CLOSE_SHARED_STATE is None:
         assert _ORIGINAL_NATIVE_ACTIVATE is not None
         _ORIGINAL_NATIVE_ACTIVATE(
@@ -228,18 +242,19 @@ def _activate_native_mode_with_close_handler(
             fullscreen,
             frameless,
             shutdown_event,
+            native_favicon,
         )
         return
-
+    
     from nicegui import core, optional_features
     from nicegui.logging import log
     from nicegui.native import native, native_mode
     from nicegui.server import Server
-
+    
     def check_shutdown() -> None:
         while process.is_alive():
             time.sleep(0.1)
-
+        
         server = getattr(Server, 'instance', None)
         _shutdown_debug_note('native window process exited', server=server)
         if shutdown_event is not None:
@@ -249,27 +264,27 @@ def _activate_native_mode_with_close_handler(
             _shutdown_debug_note('setting server should_exit', server=server)
             server.should_exit = True
             _shutdown_debug_note('server should_exit set', server=server)
-
+        
         next_log_at = time.monotonic() + 1.0
         while not core.app.is_stopped:
             if time.monotonic() >= next_log_at:
                 _shutdown_debug_note('waiting for app stop', server=server)
                 next_log_at = time.monotonic() + 1.0
             time.sleep(0.1)
-
+        
         _shutdown_debug_note('app reported stopped', server=server)
         _thread.interrupt_main()
         native_mode.event_manager.stop()
         native.remove_queues()
         _shutdown_debug_note('native queues removed', server=server)
-
+    
     if not optional_features.has('webview'):
         log.error(
             'Native mode is not supported in this configuration.\n'
             'Please run "pip install pywebview" to use it.'
         )
         sys.exit(1)
-
+    
     multiprocessing.freeze_support()
     native.create_queues()
     native_mode.event_manager.start()
@@ -285,6 +300,7 @@ def _activate_native_mode_with_close_handler(
         native.method_queue,
         native.response_queue,
         native.event_sender,
+        native_favicon,
         _NATIVE_WINDOW_CLOSE_SHARED_STATE,
     )
     process = multiprocessing.Process(
@@ -293,7 +309,7 @@ def _activate_native_mode_with_close_handler(
         daemon=True,
     )
     process.start()
-
+    
     Thread(target=check_shutdown, daemon=True).start()
 
 
@@ -504,6 +520,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         shell = AppShell(store, window_close_state=window_close_state)
         shell.build()
 
+    favicon_path = Path(__file__).resolve().parents[2] / 'tradedangerouscrest.ico'
+    favicon = str(favicon_path) if favicon_path.exists() else None
+    
     try:
         ui.run(
             host=args.host,
@@ -511,6 +530,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             port=resolved_port,
             reload=False,
             title='Trade Dangerous',
+            favicon=favicon,
             window_size=(1550, 1000),
         )
     finally:
