@@ -1261,8 +1261,24 @@ def run(results, cmdenv, tdb):
     # Always show a friendly heads-up before heavy work begins.
     print("Searching for quality trades. This may take a few minutes. Please be patient.", flush=True)
     
+    # Derive a narrow StationItem restriction for simple one-hop station-to-station
+    # runs. Only safe when the route cannot require intermediate stations.
+    _restrict_ids = None
+    if (
+        isinstance(cmdenv.origPlace, Station)
+        and isinstance(cmdenv.destPlace, Station)
+        and cmdenv.hops == 1
+        and not cmdenv.startJumps
+        and not cmdenv.endJumps
+        and not cmdenv.viaPlaces
+        and not cmdenv.loop
+        and not cmdenv.goalSystem
+        and not cmdenv.shorten
+    ):
+        _restrict_ids = [cmdenv.origPlace.ID, cmdenv.destPlace.ID]
+
     # Instantiate the calculator object
-    calc = TradeCalc(tdb, cmdenv)
+    calc = TradeCalc(tdb, cmdenv, restrict_station_ids=_restrict_ids)
     
     validateRunArguments(tdb, cmdenv, calc)
     
