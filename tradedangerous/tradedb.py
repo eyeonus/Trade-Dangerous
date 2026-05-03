@@ -1199,16 +1199,21 @@ class TradeDB:
     
     def _loadStations(self):
         """
-        Populate the Station list using SQLAlchemy.
-        Station constructor automatically adds itself to the System object.
+        Load station data in two phases: shell creation then summary enrichment.
+        Kept as a named entry point for backwards compatibility.
         CAUTION: Will orphan previously loaded objects.
         """
-        # NOTE: Requires module-level import:
-        #   from tradedangerous.db.utils import age_in_days
+        self._loadStationShell()
+        self._loadStationSummaries()
+
+    def _loadStationShell(self):
+        """
+        Phase 1 of station loading: create Station wrapper objects from basic metadata.
+        Populates self.stationByID, system.stations, and resets trading summary state.
+        CAUTION: Will orphan previously loaded objects.
+        """
         stationByID = {}
         systemByID = self.systemByID
-        self.tradingStationCount = 0
-        
         # Fleet Carriers are station type 24.
         # Odyssey settlements are station type 25.
         # Assume type 0 (Unknown) are also Fleet Carriers.
@@ -1216,10 +1221,9 @@ class TradeDB:
         odyssey_type  = 25
         cached_system = None
         cached_system_id = None
-        
+
         started = time.time()
         with self.Session() as session:
-            # Query all stations
             rows = session.query(
                 SA_Station.station_id,
                 SA_Station.system_id,
@@ -1236,52 +1240,66 @@ class TradeDB:
                 SA_Station.planetary,
                 SA_Station.type_id,
             )
-        
-        for (
-            ID, systemID, name,
-            lsFromStar, market, blackMarket, shipyard,
-            maxPadSize, outfitting, rearm, refuel, repair, planetary, type_id
-        ) in rows:
-            isFleet   = 'Y' if type_id in carrier_types else 'N'
-            isOdyssey = 'Y' if type_id == odyssey_type  else 'N'
-            if systemID != cached_system_id:
-                cached_system_id = systemID
-                cached_system = systemByID[cached_system_id]
-            stationByID[ID] = Station(
-                ID, cached_system, name,
+            for (
+                ID, systemID, name,
                 lsFromStar, market, blackMarket, shipyard,
-                maxPadSize, outfitting, rearm, refuel, repair,
-                planetary, isFleet, isOdyssey,
-                0, None,
-            )
-        
-        # Trading station info
-        tradingCount = 0
-        rows = (
-            session.query(
-                SA_StationItem.station_id,
-                func.count().label("item_count"),  # pylint: disable=not-callable
-                # Dialect-safe average age in **days**
-                func.avg(age_in_days(session, SA_StationItem.modified)).label("data_age_days"),
-            )
-            .group_by(SA_StationItem.station_id)
-            .having(func.count() > 0)  # pylint: disable=not-callable
-        )
-        
-        for ID, itemCount, dataAge in rows:
-            station = stationByID[ID]
-            station.itemCount = itemCount
-            station.dataAge = dataAge
-            tradingCount += 1
-        
+                maxPadSize, outfitting, rearm, refuel, repair, planetary, type_id
+            ) in rows:
+                isFleet   = 'Y' if type_id in carrier_types else 'N'
+                isOdyssey = 'Y' if type_id == odyssey_type  else 'N'
+                if systemID != cached_system_id:
+                    cached_system_id = systemID
+                    cached_system = systemByID[cached_system_id]
+                stationByID[ID] = Station(
+                    ID, cached_system, name,
+                    lsFromStar, market, blackMarket, shipyard,
+                    maxPadSize, outfitting, rearm, refuel, repair,
+                    planetary, isFleet, isOdyssey,
+                    0, None,
+                )
+
         self.stationByID = stationByID
-        self.tradingStationCount = tradingCount
+        self.tradingStationCount = 0
+        self.stellarGrid = None
         self.tdenv.DEBUG1(
             "Loaded {:n} Stations in {:.3f}s",
             len(stationByID),
             time.time() - started,
         )
-        self.stellarGrid = None
+
+    def _loadStationSummaries(self):
+        """
+        Phase 2 of station loading: enrich Station wrappers with trading summary data.
+        Updates station.itemCount, station.dataAge, and self.tradingStationCount.
+        Requires _loadStationShell() to have run first.
+        NOTE: Requires module-level import: from tradedangerous.db.utils import age_in_days
+        """
+        stationByID = self.stationByID
+        tradingCount = 0
+        started = time.time()
+        with self.Session() as session:
+            rows = (
+                session.query(
+                    SA_StationItem.station_id,
+                    func.count().label("item_count"),  # pylint: disable=not-callable
+                    # Dialect-safe average age in **days**
+                    func.avg(age_in_days(session, SA_StationItem.modified)).label("data_age_days"),
+                )
+                .group_by(SA_StationItem.station_id)
+                .having(func.count() > 0)  # pylint: disable=not-callable
+            )
+            for ID, itemCount, dataAge in rows:
+                station = stationByID[ID]
+                station.itemCount = itemCount
+                station.dataAge = dataAge
+                tradingCount += 1
+
+        self.tradingStationCount = tradingCount
+        self.tdenv.DEBUG1(
+            "Loaded {:n} trading station summaries in {:.3f}s",
+            tradingCount,
+            time.time() - started,
+        )
     
     def removeLocalStation(self, station, commit=True):
         """
@@ -1835,7 +1853,8 @@ class TradeDB:
         
         started = time.time()
         self._loadSystems()
-        self._loadStations()
+        self._loadStationShell()
+        self._loadStationSummaries()
         self._loadCategories()
         self._loadItems()
         self.tdenv.DEBUG0("Data load took {:.3f}s", time.time() - started)

@@ -39,17 +39,17 @@ class TestTradeRun:
         import tradedangerous.tradedb as tradedb_module
         import tradedangerous.tradecalc as tradecalc_module
         
-        original_load_stations = tradedb_module.TradeDB._loadStations
+        original_load_station_summaries = tradedb_module.TradeDB._loadStationSummaries
         original_tradecalc_init = tradecalc_module.TradeCalc.__init__
-        
-        def patched_load_stations(self):
-            original_load_stations(self)
+
+        def patched_load_station_summaries(self):
+            original_load_station_summaries(self)
             stale_station = self.lookupStation(
                 "Burnell Station",
                 self.lookupSystem("Sol"),
             )
             stale_station.dataAge = 999.0
-        
+
         def patched_tradecalc_init(self, tdb, tdenv=None, *args, **kwargs):
             active_tdenv = tdenv or tdb.tdenv
             original_max_age = active_tdenv.maxAge
@@ -64,11 +64,11 @@ class TestTradeRun:
                 )
             finally:
                 active_tdenv.maxAge = original_max_age
-        
+
         monkeypatch.setattr(
             tradedb_module.TradeDB,
-            "_loadStations",
-            patched_load_stations,
+            "_loadStationSummaries",
+            patched_load_station_summaries,
         )
         monkeypatch.setattr(
             tradecalc_module.TradeCalc,
