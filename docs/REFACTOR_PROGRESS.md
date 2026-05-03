@@ -49,26 +49,26 @@ Do not tick a task unless:
 ## 1. Current snapshot
 
 ### Current active checkpoint
-- Status: `[x]`
-- Checkpoint: `J — Split TradeDB by capability`
-- Subtask: `J4 complete — Checkpoint J closed`
+- Status: `[-]`
+- Checkpoint: `K — Reduce TradeCalc setup cost`
+- Subtask: `K1 complete — instrumentation done; K2 next`
 - Owner: `Tromador`
 - Started: `2026-05-03`
-- Goal: `Turn TradeDB into a selective compatibility layer.`
+- Goal: `Reduce TradeCalc.__init__() setup overhead before touching route maths.`
 
 ### Current blocker
 - Status: `[ ]`
 - Blocker: `None currently recorded.`
-- Impact: `Checkpoint J complete. Advancing to K.`
+- Impact: `K1 complete. K2 requires identifying safe candidate-station derivation for bounded run shapes.`
 - Needed to unblock: `None.`
 
 ### Last updated
 - Date: `2026-05-03`
 - By: `Tromador + assistant`
-- Session summary: `J3: in-session capability audit of olddata, nav, and run against sub-loader outputs. J4: olddata moved to Needs.LEGACY_HANDLE with preload() calling reloadCache()/_loadSystems()/_loadStationShell(). preload() hook added to CommandEnv.run() — fires after tdb assignment and schema check, before resolution checks. Smoke-tested all olddata paths (basic, --limit, --near, --route, filters). 385 tests passing. Checkpoint J accepted.`
+- Session summary: `K1: Added DEBUG0 row-scan count line to TradeCalc.__init__() (rows_seen, dmdCount, supCount, restriction active/count). Ran benchmark run shapes with -w. Key finding: row_scan dominates all init cost; every tested shape scans identical 9,137,044 StationItem rows; restrict_station_ids hook is inert (never passed at call site). 385 tests passing.`
 
 ### Last known good rollback point
-- Commit: `5fa20c80`
+- Commit: `46c60034`
 - Notes: `Accepted after Tromador review. J1–J4 complete. Checkpoint J closed.`
 
 ---
@@ -482,9 +482,9 @@ Reduce `TradeCalc.__init__()` setup overhead before touching route maths.
 - `run` shows measurable improvement before route-maths work begins
 
 ### Tasks
-- [ ] K1. Add `TradeCalc.__init__()` sub-phase timings
-  - Status note:
-  - Evidence:
+- [x] K1. Add `TradeCalc.__init__()` sub-phase timings
+  - Status note: `Sub-phase time_block calls (item_filter, query_prep, row_scan, finalize) already present at DEBUG0. Added a new DEBUG0 line exposing rows_seen, dmdCount, supCount, and restriction state. Benchmark runs confirm row_scan dominates; all other phases are negligible. Every tested command shape scans identical 9,137,044 rows with no restriction active.`
+  - Evidence: `46c60034; timings.txt benchmark session 2026-05-03; docs/PERF_NOTES.md K1 section`
 - [ ] K2. Derive candidate station IDs before constructor
   - Status note:
   - Evidence:

@@ -358,3 +358,36 @@ trade sell "Fruit and Vegetables" --near "Colonia" --ly-per 20 --demand 1 --limi
 - Legacy station wrapper methods replaced with ORM attributes and `type_id`-based fleet/odyssey helpers.
 - Context-aware `NoDataError` includes item name and near-system.
 - Validation: `pytest` clean.
+
+### Checkpoint K — Reduce `TradeCalc` setup cost
+
+#### K1 — Instrumentation: sub-phase timings and row counts (2026-05-03, live SQLite)
+
+##### Sub-phase time_block phases (already present, confirmed active at -w)
+- `item_filter`: <1ms across all shapes
+- `query_prep`: <1ms across all shapes
+- `row_scan`: dominant cost — see breakdown below
+- `finalize`: 30–60ms
+
+##### Row counts (identical across all tested shapes)
+- Rows seen (SQL result): 9,137,044
+- Buy-map entries kept: 9,116,973
+- Sell-map entries kept: 2,652,140
+- `restrict_station_ids` active: No (hook exists but never passed at the run_cmd.py call site)
+
+##### row_scan timings by benchmark shape
+| Shape | row_scan | getBestHops total | TradeCalc.__init__ total |
+|-------|---------|-------------------|--------------------------|
+| run-typical (--hops 2, warm) | ~21.0–21.8s | ~1.0s | ~21.4–21.8s |
+| run-wide (--hops 3 --start-jumps 1, run 1) | ~21.6s | ~2.5s | ~21.7s |
+| run-wide (--hops 3 --start-jumps 1, run 2) | ~44.7s | ~4.7s | ~44.7s |
+| run-short (--from A --to B --hops 1, warm) | ~46.8–48.1s | ~43–45ms | ~46.9–48.2s |
+
+##### Key findings
+- Almost all `TradeCalc.__init__` time is inside `row_scan`. The phase includes SQL result streaming plus the Python row loop; the evidence proves the cost is there, but the internal split between streaming, DBAPI conversion, timestamp parsing, and Python map allocation is not yet measured.
+- Every tested command shape scans the same 9,137,044 rows, including the tightly bounded `--from A --to B --hops 1 --jumps-per 1` shape. Station restriction is not currently affecting TradeCalc construction.
+- `getBestHops` is fast relative to init: 1–2.5s total across all hops for the unconstrained shapes; ~43ms for the bounded one-hop shape.
+- The 21s → 44–48s row_scan variance is unexplained from current evidence. GC pressure from multi-million-entry map allocation is a plausible hypothesis but not proven. It does not affect the primary diagnosis: unrestricted 9.1M-row scanning is the root problem.
+
+##### Next step
+K2: identify safe candidate station ID derivation for bounded run shapes. First target: explicit `--from station --to station --hops 1` where only origin and destination StationItem rows are required, provided existing suitability/error semantics are preserved.
