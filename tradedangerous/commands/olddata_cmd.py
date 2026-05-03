@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy import select, table, column, func, literal
 from sqlalchemy.orm import Session
 
-from .commandenv import ResultRow
+from .commandenv import Needs, ResultRow
 from .parsing import (
     FleetCarrierArgument, MutuallyExclusiveGroup, NoPlanetSwitch,
     OdysseyArgument, ParseArgument, PadSizeArgument, PlanetaryArgument,
@@ -22,7 +22,7 @@ from .exceptions import CommandLineError
 name='olddata'
 help='Show oldest data in database.'
 epilog=None
-wantsTradeDB=True
+needs = Needs.LEGACY_HANDLE
 arguments = [
 ]
 switches = [
@@ -73,6 +73,12 @@ def validateRunArgumentsFast(cmdenv):
         raise CommandLineError("--route requires --near")
 
 
+def preload(tdb):
+    tdb.reloadCache()
+    tdb._loadSystems()
+    tdb._loadStationShell()
+
+
 ######################################################################
 # Perform query and populate result set
 
@@ -87,7 +93,7 @@ def run(results, cmdenv, tdb):
     """
     cmdenv = results.cmdenv
     tdb = cmdenv.tdb
-    
+
     results.summary = ResultRow()
     results.limit = cmdenv.limit
     

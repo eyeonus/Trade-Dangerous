@@ -121,7 +121,11 @@ class CommandEnv(TradeEnv):
         # the properties we have are valid.
         self.tdb = tdb
         update_database_schema(self.tdb)
-        
+
+        preloader = getattr(self._cmd, "preload", None)
+        if preloader and callable(preloader):
+            preloader(tdb)
+
         if self.needs_resolver and not self.needs_legacy_db:
             self.checkFromToNearORM()
             self.checkAvoidsORM()
