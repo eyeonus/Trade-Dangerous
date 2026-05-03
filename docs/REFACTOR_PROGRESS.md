@@ -49,9 +49,9 @@ Do not tick a task unless:
 ## 1. Current snapshot
 
 ### Current active checkpoint
-- Status: `[-]`
+- Status: `[x]`
 - Checkpoint: `J — Split TradeDB by capability`
-- Subtask: `J3 — Audit remaining TradeDB callers by capability`
+- Subtask: `J4 complete — Checkpoint J closed`
 - Owner: `Tromador`
 - Started: `2026-05-03`
 - Goal: `Turn TradeDB into a selective compatibility layer.`
@@ -59,17 +59,17 @@ Do not tick a task unless:
 ### Current blocker
 - Status: `[ ]`
 - Blocker: `None currently recorded.`
-- Impact: `J1 and J2 complete. Proceeding to J3 caller audit.`
+- Impact: `Checkpoint J complete. Advancing to K.`
 - Needed to unblock: `None.`
 
 ### Last updated
 - Date: `2026-05-03`
 - By: `Tromador + assistant`
-- Session summary: `J1/J2: _loadStations() split into _loadStationShell() and _loadStationSummaries(). _loadStations() kept as backwards-compatible wrapper. load() now calls sub-loaders explicitly. Test monkeypatch updated to target _loadStationSummaries. 385 tests passing. Accepted with two noted non-blocking caveats: debug timing output now two lines instead of one combined; _loadStations() monkeypatching no longer intercepts load() (expected, documented).`
+- Session summary: `J3: in-session capability audit of olddata, nav, and run against sub-loader outputs. J4: olddata moved to Needs.LEGACY_HANDLE with preload() calling reloadCache()/_loadSystems()/_loadStationShell(). preload() hook added to CommandEnv.run() — fires after tdb assignment and schema check, before resolution checks. Smoke-tested all olddata paths (basic, --limit, --near, --route, filters). 385 tests passing. Checkpoint J accepted.`
 
 ### Last known good rollback point
-- Commit: `ded4c634`
-- Notes: `Accepted after Tromador review. J1 and J2 complete.`
+- Commit: `5fa20c80`
+- Notes: `Accepted after Tromador review. J1–J4 complete. Checkpoint J closed.`
 
 ---
 
@@ -101,7 +101,7 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 - [x] G — Resolver-first execution flow
 - [x] H — Migrate `local`
 - [x] I — Migrate `market`, `buy`, `sell`
-- [ ] J — Split `TradeDB` by capability
+- [x] J — Split `TradeDB` by capability
 - [ ] K — Reduce `TradeCalc` setup cost
 - [ ] L — Migrate `olddata`, `nav`, `rares`
 - [ ] M — GUI session reuse and cache discipline
@@ -456,16 +456,17 @@ Turn `TradeDB` into a selective compatibility layer.
 - [x] J2. Separate station shell from station summaries
   - Status note: `Shell phase creates Station wrappers with itemCount=0/dataAge=None. Summary phase enriches from StationItem aggregate. Clean boundary, each phase has its own session and timer.`
   - Evidence: `ded4c634`
-- [ ] J3. Audit remaining `TradeDB` callers by capability
-  - Status note:
-  - Evidence:
-- [ ] J4. Move at least one easy caller to partial load
-  - Status note:
-  - Evidence:
+- [x] J3. Audit remaining `TradeDB` callers by capability
+  - Status note: `In-session capability audit of olddata, nav, and run. olddata: needs systems + station shell only (no summaries/categories/items). nav: needs shell for --stations; summaries only for itemDataAgeStr/itemCount; --refuel-jumps uses system.stations (shell sufficient); categories/items never needed. run: full load required — checkStationSuitability() needs itemCount; TradeCalc needs itemByID; all sub-loaders justified.`
+  - Evidence: `In-session code read of olddata_cmd.py, nav_cmd.py, run_cmd.py, 2026-05-03`
+- [x] J4. Move at least one easy caller to partial load
+  - Status note: `olddata moved to Needs.LEGACY_HANDLE. preload() hook added to CommandEnv.run() (fires after tdb assignment, before resolution checks). olddata.preload() calls reloadCache()/_loadSystems()/_loadStationShell(). Summaries, categories, and items not loaded. Smoke-tested: default, --limit, --near, --route, pad/no-planet/ls filters all pass. 385 tests passing.`
+  - Evidence: `5fa20c80`
 
 ### Notes
 - Debug timing output changed: previously one "Loaded N Stations" line spanning both phases; now separate shell and summary lines. Observable only under debug mode. Non-blocking deliberate change.
 - load() no longer routes through _loadStations(), so monkeypatching _loadStations() will not intercept load(). _loadStations() wrapper is retained for any direct callers. Test updated accordingly.
+- preload() hook in CommandEnv.run() is generic: any command module that defines a callable `preload` will have it invoked before resolution checks. This is broader than olddata only and is now part of the command lifecycle contract. Documenting or testing this explicitly is deferred but flagged.
 
 ---
 
@@ -754,6 +755,10 @@ Use this as the short “what is already definitely done” section for quick sc
   - Date completed: `2026-05-03`
   - Commit: `af6e7327` (sell closeout); `759e96d5` (buy cold-path fix); `91ec8160` (market polish)
   - Notes: `market: effectively instantaneous warm, 578ms for --detail. buy: 6.79s → 3.88s cold, 7.10s → ~1.0s warm; cold-start regression during I3 fixed by spatial candidate narrowing before StationItem probe. sell: 7.29s → 1.23s cold, 7.77s → 0.82s warm. All three commands on Needs.RESOLVER; no full TradeDB.load() invoked. pytest clean throughout.`
+- [x] Milestone: `Checkpoint J complete — TradeDB split by capability; partial load proven`
+  - Date completed: `2026-05-03`
+  - Commit: `ded4c634` (J1/J2); `5fa20c80` (J3/J4)
+  - Notes: `_loadStations() split into _loadStationShell() and _loadStationSummaries(). load() calls sub-loaders directly. Capability audit of olddata/nav/run confirmed olddata as the easy partial-load target. olddata moved to LEGACY_HANDLE; preload() hook added to CommandEnv.run(). olddata loads systems + station shell only; summaries/categories/items skipped. All smoke tests and 385 pytest tests passing.`
 
 ---
 
