@@ -746,7 +746,13 @@ class TradeCalc:
         if showProgress:
             sys.stdout.write("\n")
             sys.stdout.flush()
-        
+
+        tdenv.DEBUG0(
+            "TradeCalc row scan: {:,} rows seen, {:,} buy entries, {:,} sell entries{}",
+            rows_seen, dmdCount, supCount,
+            f" (restricted to {len(self._restrict_station_ids):,} stations)" if self._restrict_station_ids else "",
+        )
+
         with tdenv.time_block("TradeCalc.__init__.finalize", level=0):
             self._buying_ids = set(self.stationsBuying.keys())
             self._selling_ids = set(self.stationsSelling.keys())
