@@ -51,7 +51,7 @@ Do not tick a task unless:
 ### Current active checkpoint
 - Status: `[-]`
 - Checkpoint: `J — Split TradeDB by capability`
-- Subtask: `J1 — Create explicit sub-loaders`
+- Subtask: `J3 — Audit remaining TradeDB callers by capability`
 - Owner: `Tromador`
 - Started: `2026-05-03`
 - Goal: `Turn TradeDB into a selective compatibility layer.`
@@ -59,17 +59,17 @@ Do not tick a task unless:
 ### Current blocker
 - Status: `[ ]`
 - Blocker: `None currently recorded.`
-- Impact: `Checkpoint I complete. Proceeding to J.`
+- Impact: `J1 and J2 complete. Proceeding to J3 caller audit.`
 - Needed to unblock: `None.`
 
 ### Last updated
 - Date: `2026-05-03`
 - By: `Tromador + assistant`
-- Session summary: `I4 sell migrated to Needs.RESOLVER. Spatial bounding-box narrows StationItem candidates before querying; age/demand/price filters pushed into SQL; station hydration chunked via joinedload. Context-aware NoDataError messages added. Cold 7.29s → 1.23s (~6×), warm 7.77s → 0.82s (~9.5×). pytest clean. Checkpoint I complete.`
+- Session summary: `J1/J2: _loadStations() split into _loadStationShell() and _loadStationSummaries(). _loadStations() kept as backwards-compatible wrapper. load() now calls sub-loaders explicitly. Test monkeypatch updated to target _loadStationSummaries. 385 tests passing. Accepted with two noted non-blocking caveats: debug timing output now two lines instead of one combined; _loadStations() monkeypatching no longer intercepts load() (expected, documented).`
 
 ### Last known good rollback point
-- Commit: `af6e7327`
-- Notes: `Accepted working tree after sell migration and error message polish.`
+- Commit: `ded4c634`
+- Notes: `Accepted after Tromador review. J1 and J2 complete.`
 
 ---
 
@@ -450,12 +450,12 @@ Turn `TradeDB` into a selective compatibility layer.
 - monolithic `load()` is no longer the default for every legacy path
 
 ### Tasks
-- [ ] J1. Create explicit sub-loaders
-  - Status note:
-  - Evidence:
-- [ ] J2. Separate station shell from station summaries
-  - Status note:
-  - Evidence:
+- [x] J1. Create explicit sub-loaders
+  - Status note: `_loadStationShell(), _loadStationSummaries(), and updated _loadStations() wrapper landed. load() calls sub-loaders directly.`
+  - Evidence: `ded4c634`
+- [x] J2. Separate station shell from station summaries
+  - Status note: `Shell phase creates Station wrappers with itemCount=0/dataAge=None. Summary phase enriches from StationItem aggregate. Clean boundary, each phase has its own session and timer.`
+  - Evidence: `ded4c634`
 - [ ] J3. Audit remaining `TradeDB` callers by capability
   - Status note:
   - Evidence:
@@ -464,7 +464,8 @@ Turn `TradeDB` into a selective compatibility layer.
   - Evidence:
 
 ### Notes
--
+- Debug timing output changed: previously one "Loaded N Stations" line spanning both phases; now separate shell and summary lines. Observable only under debug mode. Non-blocking deliberate change.
+- load() no longer routes through _loadStations(), so monkeypatching _loadStations() will not intercept load(). _loadStations() wrapper is retained for any direct callers. Test updated accordingly.
 
 ---
 
