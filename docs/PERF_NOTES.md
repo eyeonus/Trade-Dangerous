@@ -390,4 +390,24 @@ trade sell "Fruit and Vegetables" --near "Colonia" --ly-per 20 --demand 1 --limi
 - The 21s → 44–48s row_scan variance is unexplained from current evidence. GC pressure from multi-million-entry map allocation is a plausible hypothesis but not proven. It does not affect the primary diagnosis: unrestricted 9.1M-row scanning is the root problem.
 
 ##### Next step
-K2: identify safe candidate station ID derivation for bounded run shapes. First target: explicit `--from station --to station --hops 1` where only origin and destination StationItem rows are required, provided existing suitability/error semantics are preserved.
+K3 and beyond: broader candidate narrowing for multi-hop and open-ended shapes.
+
+#### K2 — One-hop station-to-station restriction (2026-05-03, live SQLite)
+
+##### Mechanism
+`restrict_station_ids` derived before `TradeCalc` construction in `run_cmd.py` when all hold: `origPlace` is a Station, `destPlace` is a Station, `hops == 1`, no `startJumps`, `endJumps`, `viaPlaces`, `loop`, `goalSystem`, or `shorten`. Passes `[origPlace.ID, destPlace.ID]`; otherwise no restriction.
+
+##### Results — run-short benchmark (--from A --to B --hops 1 --jumps-per 1 --ly-per 20)
+| Metric | Before K2 | After K2 |
+|--------|-----------|----------|
+| Rows seen | 9,137,044 | 139 |
+| `row_scan` | ~46–48s | ~3–4ms |
+| `TradeCalc.__init__` | ~47–48s | ~8ms |
+| `command_run` | ~47–48s | ~54ms |
+| Route output | same | same |
+
+Total command time is now dominated by `TradeDB.__init__` (~7–8s, legacy full load — not yet addressed).
+
+##### Semantic safety confirmed
+- `checkStationSuitability` checks presence in `calc.stationsSelling`/`stationsBuying` for the explicit origin and destination; both are included in the restricted scan, so suitability and `NoDataError` behaviour is unchanged.
+- Guard conditions prevent the restriction from applying to any shape that could require intermediate stations.

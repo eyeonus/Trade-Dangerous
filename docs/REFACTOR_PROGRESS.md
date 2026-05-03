@@ -65,10 +65,10 @@ Do not tick a task unless:
 ### Last updated
 - Date: `2026-05-03`
 - By: `Tromador + assistant`
-- Session summary: `K1: Added DEBUG0 row-scan count line to TradeCalc.__init__() (rows_seen, dmdCount, supCount, restriction active/count). Ran benchmark run shapes with -w. Key finding: row_scan dominates all init cost; every tested shape scans identical 9,137,044 StationItem rows; restrict_station_ids hook is inert (never passed at call site). 385 tests passing.`
+- Session summary: `K1: Added DEBUG0 row-scan count line to TradeCalc.__init__(). K2: restrict_station_ids derived before TradeCalc for one-hop station-to-station runs. run-short row_scan 9.1M rows/~47s → 139 rows/~4ms; TradeCalc.__init__ ~47s → ~8ms; output unchanged. 385 tests passing.`
 
 ### Last known good rollback point
-- Commit: `46c60034`
+- Commit: `3c5962d4`
 - Notes: `Accepted after Tromador review. J1–J4 complete. Checkpoint J closed.`
 
 ---
@@ -485,9 +485,9 @@ Reduce `TradeCalc.__init__()` setup overhead before touching route maths.
 - [x] K1. Add `TradeCalc.__init__()` sub-phase timings
   - Status note: `Sub-phase time_block calls (item_filter, query_prep, row_scan, finalize) already present at DEBUG0. Added a new DEBUG0 line exposing rows_seen, dmdCount, supCount, and restriction state. Benchmark runs confirm row_scan dominates; all other phases are negligible. Every tested command shape scans identical 9,137,044 rows with no restriction active.`
   - Evidence: `46c60034; timings.txt benchmark session 2026-05-03; docs/PERF_NOTES.md K1 section`
-- [ ] K2. Derive candidate station IDs before constructor
-  - Status note:
-  - Evidence:
+- [x] K2. Derive candidate station IDs before constructor
+  - Status note: `For explicit station-to-station, one-hop runs (no startJumps, endJumps, viaPlaces, loop, goalSystem, or shorten), restrict_station_ids is derived before TradeCalc construction and passed at the call site. Guard conditions prevent unsafe application to multi-hop or geometrically open shapes. row_scan: 9.1M rows/~47s → 139 rows/~4ms. TradeCalc.__init__: ~47s → ~8ms. Route output and suitability semantics unchanged.`
+  - Evidence: `3c5962d4; benchmark 2026-05-03`
 - [ ] K3. Wire station restriction narrowing properly
   - Status note:
   - Evidence:
