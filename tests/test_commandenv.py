@@ -153,6 +153,42 @@ def test_commandenv_needs_legacy_wantsTradeDB_true_gives_full_legacy():
     assert env.needs_full_load
 
 
+def test_commandenv_run_preload_fires_before_checkFromToNear(monkeypatch):
+    """CommandEnv.run() must call preload(tdb) before checkFromToNear()."""
+    call_order = []
+
+    fake_cmd = SimpleNamespace(
+        needs=Needs.LEGACY_HANDLE,
+        preload=lambda tdb: call_order.append('preload'),
+        run=lambda results, cmdenv, tdb: None,
+    )
+
+    cmdenv = CommandEnv({}, ['trade.py', 'test'], fake_cmd)
+    monkeypatch.setattr(cmdenv, 'checkFromToNear', lambda: call_order.append('checkFromToNear'))
+    monkeypatch.setattr(cmdenv, 'checkAvoids', lambda: None)
+    monkeypatch.setattr(cmdenv, 'checkVias', lambda: None)
+
+    cmdenv.run(SimpleNamespace())
+
+    assert call_order.index('preload') < call_order.index('checkFromToNear')
+
+
+def test_olddata_preload_exact_loader_contract():
+    """olddata_cmd.preload() calls reloadCache/_loadSystems/_loadStationShell only."""
+    from unittest.mock import MagicMock
+    from tradedangerous.commands import olddata_cmd
+
+    tdb = MagicMock()
+    olddata_cmd.preload(tdb)
+
+    assert tdb.reloadCache.call_count == 1
+    assert tdb._loadSystems.call_count == 1
+    assert tdb._loadStationShell.call_count == 1
+    tdb._loadStationSummaries.assert_not_called()
+    tdb._loadCategories.assert_not_called()
+    tdb._loadItems.assert_not_called()
+
+
 @pytest.fixture()
 def isolated_torm(isolated_trade_env):
     instance = TradeORM()
