@@ -108,12 +108,12 @@ class FleetCarrierError(CommandLineError):
             "yes or unknown, or 'N' matches only non-fleet-carrier stations."
         )
 
-class OdysseyError(CommandLineError):
-    """ Raised when an invalid odyssey option is given. """
+class SettlementError(CommandLineError):
+    """ Raised when an invalid settlement option is given. """
     def __init__(self, value):
         super().__init__(
-            f"Invalid --odyssey '{value}': Use a combination of one or more "
+            f"Invalid --settlement '{value}': Use a combination of one or more "
             "from 'Y' for Yes, 'N' for No or '?' for unknown, "
             "e.g. 'YN?' matches any station while 'Y?' matches "
-            "yes or unknown, or 'N' matches only non-odyssey stations."
+            "yes or unknown, or 'N' matches only non-settlement stations."
         )

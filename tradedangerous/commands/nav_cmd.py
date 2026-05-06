@@ -1,7 +1,7 @@
 from .commandenv import ResultRow
 from .parsing import (
     AvoidPlacesArgument, FleetCarrierArgument, MutuallyExclusiveGroup,
-    NoPlanetSwitch, OdysseyArgument, PadSizeArgument, ParseArgument,
+    NoPlanetSwitch, SettlementArgument, PadSizeArgument, ParseArgument,
     PlanetaryArgument,
 )
 
@@ -49,7 +49,7 @@ switches = [
         PlanetaryArgument(),
     ),
     FleetCarrierArgument(),
-    OdysseyArgument(),
+    SettlementArgument(),
 ]
 
 ######################################################################
@@ -117,7 +117,7 @@ def run(results, cmdenv, tdb):
     maxPadSize = cmdenv.padSize
     planetary = cmdenv.planetary
     fleet = cmdenv.fleet
-    odyssey = cmdenv.odyssey
+    odyssey = cmdenv.settlement
     noPlanet = cmdenv.noPlanet
     
     for (jumpSys, dist) in route:

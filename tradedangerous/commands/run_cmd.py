@@ -12,7 +12,7 @@ from .commandenv import ResultRow
 from .exceptions import CommandLineError, NoDataError
 from .parsing import (
     BlackMarketSwitch, FleetCarrierArgument, MutuallyExclusiveGroup,
-    NoPlanetSwitch, OdysseyArgument, PadSizeArgument, ParseArgument,
+    NoPlanetSwitch, SettlementArgument, PadSizeArgument, ParseArgument,
     PlanetaryArgument,
 )
 
@@ -149,7 +149,7 @@ switches = [
         PlanetaryArgument(),
     ),
     FleetCarrierArgument(),
-    OdysseyArgument(),
+    SettlementArgument(),
     BlackMarketSwitch(),
     ParseArgument('--ls-penalty', '--lsp',
         help = "Penalty per 1kls stations are from their stars.",

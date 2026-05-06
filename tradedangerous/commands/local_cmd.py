@@ -8,7 +8,7 @@ from .commandenv import Needs, ResultRow
 from .exceptions import NoDataError
 from .parsing import (
     ParseArgument, PadSizeArgument, MutuallyExclusiveGroup, NoPlanetSwitch,
-    PlanetaryArgument, FleetCarrierArgument, OdysseyArgument, BlackMarketSwitch,
+    PlanetaryArgument, FleetCarrierArgument, SettlementArgument, BlackMarketSwitch,
     ShipyardSwitch, OutfittingSwitch, RearmSwitch, RefuelSwitch, RepairSwitch,
 )
 from tradedangerous import TradeDB
@@ -46,7 +46,7 @@ switches = [
         PlanetaryArgument(),
     ),
     FleetCarrierArgument(),
-    OdysseyArgument(),
+    SettlementArgument(),
     ParseArgument('--stations',
             help='Limit to systems which have stations.',
             action='store_true',
@@ -148,7 +148,7 @@ def run(results, cmdenv, tdb):
         padSize = cmdenv.padSize
         planetary = cmdenv.planetary
         fleet = cmdenv.fleet
-        odyssey = cmdenv.odyssey
+        odyssey = cmdenv.settlement
         wantNoPlanet = cmdenv.noPlanet
         wantTrading = cmdenv.trading
         maxAge = cmdenv.maxAge

@@ -1,5 +1,5 @@
 from .exceptions import (
-    FleetCarrierError, OdysseyError, PadSizeError, PlanetaryError,
+    FleetCarrierError, SettlementError, PadSizeError, PlanetaryError,
 )
 
 ######################################################################
@@ -181,30 +181,30 @@ class FleetCarrierArgument(int):
             'type': 'fleet',
         }
 
-class OdysseyArgument(int):
+class SettlementArgument(int):
     """
-    argparse helper for --odyssey
+    argparse helper for --settlement
     """
-    class OdysseyParser(str):  # noqa: SLOT000  # str is immutable
+    class SettlementParser(str):  # noqa: SLOT000  # str is immutable
         def __new__(cls, val, **kwargs):
             if not isinstance(val, str):
-                raise OdysseyError(val)
+                raise SettlementError(val)
             for v in val:
                 if "YN?".find(v.upper()) < 0:
-                    raise OdysseyError(val.upper())
+                    raise SettlementError(val.upper())
             return super().__new__(cls, val, **kwargs)
-    
+
     def __init__(self):
-        self.args = ['--odyssey', '--od']
+        self.args = ['--settlement']
         self.kwargs = {
             'help': (
-                'Limit to stations with one of the specified odyssey, '
-                'e.g. --od YN? matches any station, --od Y matches only '
-                'odyssey stations.'
+                'Limit to stations with one of the specified settlement '
+                'states, e.g. --settlement YN? matches any station, '
+                '--settlement Y matches only settlement stations.'
             ),
-            'dest': 'odyssey',
-            'metavar': 'ODYSSEY',
-            'type': 'odyssey',
+            'dest': 'settlement',
+            'metavar': 'SETTLEMENT',
+            'type': 'settlement',
         }
 
 
@@ -213,7 +213,7 @@ __tdParserHelpers = {
     'padsize': PadSizeArgument.PadSizeParser,
     'planetary': PlanetaryArgument.PlanetaryParser,
     'fleet': FleetCarrierArgument.FleetCarrierParser,
-    'odyssey': OdysseyArgument.OdysseyParser,
+    'settlement': SettlementArgument.SettlementParser,
 }
 
 def registerParserHelpers(into):

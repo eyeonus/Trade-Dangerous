@@ -39,7 +39,7 @@ def test_build_run_argv_maps_expected_fields():
             'showJumps': True,
             'padSize': 'L',
             'fleet': 'Y',
-            'odyssey': 'N',
+            'settlement': 'N',
             'routes': 2,
             'summary': True,
         },

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from .commandenv import Needs, ResultRow
 from .parsing import (
     FleetCarrierArgument, MutuallyExclusiveGroup, NoPlanetSwitch,
-    OdysseyArgument, ParseArgument, PadSizeArgument, PlanetaryArgument,
+    SettlementArgument, ParseArgument, PadSizeArgument, PlanetaryArgument,
 )
 
 from tradedangerous import TradeDB, TradeException
@@ -57,7 +57,7 @@ switches = [
         PlanetaryArgument(),
     ),
     FleetCarrierArgument(),
-    OdysseyArgument(),
+    SettlementArgument(),
     ParseArgument('--ls-max',
         help='Only consider stations upto this many ls from their star.',
         metavar='LS',
@@ -174,7 +174,7 @@ def run(results, cmdenv, tdb):
     padSize = cmdenv.padSize
     planetary = cmdenv.planetary
     fleet = cmdenv.fleet
-    odyssey = cmdenv.odyssey
+    odyssey = cmdenv.settlement
     noPlanet = cmdenv.noPlanet
     mls = cmdenv.maxLs
     

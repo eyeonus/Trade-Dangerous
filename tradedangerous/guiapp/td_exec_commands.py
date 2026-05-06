@@ -57,7 +57,7 @@ def build_run_argv(
     append_flag(argv, '--no-planet', resolved.get('noPlanet'))
     append_option(argv, '--planetary', resolved.get('planetary'))
     append_option(argv, '--fleet-carrier', resolved.get('fleet'))
-    append_option(argv, '--odyssey', resolved.get('odyssey'))
+    append_option(argv, '--settlement', resolved.get('settlement'))
     append_flag(argv, '--black-market', resolved.get('blackMarket'))
     
     append_option(argv, '--ls-penalty', resolved.get('lsPenalty'))
@@ -228,7 +228,7 @@ def _append_buysell_search_options(
     append_flag(argv, '--no-planet', resolved.get('noPlanet'))
     append_option(argv, '--planetary', resolved.get('planetary'))
     append_option(argv, '--fleet-carrier', resolved.get('fleet'))
-    append_option(argv, '--odyssey', resolved.get('odyssey'))
+    append_option(argv, '--settlement', resolved.get('settlement'))
     append_flag(argv, '--black-market', resolved.get('blackMarket'))
     append_option(argv, '--gt', resolved.get('gt'))
     append_option(argv, '--lt', resolved.get('lt'))
@@ -328,7 +328,7 @@ def build_local_argv(
     append_flag(argv, '--no-planet', resolved.get('noPlanet'))
     append_option(argv, '--planetary', resolved.get('planetary'))
     append_option(argv, '--fleet-carrier', resolved.get('fleet'))
-    append_option(argv, '--odyssey', resolved.get('odyssey'))
+    append_option(argv, '--settlement', resolved.get('settlement'))
     
     append_flag(argv, '--trading', resolved.get('trading'))
     append_flag(argv, '--black-market', resolved.get('blackMarket'))
@@ -371,7 +371,7 @@ def build_nav_argv(
     append_flag(argv, '--no-planet', resolved.get('noPlanet'))
     append_option(argv, '--planetary', resolved.get('planetary'))
     append_option(argv, '--fleet-carrier', resolved.get('fleet'))
-    append_option(argv, '--odyssey', resolved.get('odyssey'))
+    append_option(argv, '--settlement', resolved.get('settlement'))
     
     # TD accepts repeated `--via`/`--avoid` flags, so split the GUI text areas
     # into discrete argv entries instead of forwarding a raw comma block.
@@ -420,7 +420,7 @@ def build_olddata_argv(
     append_option(argv, '--pad-size', resolved.get('padSize'))
     append_option(argv, '--planetary', resolved.get('planetary'))
     append_option(argv, '--fleet-carrier', resolved.get('fleet'))
-    append_option(argv, '--odyssey', resolved.get('odyssey'))
+    append_option(argv, '--settlement', resolved.get('settlement'))
     
     return argv
 

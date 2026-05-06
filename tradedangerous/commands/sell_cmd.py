@@ -13,7 +13,7 @@ from .commandenv import Needs, ResultRow
 from .exceptions import CommandLineError, NoDataError
 from .parsing import (
     AvoidPlacesArgument, BlackMarketSwitch, FleetCarrierArgument,
-    MutuallyExclusiveGroup, NoPlanetSwitch, OdysseyArgument,
+    MutuallyExclusiveGroup, NoPlanetSwitch, SettlementArgument,
     PadSizeArgument, ParseArgument, PlanetaryArgument,
 )
 
@@ -85,7 +85,7 @@ switches = [
         PlanetaryArgument(),
     ),
     FleetCarrierArgument(),
-    OdysseyArgument(),
+    SettlementArgument(),
     BlackMarketSwitch(),
     ParseArgument('--limit',
         help='Maximum number of results to list.',
@@ -236,7 +236,7 @@ def run(results, cmdenv, tdb):
     padSize = cmdenv.padSize
     planetary = cmdenv.planetary
     fleet = cmdenv.fleet
-    odyssey = cmdenv.odyssey
+    odyssey = cmdenv.settlement
     wantNoPlanet = cmdenv.noPlanet
     wantBlackMarket = cmdenv.blackMarket
 

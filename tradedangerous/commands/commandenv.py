@@ -8,7 +8,7 @@ import typing
 import ijson
 
 from .exceptions import (
-    CommandLineError, FleetCarrierError, OdysseyError,
+    CommandLineError, FleetCarrierError, SettlementError,
     PadSizeError, PlanetaryError,
 )
 
@@ -137,7 +137,7 @@ class CommandEnv(TradeEnv):
         
         self.checkPlanetary()
         self.checkFleet()
-        self.checkOdyssey()
+        self.checkSettlement()
         self.checkPadSize()
         self.checkMFD()
         
@@ -395,18 +395,18 @@ class CommandEnv(TradeEnv):
             return
         self.fleet = fleet = fleet.upper()
     
-    def checkOdyssey(self) -> None:
-        odyssey = getattr(self, 'odyssey', None)
-        if not odyssey:
+    def checkSettlement(self) -> None:
+        settlement = getattr(self, 'settlement', None)
+        if not settlement:
             return
-        odyssey = ''.join(sorted(set(odyssey))).upper()
-        for value in odyssey:
+        settlement = ''.join(sorted(set(settlement))).upper()
+        for value in settlement:
             if value not in 'YN?':
-                raise OdysseyError(odyssey)
-        if odyssey == '?NY':
-            self.odyssey = None
+                raise SettlementError(settlement)
+        if settlement == '?NY':
+            self.settlement = None
             return
-        self.odyssey = odyssey.upper()
+        self.settlement = settlement.upper()
     
 def update_database_schema(tdb: TradeDB | TradeORM) -> None:
     """ Check if there are database changes to be made, and if so, execute them. """

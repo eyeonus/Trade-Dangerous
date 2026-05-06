@@ -8,7 +8,7 @@ from tradedangerous.commands.commandenv import CommandEnv, Needs
 from tradedangerous.commands.exceptions import (
     CommandLineError,
     FleetCarrierError,
-    OdysseyError,
+    SettlementError,
     PadSizeError,
     PlanetaryError,
 )
@@ -98,21 +98,21 @@ def test_commandenv_checkPadSize_normalizes_and_rejects_invalid():
     with pytest.raises(PadSizeError):
         _make_env(padSize='mx').checkPadSize()
 
-def test_commandenv_checkPlanetaryFleetOdyssey_normalize_or_reject():
-    env = _make_env(planetary='yny', fleet='?ny', odyssey='n?y')
+def test_commandenv_checkPlanetaryFleetSettlement_normalize_or_reject():
+    env = _make_env(planetary='yny', fleet='?ny', settlement='n?y')
     env.checkPlanetary()
     env.checkFleet()
-    env.checkOdyssey()
+    env.checkSettlement()
     assert env.planetary == 'NY'
     assert env.fleet is None
-    assert env.odyssey is None
-    
+    assert env.settlement is None
+
     with pytest.raises(PlanetaryError):
         _make_env(planetary='yz').checkPlanetary()
     with pytest.raises(FleetCarrierError):
         _make_env(fleet='za').checkFleet()
-    with pytest.raises(OdysseyError):
-        _make_env(odyssey='zn').checkOdyssey()
+    with pytest.raises(SettlementError):
+        _make_env(settlement='zn').checkSettlement()
 
 
 def test_commandenv_needs_explicit_resolver():

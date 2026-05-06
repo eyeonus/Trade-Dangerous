@@ -56,14 +56,14 @@ def build_shared_filter_section(
             )
             ui.select(
                 TRI_STATE_OPTIONS,
-                value=get_tri_state('odyssey'),
-                label='Odyssey',
+                value=get_tri_state('settlement'),
+                label='Settlement',
                 on_change=lambda event: set_tri_state(
-                    'odyssey',
+                    'settlement',
                     event.value,
                 ),
             ).classes('w-48').tooltip(
-                'Filter by Odyssey status: Any, Yes only, No only, '
+                'Filter by Settlement status: Any, Yes only, No only, '
                 'or Unknown only.'
             )
             
