@@ -5,7 +5,7 @@ from math import sqrt
 from sqlalchemy import exists, func
 
 from .commandenv import Needs, ResultRow
-from .exceptions import CommandLineError, NoDataError
+from .exceptions import NoDataError
 from .parsing import (
     ParseArgument, PadSizeArgument, MutuallyExclusiveGroup, NoPlanetSwitch,
     PlanetaryArgument, FleetCarrierArgument, SettlementArgument, BlackMarketSwitch,
@@ -15,7 +15,7 @@ from tradedangerous import TradeDB
 from tradedangerous.db import orm_models as orm
 from tradedangerous.db.station_types import (
     fleet_carrier_state, settlement_state,
-    FLEET_CARRIER_TYPE_IDS, SETTLEMENT_TYPE_IDS,
+    FLEET_CARRIER_TYPE_IDS, SETTLEMENT_TYPE_IDS, UNKNOWN,
 )
 from tradedangerous.db.utils import age_in_days
 from tradedangerous.formatting import RowFormat, ColumnFormat, max_len
@@ -156,12 +156,6 @@ def run(results, cmdenv, tdb):
         wantRefuel = cmdenv.refuel
         wantRepair = cmdenv.repair
 
-        if planetary and 'Y' not in planetary and settlement and 'Y' in settlement:
-            raise CommandLineError(
-                "--planetary N --settlement Y: all settlements are planetary stations, "
-                "these filters are mutually exclusive."
-            )
-
         system_ids = [s.system_id for s in distances]
         q = (
             tdb.session.query(orm.Station)
@@ -195,14 +189,14 @@ def run(results, cmdenv, tdb):
             elif want_n and not want_y and not want_q:
                 q = q.filter(
                     orm.Station.type_id.notin_(list(FLEET_CARRIER_TYPE_IDS)),
-                    orm.Station.type_id != 0,
+                    orm.Station.type_id != UNKNOWN,
                 )
             elif want_q and not want_y and not want_n:
-                q = q.filter(orm.Station.type_id == 0)
+                q = q.filter(orm.Station.type_id == UNKNOWN)
             elif want_y and want_n and not want_q:
-                q = q.filter(orm.Station.type_id != 0)
+                q = q.filter(orm.Station.type_id != UNKNOWN)
             elif want_y and want_q and not want_n:
-                q = q.filter(orm.Station.type_id.in_(list(FLEET_CARRIER_TYPE_IDS | {0})))
+                q = q.filter(orm.Station.type_id.in_(list(FLEET_CARRIER_TYPE_IDS | {UNKNOWN})))
             elif want_n and want_q and not want_y:
                 q = q.filter(orm.Station.type_id.notin_(list(FLEET_CARRIER_TYPE_IDS)))
         if settlement:
@@ -214,14 +208,14 @@ def run(results, cmdenv, tdb):
             elif want_n and not want_y and not want_q:
                 q = q.filter(
                     orm.Station.type_id.notin_(list(SETTLEMENT_TYPE_IDS)),
-                    orm.Station.type_id != 0,
+                    orm.Station.type_id != UNKNOWN,
                 )
             elif want_q and not want_y and not want_n:
-                q = q.filter(orm.Station.type_id == 0)
+                q = q.filter(orm.Station.type_id == UNKNOWN)
             elif want_y and want_n and not want_q:
-                q = q.filter(orm.Station.type_id != 0)
+                q = q.filter(orm.Station.type_id != UNKNOWN)
             elif want_y and want_q and not want_n:
-                q = q.filter(orm.Station.type_id.in_(list(SETTLEMENT_TYPE_IDS | {0})))
+                q = q.filter(orm.Station.type_id.in_(list(SETTLEMENT_TYPE_IDS | {UNKNOWN})))
             elif want_n and want_q and not want_y:
                 q = q.filter(orm.Station.type_id.notin_(list(SETTLEMENT_TYPE_IDS)))
         if wantTrading:

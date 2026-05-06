@@ -591,7 +591,7 @@ def checkAnchorNotInVia(hops, anchorName, place, viaSet):
 
 def checkStationSuitability(cmdenv, calc, station, src = None):
     cmdenv.DEBUG2(
-        "checking {} (ls={}, bm={}, pad={}, plt={}, flc={}, ody={}, mkt={}, shp={}) "
+        "checking {} (ls={}, bm={}, pad={}, plt={}, flc={}, stl={}, mkt={}, shp={}) "
         "for {} suitability",
         station.name(),
         station.lsFromStar,

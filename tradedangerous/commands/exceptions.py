@@ -102,18 +102,16 @@ class FleetCarrierError(CommandLineError):
     """ Raised when an invalid fleet-carrier option is given. """
     def __init__(self, value):
         super().__init__(
-            f"Invalid --fleet-carrier '{value}': Use a combination of one or more "
-            "from 'Y' for Yes, 'N' for No or '?' for unknown, "
-            "e.g. 'YN?' matches any station while 'Y?' matches "
-            "yes or unknown, or 'N' matches only non-fleet-carrier stations."
+            f"Invalid --fleet-carrier '{value}': "
+            "expected Y (known fleet carriers), N (known non-fleet-carriers), "
+            "? (unknown station type), or a combination."
         )
 
 class SettlementError(CommandLineError):
     """ Raised when an invalid settlement option is given. """
     def __init__(self, value):
         super().__init__(
-            f"Invalid --settlement '{value}': Use a combination of one or more "
-            "from 'Y' for Yes, 'N' for No or '?' for unknown, "
-            "e.g. 'YN?' matches any station while 'Y?' matches "
-            "yes or unknown, or 'N' matches only non-settlement stations."
+            f"Invalid --settlement '{value}': "
+            "expected Y (settlements), N (non-settlements), "
+            "? (unknown station type), or a combination."
         )

@@ -172,9 +172,9 @@ class FleetCarrierArgument(int):
         self.args = ['--fleet-carrier', '--fc']
         self.kwargs = {
             'help': (
-                'Limit to stations with one of the specified fleet-carrier, '
-                'e.g. --fc YN? matches any station, --fc Y matches only '
-                'fleet-carrier stations.'
+                'Limit by fleet-carrier status: Y = known fleet carriers, '
+                'N = known non-fleet-carriers, ? = unknown station type. '
+                'e.g. --fc Y matches only fleet carriers, --fc N excludes them.'
             ),
             'dest': 'fleet',
             'metavar': 'FLEET',
@@ -198,9 +198,11 @@ class SettlementArgument(int):
         self.args = ['--settlement']
         self.kwargs = {
             'help': (
-                'Limit to stations with one of the specified settlement '
-                'states, e.g. --settlement YN? matches any station, '
-                '--settlement Y matches only settlement stations.'
+                'Limit by settlement status: Y = settlements, '
+                'N = non-settlements, ? = unknown station type. '
+                'Settlements are planetary locations, but not all planetary '
+                'stations are settlements. e.g. --settlement Y matches only '
+                'settlements, --settlement N excludes them.'
             ),
             'dest': 'settlement',
             'metavar': 'SETTLEMENT',

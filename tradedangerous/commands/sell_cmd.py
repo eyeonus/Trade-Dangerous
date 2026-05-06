@@ -238,12 +238,6 @@ def run(results, cmdenv, tdb):
     wantNoPlanet = cmdenv.noPlanet
     wantBlackMarket = cmdenv.blackMarket
 
-    if planetary and 'Y' not in planetary and settlement and 'Y' in settlement:
-        raise CommandLineError(
-            "--planetary N --settlement Y: all settlements are planetary stations, "
-            "these filters are mutually exclusive."
-        )
-
     raw_rows = sql_query(cmdenv, tdb, item.item_id)
 
     station_ids = list({r[0] for r in raw_rows})

@@ -401,12 +401,6 @@ def run(results, cmdenv, tdb):
     wantBlackMarket = cmdenv.blackMarket
     mls = cmdenv.maxLs
 
-    if planetary and 'Y' not in planetary and settlement and 'Y' in settlement:
-        raise CommandLineError(
-            "--planetary N --settlement Y: all settlements are planetary stations, "
-            "these filters are mutually exclusive."
-        )
-
     # Fetch raw SQL results then bulk-load the matching stations.
     raw_rows = sql_query(cmdenv, tdb, queries, mode)
 

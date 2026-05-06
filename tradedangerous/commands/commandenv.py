@@ -407,6 +407,13 @@ class CommandEnv(TradeEnv):
             self.settlement = None
             return
         self.settlement = settlement.upper()
+        if 'Y' in self.settlement:
+            planetary = getattr(self, 'planetary', None)
+            if planetary and 'Y' not in planetary:
+                raise CommandLineError(
+                    "--settlement Y requires planetary Y because all "
+                    "settlements are planetary stations."
+                )
     
 def update_database_schema(tdb: TradeDB | TradeORM) -> None:
     """ Check if there are database changes to be made, and if so, execute them. """
