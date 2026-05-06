@@ -552,8 +552,8 @@ class TradeDB:
     )
     
     # Translation matrixes for attributes -> common presentation
-    marketStates = planetStates = fleetStates = odysseyStates = {'?': '?', 'Y': 'Yes', 'N': 'No'}
-    marketStatesExt = planetStatesExt = fleetStatesExt = odysseyStatesExt = {'?': 'Unk', 'Y': 'Yes', 'N': 'No'}
+    marketStates = planetStates = fleetStates = settlementStates = {'?': '?', 'Y': 'Yes', 'N': 'No'}
+    marketStatesExt = planetStatesExt = fleetStatesExt = settlementStatesExt = {'?': 'Unk', 'Y': 'Yes', 'N': 'No'}
     padSizes = {'?': '?', 'S': 'Sml', 'M': 'Med', 'L': 'Lrg'}
     padSizesExt = {'?': 'Unk', 'S': 'Sml', 'M': 'Med', 'L': 'Lrg'}
     

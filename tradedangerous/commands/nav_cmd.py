@@ -228,8 +228,8 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("Flc", '>', '3',
                     key=lambda row: TradeDB.fleetStates[row.station.fleet])
         ).append(
-                ColumnFormat("Ody", '>', '3',
-                    key=lambda row: TradeDB.odysseyStates[row.station.odyssey])
+                ColumnFormat("Stl", '>', '3',
+                    key=lambda row: TradeDB.settlementStates[row.station.odyssey])
         )
         if cmdenv.detail > 1:
             stnRowFmt.append(

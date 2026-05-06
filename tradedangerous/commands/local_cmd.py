@@ -5,7 +5,7 @@ from math import sqrt
 from sqlalchemy import exists, func
 
 from .commandenv import Needs, ResultRow
-from .exceptions import NoDataError
+from .exceptions import CommandLineError, NoDataError
 from .parsing import (
     ParseArgument, PadSizeArgument, MutuallyExclusiveGroup, NoPlanetSwitch,
     PlanetaryArgument, FleetCarrierArgument, SettlementArgument, BlackMarketSwitch,
@@ -13,6 +13,10 @@ from .parsing import (
 )
 from tradedangerous import TradeDB
 from tradedangerous.db import orm_models as orm
+from tradedangerous.db.station_types import (
+    fleet_carrier_state, settlement_state,
+    FLEET_CARRIER_TYPE_IDS, SETTLEMENT_TYPE_IDS,
+)
 from tradedangerous.db.utils import age_in_days
 from tradedangerous.formatting import RowFormat, ColumnFormat, max_len
 
@@ -70,19 +74,12 @@ switches = [
     RepairSwitch(),
 ]
 
-######################################################################
-# type_id constants (carrier/odyssey detection, mirrors _loadStations)
-
-_CARRIER_TYPE_IDS = frozenset((24, 0))
-_ODYSSEY_TYPE_ID = 25
-
-
 def _fleet_state(station: orm.Station) -> str:
-    return 'Y' if station.type_id in _CARRIER_TYPE_IDS else 'N'
+    return fleet_carrier_state(station.type_id)
 
 
-def _odyssey_state(station: orm.Station) -> str:
-    return 'Y' if station.type_id == _ODYSSEY_TYPE_ID else 'N'
+def _settlement_state(station: orm.Station) -> str:
+    return settlement_state(station.type_id)
 
 
 def _dist_from_star(station: orm.Station) -> str:
@@ -148,7 +145,7 @@ def run(results, cmdenv, tdb):
         padSize = cmdenv.padSize
         planetary = cmdenv.planetary
         fleet = cmdenv.fleet
-        odyssey = cmdenv.settlement
+        settlement = cmdenv.settlement
         wantNoPlanet = cmdenv.noPlanet
         wantTrading = cmdenv.trading
         maxAge = cmdenv.maxAge
@@ -158,6 +155,12 @@ def run(results, cmdenv, tdb):
         wantRearm = cmdenv.rearm
         wantRefuel = cmdenv.refuel
         wantRepair = cmdenv.repair
+
+        if planetary and 'Y' not in planetary and settlement and 'Y' in settlement:
+            raise CommandLineError(
+                "--planetary N --settlement Y: all settlements are planetary stations, "
+                "these filters are mutually exclusive."
+            )
 
         system_ids = [s.system_id for s in distances]
         q = (
@@ -184,21 +187,43 @@ def run(results, cmdenv, tdb):
         if planetary:
             q = q.filter(orm.Station.planetary.in_(list(planetary)))
         if fleet:
-            fleet_chars = set(fleet)
-            want_fleet_y = 'Y' in fleet_chars
-            want_fleet_n = 'N' in fleet_chars
-            if want_fleet_y and not want_fleet_n:
-                q = q.filter(orm.Station.type_id.in_(list(_CARRIER_TYPE_IDS)))
-            elif want_fleet_n and not want_fleet_y:
-                q = q.filter(orm.Station.type_id.notin_(list(_CARRIER_TYPE_IDS)))
-        if odyssey:
-            odyssey_chars = set(odyssey)
-            want_ody_y = 'Y' in odyssey_chars
-            want_ody_n = 'N' in odyssey_chars
-            if want_ody_y and not want_ody_n:
-                q = q.filter(orm.Station.type_id == _ODYSSEY_TYPE_ID)
-            elif want_ody_n and not want_ody_y:
-                q = q.filter(orm.Station.type_id != _ODYSSEY_TYPE_ID)
+            want_y = 'Y' in fleet
+            want_n = 'N' in fleet
+            want_q = '?' in fleet
+            if want_y and not want_n and not want_q:
+                q = q.filter(orm.Station.type_id.in_(list(FLEET_CARRIER_TYPE_IDS)))
+            elif want_n and not want_y and not want_q:
+                q = q.filter(
+                    orm.Station.type_id.notin_(list(FLEET_CARRIER_TYPE_IDS)),
+                    orm.Station.type_id != 0,
+                )
+            elif want_q and not want_y and not want_n:
+                q = q.filter(orm.Station.type_id == 0)
+            elif want_y and want_n and not want_q:
+                q = q.filter(orm.Station.type_id != 0)
+            elif want_y and want_q and not want_n:
+                q = q.filter(orm.Station.type_id.in_(list(FLEET_CARRIER_TYPE_IDS | {0})))
+            elif want_n and want_q and not want_y:
+                q = q.filter(orm.Station.type_id.notin_(list(FLEET_CARRIER_TYPE_IDS)))
+        if settlement:
+            want_y = 'Y' in settlement
+            want_n = 'N' in settlement
+            want_q = '?' in settlement
+            if want_y and not want_n and not want_q:
+                q = q.filter(orm.Station.type_id.in_(list(SETTLEMENT_TYPE_IDS)))
+            elif want_n and not want_y and not want_q:
+                q = q.filter(
+                    orm.Station.type_id.notin_(list(SETTLEMENT_TYPE_IDS)),
+                    orm.Station.type_id != 0,
+                )
+            elif want_q and not want_y and not want_n:
+                q = q.filter(orm.Station.type_id == 0)
+            elif want_y and want_n and not want_q:
+                q = q.filter(orm.Station.type_id != 0)
+            elif want_y and want_q and not want_n:
+                q = q.filter(orm.Station.type_id.in_(list(SETTLEMENT_TYPE_IDS | {0})))
+            elif want_n and want_q and not want_y:
+                q = q.filter(orm.Station.type_id.notin_(list(SETTLEMENT_TYPE_IDS)))
         if wantTrading:
             q = q.filter(
                 (orm.Station.market == 'Y') |
@@ -326,8 +351,8 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("Flc", '>', '3',
                     key=lambda row: TradeDB.fleetStates[_fleet_state(row.station)])
         ).append(
-                ColumnFormat("Ody", '>', '3',
-                    key=lambda row: TradeDB.odysseyStates[_odyssey_state(row.station)])
+                ColumnFormat("Stl", '>', '3',
+                    key=lambda row: TradeDB.settlementStates[_settlement_state(row.station)])
         )
         if cmdenv.detail > 1:
             stnRowFmt.append(

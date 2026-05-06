@@ -6,6 +6,9 @@ from sqlalchemy import literal, text
 from sqlalchemy.orm import joinedload
 
 from tradedangerous.db import orm_models as orm
+from tradedangerous.db.station_types import (
+    fleet_carrier_state, settlement_state,
+)
 from tradedangerous.db.utils import age_in_days
 from tradedangerous.formatting import RowFormat, max_len
 from tradedangerous.tradedb import TradeDB
@@ -22,17 +25,12 @@ from .parsing import (
 ITEM_MODE = "Item"
 SHIP_MODE = "Ship"
 
-# type_id constants for fleet carrier / Odyssey detection (mirrors local_cmd)
-_CARRIER_TYPE_IDS = frozenset((24, 0))
-_ODYSSEY_TYPE_ID = 25
-
-
 def _fleet_state(station: orm.Station) -> str:
-    return 'Y' if station.type_id in _CARRIER_TYPE_IDS else 'N'
+    return fleet_carrier_state(station.type_id)
 
 
-def _odyssey_state(station: orm.Station) -> str:
-    return 'Y' if station.type_id == _ODYSSEY_TYPE_ID else 'N'
+def _settlement_state(station: orm.Station) -> str:
+    return settlement_state(station.type_id)
 
 
 def _dist_from_star(station: orm.Station) -> str:
@@ -398,10 +396,16 @@ def run(results, cmdenv, tdb):
     padSize = cmdenv.padSize
     planetary = cmdenv.planetary
     fleet = cmdenv.fleet
-    odyssey = cmdenv.settlement
+    settlement = cmdenv.settlement
     wantNoPlanet = cmdenv.noPlanet
     wantBlackMarket = cmdenv.blackMarket
     mls = cmdenv.maxLs
+
+    if planetary and 'Y' not in planetary and settlement and 'Y' in settlement:
+        raise CommandLineError(
+            "--planetary N --settlement Y: all settlements are planetary stations, "
+            "these filters are mutually exclusive."
+        )
 
     # Fetch raw SQL results then bulk-load the matching stations.
     raw_rows = sql_query(cmdenv, tdb, queries, mode)
@@ -435,7 +439,7 @@ def run(results, cmdenv, tdb):
             continue
         if fleet and _fleet_state(station) not in fleet:
             continue
-        if odyssey and _odyssey_state(station) not in odyssey:
+        if settlement and _settlement_state(station) not in settlement:
             continue
         if wantNoPlanet and station.planetary != 'N':
             continue
@@ -548,8 +552,8 @@ def render(results, cmdenv, tdb):
             key = lambda row: TradeDB.planetStates[row.station.planetary])
     stnRowFmt.addColumn("Flc", '>', '3',
             key = lambda row: TradeDB.fleetStates[_fleet_state(row.station)])
-    stnRowFmt.addColumn("Ody", '>', '3',
-            key = lambda row: TradeDB.odysseyStates[_odyssey_state(row.station)])
+    stnRowFmt.addColumn("Stl", '>', '3',
+            key = lambda row: TradeDB.settlementStates[_settlement_state(row.station)])
 
     if not cmdenv.quiet:
         heading, underline = stnRowFmt.heading()

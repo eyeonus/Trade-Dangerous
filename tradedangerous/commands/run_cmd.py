@@ -694,7 +694,7 @@ def checkStationSuitability(cmdenv, calc, station, src = None):
                 "You can use \"trade.py station\" to correct this.".format(
                     src, station.name(),
                     ody, station.odyssey,
-                    TradeDB.odysseyStatesExt[station.odyssey],
+                    TradeDB.settlementStatesExt[station.odyssey],
             ))
         return False
     np = cmdenv.noPlanet
