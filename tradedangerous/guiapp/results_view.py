@@ -364,7 +364,7 @@ def _render_local_results(structured_result: Any) -> None:
         {'name': 'pad', 'label': 'Pad', 'field': 'pad', 'align': 'right'},
         {'name': 'planetary', 'label': 'Plt', 'field': 'planetary', 'align': 'right'},
         {'name': 'fleet', 'label': 'Flc', 'field': 'fleet', 'align': 'right'},
-        {'name': 'odyssey', 'label': 'Ody', 'field': 'odyssey', 'align': 'right'},
+        {'name': 'settlement', 'label': 'Stl', 'field': 'settlement', 'align': 'right'},
         {'name': 'items', 'label': 'Itms', 'field': 'items', 'align': 'right'},
     ]
     
@@ -408,7 +408,7 @@ def _render_local_results(structured_result: Any) -> None:
                         'pad': pad_text(_field(station, 'maxPadSize')),
                         'planetary': yes_no_unknown(_field(station, 'planetary')),
                         'fleet': yes_no_unknown(_field(station, 'fleet')),
-                        'odyssey': yes_no_unknown(_field(station, 'odyssey')),
+                        'settlement': yes_no_unknown(_field(station, 'settlement')),
                         'items': _format_result_value(_field(station, 'itemCount')),
                     }
                 )
@@ -469,7 +469,7 @@ def _render_nav_results(structured_result: Any) -> None:
         {'name': 'pad', 'label': 'Pad', 'field': 'pad', 'align': 'right'},
         {'name': 'planetary', 'label': 'Plt', 'field': 'planetary', 'align': 'right'},
         {'name': 'fleet', 'label': 'Flc', 'field': 'fleet', 'align': 'right'},
-        {'name': 'odyssey', 'label': 'Ody', 'field': 'odyssey', 'align': 'right'},
+        {'name': 'settlement', 'label': 'Stl', 'field': 'settlement', 'align': 'right'},
         {'name': 'items', 'label': 'Itms', 'field': 'items', 'align': 'right'},
     ]
     
@@ -521,7 +521,7 @@ def _render_nav_results(structured_result: Any) -> None:
                         'pad': pad_text(_field(station, 'maxPadSize')),
                         'planetary': yes_no_unknown(_field(station, 'planetary')),
                         'fleet': yes_no_unknown(_field(station, 'fleet')),
-                        'odyssey': yes_no_unknown(_field(station, 'odyssey')),
+                        'settlement': yes_no_unknown(_field(station, 'settlement')),
                         'items': _format_result_value(_field(station, 'itemCount')),
                     }
                 )
@@ -576,7 +576,7 @@ def _render_olddata_results(structured_result: Any) -> None:
             {'name': 'pad', 'label': 'Pad', 'field': 'pad', 'align': 'right'},
             {'name': 'planetary', 'label': 'Plt', 'field': 'planetary', 'align': 'right'},
             {'name': 'fleet', 'label': 'Flc', 'field': 'fleet', 'align': 'right'},
-            {'name': 'odyssey', 'label': 'Ody', 'field': 'odyssey', 'align': 'right'},
+            {'name': 'settlement', 'label': 'Stl', 'field': 'settlement', 'align': 'right'},
         ]
     )
     
@@ -593,7 +593,7 @@ def _render_olddata_results(structured_result: Any) -> None:
             'pad': pad_text(_field(station, 'maxPadSize')),
             'planetary': yes_no_unknown(_field(station, 'planetary')),
             'fleet': yes_no_unknown(_field(station, 'fleet')),
-            'odyssey': yes_no_unknown(_field(station, 'odyssey')),
+            'settlement': yes_no_unknown(_field(station, 'settlement')),
         }
         if near:
             dist = values.get('dist')

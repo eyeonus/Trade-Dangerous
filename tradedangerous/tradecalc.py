@@ -316,8 +316,8 @@ class Route:
                     details.append("Plt:" + station.planetary)
                 if station.fleet != "?":
                     details.append("Flc:" + station.fleet)
-                if station.odyssey != "?":
-                    details.append("Ody:" + station.odyssey)
+                if station.settlement != "?":
+                    details.append("Stl:" + station.settlement)
                 if station.shipyard != "?":
                     details.append("Shp:" + station.shipyard)
                 if station.outfitting != "?":
@@ -952,7 +952,7 @@ class TradeCalc:
         maxPadSize = tdenv.padSize
         planetary = tdenv.planetary
         fleet = tdenv.fleet
-        odyssey = tdenv.odyssey
+        settlement = tdenv.settlement
         noPlanet = tdenv.noPlanet
         maxLsFromStar = tdenv.maxLs or float("inf")
         reqBlackMarket = getattr(tdenv, "blackMarket", False) or False
@@ -1074,7 +1074,7 @@ class TradeCalc:
                     noPlanet=noPlanet,
                     planetary=planetary,
                     fleet=fleet,
-                    odyssey=odyssey,
+                    settlement=settlement,
                 ):
                     if d.station.ID not in buying_ids:
                         continue

@@ -155,7 +155,7 @@ class TestTradeCalc:
         tdenv.padSize = None
         tdenv.planetary = None
         tdenv.fleet = None
-        tdenv.odyssey = None
+        tdenv.settlement = None
         tdenv.noPlanet = False
         tdenv.maxLs = 0
         tdenv.blackMarket = False
@@ -210,7 +210,7 @@ class TestTradeCalc:
         tdenv.padSize = None
         tdenv.planetary = None
         tdenv.fleet = None
-        tdenv.odyssey = None
+        tdenv.settlement = None
         tdenv.noPlanet = False
         tdenv.maxLs = 0
         tdenv.maxAge = 0

@@ -33,7 +33,7 @@ class _FakeStation:
         self.maxPadSize = 'L'
         self.planetary = 'N'
         self.fleet = 'N'
-        self.odyssey = 'Y'
+        self.settlement = 'Y'
         self.itemCount = 3
     
     def name(self, *_args):

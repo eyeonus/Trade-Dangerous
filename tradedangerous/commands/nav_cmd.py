@@ -117,9 +117,9 @@ def run(results, cmdenv, tdb):
     maxPadSize = cmdenv.padSize
     planetary = cmdenv.planetary
     fleet = cmdenv.fleet
-    odyssey = cmdenv.settlement
+    settlement = cmdenv.settlement
     noPlanet = cmdenv.noPlanet
-    
+
     for (jumpSys, dist) in route:
         jumpLy = lastSys.distanceTo(jumpSys)
         totalLy += jumpLy
@@ -141,7 +141,7 @@ def run(results, cmdenv, tdb):
                     continue
                 if fleet and not station.checkFleet(fleet):
                     continue
-                if odyssey and not station.checkOdyssey(odyssey):
+                if settlement and not station.checkSettlement(settlement):
                     continue
                 if noPlanet and station.planetary != 'N':
                     continue
@@ -229,7 +229,7 @@ def render(results, cmdenv, tdb):
                     key=lambda row: TradeDB.fleetStates[row.station.fleet])
         ).append(
                 ColumnFormat("Stl", '>', '3',
-                    key=lambda row: TradeDB.settlementStates[row.station.odyssey])
+                    key=lambda row: TradeDB.settlementStates[row.station.settlement])
         )
         if cmdenv.detail > 1:
             stnRowFmt.append(

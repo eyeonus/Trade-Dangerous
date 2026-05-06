@@ -74,6 +74,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import NoResultFound
 from .db import make_engine_from_config, get_session_factory  # type: ignore
 from .db.lifecycle import ensure_fresh_db  # type: ignore
+from .db.station_types import fleet_carrier_state, settlement_state
 from .db.utils import age_in_days  # type: ignore
 
 # --------------------------------------------------------------------
@@ -219,13 +220,13 @@ class Station:
         'ID', 'system', 'dbname',
         'lsFromStar', 'market', 'blackMarket', 'shipyard', 'maxPadSize',
         'outfitting', 'rearm', 'refuel', 'repair', 'planetary','fleet',
-        'odyssey', 'itemCount', 'dataAge',
+        'settlement', 'itemCount', 'dataAge',
     )
     
     def __init__(
             self, ID: int, system: 'System', dbname: str,
             lsFromStar: float, market: str, blackMarket: str, shipyard: str, maxPadSize: str,
-            outfitting: str, rearm: str, refuel: str, repair: str, planetary: str, fleet: str, odyssey: str,
+            outfitting: str, rearm: str, refuel: str, repair: str, planetary: str, fleet: str, settlement: str,
             itemCount: int = 0, dataAge: float | int | None = None,
             ):
         self.ID, self.system, self.dbname = ID, system, dbname  # type: ignore
@@ -240,7 +241,7 @@ class Station:
         self.repair = repair
         self.planetary = planetary
         self.fleet = fleet
-        self.odyssey = odyssey
+        self.settlement = settlement
         self.itemCount = itemCount
         self.dataAge = dataAge
         system.stations += [self]
@@ -314,11 +315,11 @@ class Station:
         return (not fleet or self.fleet in fleet)
 
 
-    def checkOdyssey(self, odyssey: str) -> bool:
+    def checkSettlement(self, settlement: str) -> bool:
         """
-        Same as checkPlanetary, but for Odyssey.
+        Same as checkPlanetary, but for settlement classification.
         """
-        return (not odyssey or self.odyssey in odyssey)
+        return (not settlement or self.settlement in settlement)
 
 
     def distFromStar(self, addSuffix: bool = False) -> str:
@@ -1214,11 +1215,6 @@ class TradeDB:
         """
         stationByID = {}
         systemByID = self.systemByID
-        # Fleet Carriers are station type 24.
-        # Odyssey settlements are station type 25.
-        # Assume type 0 (Unknown) are also Fleet Carriers.
-        carrier_types = (24, 0)
-        odyssey_type  = 25
         cached_system = None
         cached_system_id = None
 
@@ -1245,8 +1241,8 @@ class TradeDB:
                 lsFromStar, market, blackMarket, shipyard,
                 maxPadSize, outfitting, rearm, refuel, repair, planetary, type_id
             ) in rows:
-                isFleet   = 'Y' if type_id in carrier_types else 'N'
-                isOdyssey = 'Y' if type_id == odyssey_type  else 'N'
+                isFleet      = fleet_carrier_state(type_id)
+                isSettlement = settlement_state(type_id)
                 if systemID != cached_system_id:
                     cached_system_id = systemID
                     cached_system = systemByID[cached_system_id]
@@ -1254,7 +1250,7 @@ class TradeDB:
                     ID, cached_system, name,
                     lsFromStar, market, blackMarket, shipyard,
                     maxPadSize, outfitting, rearm, refuel, repair,
-                    planetary, isFleet, isOdyssey,
+                    planetary, isFleet, isSettlement,
                     0, None,
                 )
 
@@ -1612,7 +1608,7 @@ class TradeDB:
             noPlanet=False,
             planetary=None,
             fleet=None,
-            odyssey=None,
+            settlement=None,
             ):
         """
         Gets a list of the Station destinations that can be reached
@@ -1695,16 +1691,16 @@ class TradeDB:
         
         fleet = fleet or "YN?"
         maxPadSize = maxPadSize or "SML?"
-        odyssey = odyssey or "YN?"
+        settlement = settlement or "YN?"
         planetary = "N" if noPlanet else (planetary or "YN?")
-        
+
         path_iter = iter(
           (node, station) for (node, station) in path_iter_fn()
           if station.planetary in planetary and
             station not in avoidPlaces and
             station.maxPadSize in maxPadSize and
             station.fleet in fleet and
-            station.odyssey in odyssey and
+            station.settlement in settlement and
             (not maxLsFromStar or 0 < station.lsFromStar <= maxLsFromStar)
         )
         yield from (

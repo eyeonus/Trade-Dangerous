@@ -599,7 +599,7 @@ def checkStationSuitability(cmdenv, calc, station, src = None):
         station.maxPadSize,
         station.planetary,
         station.fleet,
-        station.odyssey,
+        station.settlement,
         station.market,
         station.shipyard,
         src or "any",
@@ -685,16 +685,16 @@ def checkStationSuitability(cmdenv, calc, station, src = None):
                     TradeDB.fleetStatesExt[station.fleet],
             ))
         return False
-    ody = cmdenv.odyssey
-    if ody and not station.checkOdyssey(ody):
+    stl = cmdenv.settlement
+    if stl and not station.checkSettlement(stl):
         if src:
             raise CommandLineError(
-                "{} station {} does not meet odyssey requirement.\n"
+                "{} station {} does not meet settlement requirement.\n"
                 "You specified: {}, Current data for station: {} ({})\n"
                 "You can use \"trade.py station\" to correct this.".format(
                     src, station.name(),
-                    ody, station.odyssey,
-                    TradeDB.settlementStatesExt[station.odyssey],
+                    stl, station.settlement,
+                    TradeDB.settlementStatesExt[station.settlement],
             ))
         return False
     np = cmdenv.noPlanet

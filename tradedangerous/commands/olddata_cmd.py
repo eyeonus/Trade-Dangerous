@@ -174,10 +174,10 @@ def run(results, cmdenv, tdb):
     padSize = cmdenv.padSize
     planetary = cmdenv.planetary
     fleet = cmdenv.fleet
-    odyssey = cmdenv.settlement
+    settlement = cmdenv.settlement
     noPlanet = cmdenv.noPlanet
     mls = cmdenv.maxLs
-    
+
     for (stnID, age, ls, dist2) in rows:
         cmdenv.DEBUG2("{}:{}:{}", stnID, age, ls)
         row = ResultRow()
@@ -185,14 +185,14 @@ def run(results, cmdenv, tdb):
         row.age = float(age or 0.0)
         row.ls = "{:n}".format(ls) if ls else "?"
         row.dist = (float(dist2) ** 0.5) if dist2 else 0.0
-        
+
         if padSize and not row.station.checkPadSize(padSize):
             continue
         if planetary and not row.station.checkPlanetary(planetary):
             continue
         if fleet and not row.station.checkFleet(fleet):
             continue
-        if odyssey and not row.station.checkOdyssey(odyssey):
+        if settlement and not row.station.checkSettlement(settlement):
             continue
         if noPlanet and row.station.planetary != 'N':
             continue
@@ -272,7 +272,7 @@ def render(results, cmdenv, tdb):
                         key=lambda row: TradeDB.fleetStates[row.station.fleet])
         ).append(
                 ColumnFormat("Stl", '>', '3',
-                        key=lambda row: TradeDB.settlementStates[row.station.odyssey])
+                        key=lambda row: TradeDB.settlementStates[row.station.settlement])
         )
     
     if not cmdenv.quiet:

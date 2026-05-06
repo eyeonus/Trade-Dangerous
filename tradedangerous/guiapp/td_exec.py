@@ -885,7 +885,7 @@ def _snapshot_station(station: Any) -> dict[str, Any]:
         'maxPadSize': _display_attr(station, 'maxPadSize', 'max_pad_size'),
         'planetary': _display_attr(station, 'planetary'),
         'fleet': _display_attr(station, 'fleet'),
-        'odyssey': _display_attr(station, 'odyssey'),
+        'settlement': _display_attr(station, 'settlement'),
         'itemCount': _display_attr(station, 'itemCount', 'item_count'),
     }
 
