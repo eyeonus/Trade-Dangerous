@@ -43,6 +43,10 @@ from tradedangerous import plugins, cache, csvexport  # provided by project
 from tradedangerous.db import utils as db_utils
 from tradedangerous.db.lifecycle import ensure_fresh_db, reset_db
 from tradedangerous.db.locks import station_advisory_lock
+from tradedangerous.db.station_types import (
+    station_type_id_from_external,
+    PLANETARY_BY_TYPE_IDS,
+)
 
 
 if typing.TYPE_CHECKING:
@@ -151,9 +155,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         if self._listener_mode:
             self._is_tty = False
-        
-        # Station type mapping (existing helper in this module)
-        self._station_type_map = self._build_station_type_map()
         
         # Debug trace option
         self.debug_trace = str(self.getOption("debug_trace") or "0").strip().lower() not in ("0", "", "false", "no")
@@ -2683,37 +2684,12 @@ class ImportPlugin(plugins.ImportPluginBase):
     # ------------------------------
     # Mapping / derivations / misc
     #
-    @staticmethod
-    @staticmethod
-    def _build_station_type_map() -> dict[Optional[str], tuple[int, bool]]:
-        return {
-            None: (0, False),
-            "None": (0, False),
-            "Outpost": (1, False),
-            "Coriolis Starport": (2, False),
-            "Ocellus Starport": (3, False),
-            "Orbis Starport": (4, False),
-            "Dodec Starport": (2, False),
-            "Planetary Outpost": (11, True),
-            "Planetary Port": (12, True),
-            "Dockable Planet Station": (12, True),
-            "Planetary Construction Depot": (25, True),
-            "Space Construction Depot": (1, False),
-            "Mega ship": (13, False),
-            "Asteroid base": (14, False),
-            "Drake-Class Carrier": (24, False),
-            "Settlement": (25, True),
-            "Surface Settlement": (25, True),
-        }
-    
-    
     def _map_station_type(self, type_name: Optional[str]) -> tuple[int, str]:
-        if isinstance(type_name, str):
-            res = self._station_type_map.get(type_name)
-            if res:
-                type_id, is_planetary = res
-                return type_id, "Y" if is_planetary else "N"
-        return (0, "?")
+        type_id = station_type_id_from_external(type_name)
+        if type_id == 0:
+            return (0, "?")
+        planetary = "Y" if type_id in PLANETARY_BY_TYPE_IDS else "N"
+        return (type_id, planetary)
     
     @staticmethod
     def _derive_pad_size(landing: Mapping[str, Any]) -> str:
