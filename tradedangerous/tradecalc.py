@@ -63,6 +63,7 @@ from .tradedb import Trade, Destination, describeAge
 
 # ORM models (SQLAlchemy)
 from tradedangerous.db.utils import parse_ts  # replaces legacy strftime('%s', modified)
+from .db.station_types import FLEET_CARRIER_TYPE_IDS, SETTLEMENT_TYPE_IDS, UNKNOWN as _ST_UNKNOWN
 
 if typing.TYPE_CHECKING:
     from collections.abc import Iterable
@@ -700,7 +701,72 @@ class TradeCalc:
                     params[key] = int(sid)
                     sid_placeholders.append(":" + key)
                 where_clauses.append(f"station_id IN ({', '.join(sid_placeholders)})")
-            
+
+            # Station capability filters — subquery narrows scan to suitable stations only.
+            # Mirrors checkStationSuitability() semantics; that function remains the safety backstop.
+            _cap_predicates = []
+
+            pad = getattr(tdenv, 'padSize', None)
+            if pad:
+                ph = [f":pad{i}" for i in range(len(pad))]
+                for i, c in enumerate(pad):
+                    params[f"pad{i}"] = c
+                _cap_predicates.append(f"max_pad_size IN ({', '.join(ph)})")
+
+            if getattr(tdenv, 'noPlanet', False):
+                _cap_predicates.append("planetary = 'N'")
+            else:
+                pla = getattr(tdenv, 'planetary', None)
+                if pla:
+                    ph = [f":plt{i}" for i in range(len(pla))]
+                    for i, c in enumerate(pla):
+                        params[f"plt{i}"] = c
+                    _cap_predicates.append(f"planetary IN ({', '.join(ph)})")
+
+            fleet = getattr(tdenv, 'fleet', None)
+            if fleet:
+                _fid_str = ', '.join(str(t) for t in sorted(FLEET_CARRIER_TYPE_IDS))
+                _f_conds = []
+                if 'Y' in fleet:
+                    _f_conds.append(f"type_id IN ({_fid_str})")
+                if 'N' in fleet:
+                    _f_conds.append(
+                        f"(type_id != {_ST_UNKNOWN} AND type_id NOT IN ({_fid_str}))"
+                    )
+                if '?' in fleet:
+                    _f_conds.append(f"type_id = {_ST_UNKNOWN}")
+                if _f_conds:
+                    _cap_predicates.append(f"({' OR '.join(_f_conds)})")
+
+            settlement = getattr(tdenv, 'settlement', None)
+            if settlement:
+                _sid_str = ', '.join(str(t) for t in sorted(SETTLEMENT_TYPE_IDS))
+                _s_conds = []
+                if 'Y' in settlement:
+                    _s_conds.append(f"type_id IN ({_sid_str})")
+                if 'N' in settlement:
+                    _s_conds.append(
+                        f"(type_id != {_ST_UNKNOWN} AND type_id NOT IN ({_sid_str}))"
+                    )
+                if '?' in settlement:
+                    _s_conds.append(f"type_id = {_ST_UNKNOWN}")
+                if _s_conds:
+                    _cap_predicates.append(f"({' OR '.join(_s_conds)})")
+
+            if getattr(tdenv, 'blackMarket', None):
+                _cap_predicates.append("blackmarket = 'Y'")
+
+            max_ls = getattr(tdenv, 'maxLs', 0)
+            if max_ls:
+                params['maxLs'] = max_ls
+                _cap_predicates.append("(ls_from_star > 0 AND ls_from_star <= :maxLs)")
+
+            if _cap_predicates:
+                sub_where = " AND ".join(_cap_predicates)
+                where_clauses.append(
+                    f"station_id IN (SELECT station_id FROM Station WHERE {sub_where})"
+                )
+
             sql = f"SELECT {columns} FROM StationItem"
             if where_clauses:
                 sql += " WHERE " + " AND ".join(where_clauses)
@@ -748,9 +814,10 @@ class TradeCalc:
             sys.stdout.flush()
 
         tdenv.DEBUG0(
-            "TradeCalc row scan: {:,} rows seen, {:,} buy entries, {:,} sell entries{}",
+            "TradeCalc row scan: {:,} rows seen, {:,} buy entries, {:,} sell entries{}{}",
             rows_seen, dmdCount, supCount,
             f" (restricted to {len(self._restrict_station_ids):,} stations)" if self._restrict_station_ids else "",
+            f" (capability filter: {len(_cap_predicates)} predicates)" if _cap_predicates else "",
         )
 
         with tdenv.time_block("TradeCalc.__init__.finalize", level=0):
