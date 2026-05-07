@@ -6,12 +6,12 @@ from .helpers import isolated_tdb
 
 ORIGIN_SYSTEM = 'Sol'
 ORIGIN_STATION = 'Abraham Lincoln'
-LOOKUP_STATION = 'Dunyach Enterprise'
-LOOKUP_STATION_SYSTEM = 'Ross 490'
+LOOKUP_STATION = 'Grandin Gateway'
+LOOKUP_STATION_SYSTEM = 'Altair'
 DIRECT_ROUTE_TARGETS = (
-    "Barnard's Star",
     'Sirius',
-    'LHS 380',
+    'Duamta',
+    'Procyon',
 )
 
 class TestPeek:
@@ -41,7 +41,7 @@ class TestPeek:
     
     def test_lookup_place_variants(self, isolated_tdb: TradeDB):
         sol = isolated_tdb.lookupPlace('@sol')
-        station = isolated_tdb.lookupPlace('dunyach')
+        station = isolated_tdb.lookupPlace('grandin')
         abe = isolated_tdb.lookupPlace('sol/hamlinc')
         abe_explicit = isolated_tdb.lookupPlace('@sol/abrahamlincoln')
         

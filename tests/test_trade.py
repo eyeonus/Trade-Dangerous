@@ -61,11 +61,11 @@ class TestTrade:
     def test_nav(self, isolated_trade_env, capsys):
         trade = isolated_trade_env["trade"]
         
-        trade([PROG, "nav", "--ly-per=50", "sol", "Alpha Centauri"])
+        trade([PROG, "nav", "--ly-per=50", "sol", "Sirius"])
         captured = capsys.readouterr()
-        
+
         assert "Sol" in captured.out
-        assert "Alpha Centauri" in captured.out
+        assert "Sirius" in captured.out
     
     def test_market(self, isolated_trade_env, capsys):
         trade = isolated_trade_env["trade"]

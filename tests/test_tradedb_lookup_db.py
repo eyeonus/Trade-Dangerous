@@ -15,28 +15,28 @@ class TestTradeDBLookup:
             "Blanco Manufacturing Forge",
             "Lushertha",
         )
-        jastreb_station = isolated_tdb.lookupStation(
+        sirius_station = isolated_tdb.lookupStation(
             "Blanco Manufacturing Forge",
-            "Jastreb Sector CL-Y d145",
+            "Sirius",
         )
-        
+
         assert lushertha_station.dbname == "Blanco Manufacturing Forge"
         assert lushertha_station.system.dbname == "Lushertha"
-        
-        assert jastreb_station.dbname == "Blanco Manufacturing Forge"
-        assert jastreb_station.system.dbname == "Jastreb Sector CL-Y d145"
-        
-        assert lushertha_station.ID != jastreb_station.ID
+
+        assert sirius_station.dbname == "Blanco Manufacturing Forge"
+        assert sirius_station.system.dbname == "Sirius"
+
+        assert lushertha_station.ID != sirius_station.ID
     
     def test_lookup_station_from_system_handles_single_and_multi_station_cases(
         self,
         isolated_tdb,
     ):
-        lhs_3799 = isolated_tdb.lookupSystem("LHS 3799")
-        goo_research = isolated_tdb.lookupStation(lhs_3799)
-        
-        assert goo_research.dbname == "Goo Research"
-        assert goo_research.system is lhs_3799
+        test_sys = isolated_tdb.lookupSystem("Test")
+        metallic = isolated_tdb.lookupStation(test_sys)
+
+        assert metallic.dbname == "Metallic Base 2"
+        assert metallic.system is test_sys
         
         sol = isolated_tdb.lookupSystem("Sol")
         with pytest.raises(SystemNotStationError):
@@ -52,17 +52,17 @@ class TestTradeDBLookup:
         lushertha_station = isolated_tdb.lookupPlace(
             "Lushertha/Blanco Manufacturing Forge",
         )
-        jastreb_station = isolated_tdb.lookupPlace(
-            "Jastreb Sector CL-Y d145/Blanco Manufacturing Forge",
+        sirius_station = isolated_tdb.lookupPlace(
+            "Sirius/Blanco Manufacturing Forge",
         )
-        
+
         assert lushertha_station.dbname == "Blanco Manufacturing Forge"
         assert lushertha_station.system.dbname == "Lushertha"
-        
-        assert jastreb_station.dbname == "Blanco Manufacturing Forge"
-        assert jastreb_station.system.dbname == "Jastreb Sector CL-Y d145"
-        
-        assert lushertha_station.ID != jastreb_station.ID
+
+        assert sirius_station.dbname == "Blanco Manufacturing Forge"
+        assert sirius_station.system.dbname == "Sirius"
+
+        assert lushertha_station.ID != sirius_station.ID
     
     def test_lookup_place_system_names_resolve_to_system_objects(
         self,
@@ -70,24 +70,24 @@ class TestTradeDBLookup:
     ):
         sol = isolated_tdb.lookupPlace("Sol")
         sol_explicit = isolated_tdb.lookupPlace("@Sol")
-        lhs_3799 = isolated_tdb.lookupPlace("LHS 3799")
-        
+        test_sys = isolated_tdb.lookupPlace("Test")
+
         assert sol is sol_explicit
         assert sol.dbname == "Sol"
-        assert lhs_3799.dbname == "LHS 3799"
-        
-        assert isolated_tdb.lookupStation(lhs_3799).dbname == "Goo Research"
+        assert test_sys.dbname == "Test"
+
+        assert isolated_tdb.lookupStation(test_sys).dbname == "Metallic Base 2"
     
     def test_lookup_place_explicit_station_and_legacy_backslash_forms_resolve(
         self,
         isolated_tdb,
     ):
-        explicit_station = isolated_tdb.lookupPlace("/Dunyach Enterprise")
+        explicit_station = isolated_tdb.lookupPlace("/Grandin Gateway")
         legacy_path_station = isolated_tdb.lookupPlace("Sol\\Abraham Lincoln")
         slash_path_station = isolated_tdb.lookupPlace("Sol/Abraham Lincoln")
-        
-        assert explicit_station.dbname == "Dunyach Enterprise"
-        assert explicit_station.system.dbname == "Ross 490"
+
+        assert explicit_station.dbname == "Grandin Gateway"
+        assert explicit_station.system.dbname == "Altair"
         
         assert legacy_path_station is slash_path_station
         assert legacy_path_station.dbname == "Abraham Lincoln"

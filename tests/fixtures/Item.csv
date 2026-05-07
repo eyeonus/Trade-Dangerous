@@ -159,11 +159,11 @@ unq:item_id,name,category_id@Category.category_id,ui_order,avg_price,fdev_id,rar
 128667083,'Yaso Kondi Leaf',8,36,'',128667083,''
 128667084,'Chateau De Aegaeon',8,7,'',128667084,''
 128667085,'The Waters of Shintara',7,14,'',128667085,''
-128667668,'Ophiuch Exino Artefacts',12,21,'',128667668,3228939264
+128667668,'Ophiuch Exino Artefacts',12,21,'',128667668,''
 128667669,'Baked Greebles',4,8,'',128667669,''
 128667670,'Aepyornis Egg',4,1,'',128667670,''
 128667671,'Saxon Wine',8,29,'',128667671,''
-128667672,'Centauri Mega Gin',8,6,'',128667672,3228728832
+128667672,'Centauri Mega Gin',8,6,'',128667672,''
 128667673,'Anduliga Fire Works',12,3,'',128667673,''
 128667674,'Banki Amphibious Leather',5,1,'',128667674,''
 128667675,'Cherbones Blood Crystals',1,4,'',128667675,''
@@ -192,14 +192,14 @@ unq:item_id,name,category_id@Category.category_id,ui_order,avg_price,fdev_id,rar
 128667698,'Wheemete Wheat Cakes',4,50,'',128667698,''
 128667699,'Vega Slimweed',7,16,'',128667699,''
 128667700,'Altairian Skin',12,2,'',128667700,128151032
-128667701,'Pavonis Ear Grubs',8,27,'',128667701,128117240
+128667701,'Pavonis Ear Grubs',8,27,'',128667701,''
 128667702,'Jotun Mookah',5,6,'',128667702,''
 128667703,'Giant Verrix',9,9,'',128667703,''
-128667704,'Indi Bourbon',8,13,'',128667704,128118520
+128667704,'Indi Bourbon',8,13,'',128667704,''
 128667705,'Arouca Conventual Sweets',4,6,'',128667705,''
 128667706,'Tauri Chimes',12,26,'',128667706,''
 128667707,'Zeessze Ant Grub Glue',12,33,'',128667707,128125432
-128667708,'Pantaa Prayer Sticks',7,10,'',128667708,3228824064
+128667708,'Pantaa Prayer Sticks',7,10,'',128667708,''
 128667709,'Fujin Tea',4,24,'',128667709,''
 128667710,'Chameleon Cloth',5,3,'',128667710,''
 128667711,'Orrerian Vicious Brew',4,42,'',128667711,''
@@ -225,7 +225,7 @@ unq:item_id,name,category_id@Category.category_id,ui_order,avg_price,fdev_id,rar
 128671119,'Ultra-Compact Processor Prototypes',12,30,'',128671119,''
 128671443,'SAP 8 Core Container',16,63,'',128671443,''
 128671444,'Trinkets of Hidden Fortune',12,29,'',128671444,''
-128672121,'The Hutton Mug',12,27,'',128672121,3228728832
+128672121,'The Hutton Mug',12,27,'',128672121,''
 128672122,'Sothis Crystalline Gold',1,22,'',128672122,''
 128672123,'Wreckage Components',16,98,'',128672123,''
 128672124,'Encrypted Data Storage',16,21,'',128672124,''
