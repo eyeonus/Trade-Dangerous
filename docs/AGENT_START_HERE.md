@@ -91,21 +91,14 @@ Important:
 
 ## 5. Current planning docs
 
-Read these in this order:
+Read this document:
 
 1. `docs/final_implementation_plan.md`
-2. `docs/performance_optimization_plan.md`
-3. `docs/performance_tactical_backlog.md`
-4. `docs/schema_batch_a_spec.md`
-5. `docs/schema_batch_a_checklist.md`
-6. `docs/schema_impact_matrix.md`
 
 Working-note documents:
 - `docs/PERF_NOTES.md`
 - `docs/AUDIT.md`
 - `docs/RESOLVER_CONTRACT.md`
-- `docs/SCHEMA_BATCH_LOG.md`
-- `docs/SESSION_HANDOFF_TEMPLATE.md`
 
 If any of the substantive planning docs are missing from the fork, ask for them or ask the user to upload/push them. Do not pretend they exist if they do not.
 

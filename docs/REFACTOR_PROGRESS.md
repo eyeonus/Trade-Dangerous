@@ -488,8 +488,11 @@ Reduce `TradeCalc.__init__()` setup overhead before touching route maths.
 - [x] K2. Derive candidate station IDs before constructor
   - Status note: `For explicit station-to-station, one-hop runs (no startJumps, endJumps, viaPlaces, loop, goalSystem, or shorten), restrict_station_ids is derived before TradeCalc construction and passed at the call site. Guard conditions prevent unsafe application to multi-hop or geometrically open shapes. row_scan: 9.1M rows/~47s → 139 rows/~4ms. TradeCalc.__init__: ~47s → ~8ms. Route output and suitability semantics unchanged.`
   - Evidence: `3c5962d4; benchmark 2026-05-03`
+- [x] K2A. Station type registry and settlement/fleet filter rationalisation
+  - Status note: `Inserted before K3 because capability filtering exposed that station type semantics were still legacy/collapsed and the old --odyssey filter was misnamed. Added tradedangerous/db/station_types.py as the canonical source of truth: 0-15 type_id constants, DISPLAY_NAMES, external Spansh type mapping, FLEET_CARRIER_TYPE_IDS, SETTLEMENT_TYPE_IDS, PLANETARY_BY_TYPE_IDS, and fleet_carrier_state()/settlement_state() helpers. Spansh import now maps station.type through the registry instead of the old collapsed _build_station_type_map(). --odyssey/--od was renamed to --settlement with no legacy alias across commands and GUI. Y/N/? semantics were corrected: Y=in classification set, N=known and not in set, ?=UNKNOWN/type_id 0. Full six-combination SQL filter logic was applied in local/buy/sell; nav/olddata/run use Python-side station state. --settlement Y requires planetary Y, centralised in CommandEnv.checkSettlement(). TradeDB.odysseyStates became settlementStates; Station.odyssey became settlement; _loadStations() uses registry helpers. Listener fallback for unknown station types was corrected to UNKNOWN/type_id 0. Fresh Sol-25ly fixtures were regenerated from Spansh/EDDBlink, fixture-dependent tests updated, stray generated fixture files removed, and synthetic Blanco Manufacturing Forge duplicate kept consistent between DB and Station.csv.`
+  - Evidence: `80b67f2b; 0c19625d; 9d48ed45; 1c82e381; 58bb1cc1; a9761f9d; fd7529d8; a19719d2; 542af129; 7df13360; 432 tests passing`
 - [ ] K3. Wire station restriction narrowing properly
-  - Status note:
+  - Status note: `Next step resumes after K2A. Capability filtering must use the station type registry rather than raw type_id values or Odyssey terminology. Use registry-derived fleet/settlement type sets plus existing Station.planetary/service/pad/ls/blackmarket columns.`
   - Evidence:
 - [ ] K4. Push more filtering into SQL
   - Status note:
@@ -759,6 +762,10 @@ Use this as the short “what is already definitely done” section for quick sc
   - Date completed: `2026-05-03`
   - Commit: `ded4c634` (J1/J2); `5fa20c80` (J3/J4)
   - Notes: `_loadStations() split into _loadStationShell() and _loadStationSummaries(). load() calls sub-loaders directly. Capability audit of olddata/nav/run confirmed olddata as the easy partial-load target. olddata moved to LEGACY_HANDLE; preload() hook added to CommandEnv.run(). olddata loads systems + station shell only; summaries/categories/items skipped. All smoke tests and 385 pytest tests passing.`
+- [x] Milestone: `Checkpoint K2A complete — station type registry and settlement filter`
+  - Date completed: `2026-05-07`
+  - Commit: `80b67f2b` through `7df13360`
+  - Notes: `Station type handling was rationalised before K3. Legacy collapsed type_id meanings were replaced with a canonical 0-15 TD-owned registry based on Spansh station types. --odyssey/--od was replaced by --settlement because the filter is settlement classification, not Odyssey capability. Fleet and settlement Y/N/? state derivation is centralised; UNKNOWN/type_id 0 is ? rather than fleet/settlement N. Spansh import maps station.type through the registry. EDDN/listener commodity ingestion does not infer station type, and unknown listener-created station types default to UNKNOWN. Fresh fixtures now use the new type_id model; fixture cleanup removed stray generated files and kept the synthetic Blanco duplicate consistent between DB and Station.csv. 432 tests passing.`
 
 ---
 
