@@ -56,14 +56,18 @@ import typing
 
 from sqlalchemy import text as _sa_text
 
-from .tradedb import Item
+from .tradedb import Item, Station
 from .tradeexcept import SimpleAbort, TradeException
 # Legacy-style helpers (these remain expected by other modules)
 from .tradedb import Trade, Destination, describeAge
 
 # ORM models (SQLAlchemy)
 from tradedangerous.db.utils import parse_ts  # replaces legacy strftime('%s', modified)
-from .db.station_types import FLEET_CARRIER_TYPE_IDS, SETTLEMENT_TYPE_IDS, UNKNOWN as _ST_UNKNOWN
+from .db.station_types import (
+    FLEET_CARRIER_TYPE_IDS,
+    SETTLEMENT_TYPE_IDS,
+    UNKNOWN as _ST_UNKNOWN,
+)
 
 if typing.TYPE_CHECKING:
     from collections.abc import Iterable
@@ -762,10 +766,32 @@ class TradeCalc:
                 _cap_predicates.append("(ls_from_star > 0 AND ls_from_star <= :maxLs)")
 
             if _cap_predicates:
+                # Preserve explicit anchor stations so checkStationSuitability()
+                # can still produce correct anchor-specific errors for unsuitable
+                # --from / --to / --via stations rather than misleading no-data errors.
+                _anchor_ids = []
+                for _attr in ('origPlace', 'destPlace'):
+                    _place = getattr(tdenv, _attr, None)
+                    if isinstance(_place, Station):
+                        _anchor_ids.append(_place.ID)
+                for _place in (getattr(tdenv, 'viaSet', None) or ()):
+                    if isinstance(_place, Station):
+                        _anchor_ids.append(_place.ID)
+
                 sub_where = " AND ".join(_cap_predicates)
-                where_clauses.append(
-                    f"station_id IN (SELECT station_id FROM Station WHERE {sub_where})"
-                )
+                if _anchor_ids:
+                    _anchor_unions = " ".join(
+                        f"UNION SELECT :anc{i}" for i in range(len(_anchor_ids))
+                    )
+                    for i, aid in enumerate(_anchor_ids):
+                        params[f"anc{i}"] = int(aid)
+                    subquery = (
+                        f"SELECT station_id FROM Station WHERE {sub_where}"
+                        f" {_anchor_unions}"
+                    )
+                else:
+                    subquery = f"SELECT station_id FROM Station WHERE {sub_where}"
+                where_clauses.append(f"station_id IN ({subquery})")
 
             sql = f"SELECT {columns} FROM StationItem"
             if where_clauses:
@@ -1044,6 +1070,7 @@ class TradeCalc:
         goalSystem = tdenv.goalSystem
         uniquePath = None
         viaSet = getattr(tdenv, "viaSet", None) or ()
+
         def via_progress_key(route_stations):
             if not viaSet:
                 return None
