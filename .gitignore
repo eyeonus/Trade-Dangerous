@@ -33,6 +33,7 @@ test-data/
 # --- IDE / editor junk ---
 .vscode/
 .idea/
+.claude/
 *.sublime-project
 *.sublime-workspace
 .ipynb_checkpoints

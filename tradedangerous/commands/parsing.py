@@ -47,7 +47,7 @@ class PadSizeArgument(int):
             for v in val:
                 if "SML?".find(v.upper()) < 0:
                     raise PadSizeError(val.upper())
-            return super().__new__(cls, val, **kwargs)
+            return super().__new__(cls, val.upper(), **kwargs)
     
     def __init__(self):
         self.args = ('--pad-size', '-p',)
@@ -139,7 +139,7 @@ class PlanetaryArgument(int):
             for v in val:
                 if "YN?".find(v.upper()) < 0:
                     raise PlanetaryError(val.upper())
-            return super().__new__(cls, val, **kwargs)
+            return super().__new__(cls, val.upper(), **kwargs)
     
     def __init__(self):
         self.args = ['--planetary']
@@ -166,7 +166,7 @@ class FleetCarrierArgument(int):
             for v in val:
                 if "YN?".find(v.upper()) < 0:
                     raise FleetCarrierError(val.upper())
-            return super().__new__(cls, val, **kwargs)
+            return super().__new__(cls, val.upper(), **kwargs)
     
     def __init__(self):
         self.args = ['--fleet-carrier', '--fc']
@@ -192,10 +192,10 @@ class SettlementArgument(int):
             for v in val:
                 if "YN?".find(v.upper()) < 0:
                     raise SettlementError(val.upper())
-            return super().__new__(cls, val, **kwargs)
+            return super().__new__(cls, val.upper(), **kwargs)
 
     def __init__(self):
-        self.args = ['--settlement']
+        self.args = ['--settlement', '--stl']
         self.kwargs = {
             'help': (
                 'Limit by settlement status: Y = settlements, '
