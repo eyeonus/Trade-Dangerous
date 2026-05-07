@@ -51,7 +51,7 @@ Do not tick a task unless:
 ### Current active checkpoint
 - Status: `[-]`
 - Checkpoint: `K — Reduce TradeCalc setup cost`
-- Subtask: `K1 complete — instrumentation done; K2 next`
+- Subtask: `K2 complete — K2A station type rationalisation next, before K3 capability filtering`
 - Owner: `Tromador`
 - Started: `2026-05-03`
 - Goal: `Reduce TradeCalc.__init__() setup overhead before touching route maths.`
@@ -59,17 +59,17 @@ Do not tick a task unless:
 ### Current blocker
 - Status: `[ ]`
 - Blocker: `None currently recorded.`
-- Impact: `K1 complete. K2 requires identifying safe candidate-station derivation for bounded run shapes.`
+- Impact: `K1 and K2 are complete. K2A rationalises Station.type_id semantics so K3 does not bake in legacy fleet/Odyssey magic numbers.`
 - Needed to unblock: `None.`
 
 ### Last updated
-- Date: `2026-05-03`
+- Date: `2026-05-07`
 - By: `Tromador + assistant`
-- Session summary: `K1: Added DEBUG0 row-scan count line to TradeCalc.__init__(). K2: restrict_station_ids derived before TradeCalc for one-hop station-to-station runs. run-short row_scan 9.1M rows/~47s → 139 rows/~4ms; TradeCalc.__init__ ~47s → ~8ms; output unchanged. 385 tests passing.`
+- Session summary: `K1 complete: DEBUG0 row-scan counts exposed the TradeCalc setup bottleneck. K2 complete: restrict_station_ids derived before TradeCalc for exact one-hop station-to-station runs; row_scan 9.1M rows/~47s → 139 rows/~4ms; TradeCalc.__init__ ~47s → ~8ms; output unchanged. K2A next: rationalise TD-owned Station.type_id semantics before K3 station capability filtering.`
 
 ### Last known good rollback point
-- Commit: `3c5962d4`
-- Notes: `Accepted after Tromador review. J1–J4 complete. Checkpoint J closed.`
+- Commit: `7df1336`
+- Notes: `Accepted after Tromador review. K2A Completed.`
 
 ---
 
