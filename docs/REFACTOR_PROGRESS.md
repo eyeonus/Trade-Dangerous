@@ -51,7 +51,7 @@ Do not tick a task unless:
 ### Current active checkpoint
 - Status: `[-]`
 - Checkpoint: `K — Reduce TradeCalc setup cost`
-- Subtask: `K2 complete — K2A station type rationalisation next, before K3 capability filtering`
+- Subtask: `K3 in progress — capability preload filtering landed; further K3 work ongoing`
 - Owner: `Tromador`
 - Started: `2026-05-03`
 - Goal: `Reduce TradeCalc.__init__() setup overhead before touching route maths.`
@@ -59,17 +59,17 @@ Do not tick a task unless:
 ### Current blocker
 - Status: `[ ]`
 - Blocker: `None currently recorded.`
-- Impact: `K1 and K2 are complete. K2A rationalises Station.type_id semantics so K3 does not bake in legacy fleet/Odyssey magic numbers.`
+- Impact: `K3 capability preload filtering reduces StationItem row scan for constrained runs. Further K3 work to be determined by Tromador.`
 - Needed to unblock: `None.`
 
 ### Last updated
-- Date: `2026-05-07`
+- Date: `2026-05-08`
 - By: `Tromador + assistant`
-- Session summary: `K1 complete: DEBUG0 row-scan counts exposed the TradeCalc setup bottleneck. K2 complete: restrict_station_ids derived before TradeCalc for exact one-hop station-to-station runs; row_scan 9.1M rows/~47s → 139 rows/~4ms; TradeCalc.__init__ ~47s → ~8ms; output unchanged. K2A next: rationalise TD-owned Station.type_id semantics before K3 station capability filtering.`
+- Session summary: `K3 capability preload filtering landed: station_id IN (SELECT ... FROM Station WHERE ...) subquery added to TradeCalc.__init__() for active pad/planetary/fleet/settlement/blackmarket/ls-max filters. Explicit anchor stations (--from/--to/--via) UNIONed in to preserve checkStationSuitability() error provenance. Parser normalisation bug fixed: all four station filter parsers now store val.upper() at parse time. --stl alias added for --settlement. .claude/ added to .gitignore. K3 remains in progress.`
 
 ### Last known good rollback point
-- Commit: `7df1336`
-- Notes: `Accepted after Tromador review. K2A Completed.`
+- Commit: `4a81a218`
+- Notes: `Parser normalisation, anchor fix, capability preload filtering. All tests passing, live validation confirmed.`
 
 ---
 
@@ -491,9 +491,9 @@ Reduce `TradeCalc.__init__()` setup overhead before touching route maths.
 - [x] K2A. Station type registry and settlement/fleet filter rationalisation
   - Status note: `Inserted before K3 because capability filtering exposed that station type semantics were still legacy/collapsed and the old --odyssey filter was misnamed. Added tradedangerous/db/station_types.py as the canonical source of truth: 0-15 type_id constants, DISPLAY_NAMES, external Spansh type mapping, FLEET_CARRIER_TYPE_IDS, SETTLEMENT_TYPE_IDS, PLANETARY_BY_TYPE_IDS, and fleet_carrier_state()/settlement_state() helpers. Spansh import now maps station.type through the registry instead of the old collapsed _build_station_type_map(). --odyssey/--od was renamed to --settlement with no legacy alias across commands and GUI. Y/N/? semantics were corrected: Y=in classification set, N=known and not in set, ?=UNKNOWN/type_id 0. Full six-combination SQL filter logic was applied in local/buy/sell; nav/olddata/run use Python-side station state. --settlement Y requires planetary Y, centralised in CommandEnv.checkSettlement(). TradeDB.odysseyStates became settlementStates; Station.odyssey became settlement; _loadStations() uses registry helpers. Listener fallback for unknown station types was corrected to UNKNOWN/type_id 0. Fresh Sol-25ly fixtures were regenerated from Spansh/EDDBlink, fixture-dependent tests updated, stray generated fixture files removed, and synthetic Blanco Manufacturing Forge duplicate kept consistent between DB and Station.csv.`
   - Evidence: `80b67f2b; 0c19625d; 9d48ed45; 1c82e381; 58bb1cc1; a9761f9d; fd7529d8; a19719d2; 542af129; 7df13360; 432 tests passing`
-- [ ] K3. Wire station restriction narrowing properly
-  - Status note: `Next step resumes after K2A. Capability filtering must use the station type registry rather than raw type_id values or Odyssey terminology. Use registry-derived fleet/settlement type sets plus existing Station.planetary/service/pad/ls/blackmarket columns.`
-  - Evidence:
+- [-] K3. Wire station restriction narrowing properly
+  - Status note: `station_id IN (SELECT station_id FROM Station WHERE ...) subquery added to TradeCalc.__init__() query_prep. Filters pushed: padSize (max_pad_size), noPlanet/planetary (planetary), fleet (type_id via FLEET_CARRIER_TYPE_IDS registry), settlement (type_id via SETTLEMENT_TYPE_IDS registry), blackMarket (blackmarket), maxLs (ls_from_star). Registry constants used throughout; no raw magic numbers. Explicit anchor stations (origPlace/destPlace/viaSet) UNIONed into the subquery so checkStationSuitability() retains correct error provenance. Parser normalisation bug fixed: all four station filter parsers now store val.upper() at parse time. --stl alias added for --settlement. Further K3 work ongoing.`
+  - Evidence: `2f72d32b; 5bebc304; 4a81a218; 432 tests passing`
 - [ ] K4. Push more filtering into SQL
   - Status note:
   - Evidence:
