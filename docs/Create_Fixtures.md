@@ -83,7 +83,7 @@ In Notepad++, open Find & Replace (`Ctrl+H`) and enable **Regular expression** m
 **Find:**
 
 ```
-^[ \t]*([^ \t]+).*$
+^[ \t]*(.*?)[ \t]+[+-]?\d+(?:\.\d+)?[ \t]*$
 ```
 
 **Replace with:**
