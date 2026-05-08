@@ -6,9 +6,9 @@ the ORM-first replacement can be verified for parity.
 
 Every test here corresponds to a row in the parity matrix in docs/RESOLVER_CONTRACT.md.
 Tests are grouped by the function under test.  Fixture data comes from the regenerated
-sol-25ly fixture pack; a synthetic duplicate-name station (Blanco Manufacturing Forge
-in Sirius) is inserted into the fixture DB where the data does not provide the required
-shape, and synthetic duplicate-name systems are injected where needed.
+sol-25ly fixture pack; Blanco Manufacturing Forge appears naturally in both Lushertha
+and Jastreb Sector CL-Y d145.  Synthetic duplicate-name systems are injected where
+needed.
 """
 from __future__ import annotations
 
@@ -97,13 +97,13 @@ class TestLookupSystem:
         assert isolated_tdb.lookupSystem("sIrIuS").dbname == "Sirius"
 
     def test_partial_match_via_list_search_fallback(self, isolated_tdb):
-        # "Bhrit" misses the exact dict key → listSearch → unique match on "Bhritzameno".
-        assert isolated_tdb.lookupSystem("Bhrit").dbname == "Bhritzameno"
+        # "Sigma Dra" misses the exact dict key → listSearch → unique match on "Sigma Draconis".
+        assert isolated_tdb.lookupSystem("Sigma Dra").dbname == "Sigma Draconis"
 
     def test_partial_match_ambiguous_raises(self, isolated_tdb):
-        # "Mi" matches Midgcut, Mildeptu, and Ministry — three candidates → AmbiguityError.
+        # "Luyten" matches multiple Luyten systems → AmbiguityError.
         with pytest.raises(AmbiguityError):
-            isolated_tdb.lookupSystem("Mi")
+            isolated_tdb.lookupSystem("Luyten")
 
     def test_not_found_raises_lookup_error(self, isolated_tdb):
         with pytest.raises(LookupError):
@@ -179,7 +179,7 @@ class TestLookupPlaceFastPath:
     def test_fast_path_ambiguity_propagates_immediately(self, isolated_tdb):
         # lookupSystem raises AmbiguityError; lookupPlace does not catch it.
         with pytest.raises(AmbiguityError):
-            isolated_tdb.lookupPlace("Mi")
+            isolated_tdb.lookupPlace("Luyten")
 
     def test_bare_name_misses_system_resolves_to_station(self, isolated_tdb):
         # "Metallic Base 2" is not a system name → fast path LookupError → slow path → station.
@@ -204,15 +204,15 @@ class TestLookupPlaceSlowPath:
         assert result.system.dbname == "Sol"
 
     def test_compound_exact_system_and_station(self, isolated_tdb):
-        result = isolated_tdb.lookupPlace("Altair/Grandin Gateway")
-        assert result.dbname == "Grandin Gateway"
-        assert result.system.dbname == "Altair"
+        result = isolated_tdb.lookupPlace("Ross 490/Dunyach Enterprise")
+        assert result.dbname == "Dunyach Enterprise"
+        assert result.system.dbname == "Ross 490"
 
     def test_compound_partial_station_word_match(self, isolated_tdb):
-        # "Grandin" is a word-start prefix of "Grandin Gateway" → word_match tier.
-        result = isolated_tdb.lookupPlace("Altair/Grandin")
-        assert result.dbname == "Grandin Gateway"
-        assert result.system.dbname == "Altair"
+        # "Dunyach" is a word-start prefix of "Dunyach Enterprise" → word_match tier.
+        result = isolated_tdb.lookupPlace("Ross 490/Dunyach")
+        assert result.dbname == "Dunyach Enterprise"
+        assert result.system.dbname == "Ross 490"
 
     def test_compound_partial_station_any_match(self, isolated_tdb):
         # "braham" is found inside "Abraham Lincoln" but not at a word boundary → any_match.
@@ -221,10 +221,10 @@ class TestLookupPlaceSlowPath:
         assert result.system.dbname == "Sol"
 
     def test_compound_partial_both_parts(self, isolated_tdb):
-        # "Alta" hits Altair via any_match; "Grandin" hits Grandin Gateway via word_match.
-        result = isolated_tdb.lookupPlace("Alta/Grandin")
-        assert result.dbname == "Grandin Gateway"
-        assert result.system.dbname == "Altair"
+        # "barn" hits Barnard's Star via any_match; "levi" hits Levi-Strauss Installation via word_match.
+        result = isolated_tdb.lookupPlace("barn/levi")
+        assert result.dbname == "Levi-Strauss Installation"
+        assert result.system.dbname == "Barnard's Star"
 
     def test_at_system_slash_station_form(self, isolated_tdb):
         result = isolated_tdb.lookupPlace("@Sol/Abraham Lincoln")
@@ -250,7 +250,7 @@ class TestLookupPlaceSlowPath:
         assert result.system.dbname == "Sol"
 
     def test_bare_duplicate_station_name_raises_ambiguity(self, isolated_tdb):
-        # "Blanco Manufacturing Forge" exists in both Lushertha and Sirius.
+        # "Blanco Manufacturing Forge" exists in both Lushertha and Jastreb Sector CL-Y d145.
         # Fast path: lookupSystem raises LookupError. Slow path: station _lookup finds two
         # exact matches → AmbiguityError.
         with pytest.raises(AmbiguityError):
@@ -304,14 +304,14 @@ class TestLookupStation:
         lushertha = isolated_tdb.lookupStation(
             "Blanco Manufacturing Forge", system="Lushertha"
         )
-        sirius = isolated_tdb.lookupStation(
-            "Blanco Manufacturing Forge", system="Sirius"
+        jastreb = isolated_tdb.lookupStation(
+            "Blanco Manufacturing Forge", system="Jastreb Sector CL-Y d145"
         )
         assert lushertha.dbname == "Blanco Manufacturing Forge"
         assert lushertha.system.dbname == "Lushertha"
-        assert sirius.dbname == "Blanco Manufacturing Forge"
-        assert sirius.system.dbname == "Sirius"
-        assert lushertha.ID != sirius.ID
+        assert jastreb.dbname == "Blanco Manufacturing Forge"
+        assert jastreb.system.dbname == "Jastreb Sector CL-Y d145"
+        assert lushertha.ID != jastreb.ID
 
     def test_not_found_raises_lookup_error(self, isolated_tdb):
         with pytest.raises(LookupError):

@@ -120,20 +120,20 @@ class TestTradeORMLookup:
         lushertha_station = isolated_torm.lookup_place(
             "Lushertha/Blanco Manufacturing Forge",
         )
-        sirius_station = isolated_torm.lookup_place(
-            "Sirius/Blanco Manufacturing Forge",
+        jastreb_station = isolated_torm.lookup_place(
+            "Jastreb Sector CL-Y d145/Blanco Manufacturing Forge",
         )
 
         assert lushertha_station is not None
-        assert sirius_station is not None
+        assert jastreb_station is not None
 
         assert lushertha_station.name == "Blanco Manufacturing Forge"
         assert lushertha_station.system.name == "Lushertha"
 
-        assert sirius_station.name == "Blanco Manufacturing Forge"
-        assert sirius_station.system.name == "Sirius"
+        assert jastreb_station.name == "Blanco Manufacturing Forge"
+        assert jastreb_station.system.name == "Jastreb Sector CL-Y d145"
 
-        assert lushertha_station.station_id != sirius_station.station_id
+        assert lushertha_station.station_id != jastreb_station.station_id
     
     def test_lookup_system_exact_form_returns_system(self, isolated_torm):
         system = isolated_torm.lookup_system("Sol")
@@ -460,14 +460,14 @@ class TestPartialMatching:
     # -- lookup_system partial --
 
     def test_lookup_system_partial_word_prefix(self, isolated_torm):
-        # "Bhrit" misses the exact query; partial search finds "Bhritzameno" uniquely.
-        result = isolated_torm.lookup_system("Bhrit")
-        assert result.name == "Bhritzameno"
+        # "Sigma Dra" misses the exact query; partial search finds "Sigma Draconis" uniquely.
+        result = isolated_torm.lookup_system("Sigma Dra")
+        assert result.name == "Sigma Draconis"
 
     def test_lookup_system_partial_ambiguous_raises(self, isolated_torm):
-        # "Mi" is a prefix of Midgcut, Mildeptu, and Ministry → AmbiguityError.
+        # "Luyten" is a prefix of multiple Luyten systems → AmbiguityError.
         with pytest.raises(AmbiguityError):
-            isolated_torm.lookup_system("Mi")
+            isolated_torm.lookup_system("Luyten")
 
     def test_lookup_system_not_found_still_raises_lookup_error(self, isolated_torm):
         with pytest.raises(LookupError):
@@ -496,11 +496,11 @@ class TestPartialMatching:
     # -- lookup_place slow-path partial: station word match --
 
     def test_lookup_place_compound_partial_station_word_match(self, isolated_torm):
-        # "Grandin" is a word-boundary prefix of "Grandin Gateway".
-        result = isolated_torm.lookup_place("Altair/Grandin")
+        # "Dunyach" is a word-boundary prefix of "Dunyach Enterprise".
+        result = isolated_torm.lookup_place("Ross 490/Dunyach")
         assert isinstance(result, orm.Station)
-        assert result.name == "Grandin Gateway"
-        assert result.system.name == "Altair"
+        assert result.name == "Dunyach Enterprise"
+        assert result.system.name == "Ross 490"
 
     # -- lookup_place slow-path partial: interior substring (any_match) --
 
@@ -515,12 +515,12 @@ class TestPartialMatching:
     # -- lookup_place slow-path partial: both parts partial --
 
     def test_lookup_place_compound_partial_both_parts(self, isolated_torm):
-        # "Alta" hits "Altair" via any_match; "Grandin" hits "Grandin Gateway"
+        # "barn" hits "Barnard's Star" via any_match; "levi" hits "Levi-Strauss Installation"
         # via word_match within the scoped station set.
-        result = isolated_torm.lookup_place("Alta/Grandin")
+        result = isolated_torm.lookup_place("barn/levi")
         assert isinstance(result, orm.Station)
-        assert result.name == "Grandin Gateway"
-        assert result.system.name == "Altair"
+        assert result.name == "Levi-Strauss Installation"
+        assert result.system.name == "Barnard's Star"
 
     # -- regression: exact paths still work after adding partial matching --
 
@@ -548,11 +548,11 @@ class TestPartialMatching:
     # -- interior-suffix partial match: two-step ILIKE required --
 
     def test_lookup_system_interior_suffix(self, isolated_torm):
-        # "ameno" is a suffix of "Bhritzameno", not a prefix.
-        # Prefix ILIKE 'AMENO%' returns nothing; interior ILIKE '%ameno%'
+        # "Draconis" is a suffix of "Sigma Draconis", not a prefix.
+        # Prefix ILIKE 'DRACONIS%' returns nothing; interior ILIKE '%Draconis%'
         # is required to surface the candidate.
-        result = isolated_torm.lookup_system("ameno")
-        assert result.name == "Bhritzameno"
+        result = isolated_torm.lookup_system("Draconis")
+        assert result.name == "Sigma Draconis"
 
     def test_lookup_place_compound_system_interior(self, isolated_torm):
         # "air" is an interior suffix of "Altair", not a prefix.

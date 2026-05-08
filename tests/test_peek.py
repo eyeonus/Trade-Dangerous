@@ -9,9 +9,9 @@ ORIGIN_STATION = 'Abraham Lincoln'
 LOOKUP_STATION = 'Grandin Gateway'
 LOOKUP_STATION_SYSTEM = 'Altair'
 DIRECT_ROUTE_TARGETS = (
+    "Barnard's Star",
     'Sirius',
-    'Duamta',
-    'Procyon',
+    'LHS 380',
 )
 
 class TestPeek:

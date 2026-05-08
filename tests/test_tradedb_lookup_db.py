@@ -15,18 +15,18 @@ class TestTradeDBLookup:
             "Blanco Manufacturing Forge",
             "Lushertha",
         )
-        sirius_station = isolated_tdb.lookupStation(
+        jastreb_station = isolated_tdb.lookupStation(
             "Blanco Manufacturing Forge",
-            "Sirius",
+            "Jastreb Sector CL-Y d145",
         )
 
         assert lushertha_station.dbname == "Blanco Manufacturing Forge"
         assert lushertha_station.system.dbname == "Lushertha"
 
-        assert sirius_station.dbname == "Blanco Manufacturing Forge"
-        assert sirius_station.system.dbname == "Sirius"
+        assert jastreb_station.dbname == "Blanco Manufacturing Forge"
+        assert jastreb_station.system.dbname == "Jastreb Sector CL-Y d145"
 
-        assert lushertha_station.ID != sirius_station.ID
+        assert lushertha_station.ID != jastreb_station.ID
     
     def test_lookup_station_from_system_handles_single_and_multi_station_cases(
         self,
@@ -52,17 +52,17 @@ class TestTradeDBLookup:
         lushertha_station = isolated_tdb.lookupPlace(
             "Lushertha/Blanco Manufacturing Forge",
         )
-        sirius_station = isolated_tdb.lookupPlace(
-            "Sirius/Blanco Manufacturing Forge",
+        jastreb_station = isolated_tdb.lookupPlace(
+            "Jastreb Sector CL-Y d145/Blanco Manufacturing Forge",
         )
 
         assert lushertha_station.dbname == "Blanco Manufacturing Forge"
         assert lushertha_station.system.dbname == "Lushertha"
 
-        assert sirius_station.dbname == "Blanco Manufacturing Forge"
-        assert sirius_station.system.dbname == "Sirius"
+        assert jastreb_station.dbname == "Blanco Manufacturing Forge"
+        assert jastreb_station.system.dbname == "Jastreb Sector CL-Y d145"
 
-        assert lushertha_station.ID != sirius_station.ID
+        assert lushertha_station.ID != jastreb_station.ID
     
     def test_lookup_place_system_names_resolve_to_system_objects(
         self,
