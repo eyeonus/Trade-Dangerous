@@ -560,37 +560,16 @@ class Route:
             )
         )
 
-
 def sigmoid(x: float | int) -> float:
-    # [eyeonus]:
-    # (Keep in mind all this ignores values of x<0.)
-    # The sigmoid: (1-(25(x-1))/(1+abs(25(x-1))))/4
-    # ranges between 0.5 and 0 with a drop around x=1,
-    # which makes it great for giving a boost to distances < 1Kls.
-    #
-    # The sigmoid: (-1-(50(x-4))/(1+abs(50(x-4))))/4
-    # ranges between 0 and -0.5 with a drop around x=4,
-    # making it great for penalizing distances > 4Kls.
-    #
-    # The curve: (-1+1/(x+1)^((x+1)/4))/2
-    # ranges between 0 and -0.5 in a smooth arc,
-    # which will be used for making distances
-    # closer to 4Kls get a slightly higher penalty
-    # then distances closer to 1Kls.
-    #
-    # Adding the three together creates a doubly-kinked curve
-    # that ranges from ~0.5 to -1.0, with drops around x=1 and x=4,
-    # which closely matches ksfone's intention without going into
-    # negative numbers and causing problems when we add it to
-    # the multiplier variable. ( 1 + -1 = 0 )
-    #
-    # You can see a graph of the formula here:
-    # https://goo.gl/sn1PqQ
-    # NOTE: The black curve is at a penalty of 0%,
-    # the red curve at a penalty of 100%, with intermediates at
-    # 25%, 50%, and 75%.
-    # The other colored lines show the penalty curves individually
-    # and the teal composite of all three.
+    """
+    Normalised sigmoid helper for the supercruise distance penalty curve.
+    This used to contain the complete curve calcuation, but now
+    this is only the primitive curve used by the larger calculation:
+        x / (1 + abs(x))
+
+    The full ls-penalty curve is assembled in TradeCalc.getBestHops(),
+    where this helper is used for the <1Kls boost and >4Kls drop terms.
+    """
     return x / (1 + abs(x))
 
 class TradeCalc:
@@ -1295,6 +1274,52 @@ class TradeCalc:
                         # penalty *= lsPenalty
                         # multiplier *= (1 - penalty)
                         cruiseKls = int(dstStation.lsFromStar / 100) / 10
+                        # Supercruise distance penalty curve.
+                        #
+                        # This is the full historical ls-penalty calculation. The
+                        # module-level sigmoid() helper is only the primitive
+                        # x / (1 + abs(x)) curve used by the boost/drop terms below.
+                        #
+                        # Original intent:
+                        # Produce a curve that favours distances under 1Kls,
+                        # starts to penalise distances over 1Kls, and after 4Kls
+                        # starts to penalise aggressively.
+                        #
+                        # The older polynomial form:
+                        #     penalty = ((cruiseKls ** 2) - cruiseKls) / 3
+                        # could go negative and cause scoring problems, so it was
+                        # replaced by this composite curve.
+                        #
+                        # Components:
+                        #
+                        # 1. Boost near x < 1:
+                        #        (1 - sigmoid(25 * (x - 1))) / 4
+                        #    ranges between 0.5 and 0 with a drop around x=1,
+                        #    giving a boost to stations closer than 1Kls.
+                        #
+                        # 2. Drop near x > 4:
+                        #        (-1 - sigmoid(50 * (x - 4))) / 4
+                        #    ranges between 0 and -0.5 with a drop around x=4,
+                        #    penalising stations farther than 4Kls.
+                        #
+                        # 3. Smooth middle penalty:
+                        #        (-1 + 1 / (x + 1) ** ((x + 1) / 4)) / 2
+                        #    ranges between 0 and -0.5 in a smooth arc, giving
+                        #    distances closer to 4Kls a slightly higher penalty
+                        #    than distances closer to 1Kls.
+                        #
+                        # Adding the three together creates a doubly-kinked curve
+                        # that ranges from ~0.5 to -1.0, with drops around x=1
+                        # and x=4. This closely matches kfsone's intention without
+                        # making the multiplier itself go negative.
+                        #
+                        # Graph of the original formula:
+                        # https://goo.gl/sn1PqQ
+                        #
+                        # In that graph, the black curve is penalty 0%, the red
+                        # curve is penalty 100%, with intermediates at 25%, 50%,
+                        # and 75%. The other coloured lines show the individual
+                        # penalty curves and the teal composite.
                         boost = (1 - sigmoid(25 * (cruiseKls - 1))) / 4
                         drop = (-1 - sigmoid(50 * (cruiseKls - 4))) / 4
                         try:
