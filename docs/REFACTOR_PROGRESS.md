@@ -51,7 +51,7 @@ Do not tick a task unless:
 ### Current active checkpoint
 - Status: `[-]`
 - Checkpoint: `K — Reduce TradeCalc setup cost`
-- Subtask: `K4 active — first-principles trade run architecture review`
+- Subtask: `K4 active — candidate consumption strategy (Phase B complete; design question open)`
 - Owner: `Tromador`
 - Started: `2026-05-03`
 - Goal: `Decide whether the preload-first TradeCalc/TradeDB route model should survive before doing further K3-style preload optimisation.`
@@ -60,12 +60,12 @@ Do not tick a task unless:
 - Status: `[!]`
 - Blocker: `Further K3 preload/cache optimisation is intentionally paused pending K4.`
 - Impact: `K3A capability preload filtering is landed and pragmatically validated, but further cache tuning may optimise an architecture that K4 decides to replace or demote.`
-- Needed to unblock: `Complete the K4 architecture review in docs/K4_TRADE_RUN_ARCHITECTURE.md and record the decision: keep preload, replace preload, or hybridise.`
+- Needed to unblock: `Answer the open K4 design question: how should the route engine consume SQL-generated candidate edges without materialising millions of low-value candidates into Python? Then record the architecture decision.`
 
 ### Last updated
-- Date: `2026-05-08`
+- Date: `2026-05-10`
 - By: `Tromador + assistant`
-- Session summary: `Sol-25ly fixture regenerated with corrected system list (previous build had a regex error that captured only the first word of each system name, excluding all multi-word systems and reducing the fixture to ~3 MB). New fixture is ~15 MB and contains all 172 systems. Blanco Manufacturing Forge now appears as a natural duplicate (Lushertha and Jastreb Sector CL-Y d145); no synthetic injection required. Fixture-dependent test workarounds reverted: Sigma Draconis, Luyten ambiguity, Ross 490/Dunyach Enterprise, Barnard's Star/Levi-Strauss Installation, and Jastreb Sector CL-Y d145 restored as test data. All tests passing.`
+- Session summary: `K4 Phase A and Phase B complete. SQL provider (k4_proto/provider.py) confirmed as a semantic match for the legacy stationsSelling/stationsBuying/getTrades raw edge seam. PRICE_AND_UNITS mode matches legacy exactly at both test fixtures (Achenar/Dawes Hub: 29,628 edges; Shinrarta Dezhra/Jameson Memorial: 1,702,258 edges). PRICE_ONLY is a superset by zero-unit rows and is diagnostic only. Parity materialisation timing (~36s for 1.7M edges) is a parity-test workload signal, not a runtime viability verdict. Open design question: candidate consumption strategy for route expansion. Phase B conclusion recorded in docs/K4_PHASE_B_CONCLUSION.md.`
 
 ### Last known good rollback point
 - Commit: `ee777adc`
@@ -495,8 +495,8 @@ Reduce `TradeCalc.__init__()` setup overhead before touching route maths.
   - Status note: `K3A capability preload filtering landed and was pragmatically validated. station_id IN (SELECT station_id FROM Station WHERE ...) subquery added to TradeCalc.__init__() query_prep. Filters pushed: padSize (max_pad_size), noPlanet/planetary (planetary), fleet (type_id via FLEET_CARRIER_TYPE_IDS registry), settlement (type_id via SETTLEMENT_TYPE_IDS registry), blackMarket (blackmarket), maxLs (ls_from_star). Registry constants used throughout; no raw magic numbers. Explicit anchor stations (origPlace/destPlace/viaSet) UNIONed into the subquery so checkStationSuitability() retains correct error provenance. Parser normalisation bug fixed: all four station filter parsers now store val.upper() at parse time. --stl alias added for --settlement. Further K3 preload/cache optimisation is paused pending K4.`
   - Evidence: `2f72d32b; 5bebc304; 4a81a218; 432 tests passing; live validation on 2026-05-08`
 - [-] K4. First-principles trade run architecture review
-  - Status note: `Active next. Work from docs/K4_TRADE_RUN_ARCHITECTURE.md. K4 must decide whether trade run should keep the preload-first TradeCalc/TradeDB cache model, replace it with SQL/frontier-driven candidate generation, or hybridise with a route-specific SQLAlchemy provider.`
-  - Evidence: `docs/K4_TRADE_RUN_ARCHITECTURE.md; discussion https://github.com/eyeonus/Trade-Dangerous/discussions/245; K3A validation session 2026-05-08`
+  - Status note: `Phase A (SQL provider self-check) and Phase B (raw edge parity) complete. PRICE_AND_UNITS mode confirmed as the canonical legacy-compatible edge eligibility rule. PRICE_ONLY is diagnostic/overinclusive. Parity materialisation timing is not a runtime viability verdict. Age/timestamp parity deferred. Open design question: how to consume SQL-generated candidate edges without materialising millions of low-value candidates into Python.`
+  - Evidence: `docs/K4_PHASE_B_CONCLUSION.md; k4_proto/provider.py; k4_proto/selfcheck.py; k4_proto/parity.py; fixtures Achenar/Dawes Hub (29,628 edges exact match) and Shinrarta Dezhra/Jameson Memorial (1,702,258 edges exact match)`
 - [~] K5. Push more filtering into SQL
   - Status note: `Deferred. Do not continue K3-style preload optimisation until K4 decides whether the preload-first model remains the right architecture.`
   - Evidence: `K4 planning decision 2026-05-08`
