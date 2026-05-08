@@ -51,21 +51,21 @@ Do not tick a task unless:
 ### Current active checkpoint
 - Status: `[-]`
 - Checkpoint: `K — Reduce TradeCalc setup cost`
-- Subtask: `K3 in progress — capability preload filtering landed; further K3 work ongoing`
+- Subtask: `K4 active — first-principles trade run architecture review`
 - Owner: `Tromador`
 - Started: `2026-05-03`
-- Goal: `Reduce TradeCalc.__init__() setup overhead before touching route maths.`
+- Goal: `Decide whether the preload-first TradeCalc/TradeDB route model should survive before doing further K3-style preload optimisation.`
 
 ### Current blocker
-- Status: `[ ]`
-- Blocker: `None currently recorded.`
-- Impact: `K3 capability preload filtering reduces StationItem row scan for constrained runs. Further K3 work to be determined by Tromador.`
-- Needed to unblock: `None.`
+- Status: `[!]`
+- Blocker: `Further K3 preload/cache optimisation is intentionally paused pending K4.`
+- Impact: `K3A capability preload filtering is landed and pragmatically validated, but further cache tuning may optimise an architecture that K4 decides to replace or demote.`
+- Needed to unblock: `Complete the K4 architecture review in docs/K4_TRADE_RUN_ARCHITECTURE.md and record the decision: keep preload, replace preload, or hybridise.`
 
 ### Last updated
 - Date: `2026-05-08`
 - By: `Tromador + assistant`
-- Session summary: `K3 capability preload filtering landed: station_id IN (SELECT ... FROM Station WHERE ...) subquery added to TradeCalc.__init__() for active pad/planetary/fleet/settlement/blackmarket/ls-max filters. Explicit anchor stations (--from/--to/--via) UNIONed in to preserve checkStationSuitability() error provenance. Parser normalisation bug fixed: all four station filter parsers now store val.upper() at parse time. --stl alias added for --settlement. .claude/ added to .gitignore. K3 remains in progress.`
+- Session summary: `K3A capability preload filtering landed and was pragmatically validated. The session identified a larger architecture issue: trade run still materialises large StationItem subsets into a Python-side cache and then performs database-like filtering/joining in Python, which only makes strong sense for a long-lived cached object. Further K3 preload work is paused. New side document docs/K4_TRADE_RUN_ARCHITECTURE.md defines K4: first-principles review of trade run, TradeCalc, TradeDB dependency, and possible SQL/frontier-driven candidate generation.`
 
 ### Last known good rollback point
 - Commit: `4a81a218`
@@ -491,24 +491,26 @@ Reduce `TradeCalc.__init__()` setup overhead before touching route maths.
 - [x] K2A. Station type registry and settlement/fleet filter rationalisation
   - Status note: `Inserted before K3 because capability filtering exposed that station type semantics were still legacy/collapsed and the old --odyssey filter was misnamed. Added tradedangerous/db/station_types.py as the canonical source of truth: 0-15 type_id constants, DISPLAY_NAMES, external Spansh type mapping, FLEET_CARRIER_TYPE_IDS, SETTLEMENT_TYPE_IDS, PLANETARY_BY_TYPE_IDS, and fleet_carrier_state()/settlement_state() helpers. Spansh import now maps station.type through the registry instead of the old collapsed _build_station_type_map(). --odyssey/--od was renamed to --settlement with no legacy alias across commands and GUI. Y/N/? semantics were corrected: Y=in classification set, N=known and not in set, ?=UNKNOWN/type_id 0. Full six-combination SQL filter logic was applied in local/buy/sell; nav/olddata/run use Python-side station state. --settlement Y requires planetary Y, centralised in CommandEnv.checkSettlement(). TradeDB.odysseyStates became settlementStates; Station.odyssey became settlement; _loadStations() uses registry helpers. Listener fallback for unknown station types was corrected to UNKNOWN/type_id 0. Fresh Sol-25ly fixtures were regenerated from Spansh/EDDBlink, fixture-dependent tests updated, stray generated fixture files removed, and synthetic Blanco Manufacturing Forge duplicate kept consistent between DB and Station.csv.`
   - Evidence: `80b67f2b; 0c19625d; 9d48ed45; 1c82e381; 58bb1cc1; a9761f9d; fd7529d8; a19719d2; 542af129; 7df13360; 432 tests passing`
-- [-] K3. Wire station restriction narrowing properly
-  - Status note: `station_id IN (SELECT station_id FROM Station WHERE ...) subquery added to TradeCalc.__init__() query_prep. Filters pushed: padSize (max_pad_size), noPlanet/planetary (planetary), fleet (type_id via FLEET_CARRIER_TYPE_IDS registry), settlement (type_id via SETTLEMENT_TYPE_IDS registry), blackMarket (blackmarket), maxLs (ls_from_star). Registry constants used throughout; no raw magic numbers. Explicit anchor stations (origPlace/destPlace/viaSet) UNIONed into the subquery so checkStationSuitability() retains correct error provenance. Parser normalisation bug fixed: all four station filter parsers now store val.upper() at parse time. --stl alias added for --settlement. Further K3 work ongoing.`
-  - Evidence: `2f72d32b; 5bebc304; 4a81a218; 432 tests passing`
-- [ ] K4. Push more filtering into SQL
-  - Status note:
-  - Evidence:
-- [ ] K5. Evaluate SQL-side timestamp handling
-  - Status note:
-  - Evidence:
-- [ ] K6. Consider chunking only if evidence demands it
-  - Status note:
-  - Evidence:
-- [ ] K7. Re-benchmark `run`
-  - Status note:
-  - Evidence:
+- [x] K3. Wire station restriction narrowing properly
+  - Status note: `K3A capability preload filtering landed and was pragmatically validated. station_id IN (SELECT station_id FROM Station WHERE ...) subquery added to TradeCalc.__init__() query_prep. Filters pushed: padSize (max_pad_size), noPlanet/planetary (planetary), fleet (type_id via FLEET_CARRIER_TYPE_IDS registry), settlement (type_id via SETTLEMENT_TYPE_IDS registry), blackMarket (blackmarket), maxLs (ls_from_star). Registry constants used throughout; no raw magic numbers. Explicit anchor stations (origPlace/destPlace/viaSet) UNIONed into the subquery so checkStationSuitability() retains correct error provenance. Parser normalisation bug fixed: all four station filter parsers now store val.upper() at parse time. --stl alias added for --settlement. Further K3 preload/cache optimisation is paused pending K4.`
+  - Evidence: `2f72d32b; 5bebc304; 4a81a218; 432 tests passing; live validation on 2026-05-08`
+- [-] K4. First-principles trade run architecture review
+  - Status note: `Active next. Work from docs/K4_TRADE_RUN_ARCHITECTURE.md. K4 must decide whether trade run should keep the preload-first TradeCalc/TradeDB cache model, replace it with SQL/frontier-driven candidate generation, or hybridise with a route-specific SQLAlchemy provider.`
+  - Evidence: `docs/K4_TRADE_RUN_ARCHITECTURE.md; discussion https://github.com/eyeonus/Trade-Dangerous/discussions/245; K3A validation session 2026-05-08`
+- [~] K5. Push more filtering into SQL
+  - Status note: `Deferred. Do not continue K3-style preload optimisation until K4 decides whether the preload-first model remains the right architecture.`
+  - Evidence: `K4 planning decision 2026-05-08`
+- [~] K6. Evaluate SQL-side timestamp handling
+  - Status note: `Deferred pending K4. parse_ts() remains untouched; SQL-side age work should not proceed until the route data-provider decision is known.`
+  - Evidence: `K4 planning decision 2026-05-08`
+- [~] K7. Re-benchmark `run`
+  - Status note: `Deferred until K4 produces an architecture decision or prototype path worth benchmarking.`
+  - Evidence: `K4 planning decision 2026-05-08`
 
 ### Notes
--
+- K3A is accepted as tactical containment, not as the final answer to trade run performance.
+- K4 exists because TradeCalc is still materialising a large Python-side market cache and then performing database-like filtering/joining over that cache during normal single-query CLI execution.
+- Further preload/cache polishing is paused to avoid optimising an architecture that K4 may replace or demote.
 
 ---
 
