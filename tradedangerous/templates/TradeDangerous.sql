@@ -111,7 +111,7 @@ CREATE TABLE ShipVendor
     ON DELETE CASCADE
  ) WITHOUT ROWID
 ;
-
+CREATE INDEX idx_shipvendor_by_station ON ShipVendor (station_id);
 
 CREATE TABLE Upgrade
  (
