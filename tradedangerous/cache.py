@@ -405,6 +405,7 @@ def processPrices(
     processedItems = {}
     stationItemDates = {}
     DELETED = corrections.DELETED
+    MISSING_STATION = object()
     items, zeros = [], []
     
     lineNo, localAdd = 0, 0
@@ -456,19 +457,19 @@ def processPrices(
         facility = f'{systemName}/{stationName}'
         
         stationID = DELETED
-        newID = stationByName.get(facility, -1)
+        newID = stationByName.get(facility, MISSING_STATION)
         DEBUG0("Selected station: {}, ID={}", facility, newID)
         
-        if newID is DELETED:
+        if newID == DELETED:
             DEBUG1("DELETED Station: {}", facility)
             return
         
-        if newID < 0:
+        if newID is MISSING_STATION:
             assert not utils.checkForOcrDerp(tdenv, systemName, stationName)
 
             corrected = True
             altName = sysCorrections.get(systemName)
-            if altName is DELETED:
+            if altName == DELETED:
                 DEBUG1("DELETED System: {}", facility)
                 return
             if altName:
@@ -484,7 +485,7 @@ def processPrices(
             
             altStation = stnCorrections.get(facility)
             if altStation:
-                if altStation is DELETED:
+                if altStation == DELETED:
                     DEBUG1("DELETED Station: {}", facility)
                     return
                 
@@ -492,12 +493,12 @@ def processPrices(
                 stationName = altStation.upper()
                 facility = f'{systemName}/{stationName}'
             
-            newID = stationByName.get(facility, -1)
-            if newID is DELETED:
+            newID = stationByName.get(facility, MISSING_STATION)
+            if newID == DELETED:
                 DEBUG1("Renamed station DELETED: {}", facility)
                 return
         
-        if newID < 0:
+        if newID is MISSING_STATION:
             if not ignoreUnknown:
                 ignoreOrWarn(
                     UnknownStationError(priceFile, lineNo, facility)

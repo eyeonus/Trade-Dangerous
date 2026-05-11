@@ -197,6 +197,28 @@ CREATE INDEX si_mod_stn_itm ON StationItem(modified, station_id, item_id);
 CREATE INDEX si_itm_dmdpr ON StationItem(item_id, demand_price) WHERE demand_price > 0;
 CREATE INDEX si_itm_suppr ON StationItem(item_id, supply_price) WHERE supply_price > 0;
 
+CREATE VIEW StationBuying AS
+SELECT  station_id,
+        item_id,
+        demand_price AS price,
+        demand_units AS units,
+        demand_level AS level,
+        modified
+  FROM  StationItem
+ WHERE  demand_price > 0
+;
+
+CREATE VIEW StationSelling AS
+SELECT  station_id,
+        item_id,
+        supply_price AS price,
+        supply_units AS units,
+        supply_level AS level,
+        modified
+  FROM  StationItem
+ WHERE  supply_price > 0
+;
+
 --
 -- The next two tables (FDevShipyard, FDevOutfitting) are
 -- used to map the FDev API IDs to data ready for EDDN.
