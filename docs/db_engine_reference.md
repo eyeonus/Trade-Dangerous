@@ -81,7 +81,7 @@ It is **side-effect free** on import and exposes a minimal, cross-platform API f
 - Configuration loading  
 - Path resolution  
 - Engine/session bootstrap  
-- Health checks
+- Database lifecycle management
 
 ---
 
@@ -96,7 +96,8 @@ The following functions and helpers are imported and re-exported:
 - `resolve_db_config_path` — from `.paths`  
 - `make_engine_from_config` — from `.engine`  
 - `get_session_factory` — from `.engine`  
-- `healthcheck` — from `.engine`  
+- `ensure_fresh_db` — from `.lifecycle`  
+- `Category`, `Item`, `Station`, `System` — from `.orm_models`  
 
 They are made available via the `__all__` list for clean imports.
 
@@ -107,91 +108,12 @@ They are made available via the `__all__` list for clean imports.
 ```python
 from tradedangerous.db import (
     load_config, resolve_data_dir, resolve_tmp_dir, ensure_dir, resolve_db_config_path,
-    make_engine_from_config, get_session_factory, healthcheck,
+    make_engine_from_config, get_session_factory, ensure_fresh_db,
+    Category, Item, Station, System,
 )
 ```
 
 Importing this module does not perform any I/O or side effects — it only re-exports the supported API surface.
-
-
----
-
-# Database Adapter (`tradedangerous/db/adapter.py`)
-
-## Purpose
-Provides a **read-only façade** over SQLAlchemy for legacy `TradeDB` queries.  
-This allows existing parts of TradeDangerous to use ORM-backed reads without
-rewriting their expectations.
-
-The adapter is constructed lazily and only enabled when the backend is **not SQLite**.
-
----
-
-## Public Entry
-
-### `get_adapter_if_enabled(cfg_path: Optional[str] = None) -> TradeDBReadAdapter | None`
-- Returns a `TradeDBReadAdapter` if `[database].backend != sqlite`.
-- Reads configuration from `cfg_path` (defaults to resolved `db_config.ini`).  
-- Returns `None` for SQLite to avoid overhead.  
-- Side-effect free at import; engine created only when needed.
-
----
-
-## Class: `TradeDBReadAdapter`
-
-Small read-only adapter mapping legacy `TradeDB` access patterns onto SQLAlchemy.
-
-### Lifecycle
-- Created with `cfg_path`.
-- Lazily builds `Engine` + `Session` factory on first use.
-
-### Properties
-- `Session` → sessionmaker bound to engine.
-
-### Context Manager
-- `session()` → yields a SQLAlchemy `Session` with contextlib-managed scope.
-
-### Query Methods
-
-#### `list_system_rows() -> Iterable[Tuple[int,str,float,float,float,Optional[int]]]`
-Equivalent to legacy `_loadSystems`.  
-Returns `(system_id, name, pos_x, pos_y, pos_z, added_id)`.
-
-#### `system_by_name(name_ci: str)`
-Case-insensitive system lookup.  
-Returns system tuple or `None`.
-
-#### `station_by_system_and_name(system_id: int, station_name_ci: str)`
-Case-insensitive station lookup by system + name.  
-Shape matches legacy `_loadStations` rows consumed by `Station(...)`:
-```
-(station_id, system_id, name,
- ls_from_star, market, blackmarket, shipyard,
- max_pad_size, outfitting, rearm, refuel, repair, planetary, type_id)
-```
-
-#### `average_selling() -> Dict[int,int]`
-- Computes average `supply_price` per `item_id` where >0.  
-- Mirrors legacy `TradeDB.getAverageSelling`.
-
-#### `average_buying() -> Dict[int,int]`
-- Computes average `demand_price` per `item_id` where >0.  
-- Mirrors legacy `TradeDB.getAverageBuying`.
-
----
-
-## Usage Example
-```python
-from tradedangerous.db.adapter import get_adapter_if_enabled
-
-adapter = get_adapter_if_enabled("db_config.ini")
-if adapter:
-    print(list(adapter.list_system_rows())[:5])
-    avg_sell = adapter.average_selling()
-    avg_buy = adapter.average_buying()
-```
-
----
 
 
 ---
@@ -426,7 +348,7 @@ print(summary)
 
 ## Purpose
 Defines the **SQLAlchemy ORM models** for the TradeDangerous database schema.  
-Covers systems, stations, items, prices, ships, upgrades, staging, and export control.
+Covers systems, stations, items, prices, ships, and upgrades.
 
 Includes dialect-aware timestamp helpers (`now6`, `DateTime6`) for consistent `DATETIME(6)` handling.
 
@@ -455,21 +377,8 @@ Applies deterministic naming to constraints and indexes (ix, uq, ck, fk, pk).
 
 ---
 
-## Control & Staging
-
-### `ExportControl`
-- Singleton row for hybrid export watermark.  
-- `id` (always 1), `last_full_dump_time` (DateTime6), `last_reset_key` (cursor, bigint).
-
-### `StationItemStaging`
-- Mirror of `StationItem` for bulk loads (no FKs).  
-- PK: `(station_id,item_id)`  
-- Index: `idx_sistaging_stn_itm`
-
----
-
 ## Exported API (`__all__`)
-- Base + all models: `System`, `Station`, `Category`, `Item`, `StationItem`, `Ship`, `ShipVendor`, `Upgrade`, `UpgradeVendor`, `ExportControl`, `StationItemStaging`
+- `Base` + all models: `System`, `Station`, `Category`, `Item`, `StationItem`, `Ship`, `ShipVendor`, `Upgrade`, `UpgradeVendor`, `FDevShipyard`, `FDevOutfitting`
 
 ---
 

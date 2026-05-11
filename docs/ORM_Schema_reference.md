@@ -13,7 +13,8 @@
 | TriState / Pad | `TEXT(1)` + `CHECK` | SQLAlchemy `Enum` → DB `CHECK` + Python validation |
 | Timestamps | `DEFAULT CURRENT_TIMESTAMP` (where present) | `DateTime(6)` with `now6()` defaults where applicable |
 | StationItem price indexes | Partial (`WHERE price > 0`) | Same column order; use `> 0` predicates in queries |
-| UpgradeVendor.modified | `NOT NULL`, **no default** | App must set value explicitly (unchanged) |
+| UpgradeVendor.modified | `NOT NULL`, no default | Application must supply value on insert |
+| `WITHOUT ROWID` | `Station`, `ShipVendor`, `UpgradeVendor`, `StationItem` | SQLite only; ORM uses `sqlite_with_rowid=False` to match template |
 | Views | `StationBuying`, `StationSelling` | Not modeled; mirror predicates in queries |
 
 **Domain sets (enforced everywhere)**
@@ -40,20 +41,20 @@
 
 ### System
 - **Columns:** `system_id` PK; `name` (CI); `pos_x/pos_y/pos_z` (float); `modified` (default timestamp).
-- **Indexes (canonical):** `idx_system_by_pos (pos_x,pos_y,pos_z,system_id)`.
-- **Notes:** An ORM index on `name` may exist for perf (not in legacy SQLite DDL).
+- **Indexes:** `idx_system_by_pos (pos_x,pos_y,pos_z,system_id)`, `idx_system_by_name (name)`.
 
 ### Station
-- **Columns:** `station_id` PK; `name` (CI); `system_id` FK (DELETE CASCADE); `ls_from_star ≥ 0` (default 0); service flags (`TriState`); `max_pad_size` (`PadSize`); `type_id` default 0; `modified` default timestamp.
-- **Indexes:** `idx_station_by_system (system_id)`, `idx_station_by_name (name)`.
+- **Columns:** `station_id` PK; `name` (CI); `system_id` FK (DELETE CASCADE); `ls_from_star` (default 0, CHECK ≥ 0 on both backends); service flags (`TriState`); `max_pad_size` (`PadSize`); `type_id` default 0; `modified` default timestamp.
+- **Indexes:** `idx_station_by_system (system_id)`, `idx_station_by_name (name)`, `idx_station_by_system_name (system_id, name)`.
+- **Storage:** `WITHOUT ROWID` on SQLite.
 
 ### Category
 - **Columns:** `category_id` PK; `name` (CI).
-- **Indexes:** none in SQLite DDL; ORM may add one for perf.
+- **Indexes:** `idx_category_by_name (name)` — ORM only; not in SQLite template.
 
 ### Item
 - **Columns:** `item_id` PK; `name` (CI); `category_id` FK (update/delete cascade); `ui_order` default 0; `avg_price` nullable; `fdev_id` nullable; `rare_station_id` nullable BIGINT FK → `Station.station_id` (update CASCADE, delete RESTRICT).
-- **Indexes:** `idx_item_by_fdev_id (fdev_id)`.
+- **Indexes:** `idx_item_by_fdev_id (fdev_id)`; `idx_item_by_category (category_id)` — ORM only.
 - **Rarity model:** `rare_station_id IS NOT NULL` means the item is rare and identifies its canonical source station. Most items have `NULL`.
 
 ### StationItem
@@ -64,6 +65,7 @@
   - `si_itm_dmdpr (item_id, demand_price) WHERE demand_price > 0`.
   - `si_itm_suppr (item_id, supply_price) WHERE supply_price > 0`.
 - **Query rule:** Always include `> 0` predicates for price-side scans to preserve planner behavior across backends.
+- **Storage:** `WITHOUT ROWID` on SQLite.
 
 ### Ship
 - **Columns:** `ship_id` PK; `name` (CI); `cost` nullable.
@@ -71,13 +73,17 @@
 ### ShipVendor
 - **Columns:** composite PK `(ship_id, station_id)`; `modified` default timestamp.
 - **FKs:** to `Ship` and `Station` (update/delete cascade).
+- **Indexes:** `idx_shipvendor_by_station (station_id)`.
+- **Storage:** `WITHOUT ROWID` on SQLite.
 
 ### Upgrade
 - **Columns:** `upgrade_id` PK; `name` (CI); `class` (int/number); `rating` `CHAR(1)`; `ship` (CI, nullable).
 
 ### UpgradeVendor
-- **Columns:** composite PK `(upgrade_id, station_id)`; `modified` **NOT NULL** (no default; application must set).
+- **Columns:** composite PK `(upgrade_id, station_id)`; `modified` NOT NULL, no default — application must supply on insert.
 - **FKs:** to `Upgrade` and `Station` (update/delete cascade).
+- **Indexes:** `idx_vendor_by_station_id (station_id)`.
+- **Storage:** `WITHOUT ROWID` on SQLite.
 
 ---
 
