@@ -100,8 +100,6 @@ from .db.orm_models import (  # noqa: F401  # pylint: disable=unused-import
     ShipVendor         as SA_ShipVendor,
     Upgrade            as SA_Upgrade,
     UpgradeVendor      as SA_UpgradeVendor,
-    ExportControl      as SA_ExportControl,
-    StationItemStaging as SA_StationItemStaging,
 )
 
 

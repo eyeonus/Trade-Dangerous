@@ -134,7 +134,6 @@ class System(Base):
     modified: Mapped[str] = mapped_column(
         DateTime6(),
         server_default=now6(),
-        onupdate=now6(),
         nullable=False,
     )
     
@@ -180,7 +179,7 @@ class Station(Base):
     planetary: Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
     
     type_id: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
-    modified: Mapped[str] = mapped_column(DateTime6(), server_default=now6(), onupdate=now6(), nullable=False)
+    modified: Mapped[str] = mapped_column(DateTime6(), server_default=now6(), nullable=False)
     
     # Relationships
     system: Mapped["System"] = relationship(back_populates="stations")
@@ -192,6 +191,7 @@ class Station(Base):
         Index("idx_station_by_system", "system_id"),
         Index("idx_station_by_name", "name"),
         Index("idx_station_by_system_name", "system_id", "name"),
+        {"sqlite_with_rowid": False},
     )
 
 
@@ -241,7 +241,7 @@ class Item(Base):
         return self.rare_station_id is not None
     
     __table_args__ = (
-        Index("idx_item_by_fdevid", "fdev_id"),
+        Index("idx_item_by_fdev_id", "fdev_id"),
         Index("idx_item_by_category", "category_id"),
     )
 
@@ -278,7 +278,7 @@ class StationItem(Base):
     supply_price: Mapped[int] = mapped_column(Integer, nullable=False)
     supply_units: Mapped[int] = mapped_column(Integer, nullable=False)
     supply_level: Mapped[int] = mapped_column(Integer, nullable=False)
-    modified: Mapped[str] = mapped_column(DateTime6(), server_default=now6(), onupdate=now6(), nullable=False)
+    modified: Mapped[str] = mapped_column(DateTime6(), server_default=now6(), nullable=False)
     from_live: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     
     # Relationships
@@ -318,13 +318,13 @@ class ShipVendor(Base):
         ForeignKey("Station.station_id", ondelete="CASCADE", onupdate="CASCADE"),
         primary_key=True,
     )
-    modified: Mapped[str] = mapped_column(DateTime6(), server_default=now6(), onupdate=now6(), nullable=False)
+    modified: Mapped[str] = mapped_column(DateTime6(), server_default=now6(), nullable=False)
     
     # Relationships
     ship: Mapped["Ship"] = relationship(back_populates="vendors")
     station: Mapped["Station"] = relationship(back_populates="ship_vendors")
     
-    __table_args__ = (Index("idx_shipvendor_by_station", "station_id"),)
+    __table_args__ = (Index("idx_shipvendor_by_station", "station_id"),{"sqlite_with_rowid": False},)
 
 
 class Upgrade(Base):
@@ -356,13 +356,13 @@ class UpgradeVendor(Base):
         ForeignKey("Station.station_id", ondelete="CASCADE", onupdate="CASCADE"),
         primary_key=True,
     )
-    modified: Mapped[str] = mapped_column(DateTime6(), nullable=False, server_default=now6(), onupdate=now6())
+    modified: Mapped[str] = mapped_column(DateTime6(), nullable=False)
     
     # Relationships
     upgrade: Mapped["Upgrade"] = relationship(back_populates="vendors")
     station: Mapped["Station"] = relationship(back_populates="upgrade_vendors")
     
-    __table_args__ = (Index("idx_vendor_by_station_id", "station_id"),)
+    __table_args__ = (Index("idx_vendor_by_station_id", "station_id"),{"sqlite_with_rowid": False},)
 
 
 class FDevShipyard(Base):
@@ -408,41 +408,6 @@ class FDevOutfitting(Base):
     )
 
 
-# ---------- Control & Staging ----------
-class ExportControl(Base):
-    """
-    Singleton control row for hybrid export/watermarking.
-    - id: always 1
-    - last_full_dump_time: watermark
-    - last_reset_key: optional cursor for chunked from_live resets
-    """
-    __tablename__ = "ExportControl"
-    
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, server_default=text("1"))
-    last_full_dump_time: Mapped[str] = mapped_column(DateTime6(), nullable=False)
-    last_reset_key: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-
-
-class StationItemStaging(Base):
-    """
-    Staging table for bulk loads (no FKs). Same columns as StationItem.
-    """
-    __tablename__ = "StationItem_staging"
-    
-    station_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    item_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    demand_price: Mapped[int] = mapped_column(Integer, nullable=False)
-    demand_units: Mapped[int] = mapped_column(Integer, nullable=False)
-    demand_level: Mapped[int] = mapped_column(Integer, nullable=False)
-    supply_price: Mapped[int] = mapped_column(Integer, nullable=False)
-    supply_units: Mapped[int] = mapped_column(Integer, nullable=False)
-    supply_level: Mapped[int] = mapped_column(Integer, nullable=False)
-    modified: Mapped[str] = mapped_column(DateTime6(), server_default=now6(), onupdate=now6(), nullable=False)
-    from_live: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
-    
-    __table_args__ = (Index("idx_sistaging_stn_itm", "station_id", "item_id"),)
-
-
 __all__ = [
     # Base
     "Base",
@@ -458,7 +423,4 @@ __all__ = [
     "UpgradeVendor",
     "FDevShipyard",
     "FDevOutfitting",
-    # Control & staging
-    "ExportControl",
-    "StationItemStaging",
 ]

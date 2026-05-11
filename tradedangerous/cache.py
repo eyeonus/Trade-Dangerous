@@ -409,6 +409,29 @@ def processPrices(
     
     lineNo, localAdd = 0, 0
     
+    # Local placeholder stations must not rely on DB-generated IDs.
+    # Canonical SQLite uses an explicit Station.station_id and WITHOUT ROWID,
+    # so rowid/lastrowid behaviour is not a portable contract.
+    min_station_id = (
+        session.query(func.min(SA.Station.station_id))
+        .filter(SA.Station.station_id < 0)
+        .scalar()
+    )
+    next_placeholder_station_id = (
+        int(min_station_id) - 1
+        if min_station_id is not None
+        else -1
+    )
+
+    def allocate_placeholder_station_id() -> int:
+        nonlocal next_placeholder_station_id
+
+        station_id = next_placeholder_station_id
+        while station_id == DELETED:
+            station_id -= 1
+
+        next_placeholder_station_id = station_id - 1
+        return station_id
     if not ignoreUnknown:
         def ignoreOrWarn(error: Exception) -> None:
             raise error
@@ -482,8 +505,13 @@ def processPrices(
                 return
             
             name = utils.titleFixup(stationName)
-            # ORM insert: placeholder station
+            newID = allocate_placeholder_station_id()
+
+            # ORM insert: local-only placeholder station.
+            # Supply station_id explicitly; do not depend on backend
+            # identity/autoincrement/rowid behaviour.
             station = SA.Station(
+                station_id=newID,
                 system_id=systemID,
                 name=name,
                 ls_from_star=0,
@@ -493,8 +521,7 @@ def processPrices(
                 shipyard='?',
             )
             session.add(station)
-            session.flush()  # assign station_id
-            newID = station.station_id
+            session.flush()
             
             stationByName[facility] = newID
             tdenv.NOTE(

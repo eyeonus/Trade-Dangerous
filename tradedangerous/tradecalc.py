@@ -79,7 +79,6 @@ locale.setlocale(locale.LC_ALL, '')
 ######################################################################
 # Exceptions
 
-
 class UserAbortedRun(SimpleAbort):
     """
     UserAbortedRunError is raised when a user hits ctrl-c during a
@@ -92,34 +91,12 @@ class UserAbortedRun(SimpleAbort):
     def __str__(self) -> str:
         return f"*** Ctrl+C: User aborted run: {super().__str__()}"
 
-
-class BadTimestampError(TradeException):
-    """
-    Raised when a StationItem row has an invalid or unparsable timestamp.
-    """
-    
-    def __init__(self, tdb, stationID, itemID, modified):
-        self.station = tdb.stationByID[stationID]
-        self.item = tdb.itemByID[itemID]
-        self.modified = modified
-    
-    def __str__(self):
-        return (
-            "Error loading price data from the local db:\n"
-            f"{self.station.name()} has a StationItem entry for "
-            f"\"{self.item.name()}\" with an invalid modified timestamp: "
-            f"'{self.modified}'."
-        )
-
-
 class NoHopsError(TradeException):
     """Raised when no possible hops can be generated within constraints."""
     pass
 
-
 ######################################################################
 # TradeLoad (namedtuple wrapper)
-
 
 class TradeLoad(NamedTuple):
     """
@@ -778,6 +755,11 @@ class TradeCalc:
         
         tdenv.DEBUG1("query: {}", sql)
         tdenv.DEBUG1("params: {}", params)
+
+        bad_timestamp_count = 0
+        bad_timestamp_samples = []
+        bad_timestamp_sample_limit = 5
+
         with tdenv.time_block("TradeCalc.__init__.row_scan", level=0):
             with tdb.engine.connect() as conn:
                 result = conn.execute(_sa_text(sql), params)
@@ -791,12 +773,17 @@ class TradeCalc:
                 ) in result:
                     rows_seen += 1
                     # Compute legacy ageS from modified using parse_ts(.)
+                    # If a row has a broken timestamp, ignore that row rather
+                    # than aborting the whole route calculation. Bad timestamps
+                    # mean the price age cannot be trusted, so the row is not
+                    # eligible for routing.
                     mod_dt = parse_ts(modified)
                     if not mod_dt:
-                        if showProgress:
-                            sys.stdout.write("\n")
-                            sys.stdout.flush()
-                        raise BadTimestampError(tdb, stnID, itmID, modified)
+                        bad_timestamp_count += 1
+                        if len(bad_timestamp_samples) < bad_timestamp_sample_limit:
+                            bad_timestamp_samples.append((stnID, itmID, modified))
+                        continue
+
                     ageS = nowS - int(mod_dt.timestamp())
                     
                     # Buying map (demand side)
@@ -817,6 +804,24 @@ class TradeCalc:
         if showProgress:
             sys.stdout.write("\n")
             sys.stdout.flush()
+
+        if bad_timestamp_count:
+            sample_text = []
+            for stnID, itmID, modified in bad_timestamp_samples:
+                station = tdb.stationByID.get(stnID) if tdb.stationByID else None
+                item = tdb.itemByID.get(itmID) if tdb.itemByID else None
+                station_name = station.name() if station else f"Station #{stnID}"
+                item_name = item.name() if item else f"Item #{itmID}"
+                sample_text.append(
+                    f"{station_name} / {item_name}: modified={modified!r}"
+                )
+
+            tdenv.WARN(
+                "Ignored {:n} StationItem rows with invalid modified timestamps. "
+                "Affected rows were excluded from routing.{}",
+                bad_timestamp_count,
+                "\nExamples:\n  " + "\n  ".join(sample_text) if sample_text else "",
+            )
 
         tdenv.DEBUG0(
             "TradeCalc row scan: {:,} rows seen, {:,} buy entries, {:,} sell entries{}{}",
