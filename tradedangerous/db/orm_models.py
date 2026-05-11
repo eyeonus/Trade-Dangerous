@@ -188,6 +188,7 @@ class Station(Base):
     upgrade_vendors: Mapped[list["UpgradeVendor"]] = relationship(back_populates="station", cascade="all, delete-orphan")
     
     __table_args__ = (
+        CheckConstraint("ls_from_star >= 0", name="ck_station_ls_from_star_nonnegative"),
         Index("idx_station_by_system", "system_id"),
         Index("idx_station_by_name", "name"),
         Index("idx_station_by_system_name", "system_id", "name"),
