@@ -82,12 +82,16 @@ class CommandEnv(TradeEnv):
             raise CommandLineError("'--detail' (-v) and '--quiet' (-q) are mutually exclusive.")
         
         self._cmd = cmdModule
-        _module_needs = getattr(cmdModule, 'needs', None)
-        if _module_needs is not None:
-            self.commandNeeds = _module_needs
+        needs_selector = getattr(cmdModule, 'selectNeeds', None)
+        if needs_selector and callable(needs_selector):
+            self.commandNeeds = needs_selector(self)
         else:
-            _wants = getattr(cmdModule, 'wantsTradeDB', True)
-            self.commandNeeds = Needs.FULL_LEGACY if _wants else Needs.LEGACY_HANDLE
+            _module_needs = getattr(cmdModule, 'needs', None)
+            if _module_needs is not None:
+                self.commandNeeds = _module_needs
+            else:
+                _wants = getattr(cmdModule, 'wantsTradeDB', True)
+                self.commandNeeds = Needs.FULL_LEGACY if _wants else Needs.LEGACY_HANDLE
         self.needs_resolver  = bool(self.commandNeeds & Needs.RESOLVER)
         self.needs_legacy_db = bool(self.commandNeeds & (Needs.LEGACY_HANDLE | Needs.FULL_LEGACY))
         self.needs_full_load = bool(self.commandNeeds & Needs.FULL_LEGACY)

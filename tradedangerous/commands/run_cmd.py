@@ -8,7 +8,7 @@ import typing
 from tradedangerous.tradedb import describeAge, TradeDB, Station, System
 from tradedangerous.tradecalc import NoHopsError, Route, TradeCalc, UserAbortedRun
 
-from .commandenv import ResultRow
+from .commandenv import Needs, ResultRow
 from .exceptions import CommandLineError, NoDataError
 from .parsing import (
     BlackMarketSwitch, FleetCarrierArgument, MutuallyExclusiveGroup,
@@ -16,9 +16,24 @@ from .parsing import (
     PlanetaryArgument,
 )
 
+from tradedangerous.db import get_session_factory, make_engine_from_config
+from tradedangerous.planner.failures import (
+    AmbiguousPlace,
+    InvalidRunRequest,
+    NoAffordableCargo,
+    NoProfitableTrades,
+    NoReachableRoute,
+    PlannerFailure,
+    StationHasNoUsablePriceData,
+    UnknownPlace,
+)
+from tradedangerous.planner.render_text import render_run_result
+from tradedangerous.planner.run_onehop import plan_onehop_route
+from tradedangerous.planner.run_request import run_request_from_cmdenv
+from tradedangerous.planner.run_result import RunResult
+
 if typing.TYPE_CHECKING:
     from tradedangerous import TradeEnv
-
 
 ######################################################################
 # Parser config
@@ -27,6 +42,14 @@ help = 'Calculate best trade run.'
 name = 'run'
 epilog = None
 usesTradeData = True
+
+
+def selectNeeds(cmdenv):
+    """Choose the database setup needed by the selected planner path."""
+
+    if getattr(cmdenv, "old", False):
+        return Needs.FULL_LEGACY
+    return Needs.RESOLVER
 
 arguments = [
     ParseArgument('--capacity',
@@ -265,6 +288,11 @@ switches = [
     ParseArgument('--shorten',
         help = '(Requires --to) Find the shortest route with the best gpt.',
         action = 'store_true',
+    ),
+    ParseArgument('--old',
+        help = 'Use the previous trade run planner for comparison.',
+        action = 'store_true',
+        default = False,
     ),
 ]
 
@@ -1253,6 +1281,29 @@ def extraRouteProgress(routes):
 
 
 def run(results, cmdenv, tdb):
+    if not getattr(cmdenv, "old", False):
+        request = run_request_from_cmdenv(cmdenv)
+        engine = make_engine_from_config()
+        session_factory = get_session_factory(engine)
+        
+        try:
+            with session_factory() as session:
+                results.data = plan_onehop_route(session, request)
+                results.summary.exception = ""
+        except (
+            NoAffordableCargo,
+            NoProfitableTrades,
+            NoReachableRoute,
+            StationHasNoUsablePriceData,
+        ) as exc:
+            raise NoDataError(exc.message) from exc
+        except (AmbiguousPlace, InvalidRunRequest, UnknownPlace) as exc:
+            raise CommandLineError(exc.message) from exc
+        except PlannerFailure as exc:
+            raise CommandLineError(exc.message) from exc
+        
+        return results
+    
     cmdenv.DEBUG1("loading trades")
     
     if tdb.tradingCount == 0:
@@ -1542,6 +1593,10 @@ def no_routes_on_first_hop(cmdenv: TradeEnv, calc: TradeCalc) -> None:
 
 
 def render(results, cmdenv, tdb):
+    if isinstance(results.data, RunResult):
+        cmdenv.console.print(render_run_result(results.data), highlight=False)
+        return
+    
     if (exception := results.summary.exception.strip()):
         style = ""
         lines = exception.split("\n")
