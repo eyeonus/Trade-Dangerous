@@ -2,6 +2,74 @@
 
 <!-- version list -->
 
+## v12.22.4 (2026-05-14)
+
+### Bug Fixes
+
+- **gui**: Restore system inputs in Local and Rare Search
+  ([#312](https://github.com/eyeonus/Trade-Dangerous/pull/312),
+  [`974e9d6`](https://github.com/eyeonus/Trade-Dangerous/commit/974e9d6c4936e12a2a1edeeaf4d7518fe12821ef))
+
+Use the correctly imported system autocomplete helper when building the Local and Rare Search GUI
+  sections.
+
+Previously these panes called `_build_system_autocomplete_input`, which is not defined, so the
+  affected search controls failed to render.
+
+### Chores
+
+- **deps**: Bump gitpython from 3.1.47 to 3.1.50
+  ([#310](https://github.com/eyeonus/Trade-Dangerous/pull/310),
+  [`3592d4f`](https://github.com/eyeonus/Trade-Dangerous/commit/3592d4fb8d30df5a722e47d6050c0ed3e1003e91))
+
+Bumps [gitpython](https://github.com/gitpython-developers/GitPython) from 3.1.47 to 3.1.50. -
+  [Release notes](https://github.com/gitpython-developers/GitPython/releases) -
+  [Changelog](https://github.com/gitpython-developers/GitPython/blob/main/CHANGES) -
+  [Commits](https://github.com/gitpython-developers/GitPython/compare/3.1.47...3.1.50)
+
+--- updated-dependencies: - dependency-name: gitpython dependency-version: 3.1.50
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump python-multipart from 0.0.26 to 0.0.27
+  ([#309](https://github.com/eyeonus/Trade-Dangerous/pull/309),
+  [`e6d3e68`](https://github.com/eyeonus/Trade-Dangerous/commit/e6d3e6818f9ddec93af3a02199dace84b73c150a))
+
+Bumps [python-multipart](https://github.com/Kludex/python-multipart) from 0.0.26 to 0.0.27. -
+  [Release notes](https://github.com/Kludex/python-multipart/releases) -
+  [Changelog](https://github.com/Kludex/python-multipart/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/Kludex/python-multipart/compare/0.0.26...0.0.27)
+
+--- updated-dependencies: - dependency-name: python-multipart dependency-version: 0.0.27
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump urllib3 from 2.6.3 to 2.7.0
+  ([#311](https://github.com/eyeonus/Trade-Dangerous/pull/311),
+  [`19927ec`](https://github.com/eyeonus/Trade-Dangerous/commit/19927ec125d58b8597708fc6da2052dd24a171d3))
+
+Bumps [urllib3](https://github.com/urllib3/urllib3) from 2.6.3 to 2.7.0. - [Release
+  notes](https://github.com/urllib3/urllib3/releases) -
+  [Changelog](https://github.com/urllib3/urllib3/blob/main/CHANGES.rst) -
+  [Commits](https://github.com/urllib3/urllib3/compare/2.6.3...2.7.0)
+
+--- updated-dependencies: - dependency-name: urllib3 dependency-version: 2.7.0
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+
 ## v12.22.3 (2026-05-02)
 
 ### Bug Fixes
