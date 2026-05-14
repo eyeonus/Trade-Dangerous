@@ -127,7 +127,7 @@ class PlannedRoute:
 class PlannerDiagnostics:
     validation_ms: float = 0.0
     resolution_ms: float = 0.0
-    station_query_ms: float = 0.0
+    station_filter_ms: float = 0.0
     market_query_ms: float = 0.0
     reachability_ms: float = 0.0
     cargo_optimisation_ms: float = 0.0

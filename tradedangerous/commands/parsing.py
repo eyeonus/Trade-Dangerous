@@ -86,10 +86,29 @@ class SwitchArgument(ParseArgument):
         self.kwargs = {'action': 'store_true', 'dest': self.dest, 'help': help}
 
 
-class BlackMarketSwitch(SwitchArgument):
-    switches = ['--black-market', '--bm']
-    dest = 'blackMarket'
-    help = 'Require stations known to have a black market.'
+class BlackMarketSwitch(ParseArgument):
+    """argparse helper for --black-market"""
+
+    class BlackMarketParser(str):  # noqa: SLOT000  # str is immutable
+        def __new__(cls, val, **kwargs):
+            if not isinstance(val, str):
+                raise ValueError(val)
+            for v in val:
+                if "YN?".find(v.upper()) < 0:
+                    raise ValueError(val.upper())
+            return super().__new__(cls, val.upper(), **kwargs)
+    
+    def __init__(self):
+        self.args = ['--black-market', '--bm']
+        self.kwargs = {
+            'help': (
+                'Limit by black-market status: Y = known black market, '
+                'N = known no black market, ? = unknown black-market state.'
+            ),
+            'dest': 'blackMarket',
+            'metavar': 'BLACKMARKET',
+            'type': BlackMarketSwitch.BlackMarketParser,
+        }
 
 
 class ShipyardSwitch(SwitchArgument):

@@ -130,10 +130,16 @@ class CommandEnv(TradeEnv):
         if preloader and callable(preloader):
             preloader(tdb)
 
+        skip_resolver_prechecks = getattr(
+            self._cmd,
+            'skipResolverPrechecks',
+            False,
+        )
         if self.needs_resolver and not self.needs_legacy_db:
-            self.checkFromToNearORM()
-            self.checkAvoidsORM()
-            self.checkViasORM()
+            if not skip_resolver_prechecks:
+                self.checkFromToNearORM()
+                self.checkAvoidsORM()
+                self.checkViasORM()
         elif self.needs_legacy_db:
             self.checkFromToNear()
             self.checkAvoids()

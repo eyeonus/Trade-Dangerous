@@ -47,10 +47,10 @@ def plan_onehop_route(session: Session, request: RunRequest) -> RunResult:
     )
     resolution_ms = _elapsed_ms(resolution_started)
 
-    station_query_started = time.perf_counter()
+    station_filter_started = time.perf_counter()
     validate_station_filters(source_station, request, role="source")
     validate_station_filters(destination_station, request, role="destination")
-    station_query_ms = _elapsed_ms(station_query_started)
+    station_filter_ms = _elapsed_ms(station_filter_started)
 
     reachability_started = time.perf_counter()
     jump_path = plan_jump_path(
@@ -115,7 +115,7 @@ def plan_onehop_route(session: Session, request: RunRequest) -> RunResult:
     diagnostics = PlannerDiagnostics(
         validation_ms=validation_ms,
         resolution_ms=resolution_ms,
-        station_query_ms=station_query_ms,
+        station_filter_ms=station_filter_ms,
         market_query_ms=market_query_ms,
         reachability_ms=reachability_ms,
         cargo_optimisation_ms=cargo_optimisation_ms,

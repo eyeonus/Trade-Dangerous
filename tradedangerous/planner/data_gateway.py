@@ -10,8 +10,10 @@ from sqlalchemy.orm import Session, aliased
 from tradedangerous.db.orm_models import Item, StationItem
 
 from .failures import (
+    DestinationHasNoBuyingData,
     DestinationStationIneligible,
     MarketTimestampInvalid,
+    SourceHasNoSellingData,
     SourceStationIneligible,
     StationHasNoMarket,
 )
@@ -84,16 +86,22 @@ def validate_station_filters(
             entity_name=station.dbname,
         )
 
-    if request.fleet_carrier_filter:
+    if request.fleet_carrier_filter and not _state_filter_matches(
+        station.fleet_carrier,
+        request.fleet_carrier_filter,
+    ):
         raise failure_type(
-            "--fleet-carrier requires station data not exposed by the current ORM.",
+            f"{option_prefix} station does not meet --fleet-carrier.",
             option_name="--fleet-carrier",
             entity_name=station.dbname,
         )
-
-    if request.settlement_filter:
+    
+    if request.settlement_filter and not _state_filter_matches(
+        station.settlement,
+        request.settlement_filter,
+    ):
         raise failure_type(
-            "--settlement requires station data not exposed by the current ORM.",
+            f"{option_prefix} station does not meet --settlement.",
             option_name="--settlement",
             entity_name=station.dbname,
         )
@@ -112,7 +120,47 @@ def fetch_station_pair_candidates(
 
     available_credits = int(request.starting_credits or 0) - request.insurance_reserve
     cutoff = _age_cutoff(request.age_days)
-
+    
+    source_filters = [
+        StationItem.station_id == source.station_id,
+        StationItem.supply_price > 0,
+        StationItem.supply_units > 0,
+    ]
+    if request.min_supply is not None:
+        source_filters.append(StationItem.supply_units >= request.min_supply)
+    if cutoff is not None:
+        source_filters.append(StationItem.modified >= cutoff)
+    
+    source_exists = session.execute(
+        select(StationItem.item_id).where(and_(*source_filters)).limit(1)
+    ).first()
+    if source_exists is None:
+        raise SourceHasNoSellingData(
+            f"Source station has no usable selling data: {source.dbname}",
+            option_name="--from",
+            entity_name=source.dbname,
+        )
+    
+    destination_filters = [
+        StationItem.station_id == destination.station_id,
+        StationItem.demand_price > 0,
+        StationItem.demand_units > 0,
+    ]
+    if request.min_demand is not None:
+        destination_filters.append(StationItem.demand_units >= request.min_demand)
+    if cutoff is not None:
+        destination_filters.append(StationItem.modified >= cutoff)
+    
+    destination_exists = session.execute(
+        select(StationItem.item_id).where(and_(*destination_filters)).limit(1)
+    ).first()
+    if destination_exists is None:
+        raise DestinationHasNoBuyingData(
+            f"Destination station has no usable buying data: {destination.dbname}",
+            option_name="--to",
+            entity_name=destination.dbname,
+        )
+    
     filters = [
         source_item.station_id == source.station_id,
         destination_item.station_id == destination.station_id,

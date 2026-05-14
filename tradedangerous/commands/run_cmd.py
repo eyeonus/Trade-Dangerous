@@ -16,7 +16,6 @@ from .parsing import (
     PlanetaryArgument,
 )
 
-from tradedangerous.db import get_session_factory, make_engine_from_config
 from tradedangerous.planner.failures import (
     AmbiguousPlace,
     InvalidRunRequest,
@@ -42,7 +41,7 @@ help = 'Calculate best trade run.'
 name = 'run'
 epilog = None
 usesTradeData = True
-
+skipResolverPrechecks = True
 
 def selectNeeds(cmdenv):
     """Choose the database setup needed by the selected planner path."""
@@ -356,6 +355,42 @@ def validateRunArgumentsFast(cmdenv):
         raise CommandLineError(
             "--loop-int must be 2 or higher to have any effect. "
         )
+    
+    if not getattr(cmdenv, "old", False):
+        unsupported = (
+            ("--direct", getattr(cmdenv, "direct", False)),
+            ("--towards", getattr(cmdenv, "goalSystem", None) is not None),
+            ("--loop", getattr(cmdenv, "loop", False)),
+            ("--via", bool(getattr(cmdenv, "via", None))),
+            ("--avoid", bool(getattr(cmdenv, "avoid", None))),
+            ("--unique", getattr(cmdenv, "unique", False)),
+            ("--loop-interval", getattr(cmdenv, "loopInt", None) is not None),
+            ("--shorten", getattr(cmdenv, "shorten", False)),
+            ("--checklist", getattr(cmdenv, "checklist", False)),
+            ("--x52-pro", getattr(cmdenv, "x52pro", False)),
+        )
+        for option_name, active in unsupported:
+            if active:
+                raise CommandLineError(
+                    f"{option_name} is not supported for this planner slice."
+                )
+        
+        unsupported_non_zero = (
+            ("--start-jumps", getattr(cmdenv, "startJumps", 0)),
+            ("--end-jumps", getattr(cmdenv, "endJumps", 0)),
+            ("--max-routes", getattr(cmdenv, "maxRoutes", 0)),
+            ("--prune-score", getattr(cmdenv, "pruneScores", 0)),
+        )
+        for option_name, value in unsupported_non_zero:
+            if value:
+                raise CommandLineError(
+                    f"{option_name} is not supported for this planner slice."
+                )
+        
+        if getattr(cmdenv, "routes", 1) != 1:
+            raise CommandLineError(
+                "Only --routes 1 is currently supported."
+            )
 
 class Checklist:
     """
@@ -1283,13 +1318,13 @@ def extraRouteProgress(routes):
 def run(results, cmdenv, tdb):
     if not getattr(cmdenv, "old", False):
         request = run_request_from_cmdenv(cmdenv)
-        engine = make_engine_from_config()
-        session_factory = get_session_factory(engine)
-        
+        session = getattr(tdb, "session", None)
+        if session is None:
+            raise CommandLineError("Resolver database session is not available.")
+
         try:
-            with session_factory() as session:
-                results.data = plan_onehop_route(session, request)
-                results.summary.exception = ""
+            results.data = plan_onehop_route(session, request)
+            results.summary.exception = ""
         except (
             NoAffordableCargo,
             NoProfitableTrades,

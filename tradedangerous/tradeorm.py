@@ -100,6 +100,15 @@ class TradeORM:
     def close(self, final: bool = False) -> None:
         """ Close the ORM session. """
         self.session.close()
+    
+    @property
+    def tradingStationCount(self) -> int:
+        """Return the number of stations with any market data."""
+        return (
+            self.session.query(orm.StationItem.station_id)
+            .distinct()
+            .count()
+        )
 
     # ------------------------------------------------------------------
     # Partial-matching helpers

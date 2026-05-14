@@ -29,7 +29,7 @@ class RunRequest:
     no_planet: bool = False
     fleet_carrier_filter: str | None = None
     settlement_filter: str | None = None
-    black_market_required: str | None = None
+    black_market_filter: str | None = None
     max_ls: int = 0
     ls_penalty_percent: float = 0.0
     show_jumps: bool = False
@@ -52,9 +52,10 @@ class RunRequest:
     x52_pro: bool = False
     max_routes: int = 0
     prune_score: float = 0.0
+    prune_score: float = 0.0
     prune_hops: int = 3
 
-    
+
 def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
     """Build a neutral request from the parsed command environment."""
 
