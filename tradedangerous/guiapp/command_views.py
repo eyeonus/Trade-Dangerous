@@ -515,7 +515,7 @@ class LocalWorkspace(DraftValueHelper):
                 'Max data age is inherited from the left pane.'
             ).classes('text-sm text-gray-600')
             with ui.row().classes('w-full items-end gap-3'):
-                _build_system_autocomplete_input(
+                build_system_autocomplete_input(
                     label='Near',
                     value=self._text_value(self.draft.main_values, 'near'),
                     on_text_changed=lambda value: self._set_text(
@@ -908,7 +908,7 @@ class RaresWorkspace(DraftValueHelper):
             ui.label('Rare Search')
             ui.label('Find rare goods near a system. Full detail is always shown.').classes('text-sm text-gray-600')
             with ui.row().classes('w-full items-end gap-3'):
-                _build_system_autocomplete_input(
+                build_system_autocomplete_input(
                     label='Near',
                     value=self._text_value(self.draft.main_values, 'near'),
                     on_text_changed=lambda value: self._set_text(
