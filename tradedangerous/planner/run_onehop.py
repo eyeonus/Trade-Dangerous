@@ -184,6 +184,8 @@ def _best_pair_plan(
     saw_profitable_pair = False
     for source_station in source_stations:
         for destination_station in destination_stations:
+            if source_station.station_id == destination_station.station_id:
+                continue
             reach_started = time.perf_counter()
             try:
                 jump_path = plan_jump_path(
