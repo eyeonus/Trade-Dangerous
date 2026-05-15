@@ -28,24 +28,66 @@ class StationReference:
     station_name: str
 
 
-def parse_station_reference(text: str, *, option_name: str) -> StationReference:
-    """Parse supported station reference forms.
+@dataclass(frozen=True, slots=True)
+class EndpointReference:
+    """Parsed endpoint reference from command text."""
 
-    Accepted station forms include:
+    system_name: str | None
+    station_name: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedEndpoint:
+    """Resolved run endpoint before station expansion."""
+
+    original_text: str
+    option_name: str
+    system: System | None = None
+    station: ResolvedStation | None = None
+
+    @property
+    def is_station(self) -> bool:
+        return self.station is not None
+
+    @property
+    def is_system(self) -> bool:
+        return self.station is None and self.system is not None
+
+
+def parse_station_reference(text: str, *, option_name: str) -> StationReference:
+    """Parse supported station reference forms."""
+
+    reference = parse_endpoint_reference(text, option_name=option_name)
+    if not reference.station_name:
+        raise UnsupportedFirstSliceShape(
+            f"{option_name} must identify a station, not only a system.",
+            option_name=option_name,
+            entity_name=text,
+        )
+
+    return StationReference(
+        system_name=reference.system_name,
+        station_name=reference.station_name,
+    )
+
+
+def parse_endpoint_reference(text: str, *, option_name: str) -> EndpointReference:
+    """Parse supported station or system endpoint reference forms.
+
+    Accepted endpoint forms include:
+    - System
     - System/Station
+    - @System
     - @System/Station
     - System\\Station
     - /Station
     - Station
-
-    System-only references are deliberately rejected here because planning a
-    system-wide station set belongs to a broader route-shape implementation.
     """
 
     cleaned = (text or "").strip()
     if not cleaned:
         raise UnknownStation(
-            f"{option_name} station name is empty.",
+            f"{option_name} endpoint name is empty.",
             option_name=option_name,
         )
 
@@ -54,19 +96,12 @@ def parse_station_reference(text: str, *, option_name: str) -> StationReference:
 
     delimiter = "/" if "/" in cleaned else "\\" if "\\" in cleaned else None
     if delimiter is None:
-        return StationReference(system_name=None, station_name=cleaned)
+        return EndpointReference(system_name=None, station_name=cleaned)
 
     system_name, station_name = (part.strip() for part in cleaned.split(delimiter, 1))
-    if not station_name:
-        raise UnsupportedFirstSliceShape(
-            f"{option_name} must identify a station, not only a system.",
-            option_name=option_name,
-            entity_name=text,
-        )
-
-    return StationReference(
+    return EndpointReference(
         system_name=system_name or None,
-        station_name=station_name,
+        station_name=station_name or None,
     )
 
 
@@ -83,6 +118,24 @@ def resolve_station(
     """
 
     reference = parse_station_reference(text, option_name=option_name)
+    station = _resolve_station_reference(
+        session,
+        reference,
+        option_name=option_name,
+        original_text=text,
+    )
+    return _resolved_station_from_model(station)
+
+
+def resolve_endpoint(
+    session: Session,
+    text: str,
+    *,
+    option_name: str,
+) -> ResolvedEndpoint:
+    """Resolve a run endpoint as either a fixed station or a system."""
+
+    reference = parse_endpoint_reference(text, option_name=option_name)
 
     if reference.system_name:
         system = _resolve_exact_system(
@@ -90,22 +143,66 @@ def resolve_station(
             reference.system_name,
             option_name=option_name,
         )
-        station = _resolve_exact_station_in_system(
+        if reference.station_name:
+            station = _resolve_exact_station_in_system(
+                session,
+                reference.station_name,
+                system_id=system.system_id,
+                option_name=option_name,
+                original_text=text,
+            )
+            return ResolvedEndpoint(
+                original_text=text,
+                option_name=option_name,
+                station=_resolved_station_from_model(station),
+            )
+
+        return ResolvedEndpoint(
+            original_text=text,
+            option_name=option_name,
+            system=system,
+        )
+
+    station = _resolve_exact_station_global(
+        session,
+        str(reference.station_name),
+        option_name=option_name,
+        original_text=text,
+    )
+    return ResolvedEndpoint(
+        original_text=text,
+        option_name=option_name,
+        station=_resolved_station_from_model(station),
+    )
+
+
+def _resolve_station_reference(
+    session: Session,
+    reference: StationReference,
+    *,
+    option_name: str,
+    original_text: str,
+) -> Station:
+    if reference.system_name:
+        system = _resolve_exact_system(
+            session,
+            reference.system_name,
+            option_name=option_name,
+        )
+        return _resolve_exact_station_in_system(
             session,
             reference.station_name,
             system_id=system.system_id,
             option_name=option_name,
-            original_text=text,
-        )
-    else:
-        station = _resolve_exact_station_global(
-            session,
-            reference.station_name,
-            option_name=option_name,
-            original_text=text,
+            original_text=original_text,
         )
 
-    return _resolved_station_from_model(station)
+    return _resolve_exact_station_global(
+        session,
+        reference.station_name,
+        option_name=option_name,
+        original_text=original_text,
+    )
 
 
 def _resolve_exact_system(

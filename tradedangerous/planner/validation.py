@@ -11,8 +11,8 @@ from .failures import (
 from .run_request import RunRequest
 
 
-def validate_first_slice_request(request: RunRequest) -> None:
-    """Reject requests outside the enabled one-hop station-pair shape."""
+def validate_run_request(request: RunRequest) -> None:
+    """Reject requests outside the currently enabled planner shape."""
 
     _require_present(request.from_text, "--from")
     _require_present(request.to_text, "--to")
@@ -151,6 +151,15 @@ def validate_first_slice_request(request: RunRequest) -> None:
         raise ContradictoryOptions(
             "--no-planet cannot be combined with --planetary.",
             option_name="--no-planet",
+        )
+
+    # Pad-size is an exact accepted-state set. S+L without M is not a
+    # meaningful station class selection, so reject it before planning.
+    pads = set(request.pad_size_filter)
+    if "S" in pads and "L" in pads and "M" not in pads:
+        raise ContradictoryOptions(
+            "--pad-size cannot combine S and L while excluding M.",
+            option_name="--pad-size",
         )
 
 

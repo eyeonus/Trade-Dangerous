@@ -3,44 +3,45 @@
 from __future__ import annotations
 
 import time
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
 from sqlalchemy.orm import Session
 
+from . import data_gateway, failures, resolver, run_result
 from .cargo import optimise_cargo
-from .data_gateway import fetch_station_pair_candidates, validate_station_filters
-from .failures import NoProfitableTrades
 from .reachability import plan_jump_path
-from .resolver import resolve_station
 from .run_request import RunRequest
-from .run_result import (
-    PlannedHop,
-    PlannedRoute,
-    PlannerDiagnostics,
-    ResolvedStation,
-    ResolvedSystem,
-    RunResult,
-)
 from .score import score_with_destination_penalty
-from .validation import validate_first_slice_request
+from .validation import validate_run_request
 
 
-def plan_onehop_route(session: Session, request: RunRequest) -> RunResult:
+@dataclass(frozen=True, slots=True)
+class _PairPlan:
+    """One viable station-pair plan before final best-route selection."""
+
+    source_station: run_result.ResolvedStation
+    destination_station: run_result.ResolvedStation
+    jump_path: object
+    cargo: object
+    practical_score: float
+
+
+def plan_onehop_route(session: Session, request: RunRequest) -> run_result.RunResult:
     """Plan one station-to-station trade hop."""
 
     started = time.perf_counter()
 
     validation_started = time.perf_counter()
-    validate_first_slice_request(request)
+    validate_run_request(request)
     validation_ms = _elapsed_ms(validation_started)
 
     resolution_started = time.perf_counter()
-    source_station = resolve_station(
+    source_endpoint = resolver.resolve_endpoint(
         session,
         str(request.from_text),
         option_name="--from",
     )
-    destination_station = resolve_station(
+    destination_endpoint = resolver.resolve_endpoint(
         session,
         str(request.to_text),
         option_name="--to",
@@ -48,8 +49,18 @@ def plan_onehop_route(session: Session, request: RunRequest) -> RunResult:
     resolution_ms = _elapsed_ms(resolution_started)
 
     station_filter_started = time.perf_counter()
-    validate_station_filters(source_station, request, role="source")
-    validate_station_filters(destination_station, request, role="destination")
+    source_stations = _stations_from_endpoint(
+        session,
+        source_endpoint,
+        request,
+        role="source",
+    )
+    destination_stations = _stations_from_endpoint(
+        session,
+        destination_endpoint,
+        request,
+        role="destination",
+    )
     station_filter_ms = _elapsed_ms(station_filter_started)
 
     reachability_started = time.perf_counter()
@@ -129,14 +140,65 @@ def plan_onehop_route(session: Session, request: RunRequest) -> RunResult:
     )
 
 
-def with_render_timing(result: RunResult, render_ms: float) -> RunResult:
+def with_render_timing(
+    result: run_result.RunResult,
+    render_ms: float,
+) -> run_result.RunResult:
     """Return a copy of the result with renderer timing populated."""
 
     diagnostics = replace(result.diagnostics, render_ms=render_ms)
     return replace(result, diagnostics=diagnostics)
 
 
-def _system_from_station(station: ResolvedStation) -> ResolvedSystem:
+def _stations_from_endpoint(
+    session: Session,
+    endpoint: resolver.ResolvedEndpoint,
+    request: RunRequest,
+    *,
+    role: str,
+) -> tuple[run_result.ResolvedStation, ...]:
+    """Return candidate stations for a fixed station or expanded system endpoint.
+
+    Fixed station endpoints still use the same station-level validation path.
+    System endpoints are bounded to stations in that one resolved system; this
+    is not broad route expansion or fuzzy endpoint matching.
+    """
+
+    if endpoint.station is not None:
+        data_gateway.validate_station_filters(endpoint.station, request, role=role)
+        return (endpoint.station,)
+
+    if endpoint.system is None:
+        raise failures.UnknownPlace(
+            f"{endpoint.option_name} could not be resolved.",
+            option_name=endpoint.option_name,
+            entity_name=endpoint.original_text,
+        )
+
+    stations = data_gateway.fetch_eligible_stations_in_system(
+        session,
+        endpoint.system,
+        request,
+        role=role,
+    )
+    if stations:
+        return stations
+
+    failure_type = (
+        failures.SourceStationIneligible
+        if role == "source"
+        else failures.DestinationStationIneligible
+    )
+    raise failure_type(
+        f"{endpoint.option_name} system has no eligible {role} stations.",
+        option_name=endpoint.option_name,
+        entity_name=endpoint.original_text,
+    )
+
+
+def _system_from_station(
+    station: run_result.ResolvedStation,
+) -> run_result.ResolvedSystem:
     return ResolvedSystem(
         system_id=station.system_id,
         name=station.system_name,

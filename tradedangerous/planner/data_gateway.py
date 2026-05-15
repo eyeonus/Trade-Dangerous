@@ -7,7 +7,8 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session, aliased
 
-from tradedangerous.db.orm_models import Item, StationItem
+from tradedangerous.db.orm_models import Item, Station, StationItem
+from tradedangerous.db.station_types import fleet_carrier_state, settlement_state
 
 from .failures import (
     DestinationHasNoBuyingData,
@@ -105,6 +106,41 @@ def validate_station_filters(
             option_name="--settlement",
             entity_name=station.dbname,
         )
+
+
+def fetch_eligible_stations_in_system(
+    session: Session,
+    system,
+    request: RunRequest,
+    *,
+    role: str,
+) -> tuple[ResolvedStation, ...]:
+    """Fetch stations in one resolved system that pass station-level filters.
+
+    This is endpoint expansion only: it deliberately stays bounded to the
+    selected system and does not inspect market quotes. Source/destination
+    quote eligibility is still evaluated later for each station pair.
+    """
+
+    stmt = (
+        select(Station)
+        .where(Station.system_id == system.system_id)
+        .order_by(Station.station_id)
+    )
+
+    stations = []
+    for station in session.scalars(stmt):
+        resolved = _resolved_station_from_model(station, system)
+        try:
+            validate_station_filters(resolved, request, role=role)
+        except (SourceStationIneligible, DestinationStationIneligible, StationHasNoMarket):
+            # Expansion skips stations that fail role-specific filters. If every
+            # station is skipped, the planner can report a system-side no-data
+            # failure with the original endpoint context.
+            continue
+        stations.append(resolved)
+
+    return tuple(stations)
 
 
 def fetch_station_pair_candidates(
@@ -235,19 +271,51 @@ def fetch_station_pair_candidates(
     return tuple(candidates)
 
 
-def _pad_size_matches(station_pad_size: str, requested_pad_size: str) -> bool:
-    """Return whether the station can support the requested landing pad size."""
+def _resolved_station_from_model(station: Station, system) -> ResolvedStation:
+    """Build the planner station DTO from ORM rows already bounded by system."""
 
-    order = {"S": 1, "M": 2, "L": 3}
-    station_rank = order.get((station_pad_size or "").upper(), 0)
-    requested_rank = order.get((requested_pad_size or "").upper(), 0)
-    return requested_rank > 0 and station_rank >= requested_rank
+    return ResolvedStation(
+        station_id=int(station.station_id),
+        name=str(station.name),
+        dbname=f"{system.name}/{station.name}",
+        system_id=int(system.system_id),
+        system_name=str(system.name),
+        x=float(system.pos_x),
+        y=float(system.pos_y),
+        z=float(system.pos_z),
+        ls_from_star=int(station.ls_from_star or 0),
+        market=str(station.market),
+        black_market=str(station.blackmarket),
+        max_pad_size=str(station.max_pad_size),
+        planetary=str(station.planetary),
+        fleet_carrier=fleet_carrier_state(int(station.type_id or 0)),
+        settlement=settlement_state(int(station.type_id or 0)),
+        type_id=int(station.type_id or 0),
+        modified=station.modified,
+        data_age_days=None,
+    )
 
 
-def _state_filter_matches(station_state: str | None, requested_states: str) -> bool:
+def _pad_size_matches(
+    station_pad_size: str | None,
+    requested_pad_sizes: tuple[str, ...],
+) -> bool:
+    """Return whether a station pad size is in the requested accepted set.
+
+    Pad-size filters are exact station-state filters, not ship-compatibility
+    ranks. Unknown pad size is represented as '?'.
+    """
+
+    return (station_pad_size or "?").upper() in requested_pad_sizes
+
+
+def _state_filter_matches(
+    station_state: str | None,
+    requested_states: tuple[str, ...],
+) -> bool:
     """Return whether a station Y/N/? state passes a requested state set."""
 
-    return (station_state or "?").upper() in requested_states.upper()
+    return (station_state or "?").upper() in requested_states
 
 
 def _age_cutoff(age_days: float | None) -> datetime | None:

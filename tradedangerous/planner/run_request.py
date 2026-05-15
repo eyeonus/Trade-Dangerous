@@ -24,12 +24,12 @@ class RunRequest:
     max_gain_per_ton: int = 0
     min_supply: int | None = None
     min_demand: int | None = None
-    pad_size_filter: str | None = None
-    planetary_filter: str | None = None
+    pad_size_filter: tuple[str, ...] = ()
+    planetary_filter: tuple[str, ...] = ()
     no_planet: bool = False
-    fleet_carrier_filter: str | None = None
-    settlement_filter: str | None = None
-    black_market_filter: str | None = None
+    fleet_carrier_filter: tuple[str, ...] = ()
+    settlement_filter: tuple[str, ...] = ()
+    black_market_filter: tuple[str, ...] = ()
     max_ls: int = 0
     ls_penalty_percent: float = 0.0
     show_jumps: bool = False
@@ -75,12 +75,22 @@ def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
         max_gain_per_ton=getattr(cmdenv, "maxGainPerTon", 0),
         min_supply=getattr(cmdenv, "supply", None),
         min_demand=getattr(cmdenv, "demand", None),
-        pad_size_filter=getattr(cmdenv, "padSize", None),
-        planetary_filter=getattr(cmdenv, "planetary", None),
+        pad_size_filter=_normalise_pad_size_filter(
+            getattr(cmdenv, "padSize", None),
+        ),
+        planetary_filter=_normalise_state_filter(
+            getattr(cmdenv, "planetary", None),
+        ),
         no_planet=getattr(cmdenv, "noPlanet", False),
-        fleet_carrier_filter=getattr(cmdenv, "fleet", None),
-        settlement_filter=getattr(cmdenv, "settlement", None),
-        black_market_filter=getattr(cmdenv, "blackMarket", None),
+        fleet_carrier_filter=_normalise_state_filter(
+            getattr(cmdenv, "fleet", None),
+        ),
+        settlement_filter=_normalise_state_filter(
+            getattr(cmdenv, "settlement", None),
+        ),
+        black_market_filter=_normalise_state_filter(
+            getattr(cmdenv, "blackMarket", None),
+        ),
         max_ls=getattr(cmdenv, "maxLs", 0) or 0,
         ls_penalty_percent=getattr(cmdenv, "lsPenalty", 0.0) or 0.0,
         show_jumps=getattr(cmdenv, "showJumps", False),
@@ -105,3 +115,53 @@ def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
         prune_score=getattr(cmdenv, "pruneScores", 0.0) or 0.0,
         prune_hops=getattr(cmdenv, "pruneHops", 3),
     )
+
+
+def _normalise_state_filter(value: object) -> tuple[str, ...]:
+    """Normalise Y/N/? filters into accepted-state tuples.
+
+    The command parser may provide string-like values, but planner code should
+    only care about membership in the accepted set. YN? accepts every possible
+    state and is therefore equivalent to no filter.
+    """
+
+    states = _normalise_character_filter(value, allowed=("Y", "N", "?"))
+    if set(states) == {"Y", "N", "?"}:
+        return ()
+    return states
+
+
+def _normalise_pad_size_filter(value: object) -> tuple[str, ...]:
+    """Normalise pad-size filters into accepted-size tuples.
+
+    Pad size is an exact accepted-state filter, not a ship-compatibility rank.
+    SML and SML? both accept all known pad sizes, so both impose no filter.
+    """
+
+    pads = _normalise_character_filter(value, allowed=("S", "M", "L", "?"))
+    if {"S", "M", "L"}.issubset(set(pads)):
+        return ()
+    return pads
+
+
+def _normalise_character_filter(
+    value: object,
+    *,
+    allowed: tuple[str, ...],
+) -> tuple[str, ...]:
+    """Return a de-duplicated tuple of allowed uppercase filter characters."""
+
+    if value is None:
+        return ()
+
+    if isinstance(value, str):
+        raw_values = tuple(value.upper())
+    else:
+        raw_values = tuple(str(v).upper() for v in value)
+
+    accepted = []
+    for item in raw_values:
+        if item in allowed and item not in accepted:
+            accepted.append(item)
+
+    return tuple(accepted)
