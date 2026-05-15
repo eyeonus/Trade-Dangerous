@@ -63,67 +63,38 @@ def plan_onehop_route(session: Session, request: RunRequest) -> run_result.RunRe
     )
     station_filter_ms = _elapsed_ms(station_filter_started)
 
-    reachability_started = time.perf_counter()
-    jump_path = plan_jump_path(
-        _system_from_station(source_station),
-        _system_from_station(destination_station),
-        max_jumps_per_hop=int(request.max_jumps_per_hop or 0),
-        max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
-    )
-    reachability_ms = _elapsed_ms(reachability_started)
-
-    market_query_started = time.perf_counter()
-    candidates = fetch_station_pair_candidates(
+    (
+        best_pair,
+        reachability_ms,
+        market_query_ms,
+        cargo_optimisation_ms,
+        candidate_trade_count,
+    ) = _best_pair_plan(
         session,
-        source_station,
-        destination_station,
+        source_stations,
+        destination_stations,
         request,
     )
-    market_query_ms = _elapsed_ms(market_query_started)
 
-    if not candidates:
-        raise NoProfitableTrades(
-            "No profitable trades were found for the selected station pair.",
-            details={
-                "source_station": source_station.dbname,
-                "destination_station": destination_station.dbname,
-            },
-        )
-
-    cargo_started = time.perf_counter()
-    available_credits = int(request.starting_credits or 0) - request.insurance_reserve
-    cargo = optimise_cargo(
-        candidates,
-        capacity_units=int(request.capacity_units or 0),
-        available_credits=available_credits,
-        cargo_limit_per_item=request.cargo_limit_per_item,
+    hop = run_result.PlannedHop(
+        source_station=best_pair.source_station,
+        destination_station=best_pair.destination_station,
+        cargo=best_pair.cargo,
+        raw_profit=best_pair.cargo.total_profit,
+        practical_score=best_pair.practical_score,
+        jump_path=best_pair.jump_path,
     )
-    cargo_optimisation_ms = _elapsed_ms(cargo_started)
-
-    practical_score = score_with_destination_penalty(
-        cargo.total_profit,
-        destination_distance_ls=destination_station.ls_from_star,
-        penalty_percent=request.ls_penalty_percent,
-    )
-
-    hop = PlannedHop(
-        source_station=source_station,
-        destination_station=destination_station,
-        cargo=cargo,
-        raw_profit=cargo.total_profit,
-        practical_score=practical_score,
-        jump_path=jump_path,
-    )
-    route = PlannedRoute(
-        stations=(source_station, destination_station),
+    route = run_result.PlannedRoute(
+        stations=(best_pair.source_station, best_pair.destination_station),
         hops=(hop,),
-        total_raw_profit=cargo.total_profit,
-        total_practical_score=practical_score,
+        total_raw_profit=best_pair.cargo.total_profit,
+        total_practical_score=best_pair.practical_score,
         starting_credits=int(request.starting_credits or 0),
-        ending_credits=int(request.starting_credits or 0) + cargo.total_profit,
+        ending_credits=int(request.starting_credits or 0)
+        + best_pair.cargo.total_profit,
     )
 
-    diagnostics = PlannerDiagnostics(
+    diagnostics = run_result.PlannerDiagnostics(
         validation_ms=validation_ms,
         resolution_ms=resolution_ms,
         station_filter_ms=station_filter_ms,
@@ -131,10 +102,10 @@ def plan_onehop_route(session: Session, request: RunRequest) -> run_result.RunRe
         reachability_ms=reachability_ms,
         cargo_optimisation_ms=cargo_optimisation_ms,
         total_planner_ms=_elapsed_ms(started),
-        candidate_trade_count=len(candidates),
+        candidate_trade_count=candidate_trade_count,
     )
 
-    return RunResult(
+    return run_result.RunResult(
         routes=(route,),
         diagnostics=diagnostics,
     )
@@ -196,10 +167,138 @@ def _stations_from_endpoint(
     )
 
 
+def _best_pair_plan(
+    session: Session,
+    source_stations: tuple[run_result.ResolvedStation, ...],
+    destination_stations: tuple[run_result.ResolvedStation, ...],
+    request: RunRequest,
+) -> tuple[_PairPlan, float, float, float, int]:
+    best_pair = None
+    reachability_ms = 0.0
+    market_query_ms = 0.0
+    cargo_optimisation_ms = 0.0
+    candidate_trade_count = 0
+    saw_reachable_pair = False
+    saw_source_selling_data = False
+    saw_destination_buying_data = False
+    saw_profitable_pair = False
+    for source_station in source_stations:
+        for destination_station in destination_stations:
+            reach_started = time.perf_counter()
+            try:
+                jump_path = plan_jump_path(
+                    _system_from_station(source_station),
+                    _system_from_station(destination_station),
+                    max_jumps_per_hop=int(request.max_jumps_per_hop or 0),
+                    max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
+                )
+            except failures.ReachabilityImplementationMissing:
+                raise
+            except failures.NoReachableRoute:
+                reachability_ms += _elapsed_ms(reach_started)
+                continue
+            reachability_ms += _elapsed_ms(reach_started)
+            saw_reachable_pair = True
+            market_started = time.perf_counter()
+            try:
+                candidates = data_gateway.fetch_station_pair_candidates(
+                    session,
+                    source_station,
+                    destination_station,
+                    request,
+                )
+            except failures.SourceHasNoSellingData:
+                market_query_ms += _elapsed_ms(market_started)
+                continue
+            except failures.DestinationHasNoBuyingData:
+                saw_source_selling_data = True
+                market_query_ms += _elapsed_ms(market_started)
+                continue
+            except (
+                failures.StationHasNoMarket,
+                failures.SourceStationIneligible,
+                failures.DestinationStationIneligible,
+                failures.NoProfitableTrades,
+            ):
+                market_query_ms += _elapsed_ms(market_started)
+                continue
+            market_query_ms += _elapsed_ms(market_started)
+            saw_source_selling_data = True
+            saw_destination_buying_data = True
+            candidate_trade_count += len(candidates)
+            if not candidates:
+                continue
+            saw_profitable_pair = True
+            cargo_started = time.perf_counter()
+            try:
+                cargo = optimise_cargo(
+                    candidates,
+                    capacity_units=int(request.capacity_units or 0),
+                    available_credits=int(request.starting_credits or 0)
+                    - request.insurance_reserve,
+                    cargo_limit_per_item=request.cargo_limit_per_item,
+                )
+            except failures.NoAffordableCargo:
+                cargo_optimisation_ms += _elapsed_ms(cargo_started)
+                continue
+            cargo_optimisation_ms += _elapsed_ms(cargo_started)
+            practical_score = score_with_destination_penalty(
+                cargo.total_profit,
+                destination_distance_ls=destination_station.ls_from_star,
+                penalty_percent=request.ls_penalty_percent,
+            )
+            pair = _PairPlan(
+                source_station=source_station,
+                destination_station=destination_station,
+                jump_path=jump_path,
+                cargo=cargo,
+                practical_score=practical_score,
+            )
+            if _pair_is_better(pair, best_pair):
+                best_pair = pair
+    if best_pair is not None:
+        return (
+            best_pair,
+            reachability_ms,
+            market_query_ms,
+            cargo_optimisation_ms,
+            candidate_trade_count,
+        )
+    if not saw_reachable_pair:
+        raise failures.NoReachableRoute(
+            "No reachable station pair was found for the selected endpoints."
+        )
+    if not saw_source_selling_data:
+        raise failures.SourceHasNoSellingData(
+            "No reachable source station had usable selling data.",
+            option_name="--from",
+        )
+    if not saw_destination_buying_data:
+        raise failures.DestinationHasNoBuyingData(
+            "No reachable destination station had usable buying data.",
+            option_name="--to",
+        )
+    if not saw_profitable_pair:
+        raise failures.NoProfitableTrades(
+            "No profitable trades were found across reachable station pairs."
+        )
+    raise failures.NoAffordableCargo(
+        "Profitable trades exist, but no cargo can be afforded."
+    )
+
+
+def _pair_is_better(pair: _PairPlan, best_pair: _PairPlan | None) -> bool:
+    if best_pair is None:
+        return True
+    if pair.practical_score != best_pair.practical_score:
+        return pair.practical_score > best_pair.practical_score
+    return pair.cargo.total_profit > best_pair.cargo.total_profit
+
+
 def _system_from_station(
     station: run_result.ResolvedStation,
 ) -> run_result.ResolvedSystem:
-    return ResolvedSystem(
+    return run_result.ResolvedSystem(
         system_id=station.system_id,
         name=station.system_name,
         dbname=f"{station.system_name.upper()}/",

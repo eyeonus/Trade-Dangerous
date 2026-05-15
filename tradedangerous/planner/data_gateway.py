@@ -124,7 +124,7 @@ def fetch_eligible_stations_in_system(
 
     stmt = (
         select(Station)
-        .where(Station.system_id == system.system_id)
+        .where(and_(*_station_filter_predicates(system, request)))
         .order_by(Station.station_id)
     )
 
@@ -134,13 +134,69 @@ def fetch_eligible_stations_in_system(
         try:
             validate_station_filters(resolved, request, role=role)
         except (SourceStationIneligible, DestinationStationIneligible, StationHasNoMarket):
-            # Expansion skips stations that fail role-specific filters. If every
-            # station is skipped, the planner can report a system-side no-data
-            # failure with the original endpoint context.
+            # Defensive fallback only. Normal expansion filtering should happen
+            # in SQL so rejected station rows are not materialised in Python.
             continue
         stations.append(resolved)
 
     return tuple(stations)
+
+
+def _station_filter_predicates(system, request: RunRequest):
+    """Return SQL predicates for station-level endpoint expansion filters."""
+
+    predicates = [
+        Station.system_id == system.system_id,
+        Station.market != "N",
+    ]
+    if request.pad_size_filter:
+        predicates.append(Station.max_pad_size.in_(request.pad_size_filter))
+    if request.no_planet:
+        predicates.append(Station.planetary == "N")
+    if request.planetary_filter:
+        predicates.append(Station.planetary.in_(request.planetary_filter))
+    if request.black_market_filter:
+        predicates.append(Station.blackmarket.in_(request.black_market_filter))
+    if request.max_ls:
+        predicates.append(Station.ls_from_star > 0)
+        predicates.append(Station.ls_from_star <= request.max_ls)
+    if request.fleet_carrier_filter:
+        predicates.append(
+            Station.type_id.in_(
+                _type_id_filter_values(
+                    request.fleet_carrier_filter,
+                    FLEET_CARRIER_TYPE_IDS,
+                )
+            )
+        )
+    if request.settlement_filter:
+        predicates.append(
+            Station.type_id.in_(
+                _type_id_filter_values(
+                    request.settlement_filter,
+                    SETTLEMENT_TYPE_IDS,
+                )
+            )
+        )
+    return tuple(predicates)
+
+
+def _type_id_filter_values(
+    requested_states: tuple[str, ...],
+    yes_type_ids: frozenset[int],
+) -> tuple[int, ...]:
+    """Translate Y/N/? accepted states to concrete Station.type_id values."""
+
+    states = set(requested_states)
+    known_type_ids = set(DISPLAY_NAMES) - {UNKNOWN}
+    accepted = set()
+    if "?" in states:
+        accepted.add(UNKNOWN)
+    if "Y" in states:
+        accepted.update(yes_type_ids)
+    if "N" in states:
+        accepted.update(known_type_ids - set(yes_type_ids))
+    return tuple(sorted(accepted))
 
 
 def fetch_station_pair_candidates(
