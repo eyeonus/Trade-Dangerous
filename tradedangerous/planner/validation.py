@@ -6,7 +6,7 @@ from .failures import (
     ContradictoryOptions,
     InvalidNumericOption,
     MissingRequiredInput,
-    UnsupportedFirstSliceShape,
+    UnsupportedRunShape,
 )
 from .run_request import RunRequest
 
@@ -21,7 +21,7 @@ def validate_run_request(request: RunRequest) -> None:
     _require_present(request.max_ly_per_jump, "--ly-per")
 
     if request.hops != 1:
-        raise UnsupportedFirstSliceShape(
+        raise UnsupportedRunShape(
             "Only --hops 1 is currently supported.",
             option_name="--hops",
         )
@@ -40,7 +40,7 @@ def validate_run_request(request: RunRequest) -> None:
     )
     for option_name, active in unsupported:
         if active:
-            raise UnsupportedFirstSliceShape(
+            raise UnsupportedRunShape(
                 f"{option_name} is not supported for this planner slice.",
                 option_name=option_name,
             )
@@ -53,13 +53,13 @@ def validate_run_request(request: RunRequest) -> None:
     )
     for option_name, value in unsupported_non_zero:
         if value:
-            raise UnsupportedFirstSliceShape(
+            raise UnsupportedRunShape(
                 f"{option_name} is not supported for this planner slice.",
                 option_name=option_name,
             )
 
     if request.routes != 1:
-        raise UnsupportedFirstSliceShape(
+        raise UnsupportedRunShape(
             "Only --routes 1 is currently supported.",
             option_name="--routes",
         )

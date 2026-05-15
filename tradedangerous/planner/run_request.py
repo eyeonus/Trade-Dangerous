@@ -52,7 +52,6 @@ class RunRequest:
     x52_pro: bool = False
     max_routes: int = 0
     prune_score: float = 0.0
-    prune_score: float = 0.0
     prune_hops: int = 3
 
 

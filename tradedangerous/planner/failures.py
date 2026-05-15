@@ -36,8 +36,8 @@ class InvalidRunRequest(PlannerFailure):
     """The parsed request is internally invalid."""
 
 
-class UnsupportedFirstSliceShape(InvalidRunRequest):
-    """The request is outside the gated first safe slice."""
+class UnsupportedRunShape(InvalidRunRequest):
+    """The request is outside the currently enabled trade run planner shape."""
 
 
 class MissingRequiredInput(InvalidRunRequest):

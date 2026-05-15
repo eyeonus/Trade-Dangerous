@@ -11,11 +11,13 @@ from tradedangerous.db.orm_models import Station, System
 from tradedangerous.db.station_types import fleet_carrier_state, settlement_state
 
 from .failures import (
+    AmbiguousPlace,
     AmbiguousStation,
     AmbiguousSystem,
+    UnknownPlace,
     UnknownStation,
     UnknownSystem,
-    UnsupportedFirstSliceShape,
+    UnsupportedRunShape,
 )
 from .run_result import ResolvedStation
 
@@ -59,7 +61,7 @@ def parse_station_reference(text: str, *, option_name: str) -> StationReference:
 
     reference = parse_endpoint_reference(text, option_name=option_name)
     if not reference.station_name:
-        raise UnsupportedFirstSliceShape(
+        raise UnsupportedRunShape(
             f"{option_name} must identify a station, not only a system.",
             option_name=option_name,
             entity_name=text,
@@ -163,17 +165,89 @@ def resolve_endpoint(
             system=system,
         )
 
-    station = _resolve_exact_station_global(
+    return _resolve_unscoped_endpoint(
         session,
         str(reference.station_name),
         option_name=option_name,
         original_text=text,
     )
-    return ResolvedEndpoint(
-        original_text=text,
+
+
+def _resolve_unscoped_endpoint(
+    session: Session,
+    name: str,
+    *,
+    option_name: str,
+    original_text: str,
+) -> ResolvedEndpoint:
+    """Resolve an unscoped endpoint by exact system/station candidates.
+
+    Future fuzzy matching should extend this helper after exact candidates
+    fail, not replace the exact-first behaviour.
+    """
+
+    systems = _find_exact_systems(session, name)
+    stations = _find_exact_stations_global(session, name)
+    if systems and stations:
+        raise AmbiguousPlace(
+            f"Ambiguous endpoint in {option_name}: {original_text}",
+            option_name=option_name,
+            entity_name=original_text,
+            details={
+                "systems": [system.name for system in systems],
+                "stations": [station.dbname() for station in stations],
+            },
+        )
+    if systems:
+        if len(systems) > 1:
+            raise AmbiguousSystem(
+                f"Ambiguous system in {option_name}: {original_text}",
+                option_name=option_name,
+                entity_name=original_text,
+                details={"matches": [system.name for system in systems]},
+            )
+        return ResolvedEndpoint(
+            original_text=original_text,
+            option_name=option_name,
+            system=systems[0],
+        )
+    if stations:
+        if len(stations) > 1:
+            raise AmbiguousStation(
+                f"Ambiguous station in {option_name}: {original_text}",
+                option_name=option_name,
+                entity_name=original_text,
+                details={"matches": [station.dbname() for station in stations]},
+            )
+        return ResolvedEndpoint(
+            original_text=original_text,
+            option_name=option_name,
+            station=_resolved_station_from_model(stations[0]),
+        )
+    raise UnknownPlace(
+        f"Unknown system or station in {option_name}: {original_text}",
         option_name=option_name,
-        station=_resolved_station_from_model(station),
+        entity_name=original_text,
     )
+
+
+def _find_exact_systems(session: Session, name: str) -> list[System]:
+    stmt = (
+        select(System)
+        .where(func.upper(System.name) == name.upper())
+        .order_by(System.system_id)
+    )
+    return list(session.scalars(stmt))
+
+
+def _find_exact_stations_global(session: Session, name: str) -> list[Station]:
+    stmt = (
+        select(Station)
+        .options(joinedload(Station.system))
+        .where(func.upper(Station.name) == name.upper())
+        .order_by(Station.system_id, Station.station_id)
+    )
+    return list(session.scalars(stmt))
 
 
 def _resolve_station_reference(
