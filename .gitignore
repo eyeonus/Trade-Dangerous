@@ -46,6 +46,9 @@ Thumbs.db
 tools/*
 !tools/.gitignore
 
+# K4 prototype — not for commit; revert this block if promoted to a real module
+k4_proto/
+
 # local-only
 /data/
 repo_files.txt
@@ -55,3 +58,4 @@ tests/fixtures/db_config.ini
 tmp/
 /*.ipynb
 TradeDangerous-listener/
+docs/Planner/
