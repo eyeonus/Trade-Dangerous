@@ -26,7 +26,7 @@ from .failures import (
     StationHasNoMarket,
 )
 from .run_request import RunRequest
-from .run_result import ResolvedStation, TradeCandidate
+from .run_result import ResolvedStation, ResolvedSystem, TradeCandidate
 
 
 def validate_station_filters(
@@ -117,7 +117,7 @@ def validate_station_filters(
 
 def fetch_eligible_stations_in_system(
     session: Session,
-    system,
+    system: ResolvedSystem,
     request: RunRequest,
     *,
     role: str,
@@ -127,6 +127,7 @@ def fetch_eligible_stations_in_system(
     This is endpoint expansion only: it deliberately stays bounded to the
     selected system and does not inspect market quotes. Source/destination
     quote eligibility is still evaluated later for each station pair.
+    SQL predicates are authoritative for all station-level filters.
     """
 
     stmt = (
@@ -134,22 +135,13 @@ def fetch_eligible_stations_in_system(
         .where(and_(*_station_filter_predicates(system, request)))
         .order_by(Station.station_id)
     )
-
-    stations = []
-    for station in session.scalars(stmt):
-        resolved = _resolved_station_from_model(station, system)
-        try:
-            validate_station_filters(resolved, request, role=role)
-        except (SourceStationIneligible, DestinationStationIneligible, StationHasNoMarket):
-            # Defensive fallback only. Normal expansion filtering should happen
-            # in SQL so rejected station rows are not materialised in Python.
-            continue
-        stations.append(resolved)
-
-    return tuple(stations)
+    return tuple(
+        _resolved_station_from_model(station, system)
+        for station in session.scalars(stmt)
+    )
 
 
-def _station_filter_predicates(system, request: RunRequest):
+def _station_filter_predicates(system: ResolvedSystem, request: RunRequest):
     """Return SQL predicates for station-level endpoint expansion filters."""
 
     predicates = [
@@ -212,54 +204,18 @@ def fetch_station_pair_candidates(
     destination: ResolvedStation,
     request: RunRequest,
 ) -> tuple[TradeCandidate, ...]:
-    """Fetch profitable commodities for one source/destination station pair."""
+    """Fetch profitable commodities for one source/destination station pair.
+
+    Runs the selective join first. Diagnostic probes to classify source-side
+    or destination-side missing data are deferred to the zero-result path only.
+    """
 
     source_item = aliased(StationItem)
     destination_item = aliased(StationItem)
 
     available_credits = int(request.starting_credits or 0) - request.insurance_reserve
     cutoff = _age_cutoff(request.age_days)
-    
-    source_filters = [
-        StationItem.station_id == source.station_id,
-        StationItem.supply_price > 0,
-        StationItem.supply_units > 0,
-    ]
-    if request.min_supply is not None:
-        source_filters.append(StationItem.supply_units >= request.min_supply)
-    if cutoff is not None:
-        source_filters.append(StationItem.modified >= cutoff)
-    
-    source_exists = session.execute(
-        select(StationItem.item_id).where(and_(*source_filters)).limit(1)
-    ).first()
-    if source_exists is None:
-        raise SourceHasNoSellingData(
-            f"Source station has no usable selling data: {source.dbname}",
-            option_name="--from",
-            entity_name=source.dbname,
-        )
-    
-    destination_filters = [
-        StationItem.station_id == destination.station_id,
-        StationItem.demand_price > 0,
-        StationItem.demand_units > 0,
-    ]
-    if request.min_demand is not None:
-        destination_filters.append(StationItem.demand_units >= request.min_demand)
-    if cutoff is not None:
-        destination_filters.append(StationItem.modified >= cutoff)
-    
-    destination_exists = session.execute(
-        select(StationItem.item_id).where(and_(*destination_filters)).limit(1)
-    ).first()
-    if destination_exists is None:
-        raise DestinationHasNoBuyingData(
-            f"Destination station has no usable buying data: {destination.dbname}",
-            option_name="--to",
-            entity_name=destination.dbname,
-        )
-    
+
     filters = [
         source_item.station_id == source.station_id,
         destination_item.station_id == destination.station_id,
@@ -278,13 +234,10 @@ def fetch_station_pair_candidates(
             destination_item.demand_price - source_item.supply_price
             <= request.max_gain_per_ton
         )
-
     if request.min_supply is not None:
         filters.append(source_item.supply_units >= request.min_supply)
-
     if request.min_demand is not None:
         filters.append(destination_item.demand_units >= request.min_demand)
-
     if cutoff is not None:
         filters.append(source_item.modified >= cutoff)
         filters.append(destination_item.modified >= cutoff)
@@ -314,7 +267,6 @@ def fetch_station_pair_candidates(
         source_age = _age_days(row[4])
         destination_age = _age_days(row[7])
         profit_per_unit = int(row[5]) - int(row[2])
-
         candidates.append(
             TradeCandidate(
                 item_id=int(row[0]),
@@ -331,21 +283,73 @@ def fetch_station_pair_candidates(
             )
         )
 
+    if not candidates:
+        _classify_zero_result_failure(session, source, destination, request, cutoff)
+
     return tuple(candidates)
 
 
-def _resolved_station_from_model(station: Station, system) -> ResolvedStation:
-    """Build the planner station DTO from ORM rows already bounded by system."""
+def _classify_zero_result_failure(
+    session: Session,
+    source: ResolvedStation,
+    destination: ResolvedStation,
+    request: RunRequest,
+    cutoff: datetime | None,
+) -> None:
+    """Raise the most specific failure when a station-pair join returns no candidates."""
+
+    source_filters = [
+        StationItem.station_id == source.station_id,
+        StationItem.supply_price > 0,
+        StationItem.supply_units > 0,
+    ]
+    if request.min_supply is not None:
+        source_filters.append(StationItem.supply_units >= request.min_supply)
+    if cutoff is not None:
+        source_filters.append(StationItem.modified >= cutoff)
+
+    if not session.execute(
+        select(StationItem.item_id).where(and_(*source_filters)).limit(1)
+    ).first():
+        raise SourceHasNoSellingData(
+            f"Source station has no usable selling data: {source.dbname}",
+            option_name="--from",
+            entity_name=source.dbname,
+        )
+
+    destination_filters = [
+        StationItem.station_id == destination.station_id,
+        StationItem.demand_price > 0,
+        StationItem.demand_units > 0,
+    ]
+    if request.min_demand is not None:
+        destination_filters.append(StationItem.demand_units >= request.min_demand)
+    if cutoff is not None:
+        destination_filters.append(StationItem.modified >= cutoff)
+
+    if not session.execute(
+        select(StationItem.item_id).where(and_(*destination_filters)).limit(1)
+    ).first():
+        raise DestinationHasNoBuyingData(
+            f"Destination station has no usable buying data: {destination.dbname}",
+            option_name="--to",
+            entity_name=destination.dbname,
+        )
+    # Both sides have qualifying data; zero join result means no profitable intersection.
+
+
+def _resolved_station_from_model(station: Station, system: ResolvedSystem) -> ResolvedStation:
+    """Build the planner station DTO from an ORM station row and a resolved system DTO."""
 
     return ResolvedStation(
         station_id=int(station.station_id),
         name=str(station.name),
         dbname=f"{system.name}/{station.name}",
-        system_id=int(system.system_id),
-        system_name=str(system.name),
-        x=float(system.pos_x),
-        y=float(system.pos_y),
-        z=float(system.pos_z),
+        system_id=system.system_id,
+        system_name=system.name,
+        x=system.x,
+        y=system.y,
+        z=system.z,
         ls_from_star=int(station.ls_from_star or 0),
         market=str(station.market),
         black_market=str(station.blackmarket),

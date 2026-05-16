@@ -8,8 +8,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from tradedangerous.db.orm_models import Station, System
-from tradedangerous.db.station_types import fleet_carrier_state, settlement_state
 
+from .data_gateway import _resolved_station_from_model
 from .failures import (
     AmbiguousPlace,
     AmbiguousStation,
@@ -19,7 +19,7 @@ from .failures import (
     UnknownSystem,
     UnsupportedRunShape,
 )
-from .run_result import ResolvedStation
+from .run_result import ResolvedStation, ResolvedSystem
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,7 +44,7 @@ class ResolvedEndpoint:
 
     original_text: str
     option_name: str
-    system: System | None = None
+    system: ResolvedSystem | None = None
     station: ResolvedStation | None = None
 
     @property
@@ -107,6 +107,19 @@ def parse_endpoint_reference(text: str, *, option_name: str) -> EndpointReferenc
     )
 
 
+def _system_to_resolved(system: System) -> ResolvedSystem:
+    """Convert an ORM System to a planner ResolvedSystem DTO."""
+
+    return ResolvedSystem(
+        system_id=int(system.system_id),
+        name=str(system.name),
+        dbname=str(system.name),
+        x=float(system.pos_x),
+        y=float(system.pos_y),
+        z=float(system.pos_z),
+    )
+
+
 def resolve_station(
     session: Session,
     text: str,
@@ -126,7 +139,7 @@ def resolve_station(
         option_name=option_name,
         original_text=text,
     )
-    return _resolved_station_from_model(station)
+    return _resolved_station_from_model(station, _system_to_resolved(station.system))
 
 
 def resolve_endpoint(
@@ -145,6 +158,7 @@ def resolve_endpoint(
             reference.system_name,
             option_name=option_name,
         )
+        resolved_system = _system_to_resolved(system)
         if reference.station_name:
             station = _resolve_exact_station_in_system(
                 session,
@@ -156,13 +170,13 @@ def resolve_endpoint(
             return ResolvedEndpoint(
                 original_text=text,
                 option_name=option_name,
-                station=_resolved_station_from_model(station),
+                station=_resolved_station_from_model(station, resolved_system),
             )
 
         return ResolvedEndpoint(
             original_text=text,
             option_name=option_name,
-            system=system,
+            system=resolved_system,
         )
 
     return _resolve_unscoped_endpoint(
@@ -209,7 +223,7 @@ def _resolve_unscoped_endpoint(
         return ResolvedEndpoint(
             original_text=original_text,
             option_name=option_name,
-            system=systems[0],
+            system=_system_to_resolved(systems[0]),
         )
     if stations:
         if len(stations) > 1:
@@ -219,10 +233,11 @@ def _resolve_unscoped_endpoint(
                 entity_name=original_text,
                 details={"matches": [station.dbname() for station in stations]},
             )
+        station = stations[0]
         return ResolvedEndpoint(
             original_text=original_text,
             option_name=option_name,
-            station=_resolved_station_from_model(stations[0]),
+            station=_resolved_station_from_model(station, _system_to_resolved(station.system)),
         )
     raise UnknownPlace(
         f"Unknown system or station in {option_name}: {original_text}",
@@ -378,26 +393,3 @@ def _resolve_exact_station_global(
     return matches[0]
 
 
-def _resolved_station_from_model(station: Station) -> ResolvedStation:
-    system = station.system
-
-    return ResolvedStation(
-        station_id=int(station.station_id),
-        name=str(station.name),
-        dbname=station.dbname(),
-        system_id=int(system.system_id),
-        system_name=str(system.name),
-        x=float(system.pos_x),
-        y=float(system.pos_y),
-        z=float(system.pos_z),
-        ls_from_star=int(station.ls_from_star or 0),
-        market=str(station.market),
-        black_market=str(station.blackmarket),
-        max_pad_size=str(station.max_pad_size),
-        planetary=str(station.planetary),
-        fleet_carrier=fleet_carrier_state(int(station.type_id or 0)),
-        settlement=settlement_state(int(station.type_id or 0)),
-        type_id=int(station.type_id or 0),
-        modified=station.modified,
-        data_age_days=None,
-    )

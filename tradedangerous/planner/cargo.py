@@ -62,8 +62,10 @@ def optimise_cargo(
         for idx in range(index, len(bounded)):
             candidate = bounded[idx]
             trade = candidate.trade
-            if remaining_capacity <= 0 or remaining_credits < trade.buy_price:
+            if remaining_capacity <= 0:
                 break
+            if remaining_credits < trade.buy_price:
+                continue
 
             quantity = min(
                 candidate.max_quantity,

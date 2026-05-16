@@ -216,14 +216,6 @@ def _best_pair_plan(
                 saw_source_selling_data = True
                 market_query_ms += _elapsed_ms(market_started)
                 continue
-            except (
-                failures.StationHasNoMarket,
-                failures.SourceStationIneligible,
-                failures.DestinationStationIneligible,
-                failures.NoProfitableTrades,
-            ):
-                market_query_ms += _elapsed_ms(market_started)
-                continue
             market_query_ms += _elapsed_ms(market_started)
             saw_source_selling_data = True
             saw_destination_buying_data = True
@@ -303,7 +295,7 @@ def _system_from_station(
     return run_result.ResolvedSystem(
         system_id=station.system_id,
         name=station.system_name,
-        dbname=f"{station.system_name.upper()}/",
+        dbname=station.system_name,
         x=station.x,
         y=station.y,
         z=station.z,
