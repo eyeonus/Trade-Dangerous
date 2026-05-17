@@ -24,7 +24,7 @@ class RunRequest:
     max_gain_per_ton: int = 0
     min_supply: int | None = None
     min_demand: int | None = None
-    pad_size_filter: tuple[str, ...] = ()
+    pad_size: str | None = None
     planetary_filter: tuple[str, ...] = ()
     no_planet: bool = False
     fleet_carrier_filter: tuple[str, ...] = ()
@@ -74,9 +74,7 @@ def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
         max_gain_per_ton=getattr(cmdenv, "maxGainPerTon", 0),
         min_supply=getattr(cmdenv, "supply", None),
         min_demand=getattr(cmdenv, "demand", None),
-        pad_size_filter=_normalise_pad_size_filter(
-            getattr(cmdenv, "padSize", None),
-        ),
+        pad_size=_normalise_pad_size(getattr(cmdenv, "padSize", None)),
         planetary_filter=_normalise_state_filter(
             getattr(cmdenv, "planetary", None),
         ),
@@ -130,17 +128,20 @@ def _normalise_state_filter(value: object) -> tuple[str, ...]:
     return states
 
 
-def _normalise_pad_size_filter(value: object) -> tuple[str, ...]:
-    """Normalise pad-size filters into accepted-size tuples.
+def _normalise_pad_size(value: object) -> str | None:
+    """Normalise the raw --pad-size input without discarding bad values.
 
-    Pad size is an exact accepted-state filter, not a ship-compatibility rank.
-    SML and SML? both accept all known pad sizes, so both impose no filter.
+    --pad-size is a single ship-fit threshold (S, M, or L). Normalisation only
+    strips surrounding whitespace and uppercases, so validation can reject any
+    value that is not one of the three valid sizes. An absent or empty value
+    means no pad-size threshold was requested.
     """
 
-    pads = _normalise_character_filter(value, allowed=("S", "M", "L", "?"))
-    if {"S", "M", "L"}.issubset(set(pads)):
-        return ()
-    return pads
+    if value is None:
+        return None
+
+    text = str(value).strip().upper()
+    return text or None
 
 
 def _normalise_character_filter(

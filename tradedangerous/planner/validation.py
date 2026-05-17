@@ -5,6 +5,7 @@ from __future__ import annotations
 from .failures import (
     ContradictoryOptions,
     InvalidNumericOption,
+    InvalidRunRequest,
     MissingRequiredInput,
     UnsupportedRunShape,
 )
@@ -153,12 +154,11 @@ def validate_run_request(request: RunRequest) -> None:
             option_name="--no-planet",
         )
 
-    # Pad-size is an exact accepted-state set. S+L without M is not a
-    # meaningful station class selection, so reject it before planning.
-    pads = set(request.pad_size_filter)
-    if "S" in pads and "L" in pads and "M" not in pads:
-        raise ContradictoryOptions(
-            "--pad-size cannot combine S and L while excluding M.",
+    # --pad-size is a single ship-fit threshold: the pad size the ship needs.
+    # ?, multi-letter values, and anything that is not S, M, or L are rejected.
+    if request.pad_size is not None and request.pad_size not in ("S", "M", "L"):
+        raise InvalidRunRequest(
+            "--pad-size must be one of S, M, or L.",
             option_name="--pad-size",
         )
 

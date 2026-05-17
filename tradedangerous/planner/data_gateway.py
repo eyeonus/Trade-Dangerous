@@ -51,10 +51,18 @@ def validate_station_filters(
             entity_name=station.dbname,
         )
 
-    if request.pad_size_filter and not _pad_size_matches(
-        station.max_pad_size,
-        request.pad_size_filter,
-    ):
+    # An unknown pad size is never eligible: a ship cannot be safely routed to
+    # a station that may not be able to land it. This holds whether or not
+    # --pad-size was supplied.
+    if station.max_pad_size not in _KNOWN_PAD_SIZES:
+        raise failure_type(
+            f"{option_prefix} station has an unknown landing pad size: "
+            f"{station.dbname}",
+            option_name=option_prefix,
+            entity_name=station.dbname,
+        )
+
+    if not _pad_size_matches(station.max_pad_size, request.pad_size):
         raise failure_type(
             f"{option_prefix} station does not meet --pad-size.",
             option_name="--pad-size",
@@ -148,8 +156,11 @@ def _station_filter_predicates(system: ResolvedSystem, request: RunRequest):
         Station.system_id == system.system_id,
         Station.market != "N",
     ]
-    if request.pad_size_filter:
-        predicates.append(Station.max_pad_size.in_(request.pad_size_filter))
+    # Unknown-pad stations are always excluded. --pad-size raises the
+    # threshold to medium-or-larger, or large-only, when supplied.
+    predicates.append(
+        Station.max_pad_size.in_(_qualifying_pad_sizes(request.pad_size))
+    )
     if request.no_planet:
         predicates.append(Station.planetary == "N")
     if request.planetary_filter:
@@ -363,17 +374,31 @@ def _resolved_station_from_model(station: Station, system: ResolvedSystem) -> Re
     )
 
 
-def _pad_size_matches(
-    station_pad_size: str | None,
-    requested_pad_sizes: tuple[str, ...],
-) -> bool:
-    """Return whether a station pad size is in the requested accepted set.
+_KNOWN_PAD_SIZES = ("S", "M", "L")
 
-    Pad-size filters are exact station-state filters, not ship-compatibility
-    ranks. Unknown pad size is represented as '?'.
+_PAD_SIZE_QUALIFYING = {
+    "S": ("S", "M", "L"),
+    "M": ("M", "L"),
+    "L": ("L",),
+}
+
+
+def _qualifying_pad_sizes(pad_size: str | None) -> tuple[str, ...]:
+    """Return the station max-pad-size values satisfying a --pad-size threshold.
+
+    --pad-size names the pad size the ship needs; a station qualifies when its
+    largest pad is at least that size. With no --pad-size the threshold is the
+    weakest (small), which every known pad size meets. Unknown-pad stations are
+    never included, so they are always ineligible.
     """
 
-    return (station_pad_size or "?").upper() in requested_pad_sizes
+    return _PAD_SIZE_QUALIFYING[pad_size or "S"]
+
+
+def _pad_size_matches(station_pad_size: str, pad_size: str | None) -> bool:
+    """Return whether a station's largest pad meets a --pad-size threshold."""
+
+    return station_pad_size in _qualifying_pad_sizes(pad_size)
 
 
 def _state_filter_matches(
