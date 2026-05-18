@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import and_, select
+from sqlalchemy import Select, and_, select
 from sqlalchemy.orm import Session, aliased
 
 from tradedangerous.db.orm_models import Item, Station, StationItem, System
@@ -221,45 +221,44 @@ def _system_reach_predicates(anchor_system: ResolvedSystem, max_ly: float):
     )
 
 
-def _reachable_destination_station_ids(
-    session: Session,
+def _reachable_station_id_query(
     anchor_system: ResolvedSystem,
     request: RunRequest,
     excluded_station_ids: tuple[int, ...] = (),
-) -> tuple[int, ...]:
-    """Return the station ids reachable from the anchor in one jump.
+) -> Select:
+    """Return a SELECT of station ids reachable from the anchor in one jump.
 
-    Resolved in stages so the spatial narrowing always runs first: the System
-    bounding box yields the in-range system ids, those drive the Station query
-    by indexed system_id, and the market table is only touched afterwards by
-    the caller. A single flat join instead lets the planner lead with a
-    low-selectivity station-attribute filter rather than the spatial index,
-    which is catastrophically slow in dense regions.
+    This is a subquery, not a materialised id list. Callers compose it into a
+    larger statement with ``.in_(...)`` so the reachable set never leaves SQL.
+    Handing a large id list back to a later query as a literal ``IN (...)``
+    flips SQLite off the StationItem primary key and onto a galaxy-wide index
+    scan; keeping the set as a subquery holds the plan on the primary key.
+
+    Spatial narrowing still runs first: the System bounding box is itself a
+    nested subquery, so the in-range systems are resolved before the Station
+    attribute filters and well before the caller touches the market table.
     """
 
     if request.max_jumps_per_hop == 0:
         # --jumps-per 0: same-system supercruise only, no hyperspace jump.
-        system_ids: tuple[int, ...] = (anchor_system.system_id,)
+        system_filter = System.system_id == anchor_system.system_id
     else:
         # --jumps-per 1: every system within a single loaded jump.
-        reach = _system_reach_predicates(
-            anchor_system,
-            float(request.max_ly_per_jump or 0.0),
+        system_filter = and_(
+            *_system_reach_predicates(
+                anchor_system,
+                float(request.max_ly_per_jump or 0.0),
+            )
         )
-        system_ids = tuple(
-            session.scalars(select(System.system_id).where(and_(*reach)))
-        )
-        if not system_ids:
-            return ()
+    in_range_systems = select(System.system_id).where(system_filter)
 
     filters = [
-        Station.system_id.in_(system_ids),
+        Station.system_id.in_(in_range_systems),
         *_station_attribute_predicates(request),
     ]
     if excluded_station_ids:
         filters.append(Station.station_id.not_in(excluded_station_ids))
-    stmt = select(Station.station_id).where(and_(*filters))
-    return tuple(session.scalars(stmt))
+    return select(Station.station_id).where(and_(*filters))
 
 
 def _type_id_filter_values(
@@ -422,40 +421,61 @@ def _classify_zero_result_failure(
 
 def fetch_open_ended_trade_candidates(
     session: Session,
-    fixed_origin_station_ids: tuple[int, ...],
+    fixed_station_ids: tuple[int, ...],
     anchor_system: ResolvedSystem,
     request: RunRequest,
     excluded_station_ids: tuple[int, ...] = (),
+    *,
+    open_role: str,
 ) -> tuple[TradeCandidate, ...]:
-    """Fetch profitable trades from the origin stations to reachable ones.
+    """Fetch profitable trades between a fixed endpoint and reachable stations.
 
-    The reachable destination stations are resolved first, by spatial
-    narrowing (see _reachable_destination_station_ids). The origin supply
-    rows and the destination demand rows are then fetched as two separate
-    single-table queries, each driven by its station-id set through the
-    StationItem primary key, and matched on item_id in Python. A single
-    self-join instead lets SQLite reach the market table by the item_id
-    index and scan it galaxy-wide for common commodities; keeping the two
-    sides apart holds every table access on the primary key.
+    open_role is the trade role of the endpoint the planner selects — "source"
+    when --from is omitted, "destination" when --to is omitted. The fixed
+    endpoint takes the other role. The spatially-reached station set and the
+    fixed station set are assigned to the supply and demand queries from
+    open_role: an open source feeds the supply query from reachable stations
+    and the demand query from the fixed destination; an open destination feeds
+    the supply query from the fixed origin and the demand query from reachable
+    stations.
+
+    The reachable stations stay a subquery (see _reachable_station_id_query),
+    never a materialised id list: handed to a query as a large literal
+    IN (...) they would flip SQLite onto a galaxy-wide index scan, so as a
+    subquery the query holds the StationItem primary key. The fixed endpoint
+    is one named place and small, so its id list is passed directly. Supply
+    rows and demand rows are fetched as two separate single-table queries and
+    matched on item_id in Python; a single self-join would instead let SQLite
+    scan the market table galaxy-wide by item_id, so the two sides stay apart.
 
     Failure classification is left to the caller: this returns an empty tuple
     when no candidate survives, rather than probing for a specific reason.
     """
 
-    destination_station_ids = _reachable_destination_station_ids(
-        session,
+    reachable_query = _reachable_station_id_query(
         anchor_system,
         request,
         excluded_station_ids=excluded_station_ids,
     )
-    if not destination_station_ids:
-        return ()
+
+    # open_role names the endpoint the planner selects; the spatially-reached
+    # set fills that side's query and the fixed endpoint fills the other. The
+    # reachable set stays a subquery so SQLite keeps the StationItem primary
+    # key; a large literal id list would flip it onto a galaxy-wide index
+    # scan. The fixed endpoint is one named place, small, so a literal id
+    # list is safe there.
+    if open_role == "source":
+        supply_station_filter = StationItem.station_id.in_(reachable_query)
+        demand_station_filter = StationItem.station_id.in_(fixed_station_ids)
+    else:
+        supply_station_filter = StationItem.station_id.in_(fixed_station_ids)
+        demand_station_filter = StationItem.station_id.in_(reachable_query)
 
     available_credits = int(request.starting_credits or 0) - request.insurance_reserve
     cutoff = _age_cutoff(request.age_days)
 
     supply_filters = [
-        StationItem.station_id.in_(fixed_origin_station_ids),
+        supply_station_filter,
         StationItem.supply_price > 0,
         StationItem.supply_units > 0,
         StationItem.supply_price <= available_credits,
@@ -478,7 +498,7 @@ def fetch_open_ended_trade_candidates(
         return ()
 
     demand_filters = [
-        StationItem.station_id.in_(destination_station_ids),
+        demand_station_filter,
         StationItem.demand_price > 0,
         StationItem.demand_units >= _MIN_MEANINGFUL_DEMAND,
     ]
@@ -568,14 +588,12 @@ def any_reachable_station(
     both paths narrow identically.
     """
 
-    return bool(
-        _reachable_destination_station_ids(
-            session,
-            anchor_system,
-            request,
-            excluded_station_ids=excluded_station_ids,
-        )
+    query = _reachable_station_id_query(
+        anchor_system,
+        request,
+        excluded_station_ids=excluded_station_ids,
     )
+    return session.execute(query.limit(1)).first() is not None
 
 
 def fetch_stations_by_id(

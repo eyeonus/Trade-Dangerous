@@ -35,9 +35,19 @@ def plan_onehop_route(session: Session, request: RunRequest) -> run_result.RunRe
     validate_run_request(request)
     validation_ms = _elapsed_ms(validation_started)
 
-    if request.to_text:
+    # Both endpoints named: evaluate the station-pair matrix, no spatial
+    # search. One endpoint omitted: the planner selects it via the open-ended
+    # search, open_role being the role of that selected endpoint. Both
+    # endpoints omitted is already rejected by validation.
+    if request.from_text and request.to_text:
         return _plan_fixed_endpoints(session, request, started, validation_ms)
-    return _best_open_destination_plan(session, request, started, validation_ms)
+    if request.from_text:
+        return _best_open_ended_plan(
+            session, request, started, validation_ms, open_role="destination"
+        )
+    return _best_open_ended_plan(
+        session, request, started, validation_ms, open_role="source"
+    )
 
 
 def _plan_fixed_endpoints(
@@ -102,70 +112,103 @@ def _plan_fixed_endpoints(
     return _assemble_result(request, best_pair, diagnostics)
 
 
-def _best_open_destination_plan(
+def _best_open_ended_plan(
     session: Session,
     request: RunRequest,
     started: float,
     validation_ms: float,
+    *,
+    open_role: str,
 ) -> run_result.RunResult:
-    """Plan one hop from a fixed origin to the best reachable destination.
+    """Plan one hop with one fixed endpoint and one chosen by the planner.
 
-    The destination endpoint was omitted, so the planner selects it: one
-    SQL-bounded spatial query produces every profitable trade from the fixed
-    origin stations to any station reachable in a single loaded jump, and the
-    best-scoring station pair wins.
+    open_role is the trade role of the endpoint the planner selects: "source"
+    when --from was omitted, "destination" when --to was omitted. The other
+    endpoint is the fixed, anchored one and takes the opposite role. The
+    open-ended candidate query produces every profitable trade between the
+    fixed stations and any station reachable in a single loaded jump, and the
+    best-scoring station pair wins. Both open-ended directions run through this
+    one path; only the endpoint derivation below depends on open_role.
     """
 
+    # The fixed endpoint is the one the user supplied; its role, option name,
+    # and request text are the inverse of open_role.
+    if open_role == "source":
+        fixed_role = "destination"
+        fixed_option = "--to"
+        fixed_text = request.to_text
+    else:
+        fixed_role = "source"
+        fixed_option = "--from"
+        fixed_text = request.from_text
+
     resolution_started = time.perf_counter()
-    origin_endpoint = resolver.resolve_endpoint(
+    fixed_endpoint = resolver.resolve_endpoint(
         session,
-        str(request.from_text),
-        option_name="--from",
+        str(fixed_text),
+        option_name=fixed_option,
     )
     resolution_ms = _elapsed_ms(resolution_started)
 
     station_filter_started = time.perf_counter()
-    origin_stations = _stations_from_endpoint(
+    fixed_stations = _stations_from_endpoint(
         session,
-        origin_endpoint,
+        fixed_endpoint,
         request,
-        role="source",
+        role=fixed_role,
     )
     station_filter_ms = _elapsed_ms(station_filter_started)
 
-    anchor_system = _anchor_system_from_endpoint(origin_endpoint)
-    excluded_origin_ids = tuple(station.station_id for station in origin_stations)
+    anchor_system = _anchor_system_from_endpoint(fixed_endpoint)
+    fixed_station_ids = tuple(station.station_id for station in fixed_stations)
 
     market_started = time.perf_counter()
     candidates = data_gateway.fetch_open_ended_trade_candidates(
         session,
-        excluded_origin_ids,
+        fixed_station_ids,
         anchor_system,
         request,
-        excluded_station_ids=excluded_origin_ids,
+        excluded_station_ids=fixed_station_ids,
+        open_role=open_role,
     )
     if not candidates:
         _raise_empty_open_search(
             session,
             anchor_system,
             request,
-            excluded_station_ids=excluded_origin_ids,
+            excluded_station_ids=fixed_station_ids,
+            open_role=open_role,
         )
-    destination_stations = data_gateway.fetch_stations_by_id(
+
+    # Materialise only the open side's stations as DTOs; the fixed side is
+    # already in hand. The open side is the source when open_role is "source",
+    # the destination otherwise.
+    if open_role == "source":
+        open_station_ids = tuple(
+            {candidate.source_station_id for candidate in candidates}
+        )
+    else:
+        open_station_ids = tuple(
+            {candidate.destination_station_id for candidate in candidates}
+        )
+    open_stations = data_gateway.fetch_stations_by_id(
         session,
-        tuple({candidate.destination_station_id for candidate in candidates}),
+        open_station_ids,
     )
     market_query_ms = _elapsed_ms(market_started)
     candidate_trade_count = len(candidates)
 
-    origin_by_id = {station.station_id: station for station in origin_stations}
+    # Fixed and open stations are disjoint (fixed ids are excluded from the
+    # reachable set), so one merged map resolves either side of every pair.
+    station_map = {station.station_id: station for station in fixed_stations}
+    station_map.update(open_stations)
     grouped_pairs = _group_pairs(candidates)
 
     best_pair = None
     cargo_optimisation_ms = 0.0
     for (source_id, destination_id), pair_candidates in grouped_pairs.items():
-        source_station = origin_by_id[source_id]
-        destination_station = destination_stations[destination_id]
+        source_station = station_map[source_id]
+        destination_station = station_map[destination_id]
         cargo_started = time.perf_counter()
         try:
             cargo = optimise_cargo(
@@ -312,7 +355,7 @@ def _stations_from_endpoint(
 def _anchor_system_from_endpoint(
     endpoint: resolver.ResolvedEndpoint,
 ) -> run_result.ResolvedSystem:
-    """Return the single anchor system for a resolved fixed origin endpoint.
+    """Return the single anchor system for a resolved fixed endpoint.
 
     A station endpoint anchors on its own system; a system endpoint anchors on
     itself. The endpoint has already been validated by _stations_from_endpoint,
@@ -347,11 +390,15 @@ def _raise_empty_open_search(
     anchor_system: run_result.ResolvedSystem,
     request: RunRequest,
     excluded_station_ids: tuple[int, ...] = (),
+    *,
+    open_role: str,
 ) -> None:
     """Raise the coarse failure for an open-ended search that found no trade.
 
     A reachable station with no profitable trade and no reachable station at
-    all are distinct outcomes, so one lightweight probe tells them apart.
+    all are distinct outcomes, so one lightweight probe tells them apart. The
+    messages name the anchored endpoint: the origin when the planner picks the
+    destination, the destination when it picks the origin.
     """
 
     if data_gateway.any_reachable_station(
@@ -360,12 +407,19 @@ def _raise_empty_open_search(
         request,
         excluded_station_ids=excluded_station_ids,
     ):
+        if open_role == "source":
+            raise failures.NoProfitableTrades(
+                "No profitable trades were found to the destination from any "
+                "reachable station."
+            )
         raise failures.NoProfitableTrades(
             "No profitable trades were found from the origin to any "
             "reachable station."
         )
+    anchored_noun = "destination" if open_role == "source" else "origin"
     raise failures.NoReachableRoute(
-        "No reachable station was found within range of the origin system."
+        "No reachable station was found within range of the "
+        f"{anchored_noun} system."
     )
 
 

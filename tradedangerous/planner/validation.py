@@ -15,10 +15,15 @@ from .run_request import RunRequest
 def validate_run_request(request: RunRequest) -> None:
     """Reject requests outside the currently enabled planner shape."""
 
-    _require_present(request.from_text, "--from")
     _require_present(request.capacity_units, "--capacity")
     _require_present(request.starting_credits, "--credits")
     _require_present(request.max_ly_per_jump, "--ly-per")
+
+    if not request.from_text and not request.to_text:
+        raise UnsupportedRunShape(
+            "Either --from or --to must be supplied.",
+            option_name="--from",
+        )
 
     if request.hops != 1:
         raise UnsupportedRunShape(
@@ -108,12 +113,14 @@ def validate_run_request(request: RunRequest) -> None:
             option_name="--jumps-per",
         )
 
-    # An omitted --to triggers the open-ended destination search, which is
-    # bounded to same-system (--jumps-per 0) or single-jump (--jumps-per 1)
-    # reachability. Multi-jump open-ended search is not yet supported.
-    if not request.to_text and request.max_jumps_per_hop not in (0, 1):
+    # An omitted endpoint triggers the open-ended search, which is bounded to
+    # same-system (--jumps-per 0) or single-jump (--jumps-per 1) reachability.
+    # Multi-jump open-ended search is not yet supported.
+    if (not request.from_text or not request.to_text) and (
+        request.max_jumps_per_hop not in (0, 1)
+    ):
         raise UnsupportedRunShape(
-            "--to may only be omitted with --jumps-per 0 or 1.",
+            "--from or --to may only be omitted with --jumps-per 0 or 1.",
             option_name="--jumps-per",
         )
 
