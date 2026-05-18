@@ -225,6 +225,7 @@ def _reachable_destination_station_ids(
     session: Session,
     anchor_system: ResolvedSystem,
     request: RunRequest,
+    excluded_station_ids: tuple[int, ...] = (),
 ) -> tuple[int, ...]:
     """Return the station ids reachable from the anchor in one jump.
 
@@ -251,12 +252,13 @@ def _reachable_destination_station_ids(
         if not system_ids:
             return ()
 
-    stmt = select(Station.station_id).where(
-        and_(
-            Station.system_id.in_(system_ids),
-            *_station_attribute_predicates(request),
-        )
-    )
+    filters = [
+        Station.system_id.in_(system_ids),
+        *_station_attribute_predicates(request),
+    ]
+    if excluded_station_ids:
+        filters.append(Station.station_id.not_in(excluded_station_ids))
+    stmt = select(Station.station_id).where(and_(*filters))
     return tuple(session.scalars(stmt))
 
 
@@ -423,6 +425,7 @@ def fetch_open_ended_trade_candidates(
     fixed_origin_station_ids: tuple[int, ...],
     anchor_system: ResolvedSystem,
     request: RunRequest,
+    excluded_station_ids: tuple[int, ...] = (),
 ) -> tuple[TradeCandidate, ...]:
     """Fetch profitable trades from the origin stations to reachable ones.
 
@@ -443,6 +446,7 @@ def fetch_open_ended_trade_candidates(
         session,
         anchor_system,
         request,
+        excluded_station_ids=excluded_station_ids,
     )
     if not destination_station_ids:
         return ()
@@ -554,6 +558,7 @@ def any_reachable_station(
     session: Session,
     anchor_system: ResolvedSystem,
     request: RunRequest,
+    excluded_station_ids: tuple[int, ...] = (),
 ) -> bool:
     """Return whether any station is reachable under the open-ended filters.
 
@@ -564,7 +569,12 @@ def any_reachable_station(
     """
 
     return bool(
-        _reachable_destination_station_ids(session, anchor_system, request)
+        _reachable_destination_station_ids(
+            session,
+            anchor_system,
+            request,
+            excluded_station_ids=excluded_station_ids,
+        )
     )
 
 

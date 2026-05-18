@@ -134,16 +134,23 @@ def _best_open_destination_plan(
     station_filter_ms = _elapsed_ms(station_filter_started)
 
     anchor_system = _anchor_system_from_endpoint(origin_endpoint)
+    excluded_origin_ids = tuple(station.station_id for station in origin_stations)
 
     market_started = time.perf_counter()
     candidates = data_gateway.fetch_open_ended_trade_candidates(
         session,
-        tuple(station.station_id for station in origin_stations),
+        excluded_origin_ids,
         anchor_system,
         request,
+        excluded_station_ids=excluded_origin_ids,
     )
     if not candidates:
-        _raise_empty_open_search(session, anchor_system, request)
+        _raise_empty_open_search(
+            session,
+            anchor_system,
+            request,
+            excluded_station_ids=excluded_origin_ids,
+        )
     destination_stations = data_gateway.fetch_stations_by_id(
         session,
         tuple({candidate.destination_station_id for candidate in candidates}),
@@ -339,6 +346,7 @@ def _raise_empty_open_search(
     session: Session,
     anchor_system: run_result.ResolvedSystem,
     request: RunRequest,
+    excluded_station_ids: tuple[int, ...] = (),
 ) -> None:
     """Raise the coarse failure for an open-ended search that found no trade.
 
@@ -346,7 +354,12 @@ def _raise_empty_open_search(
     all are distinct outcomes, so one lightweight probe tells them apart.
     """
 
-    if data_gateway.any_reachable_station(session, anchor_system, request):
+    if data_gateway.any_reachable_station(
+        session,
+        anchor_system,
+        request,
+        excluded_station_ids=excluded_station_ids,
+    ):
         raise failures.NoProfitableTrades(
             "No profitable trades were found from the origin to any "
             "reachable station."
@@ -475,7 +488,12 @@ def _pair_is_better(pair: _PairPlan, best_pair: _PairPlan | None) -> bool:
         return True
     if pair.practical_score != best_pair.practical_score:
         return pair.practical_score > best_pair.practical_score
-    return pair.cargo.total_profit > best_pair.cargo.total_profit
+    if pair.cargo.total_profit != best_pair.cargo.total_profit:
+        return pair.cargo.total_profit > best_pair.cargo.total_profit
+    # Deterministic tie-break: lower source ID, then lower destination ID.
+    if pair.source_station.station_id != best_pair.source_station.station_id:
+        return pair.source_station.station_id < best_pair.source_station.station_id
+    return pair.destination_station.station_id < best_pair.destination_station.station_id
 
 
 def _system_from_station(
