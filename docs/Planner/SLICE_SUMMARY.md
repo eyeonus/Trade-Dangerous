@@ -138,6 +138,62 @@ Full record: `docs/Planner/third_slice_completion_report.md`.
 
 ---
 
+## Slice 4 — Open-Ended Origin Search (complete)
+
+`--to` supplied, `--from` omitted — the planner selects the origin, finding
+the best one-hop trade into the supplied destination from any reachable
+station.
+
+**Supported shape:** `--to <station|system>` with `--from` omitted, alongside
+every fixed-endpoint shape (Slices 1-2) and the omitted-`--to` shape (Slice 3).
+At least one of `--from` / `--to` must be supplied; both omitted is rejected.
+
+**Delivered:**
+
+- Slice 3's open-ended destination search is generalised, not duplicated, into
+  one parameterised path. `_best_open_destination_plan` becomes
+  `_best_open_ended_plan`, keyed on `open_role` — the trade role of the
+  endpoint the planner selects. Only the fixed-endpoint derivation reads
+  `open_role`; resolution, candidate query, pair evaluation, scoring, and
+  result assembly are direction-agnostic.
+- `plan_onehop_route` dispatches three ways: both endpoints fixed ->
+  `_plan_fixed_endpoints`; one omitted -> `_best_open_ended_plan` with the
+  matching `open_role`; both omitted -> rejected in validation.
+- `fetch_open_ended_trade_candidates` assigns the fixed and spatially-reached
+  station sets to the supply and demand queries from `open_role`.
+- Fixed-side and open-side station DTOs merge into one
+  `station_id -> ResolvedStation` map; the pair loop resolves either side
+  without a direction branch.
+- Validation: `--from` is no longer required; the both-omitted shape is
+  rejected (`UnsupportedRunShape`); the omitted-endpoint `--jumps-per` guard
+  applies to whichever endpoint is omitted.
+
+**Reachable-station query shape:** the `--to "Sol"` dense-region validation
+command exposed a query that did not scale. The open-ended candidate query
+constrained `StationItem.station_id` with a station-id list materialised into
+Python and passed back as a literal `IN (...)`. A short list keeps SQLite on
+the `StationItem` primary key; a list of thousands of ids flips it to a
+galaxy-wide commodity-index scan (`ANY(item_id)`) — millions of page reads.
+The reachable set is now a SQL subquery: `_reachable_station_id_query` returns
+a `Select`, composed into the candidate query with `.in_(<subquery>)`, which
+holds the primary-key plan. `--to "Sol"` returns in ~2.5s against a prior
+multi-minute non-completion. The lesson is recorded in the project `CLAUDE.md`
+("Query work belongs in the database").
+
+**Verified:** the omitted-`--from` shapes (station, system, `--jumps-per 0`);
+the Slice 3 open-destination set and the run-short benchmark re-run after the
+query-shape change, unchanged; the both-endpoint shapes; the two new failure
+checks (`UnsupportedRunShape`, no traceback). Dense-region performance
+verified on `--to "Sol"`.
+
+**Deferred (not cut):** both endpoints omitted (the unanchored galaxy search),
+and multi-jump open-ended search. These must reach the new planner before
+`--old` is retired at v13.
+
+Full record: `docs/Planner/fourth_slice_completion_report.md`.
+
+---
+
 ## Project Notes
 
 ### Data scale
@@ -326,8 +382,12 @@ wins:
 --ly-per >  12.5    default --jumps-per 1
 ```
 
-Earmarked as an opening item for Slice 4. Until it lands, the flat default of
-1 from Slice 3 stands.
+Considered for Slice 4 and deferred: the new planner cannot yet fly a 2-jump
+hop — `plan_jump_path` raises `ReachabilityImplementationMissing` for any
+cross-system hop with `--jumps-per >= 2` — so a default of 2 is meaningless
+until multi-jump per-hop reachability exists. The keyed default belongs with
+the slice that delivers that capability. Until then the flat default of 1
+stands.
 
 ---
 

@@ -62,6 +62,14 @@ Each completed slice has an implementation plan (what needs to be done) and a co
 | [third_slice_implementation_plan.md](third_slice_implementation_plan.md) | Design plan for Slice 3: spatial narrowing via bounding-box SQL query, open-ended destination search, _MIN_MEANINGFUL_DEMAND threshold, pad-size filter semantics. |
 | [third_slice_completion_report.md](third_slice_completion_report.md) | Proof of completion: routes match where planner filter models align; spot-checked against `--old`; run-short benchmark byte-identical; open-ended search ~3s vs. 7–30s legacy. |
 
+### Slice 4 — Open-Ended Origin Search (Complete)
+**Omitted `--from` endpoint; planner finds the best reachable origin. One open-ended search now serves both anchored directions.**
+
+| Document | Content |
+|----------|---------|
+| [fourth_slice_implementation_plan.md](fourth_slice_implementation_plan.md) | Design plan for Slice 4: generalising the open-ended search to run from either anchored endpoint via `open_role`; three-way dispatch. |
+| [fourth_slice_completion_report.md](fourth_slice_completion_report.md) | Proof of completion: omitted-`--from` shapes, the unified open-ended search, the reachable-station subquery fix, validation. |
+
 ---
 
 ## Reference and Technical Notes

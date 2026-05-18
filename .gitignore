@@ -55,4 +55,3 @@ tests/fixtures/db_config.ini
 tmp/
 /*.ipynb
 TradeDangerous-listener/
-docs/Planner/
