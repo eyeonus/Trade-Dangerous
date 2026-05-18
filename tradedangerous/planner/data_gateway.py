@@ -51,20 +51,19 @@ def validate_station_filters(
             entity_name=station.dbname,
         )
 
-    # An unknown pad size is never eligible: a ship cannot be safely routed to
-    # a station that may not be able to land it. This holds whether or not
-    # --pad-size was supplied.
-    if station.max_pad_size not in _KNOWN_PAD_SIZES:
-        raise failure_type(
-            f"{option_prefix} station has an unknown landing pad size: "
-            f"{station.dbname}",
-            option_name=option_prefix,
-            entity_name=station.dbname,
-        )
-
+    # An unknown pad qualifies whenever the requested threshold admits a medium
+    # pad, and is rejected only under --pad-size L; _pad_size_matches applies
+    # that rule. The message names the unknown pad as the cause when relevant.
     if not _pad_size_matches(station.max_pad_size, request.pad_size):
+        if station.max_pad_size not in _KNOWN_PAD_SIZES:
+            message = (
+                f"{option_prefix} station has an unknown landing pad size: "
+                f"{station.dbname}"
+            )
+        else:
+            message = f"{option_prefix} station does not meet --pad-size."
         raise failure_type(
-            f"{option_prefix} station does not meet --pad-size.",
+            message,
             option_name="--pad-size",
             entity_name=station.dbname,
         )
@@ -384,8 +383,8 @@ _MIN_MEANINGFUL_DEMAND = 2
 _KNOWN_PAD_SIZES = ("S", "M", "L")
 
 _PAD_SIZE_QUALIFYING = {
-    "S": ("S", "M", "L"),
-    "M": ("M", "L"),
+    "S": ("S", "M", "L", "?"),
+    "M": ("M", "L", "?"),
     "L": ("L",),
 }
 
@@ -395,8 +394,10 @@ def _qualifying_pad_sizes(pad_size: str | None) -> tuple[str, ...]:
 
     --pad-size names the pad size the ship needs; a station qualifies when its
     largest pad is at least that size. With no --pad-size the threshold is the
-    weakest (small), which every known pad size meets. Unknown-pad stations are
-    never included, so they are always ineligible.
+    weakest (small), which every known pad size meets. An unknown pad ("?")
+    qualifies whenever the threshold admits a medium pad (under small, medium,
+    or no --pad-size) and is excluded only under large, where landing cannot be
+    risked on an unrecorded pad.
     """
 
     return _PAD_SIZE_QUALIFYING[pad_size or "S"]
