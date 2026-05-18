@@ -234,7 +234,7 @@ def fetch_station_pair_candidates(
         source_item.supply_price > 0,
         source_item.supply_units > 0,
         destination_item.demand_price > 0,
-        destination_item.demand_units > 0,
+        destination_item.demand_units >= _MIN_MEANINGFUL_DEMAND,
         destination_item.demand_price - source_item.supply_price
         >= request.min_gain_per_ton,
         source_item.supply_price <= available_credits,
@@ -331,7 +331,7 @@ def _classify_zero_result_failure(
     destination_filters = [
         StationItem.station_id == destination.station_id,
         StationItem.demand_price > 0,
-        StationItem.demand_units > 0,
+        StationItem.demand_units >= _MIN_MEANINGFUL_DEMAND,
     ]
     if request.min_demand is not None:
         destination_filters.append(StationItem.demand_units >= request.min_demand)
@@ -373,6 +373,13 @@ def _resolved_station_from_model(station: Station, system: ResolvedSystem) -> Re
         data_age_days=None,
     )
 
+
+# A station that stocks a commodity still shows a nominal demand for it.
+# demand_units of 0 or 1 is the dormant buy side of stocked goods, copied
+# verbatim from the source market data; it is not a real buyer. Capping cargo
+# at such a row produces one-tonne noise routes. Genuine destination markets
+# carry a demand of 2 or more, so that is the floor for a row to count.
+_MIN_MEANINGFUL_DEMAND = 2
 
 _KNOWN_PAD_SIZES = ("S", "M", "L")
 
