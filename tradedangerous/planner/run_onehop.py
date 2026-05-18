@@ -168,7 +168,6 @@ def _best_open_ended_plan(
         fixed_station_ids,
         anchor_system,
         request,
-        excluded_station_ids=fixed_station_ids,
         open_role=open_role,
     )
     if not candidates:
@@ -176,7 +175,7 @@ def _best_open_ended_plan(
             session,
             anchor_system,
             request,
-            excluded_station_ids=fixed_station_ids,
+            fixed_station_ids,
             open_role=open_role,
         )
 
@@ -198,8 +197,9 @@ def _best_open_ended_plan(
     market_query_ms = _elapsed_ms(market_started)
     candidate_trade_count = len(candidates)
 
-    # Fixed and open stations are disjoint (fixed ids are excluded from the
-    # reachable set), so one merged map resolves either side of every pair.
+    # Fixed-side and open-side stations may overlap (a same-system search
+    # reaches the fixed system's own stations); merging them keyed by id is
+    # still correct — a shared station resolves to one DTO either way.
     station_map = {station.station_id: station for station in fixed_stations}
     station_map.update(open_stations)
     grouped_pairs = _group_pairs(candidates)
@@ -389,23 +389,23 @@ def _raise_empty_open_search(
     session: Session,
     anchor_system: run_result.ResolvedSystem,
     request: RunRequest,
-    excluded_station_ids: tuple[int, ...] = (),
+    fixed_station_ids: tuple[int, ...],
     *,
     open_role: str,
 ) -> None:
     """Raise the coarse failure for an open-ended search that found no trade.
 
-    A reachable station with no profitable trade and no reachable station at
-    all are distinct outcomes, so one lightweight probe tells them apart. The
-    messages name the anchored endpoint: the origin when the planner picks the
-    destination, the destination when it picks the origin.
+    A reachable station pair with no profitable trade, and no reachable station
+    pair at all, are distinct outcomes — one lightweight probe tells them
+    apart. The messages name the anchored endpoint: the origin when the planner
+    picks the destination, the destination when it picks the origin.
     """
 
-    if data_gateway.any_reachable_station(
+    if data_gateway.any_reachable_station_pair(
         session,
         anchor_system,
         request,
-        excluded_station_ids=excluded_station_ids,
+        fixed_station_ids,
     ):
         if open_role == "source":
             raise failures.NoProfitableTrades(

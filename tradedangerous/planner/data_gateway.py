@@ -224,7 +224,6 @@ def _system_reach_predicates(anchor_system: ResolvedSystem, max_ly: float):
 def _reachable_station_id_query(
     anchor_system: ResolvedSystem,
     request: RunRequest,
-    excluded_station_ids: tuple[int, ...] = (),
 ) -> Select:
     """Return a SELECT of station ids reachable from the anchor in one jump.
 
@@ -256,8 +255,6 @@ def _reachable_station_id_query(
         Station.system_id.in_(in_range_systems),
         *_station_attribute_predicates(request),
     ]
-    if excluded_station_ids:
-        filters.append(Station.station_id.not_in(excluded_station_ids))
     return select(Station.station_id).where(and_(*filters))
 
 
@@ -424,7 +421,6 @@ def fetch_open_ended_trade_candidates(
     fixed_station_ids: tuple[int, ...],
     anchor_system: ResolvedSystem,
     request: RunRequest,
-    excluded_station_ids: tuple[int, ...] = (),
     *,
     open_role: str,
 ) -> tuple[TradeCandidate, ...]:
@@ -452,11 +448,7 @@ def fetch_open_ended_trade_candidates(
     when no candidate survives, rather than probing for a specific reason.
     """
 
-    reachable_query = _reachable_station_id_query(
-        anchor_system,
-        request,
-        excluded_station_ids=excluded_station_ids,
-    )
+    reachable_query = _reachable_station_id_query(anchor_system, request)
 
     # open_role names the endpoint the planner selects; the spatially-reached
     # set fills that side's query and the fixed endpoint fills the other. The
@@ -548,6 +540,13 @@ def fetch_open_ended_trade_candidates(
         source_age = _age_days(supply[4])
         item_name = item_names.get(item_id, "")
         for demand in demand_matches:
+            destination_station_id = int(demand[1])
+            if destination_station_id == source_station_id:
+                # Same-station self-pair, never a valid hop. The fixed and
+                # reachable station sets legitimately overlap on a same-system
+                # search, so the source != destination invariant is enforced
+                # here, per pair.
+                continue
             sell_price = int(demand[2])
             profit_per_unit = sell_price - buy_price
             if profit_per_unit < min_gain:
@@ -559,7 +558,7 @@ def fetch_open_ended_trade_candidates(
                     item_id=item_id,
                     item_name=item_name,
                     source_station_id=source_station_id,
-                    destination_station_id=int(demand[1]),
+                    destination_station_id=destination_station_id,
                     buy_price=buy_price,
                     sell_price=sell_price,
                     profit_per_unit=profit_per_unit,
@@ -574,26 +573,32 @@ def fetch_open_ended_trade_candidates(
     return tuple(candidates)
 
 
-def any_reachable_station(
+def any_reachable_station_pair(
     session: Session,
     anchor_system: ResolvedSystem,
     request: RunRequest,
-    excluded_station_ids: tuple[int, ...] = (),
+    fixed_station_ids: tuple[int, ...],
 ) -> bool:
-    """Return whether any station is reachable under the open-ended filters.
+    """Return whether a reachable station can form a non-self pair.
 
-    This separates two empty open-ended searches: a reachable station with no
-    profitable trade is a different outcome from no reachable station at all.
-    It shares the staged spatial resolution used by the candidate query, so
-    both paths narrow identically.
+    This separates two empty open-ended searches: reachable stations exist but
+    yield no profitable trade, versus no valid station pair being reachable at
+    all. The question is pair existence, not station existence — does some
+    reachable station differ in id from some fixed station.
+
+    With two or more fixed stations any reachable station satisfies it: even
+    if the reachable station is itself one of the fixed stations, it pairs
+    with a different fixed station. With exactly one fixed station, a reachable
+    station qualifies only if it is not that station, so the sole fixed id is
+    excluded from the probe.
     """
 
-    query = _reachable_station_id_query(
-        anchor_system,
-        request,
-        excluded_station_ids=excluded_station_ids,
-    )
-    return session.execute(query.limit(1)).first() is not None
+    reachable_query = _reachable_station_id_query(anchor_system, request)
+    if len(fixed_station_ids) == 1:
+        reachable_query = reachable_query.where(
+            Station.station_id != fixed_station_ids[0]
+        )
+    return session.execute(reachable_query.limit(1)).first() is not None
 
 
 def fetch_stations_by_id(
