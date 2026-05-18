@@ -130,6 +130,32 @@ reasonable time. See Scope Completed — Reachable-station query shape.
 
 ---
 
+## Post-Completion Audit
+
+A source-level audit after sign-off found the open-ended search
+over-excluding the fixed endpoint. The fixed endpoint's full station set was
+passed as a blanket exclusion to the open-side reachable query. For a single
+fixed station that is harmless; for a system fixed endpoint it made the open
+set disjoint from the whole fixed system — with `--jumps-per 0` (same-system
+only) the open set was empty and the search failed outright, and with
+`--jumps-per 1` valid same-system A->B trades into or out of that system were
+silently suppressed. Both open directions were affected.
+
+The invariant belongs at pair level — `source_station_id !=
+destination_station_id` — not at reachable-set level. The blanket exclusion
+is removed and the candidate reachable set is broad; self-pairs are screened
+per pair at candidate assembly, with `_group_pairs` retaining its self-pair
+drop. The failure probe `any_reachable_station` becomes
+`any_reachable_station_pair`, answering pair existence — true when some
+reachable station differs in id from some fixed station — so a single fixed
+station alone in its system is still classified `NoReachableRoute`, not
+`NoProfitableTrades`.
+
+Validated with `--jumps-per 0` for both a system endpoint and a
+single-station endpoint, in both open directions.
+
+---
+
 ## Quarantine Status
 
 Intact.
@@ -163,6 +189,7 @@ On `release/v1`:
 
 ```text
 cd57399b  feat(planner): add open-ended one-hop origin search
+db82e655  fix(planner): keep the open-ended self-pair guard at pair level
 ```
 
 ---

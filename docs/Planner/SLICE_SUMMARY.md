@@ -186,6 +186,16 @@ query-shape change, unchanged; the both-endpoint shapes; the two new failure
 checks (`UnsupportedRunShape`, no traceback). Dense-region performance
 verified on `--to "Sol"`.
 
+**Post-completion audit:** a source-level audit found the open-ended search
+over-excluding the fixed endpoint — its whole station set was passed as a
+blanket exclusion to the open-side reachable query, which for a system fixed
+endpoint emptied the open set under `--jumps-per 0` and suppressed valid
+same-system trades under `--jumps-per 1`. Corrected to a pair-level invariant
+(commit `db82e655`): the reachable set stays broad, self-pairs are screened
+per pair at candidate assembly (`source != destination`), and the failure
+probe `any_reachable_station_pair` answers pair existence so a lone fixed
+station still classifies as `NoReachableRoute`.
+
 **Deferred (not cut):** both endpoints omitted (the unanchored galaxy search),
 and multi-jump open-ended search. These must reach the new planner before
 `--old` is retired at v13.
