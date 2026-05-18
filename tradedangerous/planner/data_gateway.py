@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session, aliased
 
-from tradedangerous.db.orm_models import Item, Station, StationItem
+from tradedangerous.db.orm_models import Item, Station, StationItem, System
 from tradedangerous.db.station_types import (
     DISPLAY_NAMES,
     FLEET_CARRIER_TYPE_IDS,
@@ -139,7 +139,12 @@ def fetch_eligible_stations_in_system(
 
     stmt = (
         select(Station)
-        .where(and_(*_station_filter_predicates(system, request)))
+        .where(
+            and_(
+                Station.system_id == system.system_id,
+                *_station_attribute_predicates(request),
+            )
+        )
         .order_by(Station.station_id)
     )
     return tuple(
@@ -148,18 +153,22 @@ def fetch_eligible_stations_in_system(
     )
 
 
-def _station_filter_predicates(system: ResolvedSystem, request: RunRequest):
-    """Return SQL predicates for station-level endpoint expansion filters."""
+def _station_attribute_predicates(request: RunRequest):
+    """Return SQL predicates for station-attribute filters.
+
+    These filters apply regardless of how the candidate station set was
+    reached: bounded system expansion and the open-ended spatial search both
+    use them. The System.system_id pin (expansion) or the spatial predicates
+    (open search) are composed in separately by the caller.
+    """
 
     predicates = [
-        Station.system_id == system.system_id,
         Station.market != "N",
+        # --pad-size raises the threshold to medium-or-larger, or large-only,
+        # when supplied. Unknown-pad stations qualify unless the threshold is
+        # large-only (see _qualifying_pad_sizes).
+        Station.max_pad_size.in_(_qualifying_pad_sizes(request.pad_size)),
     ]
-    # Unknown-pad stations are always excluded. --pad-size raises the
-    # threshold to medium-or-larger, or large-only, when supplied.
-    predicates.append(
-        Station.max_pad_size.in_(_qualifying_pad_sizes(request.pad_size))
-    )
     if request.no_planet:
         predicates.append(Station.planetary == "N")
     if request.planetary_filter:
@@ -188,6 +197,67 @@ def _station_filter_predicates(system: ResolvedSystem, request: RunRequest):
             )
         )
     return tuple(predicates)
+
+
+def _system_reach_predicates(anchor_system: ResolvedSystem, max_ly: float):
+    """Return SQL predicates selecting systems within max_ly of an anchor system.
+
+    A bounding box on the indexed System.pos_x/pos_y/pos_z columns is the
+    coarse filter; an exact squared-distance test refines it without a square
+    root. Both run SQL-side, so spatial narrowing happens before any join to
+    station or market data.
+    """
+
+    ax, ay, az = anchor_system.x, anchor_system.y, anchor_system.z
+    reach_sq = max_ly * max_ly
+    dx = System.pos_x - ax
+    dy = System.pos_y - ay
+    dz = System.pos_z - az
+    return (
+        System.pos_x.between(ax - max_ly, ax + max_ly),
+        System.pos_y.between(ay - max_ly, ay + max_ly),
+        System.pos_z.between(az - max_ly, az + max_ly),
+        dx * dx + dy * dy + dz * dz <= reach_sq,
+    )
+
+
+def _reachable_destination_station_ids(
+    session: Session,
+    anchor_system: ResolvedSystem,
+    request: RunRequest,
+) -> tuple[int, ...]:
+    """Return the station ids reachable from the anchor in one jump.
+
+    Resolved in stages so the spatial narrowing always runs first: the System
+    bounding box yields the in-range system ids, those drive the Station query
+    by indexed system_id, and the market table is only touched afterwards by
+    the caller. A single flat join instead lets the planner lead with a
+    low-selectivity station-attribute filter rather than the spatial index,
+    which is catastrophically slow in dense regions.
+    """
+
+    if request.max_jumps_per_hop == 0:
+        # --jumps-per 0: same-system supercruise only, no hyperspace jump.
+        system_ids: tuple[int, ...] = (anchor_system.system_id,)
+    else:
+        # --jumps-per 1: every system within a single loaded jump.
+        reach = _system_reach_predicates(
+            anchor_system,
+            float(request.max_ly_per_jump or 0.0),
+        )
+        system_ids = tuple(
+            session.scalars(select(System.system_id).where(and_(*reach)))
+        )
+        if not system_ids:
+            return ()
+
+    stmt = select(Station.station_id).where(
+        and_(
+            Station.system_id.in_(system_ids),
+            *_station_attribute_predicates(request),
+        )
+    )
+    return tuple(session.scalars(stmt))
 
 
 def _type_id_filter_values(
@@ -346,6 +416,192 @@ def _classify_zero_result_failure(
             entity_name=destination.dbname,
         )
     # Both sides have qualifying data; zero join result means no profitable intersection.
+
+
+def fetch_open_ended_trade_candidates(
+    session: Session,
+    fixed_origin_station_ids: tuple[int, ...],
+    anchor_system: ResolvedSystem,
+    request: RunRequest,
+) -> tuple[TradeCandidate, ...]:
+    """Fetch profitable trades from the origin stations to reachable ones.
+
+    The reachable destination stations are resolved first, by spatial
+    narrowing (see _reachable_destination_station_ids). The origin supply
+    rows and the destination demand rows are then fetched as two separate
+    single-table queries, each driven by its station-id set through the
+    StationItem primary key, and matched on item_id in Python. A single
+    self-join instead lets SQLite reach the market table by the item_id
+    index and scan it galaxy-wide for common commodities; keeping the two
+    sides apart holds every table access on the primary key.
+
+    Failure classification is left to the caller: this returns an empty tuple
+    when no candidate survives, rather than probing for a specific reason.
+    """
+
+    destination_station_ids = _reachable_destination_station_ids(
+        session,
+        anchor_system,
+        request,
+    )
+    if not destination_station_ids:
+        return ()
+
+    available_credits = int(request.starting_credits or 0) - request.insurance_reserve
+    cutoff = _age_cutoff(request.age_days)
+
+    supply_filters = [
+        StationItem.station_id.in_(fixed_origin_station_ids),
+        StationItem.supply_price > 0,
+        StationItem.supply_units > 0,
+        StationItem.supply_price <= available_credits,
+    ]
+    if request.min_supply is not None:
+        supply_filters.append(StationItem.supply_units >= request.min_supply)
+    if cutoff is not None:
+        supply_filters.append(StationItem.modified >= cutoff)
+
+    supply_rows = session.execute(
+        select(
+            StationItem.item_id,
+            StationItem.station_id,
+            StationItem.supply_price,
+            StationItem.supply_units,
+            StationItem.modified,
+        ).where(and_(*supply_filters))
+    ).all()
+    if not supply_rows:
+        return ()
+
+    demand_filters = [
+        StationItem.station_id.in_(destination_station_ids),
+        StationItem.demand_price > 0,
+        StationItem.demand_units >= _MIN_MEANINGFUL_DEMAND,
+    ]
+    if request.min_demand is not None:
+        demand_filters.append(StationItem.demand_units >= request.min_demand)
+    if cutoff is not None:
+        demand_filters.append(StationItem.modified >= cutoff)
+
+    demand_rows = session.execute(
+        select(
+            StationItem.item_id,
+            StationItem.station_id,
+            StationItem.demand_price,
+            StationItem.demand_units,
+            StationItem.modified,
+        ).where(and_(*demand_filters))
+    ).all()
+    if not demand_rows:
+        return ()
+
+    demand_by_item: dict[int, list] = {}
+    for row in demand_rows:
+        demand_by_item.setdefault(int(row[0]), []).append(row)
+
+    supply_item_ids = {int(row[0]) for row in supply_rows}
+    item_names = {
+        int(item_id): str(name)
+        for item_id, name in session.execute(
+            select(Item.item_id, Item.name).where(
+                Item.item_id.in_(tuple(supply_item_ids))
+            )
+        ).all()
+    }
+
+    min_gain = request.min_gain_per_ton
+    max_gain = request.max_gain_per_ton
+
+    candidates = []
+    for supply in supply_rows:
+        item_id = int(supply[0])
+        demand_matches = demand_by_item.get(item_id)
+        if not demand_matches:
+            continue
+        source_station_id = int(supply[1])
+        buy_price = int(supply[2])
+        source_supply_units = int(supply[3])
+        source_age = _age_days(supply[4])
+        item_name = item_names.get(item_id, "")
+        for demand in demand_matches:
+            sell_price = int(demand[2])
+            profit_per_unit = sell_price - buy_price
+            if profit_per_unit < min_gain:
+                continue
+            if max_gain > 0 and profit_per_unit > max_gain:
+                continue
+            candidates.append(
+                TradeCandidate(
+                    item_id=item_id,
+                    item_name=item_name,
+                    source_station_id=source_station_id,
+                    destination_station_id=int(demand[1]),
+                    buy_price=buy_price,
+                    sell_price=sell_price,
+                    profit_per_unit=profit_per_unit,
+                    source_supply_units=source_supply_units,
+                    destination_demand_units=int(demand[3]),
+                    source_age_days=source_age,
+                    destination_age_days=_age_days(demand[4]),
+                )
+            )
+
+    candidates.sort(key=lambda c: (-c.profit_per_unit, c.item_name))
+    return tuple(candidates)
+
+
+def any_reachable_station(
+    session: Session,
+    anchor_system: ResolvedSystem,
+    request: RunRequest,
+) -> bool:
+    """Return whether any station is reachable under the open-ended filters.
+
+    This separates two empty open-ended searches: a reachable station with no
+    profitable trade is a different outcome from no reachable station at all.
+    It shares the staged spatial resolution used by the candidate query, so
+    both paths narrow identically.
+    """
+
+    return bool(
+        _reachable_destination_station_ids(session, anchor_system, request)
+    )
+
+
+def fetch_stations_by_id(
+    session: Session,
+    station_ids: tuple[int, ...],
+) -> dict[int, ResolvedStation]:
+    """Fetch ResolvedStation DTOs for a set of station ids, keyed by id.
+
+    Used to materialise the destination stations that actually appear in
+    open-ended trade candidates, so reachable stations with no profitable
+    trade are never loaded into planner space.
+    """
+
+    if not station_ids:
+        return {}
+
+    stmt = (
+        select(Station, System)
+        .join(System, System.system_id == Station.system_id)
+        .where(Station.station_id.in_(station_ids))
+    )
+    stations: dict[int, ResolvedStation] = {}
+    for station, system in session.execute(stmt):
+        resolved_system = ResolvedSystem(
+            system_id=int(system.system_id),
+            name=str(system.name),
+            dbname=str(system.name),
+            x=float(system.pos_x),
+            y=float(system.pos_y),
+            z=float(system.pos_z),
+        )
+        stations[int(station.station_id)] = _resolved_station_from_model(
+            station,
+            resolved_system,
+        )
+    return stations
 
 
 def _resolved_station_from_model(station: Station, system: ResolvedSystem) -> ResolvedStation:

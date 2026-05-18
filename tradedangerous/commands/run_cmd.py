@@ -117,7 +117,7 @@ switches = [
     ),
     ParseArgument('--jumps-per',
         help = 'Maximum number of jumps (system-to-system) per hop.',
-        default = 2,
+        default = 1,
         dest = 'maxJumpsPer',
         metavar = 'N',
         type = int,

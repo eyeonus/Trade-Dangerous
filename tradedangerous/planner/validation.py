@@ -16,7 +16,6 @@ def validate_run_request(request: RunRequest) -> None:
     """Reject requests outside the currently enabled planner shape."""
 
     _require_present(request.from_text, "--from")
-    _require_present(request.to_text, "--to")
     _require_present(request.capacity_units, "--capacity")
     _require_present(request.starting_credits, "--credits")
     _require_present(request.max_ly_per_jump, "--ly-per")
@@ -106,6 +105,15 @@ def validate_run_request(request: RunRequest) -> None:
     if request.max_jumps_per_hop is None or request.max_jumps_per_hop < 0:
         raise InvalidNumericOption(
             "--jumps-per must not be negative.",
+            option_name="--jumps-per",
+        )
+
+    # An omitted --to triggers the open-ended destination search, which is
+    # bounded to same-system (--jumps-per 0) or single-jump (--jumps-per 1)
+    # reachability. Multi-jump open-ended search is not yet supported.
+    if not request.to_text and request.max_jumps_per_hop not in (0, 1):
+        raise UnsupportedRunShape(
+            "--to may only be omitted with --jumps-per 0 or 1.",
             option_name="--jumps-per",
         )
 

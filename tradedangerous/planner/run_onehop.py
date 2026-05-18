@@ -35,6 +35,19 @@ def plan_onehop_route(session: Session, request: RunRequest) -> run_result.RunRe
     validate_run_request(request)
     validation_ms = _elapsed_ms(validation_started)
 
+    if request.to_text:
+        return _plan_fixed_endpoints(session, request, started, validation_ms)
+    return _best_open_destination_plan(session, request, started, validation_ms)
+
+
+def _plan_fixed_endpoints(
+    session: Session,
+    request: RunRequest,
+    started: float,
+    validation_ms: float,
+) -> run_result.RunResult:
+    """Plan one hop when both endpoints are supplied by the user."""
+
     resolution_started = time.perf_counter()
     source_endpoint = resolver.resolve_endpoint(
         session,
@@ -76,6 +89,139 @@ def plan_onehop_route(session: Session, request: RunRequest) -> run_result.RunRe
         request,
     )
 
+    diagnostics = run_result.PlannerDiagnostics(
+        validation_ms=validation_ms,
+        resolution_ms=resolution_ms,
+        station_filter_ms=station_filter_ms,
+        market_query_ms=market_query_ms,
+        reachability_ms=reachability_ms,
+        cargo_optimisation_ms=cargo_optimisation_ms,
+        total_planner_ms=_elapsed_ms(started),
+        candidate_trade_count=candidate_trade_count,
+    )
+    return _assemble_result(request, best_pair, diagnostics)
+
+
+def _best_open_destination_plan(
+    session: Session,
+    request: RunRequest,
+    started: float,
+    validation_ms: float,
+) -> run_result.RunResult:
+    """Plan one hop from a fixed origin to the best reachable destination.
+
+    The destination endpoint was omitted, so the planner selects it: one
+    SQL-bounded spatial query produces every profitable trade from the fixed
+    origin stations to any station reachable in a single loaded jump, and the
+    best-scoring station pair wins.
+    """
+
+    resolution_started = time.perf_counter()
+    origin_endpoint = resolver.resolve_endpoint(
+        session,
+        str(request.from_text),
+        option_name="--from",
+    )
+    resolution_ms = _elapsed_ms(resolution_started)
+
+    station_filter_started = time.perf_counter()
+    origin_stations = _stations_from_endpoint(
+        session,
+        origin_endpoint,
+        request,
+        role="source",
+    )
+    station_filter_ms = _elapsed_ms(station_filter_started)
+
+    anchor_system = _anchor_system_from_endpoint(origin_endpoint)
+
+    market_started = time.perf_counter()
+    candidates = data_gateway.fetch_open_ended_trade_candidates(
+        session,
+        tuple(station.station_id for station in origin_stations),
+        anchor_system,
+        request,
+    )
+    if not candidates:
+        _raise_empty_open_search(session, anchor_system, request)
+    destination_stations = data_gateway.fetch_stations_by_id(
+        session,
+        tuple({candidate.destination_station_id for candidate in candidates}),
+    )
+    market_query_ms = _elapsed_ms(market_started)
+    candidate_trade_count = len(candidates)
+
+    origin_by_id = {station.station_id: station for station in origin_stations}
+    grouped_pairs = _group_pairs(candidates)
+
+    best_pair = None
+    cargo_optimisation_ms = 0.0
+    for (source_id, destination_id), pair_candidates in grouped_pairs.items():
+        source_station = origin_by_id[source_id]
+        destination_station = destination_stations[destination_id]
+        cargo_started = time.perf_counter()
+        try:
+            cargo = optimise_cargo(
+                pair_candidates,
+                capacity_units=int(request.capacity_units or 0),
+                available_credits=int(request.starting_credits or 0)
+                - request.insurance_reserve,
+                cargo_limit_per_item=request.cargo_limit_per_item,
+            )
+        except failures.NoAffordableCargo:
+            cargo_optimisation_ms += _elapsed_ms(cargo_started)
+            continue
+        cargo_optimisation_ms += _elapsed_ms(cargo_started)
+        practical_score = score_with_destination_penalty(
+            cargo.total_profit,
+            destination_distance_ls=destination_station.ls_from_star,
+            penalty_percent=request.ls_penalty_percent,
+        )
+        pair = _PairPlan(
+            source_station=source_station,
+            destination_station=destination_station,
+            jump_path=None,
+            cargo=cargo,
+            practical_score=practical_score,
+        )
+        if _pair_is_better(pair, best_pair):
+            best_pair = pair
+
+    if best_pair is None:
+        raise failures.NoAffordableCargo(
+            "Profitable trades exist, but no cargo can be afforded."
+        )
+
+    reachability_started = time.perf_counter()
+    jump_path = plan_jump_path(
+        _system_from_station(best_pair.source_station),
+        _system_from_station(best_pair.destination_station),
+        max_jumps_per_hop=int(request.max_jumps_per_hop or 0),
+        max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
+    )
+    reachability_ms = _elapsed_ms(reachability_started)
+    best_pair = replace(best_pair, jump_path=jump_path)
+
+    diagnostics = run_result.PlannerDiagnostics(
+        validation_ms=validation_ms,
+        resolution_ms=resolution_ms,
+        station_filter_ms=station_filter_ms,
+        market_query_ms=market_query_ms,
+        reachability_ms=reachability_ms,
+        cargo_optimisation_ms=cargo_optimisation_ms,
+        total_planner_ms=_elapsed_ms(started),
+        candidate_trade_count=candidate_trade_count,
+    )
+    return _assemble_result(request, best_pair, diagnostics)
+
+
+def _assemble_result(
+    request: RunRequest,
+    best_pair: _PairPlan,
+    diagnostics: run_result.PlannerDiagnostics,
+) -> run_result.RunResult:
+    """Build the single-route RunResult shared by both planning paths."""
+
     hop = run_result.PlannedHop(
         source_station=best_pair.source_station,
         destination_station=best_pair.destination_station,
@@ -92,17 +238,6 @@ def plan_onehop_route(session: Session, request: RunRequest) -> run_result.RunRe
         starting_credits=int(request.starting_credits or 0),
         ending_credits=int(request.starting_credits or 0)
         + best_pair.cargo.total_profit,
-    )
-
-    diagnostics = run_result.PlannerDiagnostics(
-        validation_ms=validation_ms,
-        resolution_ms=resolution_ms,
-        station_filter_ms=station_filter_ms,
-        market_query_ms=market_query_ms,
-        reachability_ms=reachability_ms,
-        cargo_optimisation_ms=cargo_optimisation_ms,
-        total_planner_ms=_elapsed_ms(started),
-        candidate_trade_count=candidate_trade_count,
     )
 
     return run_result.RunResult(
@@ -164,6 +299,60 @@ def _stations_from_endpoint(
         f"{endpoint.option_name} system has no eligible {role} stations.",
         option_name=endpoint.option_name,
         entity_name=endpoint.original_text,
+    )
+
+
+def _anchor_system_from_endpoint(
+    endpoint: resolver.ResolvedEndpoint,
+) -> run_result.ResolvedSystem:
+    """Return the single anchor system for a resolved fixed origin endpoint.
+
+    A station endpoint anchors on its own system; a system endpoint anchors on
+    itself. The endpoint has already been validated by _stations_from_endpoint,
+    so exactly one of station or system is populated.
+    """
+
+    if endpoint.station is not None:
+        return _system_from_station(endpoint.station)
+    return endpoint.system
+
+
+def _group_pairs(
+    candidates: tuple[run_result.TradeCandidate, ...],
+) -> dict[tuple[int, int], tuple[run_result.TradeCandidate, ...]]:
+    """Group open-ended candidates by station pair, dropping self-pairs.
+
+    A self-pair (origin station equal to destination station) is never a
+    valid trade hop, so it is excluded before cargo optimisation.
+    """
+
+    grouped: dict[tuple[int, int], list[run_result.TradeCandidate]] = {}
+    for candidate in candidates:
+        if candidate.source_station_id == candidate.destination_station_id:
+            continue
+        key = (candidate.source_station_id, candidate.destination_station_id)
+        grouped.setdefault(key, []).append(candidate)
+    return {key: tuple(group) for key, group in grouped.items()}
+
+
+def _raise_empty_open_search(
+    session: Session,
+    anchor_system: run_result.ResolvedSystem,
+    request: RunRequest,
+) -> None:
+    """Raise the coarse failure for an open-ended search that found no trade.
+
+    A reachable station with no profitable trade and no reachable station at
+    all are distinct outcomes, so one lightweight probe tells them apart.
+    """
+
+    if data_gateway.any_reachable_station(session, anchor_system, request):
+        raise failures.NoProfitableTrades(
+            "No profitable trades were found from the origin to any "
+            "reachable station."
+        )
+    raise failures.NoReachableRoute(
+        "No reachable station was found within range of the origin system."
     )
 
 
