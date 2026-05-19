@@ -4,7 +4,18 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import Column, Index, Integer, MetaData, Select, Table, and_, func, select
+from sqlalchemy import (
+    BigInteger,
+    Column,
+    Index,
+    Integer,
+    MetaData,
+    Select,
+    Table,
+    and_,
+    func,
+    select,
+)
 from sqlalchemy.orm import Session, aliased
 
 from tradedangerous.db.orm_models import Item, Station, StationItem, System
@@ -680,11 +691,14 @@ def fetch_unanchored_trade_candidates(
 
     metadata = MetaData()
     modified_type = StationItem.__table__.c.modified.type
+    # System and station identifiers are BigInteger in the ORM; the temp tables
+    # mirror that. SQLite shrugs at the narrower type but MariaDB's INT is
+    # 32-bit signed, and live Elite IDs already exceed that range.
     supply_temp = Table(
         "td_unanchored_supply",
         metadata,
-        Column("system_id", Integer),
-        Column("station_id", Integer),
+        Column("system_id", BigInteger),
+        Column("station_id", BigInteger),
         Column("supply_price", Integer),
         Column("supply_units", Integer),
         Column("modified", modified_type),
@@ -693,8 +707,8 @@ def fetch_unanchored_trade_candidates(
     demand_temp = Table(
         "td_unanchored_demand",
         metadata,
-        Column("system_id", Integer),
-        Column("station_id", Integer),
+        Column("system_id", BigInteger),
+        Column("station_id", BigInteger),
         Column("demand_price", Integer),
         Column("demand_units", Integer),
         Column("modified", modified_type),
@@ -706,8 +720,8 @@ def fetch_unanchored_trade_candidates(
         reach_temp = Table(
             "td_unanchored_reach",
             metadata,
-            Column("s", Integer),
-            Column("d", Integer),
+            Column("s", BigInteger),
+            Column("d", BigInteger),
             prefixes=["TEMPORARY"],
         )
 
