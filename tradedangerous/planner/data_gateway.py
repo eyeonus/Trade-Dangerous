@@ -13,6 +13,7 @@ from sqlalchemy import (
     Select,
     Table,
     and_,
+    case,
     func,
     select,
 )
@@ -1022,8 +1023,8 @@ def _match_reachable_trades(
 
     With a reachability map (--jumps-per 1) the per-system supply and demand
     rows are joined through it; with --jumps-per 0 the join is a same-system
-    equality. Either way the result is ranked by gross profit-per-unit and the
-    top slice kept.
+    equality. The result is ranked by realisable total profit — unit profit
+    multiplied by the actual fillable tonnage — and the top slice kept.
     """
 
     profit = demand_temp.c.demand_price - supply_temp.c.supply_price
@@ -1036,6 +1037,39 @@ def _match_reachable_trades(
     ]
     if request.max_gain_per_ton > 0:
         filters.append(profit <= request.max_gain_per_ton)
+
+    # Rank by realisable total, not unit profit. A pair with a high unit
+    # margin but only one ton of supply or demand can be worth less than a
+    # full-hold pair at a smaller margin, and the bounded slice would
+    # otherwise clip the latter. The realisable tonnage is the smaller of
+    # supply, demand, and the per-request ceiling (capacity, narrowed by
+    # --limit when set); cap each row's supply_units and demand_units to
+    # that ceiling, then take the smaller of the capped pair.
+    #
+    # Credits-affordability would be the third row-wise cap (credits divided
+    # by supply_price), but at ordinary Cmdr balances it is rarely the
+    # binding constraint, and folding the integer division into the rank
+    # expression materially complicates the SQL. Left out deliberately; the
+    # walk's cutoff arithmetic (capacity * bound) still overestimates the
+    # realised total, so omitting credits cannot terminate the walk early.
+    capacity = int(request.capacity_units or 0)
+    per_item_limit = request.cargo_limit_per_item
+    ceiling = capacity
+    if per_item_limit and per_item_limit > 0:
+        ceiling = min(ceiling, per_item_limit)
+    capped_supply = case(
+        (supply_temp.c.supply_units > ceiling, ceiling),
+        else_=supply_temp.c.supply_units,
+    )
+    capped_demand = case(
+        (demand_temp.c.demand_units > ceiling, ceiling),
+        else_=demand_temp.c.demand_units,
+    )
+    realisable_units = case(
+        (capped_supply < capped_demand, capped_supply),
+        else_=capped_demand,
+    )
+    realisable_profit = realisable_units * profit
 
     columns = (
         supply_temp.c.station_id,
@@ -1065,7 +1099,7 @@ def _match_reachable_trades(
         select(*columns)
         .select_from(joined)
         .where(and_(*filters))
-        .order_by(profit.desc())
+        .order_by(realisable_profit.desc())
         .limit(_UNANCHORED_MATCH_LIMIT)
     )
     return session.execute(stmt).all()
