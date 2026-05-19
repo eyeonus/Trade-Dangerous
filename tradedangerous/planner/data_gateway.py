@@ -1027,7 +1027,13 @@ def _match_reachable_trades(
     """
 
     profit = demand_temp.c.demand_price - supply_temp.c.supply_price
-    filters = [profit >= request.min_gain_per_ton]
+    # A self-pair (same station as source and destination) is never a valid
+    # trade hop. Exclude it in SQL so the bounded top slice cannot be partly
+    # spent on rows that would be dropped by _group_pairs anyway.
+    filters = [
+        profit >= request.min_gain_per_ton,
+        supply_temp.c.station_id != demand_temp.c.station_id,
+    ]
     if request.max_gain_per_ton > 0:
         filters.append(profit <= request.max_gain_per_ton)
 
