@@ -30,6 +30,7 @@ from tradedangerous.planner.render_text import render_run_result
 from tradedangerous.planner.run_onehop import plan_onehop_route
 from tradedangerous.planner.run_request import run_request_from_cmdenv
 from tradedangerous.planner.run_result import RunResult
+from tradedangerous.planner.validation import validate_run_request
 
 if typing.TYPE_CHECKING:
     from tradedangerous import TradeEnv
@@ -1338,34 +1339,40 @@ def _abort_unanchored_run(results, message):
 def run(results, cmdenv, tdb):
     if not getattr(cmdenv, "old", False):
         request = run_request_from_cmdenv(cmdenv)
-
-        # Both endpoints omitted: the galaxy-wide unanchored search. It is
-        # markedly slower than any anchored shape, so it runs only behind an
-        # interactive confirmation; with no TTY it cannot prompt and aborts
-        # cleanly with guidance. The planner itself stays non-interactive.
-        if _is_unanchored_request(request):
-            if not sys.stdin.isatty():
-                return _abort_unanchored_run(
-                    results,
-                    "trade run with neither --from nor --to runs a slow "
-                    "galaxy-wide search and needs interactive confirmation.\n"
-                    "Re-run in an interactive terminal, or anchor the search "
-                    "with --from and/or --to.",
-                )
-            print(
-                "Searching with neither --from nor --to scans the whole "
-                "galaxy for the single best trade. This is much slower than "
-                "an anchored search and can take several minutes.",
-                flush=True,
-            )
-            if input("Continue? [y/N] ").strip().lower() not in ("y", "yes"):
-                return _abort_unanchored_run(results, "Search cancelled.")
-
         session = getattr(tdb, "session", None)
         if session is None:
             raise CommandLineError("Resolver database session is not available.")
 
         try:
+            # Validate before the unanchored confirmation prompt. A request
+            # that cannot run must fail immediately with its error, not after
+            # a confirmation the planner would only then refuse — far likelier
+            # the user simply mistyped the command. plan_onehop_route
+            # re-validates as its own input contract; the repeat is cheap.
+            validate_run_request(request)
+
+            # Both endpoints omitted: the galaxy-wide unanchored search. It is
+            # markedly slower than any anchored shape, so it runs only behind
+            # an interactive confirmation; with no TTY it cannot prompt and
+            # aborts cleanly with guidance. The planner stays non-interactive.
+            if _is_unanchored_request(request):
+                if not sys.stdin.isatty():
+                    return _abort_unanchored_run(
+                        results,
+                        "trade run with neither --from nor --to runs a slow "
+                        "galaxy-wide search and needs interactive confirmation.\n"
+                        "Re-run in an interactive terminal, or anchor the search "
+                        "with --from and/or --to.",
+                    )
+                print(
+                    "Searching with neither --from nor --to scans the whole "
+                    "galaxy for the single best trade. This is much slower than "
+                    "an anchored search and can take several minutes.",
+                    flush=True,
+                )
+                if input("Continue? [y/N] ").strip().lower() not in ("y", "yes"):
+                    return _abort_unanchored_run(results, "Search cancelled.")
+
             results.data = plan_onehop_route(session, request)
             results.summary.exception = ""
         except (
