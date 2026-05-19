@@ -397,11 +397,12 @@ The prompt fires whenever both endpoints are omitted — it is not refined by
 sub-case, but folding it into one unconditional rule keeps the behaviour
 predictable; refining the prompt by jump count is explicitly not done here.
 
-The prompt fires on the both-omitted *shape*, which is known as soon as the
-request is parsed. Deep numeric validation (`--capacity`, `--credits`, etc.)
-remains inside the planner and runs after a confirmed prompt. The minor
-consequence — a malformed both-omitted command is warned before it is rejected
-— is accepted; reordering validation to avoid it is not worth the scope.
+The prompt fires on the both-omitted *shape*, but only after the request has
+been validated. A both-omitted command that cannot run — `--jumps-per >= 2`,
+a missing `--hops 1`, an unsupported option — is rejected immediately with
+its own error and no prompt; the prompt fires only once the request is known
+to be runnable, so the user is never asked to confirm a search the planner
+would then refuse.
 
 The exact integration into `run_cmd.py`'s existing control flow, and a check
 for any existing both-omitted handling already in `run_cmd.py`, are done when

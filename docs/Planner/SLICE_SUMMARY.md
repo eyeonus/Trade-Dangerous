@@ -204,6 +204,64 @@ Full record: `docs/Planner/fourth_slice_completion_report.md`.
 
 ---
 
+## Slice 5 — Unanchored Galaxy Search (complete)
+
+Neither `--from` nor `--to` supplied — the planner selects both endpoints,
+finding the best one-hop trade anywhere in reachable range. The one-hop
+family is now complete.
+
+**Supported shape:** `trade run` with both `--from` and `--to` omitted,
+alongside every fixed and open-ended shape from Slices 1-4. Both omitted
+still requires `--jumps-per 0` or `1`.
+
+**Delivered:**
+
+- `plan_onehop_route` dispatches four ways: both endpoints fixed, `--from`
+  only, `--to` only, and neither. The last routes to `_plan_unanchored`, a
+  separate additive path that shares no body with the anchored open-ended
+  search — the unanchored search differs in kind, not in a parameter.
+- `fetch_unanchored_trade_candidates` is the galaxy-wide candidate query —
+  exhaustive in consideration, bounded in materialisation. A reachable-system
+  map is built once per run as a run-scoped temporary table; each commodity
+  is reduced to its cheapest supplier and dearest buyer per system, and
+  matched through the map. Commodities are walked in descending
+  profit-per-unit bound order; the walk stops once `capacity x bound` cannot
+  beat the best concrete trade found, so only a handful of commodities are
+  examined and the candidate set never approaches the galaxy.
+- The per-system reduction uses a `ROW_NUMBER` window function — standard
+  SQL, no reliance on any backend's handling of non-grouped columns — so the
+  query is backend-portable.
+- `run_cmd` gates the both-omitted shape behind an interactive confirmation:
+  it warns the search is slow and asks before planning. A non-affirmative
+  answer or a non-TTY invocation exits cleanly with guidance, no traceback,
+  the planner never invoked. Validation runs before the prompt, so a command
+  that cannot run fails immediately rather than after a confirmation the
+  planner would then refuse.
+- `prefer_in_memory_temp_storage` in `db/utils.py` holds the run-scoped
+  temporary tables in memory — on SQLite via `PRAGMA temp_store`, which the
+  reachable-system map (millions of rows) needs to avoid a disk-file spill;
+  other backends are a documented no-op. The anchored planner and query
+  functions are unmodified.
+
+**Verified:** the both-omitted shape for `--jumps-per 1` and `0`, against
+`--old` — the new planner returns a valid route in ~83s where `--old` takes
+~293s on the same hardware. The prompt's affirmative, non-affirmative,
+bare-Enter and non-TTY paths; `--jumps-per >= 2` rejected before the prompt
+with no traceback; the run-short Colonia benchmark and the Slice 1-4 shapes
+unchanged.
+
+**Performance:** the unanchored search is the slow one-hop shape by nature,
+roughly one to two minutes against a warm database, dominated by the
+one-time reachable-system map build. The confirmation prompt exists for
+exactly that reason.
+
+**Deferred (not cut):** multi-jump per-hop reachability (`--jumps-per >= 2`)
+and multi-hop routing (`--hops > 1`) — the larger body of work still ahead.
+
+Full record: `docs/Planner/fifth_slice_completion_report.md`.
+
+---
+
 ## Project Notes
 
 ### Data scale
