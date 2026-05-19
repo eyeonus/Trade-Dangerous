@@ -1315,9 +1315,52 @@ def extraRouteProgress(routes):
 # Perform query and populate result set
 
 
+def _is_unanchored_request(request) -> bool:
+    """Return whether neither endpoint was named — the unanchored search."""
+
+    return not request.from_text and not request.to_text
+
+
+def _abort_unanchored_run(results, message):
+    """Print a message and return an empty result set: a clean no-op exit.
+
+    A declined confirmation prompt and a non-interactive invocation both end
+    the command here, before the planner is ever called — a plain message and
+    no traceback, with nothing for the renderer to show.
+    """
+
+    print(message, flush=True)
+    results.summary.exception = ""
+    results.data = ()
+    return results
+
+
 def run(results, cmdenv, tdb):
     if not getattr(cmdenv, "old", False):
         request = run_request_from_cmdenv(cmdenv)
+
+        # Both endpoints omitted: the galaxy-wide unanchored search. It is
+        # markedly slower than any anchored shape, so it runs only behind an
+        # interactive confirmation; with no TTY it cannot prompt and aborts
+        # cleanly with guidance. The planner itself stays non-interactive.
+        if _is_unanchored_request(request):
+            if not sys.stdin.isatty():
+                return _abort_unanchored_run(
+                    results,
+                    "trade run with neither --from nor --to runs a slow "
+                    "galaxy-wide search and needs interactive confirmation.\n"
+                    "Re-run in an interactive terminal, or anchor the search "
+                    "with --from and/or --to.",
+                )
+            print(
+                "Searching with neither --from nor --to scans the whole "
+                "galaxy for the single best trade. This is much slower than "
+                "an anchored search and can take several minutes.",
+                flush=True,
+            )
+            if input("Continue? [y/N] ").strip().lower() not in ("y", "yes"):
+                return _abort_unanchored_run(results, "Search cancelled.")
+
         session = getattr(tdb, "session", None)
         if session is None:
             raise CommandLineError("Resolver database session is not available.")

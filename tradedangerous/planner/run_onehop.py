@@ -35,19 +35,22 @@ def plan_onehop_route(session: Session, request: RunRequest) -> run_result.RunRe
     validate_run_request(request)
     validation_ms = _elapsed_ms(validation_started)
 
-    # Both endpoints named: evaluate the station-pair matrix, no spatial
-    # search. One endpoint omitted: the planner selects it via the open-ended
-    # search, open_role being the role of that selected endpoint. Both
-    # endpoints omitted is already rejected by validation.
+    # Four-way dispatch on which endpoints the user named. Both named:
+    # evaluate the station-pair matrix, no spatial search. One named: the
+    # planner selects the other via the open-ended search, open_role being the
+    # role of that selected endpoint. Neither named: the unanchored search
+    # selects both endpoints with a galaxy-wide candidate query.
     if request.from_text and request.to_text:
         return _plan_fixed_endpoints(session, request, started, validation_ms)
     if request.from_text:
         return _best_open_ended_plan(
             session, request, started, validation_ms, open_role="destination"
         )
-    return _best_open_ended_plan(
-        session, request, started, validation_ms, open_role="source"
-    )
+    if request.to_text:
+        return _best_open_ended_plan(
+            session, request, started, validation_ms, open_role="source"
+        )
+    return _plan_unanchored(session, request, started, validation_ms)
 
 
 def _plan_fixed_endpoints(
@@ -256,6 +259,102 @@ def _best_open_ended_plan(
         validation_ms=validation_ms,
         resolution_ms=resolution_ms,
         station_filter_ms=station_filter_ms,
+        market_query_ms=market_query_ms,
+        reachability_ms=reachability_ms,
+        cargo_optimisation_ms=cargo_optimisation_ms,
+        total_planner_ms=_elapsed_ms(started),
+        candidate_trade_count=candidate_trade_count,
+    )
+    return _assemble_result(request, best_pair, diagnostics)
+
+
+def _plan_unanchored(
+    session: Session,
+    request: RunRequest,
+    started: float,
+    validation_ms: float,
+) -> run_result.RunResult:
+    """Plan one hop with neither endpoint named — the planner selects both.
+
+    With no anchor the search is genuinely galaxy-wide. The unanchored
+    candidate query narrows and ranks in SQL and returns a bounded top set of
+    profitable trades; this function reuses the shared pair-evaluation helpers
+    over that set exactly as the open-ended path does over its own candidates.
+    It shares no body with _best_open_ended_plan: the unanchored search differs
+    in kind, not in a parameter.
+    """
+
+    market_started = time.perf_counter()
+    candidates = data_gateway.fetch_unanchored_trade_candidates(session, request)
+    if not candidates:
+        raise failures.NoProfitableTrades(
+            "No profitable trades were found anywhere in reachable range."
+        )
+
+    # Both sides are planner-selected, so both stations are materialised here
+    # from the ids that actually appear in the bounded candidate set.
+    station_ids = tuple(
+        {candidate.source_station_id for candidate in candidates}
+        | {candidate.destination_station_id for candidate in candidates}
+    )
+    station_map = data_gateway.fetch_stations_by_id(session, station_ids)
+    market_query_ms = _elapsed_ms(market_started)
+    candidate_trade_count = len(candidates)
+
+    grouped_pairs = _group_pairs(candidates)
+
+    best_pair = None
+    cargo_optimisation_ms = 0.0
+    for (source_id, destination_id), pair_candidates in grouped_pairs.items():
+        source_station = station_map[source_id]
+        destination_station = station_map[destination_id]
+        cargo_started = time.perf_counter()
+        try:
+            cargo = optimise_cargo(
+                pair_candidates,
+                capacity_units=int(request.capacity_units or 0),
+                available_credits=int(request.starting_credits or 0)
+                - request.insurance_reserve,
+                cargo_limit_per_item=request.cargo_limit_per_item,
+            )
+        except failures.NoAffordableCargo:
+            cargo_optimisation_ms += _elapsed_ms(cargo_started)
+            continue
+        cargo_optimisation_ms += _elapsed_ms(cargo_started)
+        practical_score = score_with_destination_penalty(
+            cargo.total_profit,
+            destination_distance_ls=destination_station.ls_from_star,
+            penalty_percent=request.ls_penalty_percent,
+        )
+        pair = _PairPlan(
+            source_station=source_station,
+            destination_station=destination_station,
+            jump_path=None,
+            cargo=cargo,
+            practical_score=practical_score,
+        )
+        if _pair_is_better(pair, best_pair):
+            best_pair = pair
+
+    if best_pair is None:
+        raise failures.NoAffordableCargo(
+            "Profitable trades exist, but no cargo can be afforded."
+        )
+
+    reachability_started = time.perf_counter()
+    jump_path = plan_jump_path(
+        _system_from_station(best_pair.source_station),
+        _system_from_station(best_pair.destination_station),
+        max_jumps_per_hop=int(request.max_jumps_per_hop or 0),
+        max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
+    )
+    reachability_ms = _elapsed_ms(reachability_started)
+    best_pair = replace(best_pair, jump_path=jump_path)
+
+    diagnostics = run_result.PlannerDiagnostics(
+        validation_ms=validation_ms,
+        resolution_ms=0.0,
+        station_filter_ms=0.0,
         market_query_ms=market_query_ms,
         reachability_ms=reachability_ms,
         cargo_optimisation_ms=cargo_optimisation_ms,

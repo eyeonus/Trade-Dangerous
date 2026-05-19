@@ -253,6 +253,36 @@ def sqlite_set_bulk_pragmas(session: Session) -> None:
     conn.execute(text("PRAGMA cache_size=-65536"))
 
 
+def prefer_in_memory_temp_storage(session: Session) -> None:
+    """Ask the backend to hold this connection's temporary tables in memory.
+
+    The unanchored ``trade run`` search builds a large temporary table — the
+    reachable-system map, on the order of millions of rows — and reuses it
+    across the commodity walk. Where that scratch lives decides whether the
+    search is memory-fast or disk-bound.
+
+    SQLite defaults temporary tables to a file on disk, which for a map this
+    size dominates the run time. ``PRAGMA temp_store=MEMORY`` moves them to
+    process memory instead. The pragma is connection-scoped and reverts when
+    the connection is recycled; it trades RAM (proportional to the temp set,
+    so to ``--ly-per``) for speed, and touches only transient data — the
+    persistent database's integrity is not affected.
+
+    MySQL/MariaDB is intentionally left untouched. Its explicit temporary
+    tables default to an on-disk engine, but those pages are served through
+    the InnoDB buffer pool, so the SQLite-style file penalty does not clearly
+    apply; and forcing the in-memory MEMORY engine cannot be sized safely
+    without the live server's configuration — an over-full MEMORY temp table
+    is a hard error, not a graceful spill. The right tuning there is a
+    measurement to make against a real server, not a guess from here.
+
+    Any other backend is a no-op.
+    """
+
+    if is_sqlite(session):
+        session.connection().execute(text("PRAGMA temp_store=MEMORY"))
+
+
 def sqlite_upsert_modified(
     session: Session,
     table: Table,

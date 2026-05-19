@@ -19,12 +19,6 @@ def validate_run_request(request: RunRequest) -> None:
     _require_present(request.starting_credits, "--credits")
     _require_present(request.max_ly_per_jump, "--ly-per")
 
-    if not request.from_text and not request.to_text:
-        raise UnsupportedRunShape(
-            "Either --from or --to must be supplied.",
-            option_name="--from",
-        )
-
     if request.hops != 1:
         raise UnsupportedRunShape(
             "Only --hops 1 is currently supported.",
