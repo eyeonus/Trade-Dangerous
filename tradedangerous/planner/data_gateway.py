@@ -28,7 +28,7 @@ from tradedangerous.db.station_types import (
     fleet_carrier_state,
     settlement_state,
 )
-from tradedangerous.db.utils import prefer_in_memory_temp_storage
+from tradedangerous.db.utils import begin_bulk_mode
 
 from .failures import (
     DestinationHasNoBuyingData,
@@ -727,10 +727,11 @@ def fetch_unanchored_trade_candidates(
         )
 
     connection = session.connection()
-    # Keep the reachable-system map and the per-commodity scratch tables in
-    # memory where the backend allows it — on SQLite that is the difference
-    # between a memory-fast search and a disk-bound one.
-    prefer_in_memory_temp_storage(session)
+    # Tune the connection for bulk work: temp tables in memory and a larger
+    # page cache on SQLite, session-scoped commit and lock tuning on MariaDB.
+    # The reachable-system map runs to millions of rows and is re-scanned per
+    # commodity; without the cache headroom each scan pages out and reloads.
+    begin_bulk_mode(session)
     _create_unanchored_temps(connection, supply_temp, demand_temp, reach_temp)
     try:
         if reach_temp is not None:
