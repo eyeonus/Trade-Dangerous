@@ -258,6 +258,18 @@ exactly that reason.
 **Deferred (not cut):** multi-jump per-hop reachability (`--jumps-per >= 2`)
 and multi-hop routing (`--hops > 1`) — the larger body of work still ahead.
 
+**Source-level audit:** Tromador audited the unanchored search against the
+source after sign-off. Three localised remediations applied on `release/v1`:
+temp identifier columns flipped from `Integer` to `BigInteger` for MariaDB
+portability (commit `a80e5ae4`, proven against MariaDB on a Linux VM);
+self-pairs excluded in SQL rather than later in `_group_pairs`
+(`ee9a0a52`); per-commodity ranking key changed from unit profit to
+realisable total profit, expressed with portable nested CASE (`8b3fa02a`).
+Two structural findings — per-system extrema discarding multi-commodity
+station pairs, and `--ls-penalty` applied after the bounded SQL slice —
+are deferred to a planned restructure of the unanchored candidate query,
+in its own implementation plan. Full record in the completion report.
+
 Full record: `docs/Planner/fifth_slice_completion_report.md`.
 
 ---

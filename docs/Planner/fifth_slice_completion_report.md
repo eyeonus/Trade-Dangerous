@@ -226,3 +226,87 @@ narrows and ranks in SQL, returns a bounded candidate set, and never
 materialises the galaxy; it is a separate planner path and a separate query
 function, and the anchored shapes it sits beside are unmodified. Multi-hop
 routing is the larger body of work still ahead.
+
+---
+
+## Source-Level Audit and Remediation
+
+Tromador audited the unanchored search against the current `release/v1`
+source after sign-off, without re-running the live database benchmarks. The
+audit surfaced six findings. Three were corrected immediately as localised
+fixes; two are structural and deferred to a planned restructure of the
+unanchored candidate query; one is a minor edge case left as-is.
+
+### Remediations applied
+
+**Identifier types.** The temporary tables backing the unanchored search
+defined their system and station identifier columns as `Integer`. The ORM
+uses `BigInteger` for those columns. SQLite tolerates the mismatch because
+its INTEGER affinity already stores 64-bit values, but MariaDB's INT is
+32-bit signed, and live Elite identifiers already exceed that range — the
+search would fail at insert against MariaDB. Six identifier columns flipped
+to `BigInteger` across the supply, demand, and reachability temp tables;
+price and unit columns remain `Integer`, properly int-range. Commit
+`a80e5ae4`. Proven against a Linux VM running the application against
+MariaDB on the live dataset.
+
+**Self-pairs in the bounded slice.** `_match_reachable_trades` returned the
+top-N profitable matches without restricting source and destination to
+different stations. A station that both supplies and buys the same commodity
+in volume could therefore occupy part of the bounded slice with self-pairs
+that `_group_pairs` would later drop, hiding valid cross-station pairs
+ranked just below. The inequality is now in the SQL filter; the
+`_group_pairs` self-pair guard stays in place as cheap defence-in-depth.
+Commit `ee9a0a52`.
+
+**Ranking key.** `_match_reachable_trades` ranked candidate pairs by unit
+profit (`demand_price - supply_price`), then truncated to the bounded
+slice. Unit profit is the wrong key when the slice is evaluated under a
+fixed cargo capacity: a pair with a high unit margin but only one ton of
+supply or demand can be worth orders of magnitude less than a smaller-margin
+full-hold pair, and the slice would clip the latter. The ranking key is
+now realisable total profit — unit profit multiplied by the smaller of
+supply, demand, and a per-request ceiling (`min(capacity, --limit-per-item)`).
+Row-wise minima are expressed with nested CASE so the key is portable across
+SQLite and MariaDB without leaning on `LEAST`/`GREATEST`, which are not
+uniformly available. Credits-affordability is deliberately left out of the
+ranking; the walk's cutoff arithmetic (`capacity * bound`) still
+overestimates the realised total, so omitting credits cannot terminate the
+walk early, and `optimise_cargo` continues to enforce affordability when
+the candidate is actually evaluated. Commit `8b3fa02a`.
+
+### Deferred to a planned restructure
+
+The audit raised two findings that are structural rather than localised —
+both about the shape of the candidate query relative to the public scoring
+contract, and entangled enough that they want a single design pass:
+
+- **Per-system extrema discard multi-commodity station pairs.** The
+  reductions in `_reduce_supply_by_system` and `_reduce_demand_by_system`
+  keep exactly one station per system per commodity (`rank_in_system == 1`).
+  This is stronger than the per-commodity decomposition the design
+  accepted: it can exclude a station pair whose strength is combined cargo
+  across multiple commodities, where neither commodity is the per-system
+  cheapest or dearest individually. The eyeonus sign-off on "missing the
+  gold-here-but-silver-there trades" covered each commodity considered
+  independently; the per-system extremum reduction is an additional
+  narrowing layered on top of that, and is not covered by the sign-off.
+
+- **`--ls-penalty` applied after pruning.** The candidate query ranks by
+  raw realisable profit; the `--ls-penalty` curve is applied per-pair
+  afterwards in `score_with_destination_penalty`. With `--ls-penalty`
+  non-zero, the bounded slice can exclude a near-star pair whose practical
+  score wins over a higher-raw-profit distant one. Magnitude bounded by the
+  penalty multiplier and only bites when the user opts in (default is 0).
+
+Both are deferred to their own implementation plan. The fix shape is
+expected to be either widening the materialised candidate set so the
+post-fetch scoring has the right inputs, or pushing a practical-score
+ranking key into the SQL — the choice depends on which preserves enough
+station-pair diversity for the cargo optimiser to do its job.
+
+### Left as-is
+
+The unanchored confirmation prompt uses `input()`, which can raise
+`EOFError` mid-prompt (Ctrl-D, say) even after `isatty()` returns true.
+Minor edge case, not worth a fix on its own.
