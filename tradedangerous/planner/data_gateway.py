@@ -1024,8 +1024,11 @@ def _match_reachable_trades(
 
     With a reachability map (--jumps-per 1) the per-system supply and demand
     rows are joined through it; with --jumps-per 0 the join is a same-system
-    equality. The result is ranked by realisable total profit — unit profit
-    multiplied by the actual fillable tonnage — and the top slice kept.
+    equality. The result is ranked by capacity/supply/demand/limit-capped
+    total profit — unit profit multiplied by the smaller of the per-row
+    supply and demand each capped at the per-request ceiling. Affordability
+    is enforced later by `optimise_cargo`, not in this SQL ranking key. The
+    top slice is kept.
     """
 
     profit = demand_temp.c.demand_price - supply_temp.c.supply_price

@@ -265,8 +265,9 @@ slice. Unit profit is the wrong key when the slice is evaluated under a
 fixed cargo capacity: a pair with a high unit margin but only one ton of
 supply or demand can be worth orders of magnitude less than a smaller-margin
 full-hold pair, and the slice would clip the latter. The ranking key is
-now realisable total profit — unit profit multiplied by the smaller of
-supply, demand, and a per-request ceiling (`min(capacity, --limit-per-item)`).
+now capacity/supply/demand/limit-capped total profit — unit profit
+multiplied by the smaller of supply, demand, and a per-request ceiling
+(`min(capacity, --limit-per-item)`).
 Row-wise minima are expressed with nested CASE so the key is portable across
 SQLite and MariaDB without leaning on `LEAST`/`GREATEST`, which are not
 uniformly available. Credits-affordability is deliberately left out of the
@@ -304,6 +305,20 @@ expected to be either widening the materialised candidate set so the
 post-fetch scoring has the right inputs, or pushing a practical-score
 ranking key into the SQL — the choice depends on which preserves enough
 station-pair diversity for the cargo optimiser to do its job.
+
+A third, more localised follow-up is also on hold for the same restructure
+pass:
+
+- **Affordability is enforced at cargo optimisation time, not in the SQL
+  ranking key.** The CASE expression caps row units by supply, demand,
+  capacity, and `--limit-per-item`, but does not fold credits-affordability
+  (units divided by buy price) into the rank. The walk's `capacity × bound`
+  cutoff still overestimates, so the omission cannot terminate the walk
+  early, and `optimise_cargo` enforces affordability when each pair is
+  concretely evaluated. The bounded slice can still clip a pair that would
+  have won at credit-thin balances; the fix is a row-wise credits cap in
+  the same CASE expression, deferred so it lands alongside any restructure
+  of the candidate query.
 
 ### Left as-is
 
