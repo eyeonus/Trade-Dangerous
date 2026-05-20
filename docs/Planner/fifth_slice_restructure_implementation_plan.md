@@ -72,12 +72,15 @@ reduction, not proof of global correctness.
   the helpers it calls.
 - **No regression at zero distance-penalty.** The common case (penalty
   off) must not become substantially slower than today.
-- **Scorer-pluggable.** The current distance-penalty curve is still in
-  discussion. SQL must gather a sufficiently rich candidate set so the
-  Python scorer can make the final decision after the slice is
-  materialised; the slice must not assume the final curve can be safely
-  approximated inside SQL. Validation runs against whichever Python
-  distance-penalty scorer is current at the time of implementation.
+- **Scorer-pluggable.** The final distance-penalty curve is still in
+  discussion, but is expected to be monotonically non-increasing with
+  destination arrival distance: near stations multiply score by 1 (or
+  near-1), and increasingly distant stations trend downward toward 0.
+  SQL must gather a sufficiently rich candidate set so the Python
+  scorer can make the final decision after the slice is materialised;
+  the slice must not assume the final curve can be safely approximated
+  inside SQL. Validation runs against whichever Python distance-penalty
+  scorer is current at the time of implementation.
 
 ## Design space
 
@@ -174,9 +177,12 @@ unanchored global case.
 
 - **P3 — Cost of widening K in the per-system reduction.** Vary
   `rank_in_system <= K` for K ∈ {1, 3, 5, 10}. For each K record:
-  matched row cardinality after `_match_reachable_trades`, total time
-  per query. Question: does K = 5 cost noticeably more than K = 1, and
-  does K = 10 cost a lot more than K = 5?
+  pre-limit reachable match cardinality where practical, limited
+  result cardinality, and total time per query. Recording the
+  post-limit count alone would mostly measure the slice clamp, not
+  the join-space growth that K actually drives. Question: does K = 5
+  cost noticeably more than K = 1, and does K = 10 cost a lot more
+  than K = 5?
 
 - **P4 — Pair-set coverage under K = 1 vs K = 5.** For each request
   profile, compute the surviving (source_station, dest_station) pair
@@ -271,7 +277,8 @@ production code change.
 - Finding 6 (`input()` / `EOFError` after `isatty()` returns true) —
   left as-is.
 - Choice of the final distance-penalty curve — separate piece of work;
-  this plan accommodates any monotonic Python scorer.
+  this plan accommodates any Python distance-penalty scorer that is
+  monotonically non-increasing with destination arrival distance.
 
 ## Risk and rollback
 
