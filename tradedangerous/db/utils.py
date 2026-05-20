@@ -404,10 +404,9 @@ def mysql_upsert_simple(
     stmt = ins.on_duplicate_key_update(**set_map)
     session.execute(stmt, rows)
 
-        session.connection().execute(text("PRAGMA temp_store=MEMORY"))
 
 # -----------------------------------------------------------------------------
-# Command helpers 
+# Command helpers
 # -----------------------------------------------------------------------------
 
 def prefer_in_memory_temp_storage(session: Session) -> None:
