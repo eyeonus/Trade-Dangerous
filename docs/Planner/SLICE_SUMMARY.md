@@ -204,7 +204,7 @@ Full record: `docs/Planner/fourth_slice_completion_report.md`.
 
 ---
 
-## Slice 5 — Unanchored Galaxy Search (complete)
+## Slice 5 — Unanchored Galaxy Search (complete; restructure investigated and parked)
 
 Neither `--from` nor `--to` supplied — the planner selects both endpoints,
 finding the best one-hop trade anywhere in reachable range. The one-hop
@@ -268,8 +268,19 @@ capacity/supply/demand/limit-capped total profit, expressed with portable
 nested CASE (`8b3fa02a`).
 Two structural findings — per-system extrema discarding multi-commodity
 station pairs, and `--ls-penalty` applied after the bounded SQL slice —
-are deferred to a planned restructure of the unanchored candidate query,
-in its own implementation plan. Full record in the completion report.
+plus a credits-affordability follow-up, were taken to a planned
+restructure of the unanchored candidate query and investigated
+empirically. Six probes (P1–P6, captured in
+`fifth_slice_restructure_implementation_plan.md`) ran against the live
+dataset under both no-`--age` and realistic `--age 1/2/7` data shapes,
+testing whether α (widened K), δ (per-pair full menu), ε (credits in
+the SQL rank), or a wider top-N slice produces a higher-scoring
+practical winner. Result: 144 axis-uplift checks, zero higher-scoring
+winners surfaced. **Restructure parked**; findings accepted as
+mechanically real but monitored / not implemented. The mechanisms
+hold; current data shape and the locked scorer do not make them affect
+winner selection. Re-evaluation triggers and the carrier-dominance
+observation are recorded in the restructure plan.
 
 Full record: `docs/Planner/fifth_slice_completion_report.md`.
 
@@ -366,6 +377,28 @@ carrying onward (low-value bulk such as biowaste is still valid supply).
 Deciding where to draw the line on whether an end station's onward stock is
 worth anything is not worth the development cost, and is deliberately not
 attempted.
+
+### Carrier dominance in unanchored winners
+
+Across the P1–P6 probe sweeps (full record in
+`fifth_slice_restructure_implementation_plan.md`), every unanchored
+production winner under `--age 1/2/7` involved a fleet carrier on at least
+one side of the trade. 88.9% had a carrier destination, 66.7% a carrier
+source, 55.6% were carrier-to-carrier, and none were
+non-carrier-to-non-carrier. Carrier markets carry the long tail of extreme
+single-commodity margins because their prices are owner-set rather than
+game-driven; the unanchored search correctly reports what the data
+contains.
+
+Carrier-backed routes are valid market observations and are not treated
+as invalid. The user-side concern is **execution risk**, not planner
+correctness: carrier stock and demand are player-controlled and can
+change between an EDDN snapshot and a Cmdr's arrival, and the API
+snapshot lag between observation and flight is unavoidable. The
+`--age`, `--supply`, `--demand`, and `--fleet-carrier` Y/N/? filters
+give Cmdrs the levers to control this. If execution risk becomes a
+recurring complaint, the remediation is a Cmdr-facing filter or a docs
+note, not a candidate-query change.
 
 ### Commodity supply and demand values
 

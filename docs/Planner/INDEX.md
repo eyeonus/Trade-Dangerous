@@ -70,14 +70,14 @@ Each completed slice has an implementation plan (what needs to be done) and a co
 | [fourth_slice_implementation_plan.md](fourth_slice_implementation_plan.md) | Design plan for Slice 4: generalising the open-ended search to run from either anchored endpoint via `open_role`; three-way dispatch. |
 | [fourth_slice_completion_report.md](fourth_slice_completion_report.md) | Proof of completion: omitted-`--from` shapes, the unified open-ended search, the reachable-station subquery fix, validation. |
 
-### Slice 5 — Unanchored Galaxy Search (Complete; restructure in design)
+### Slice 5 — Unanchored Galaxy Search (Complete; restructure investigated and parked)
 **Both endpoints omitted; planner selects origin and destination, finding the best one-hop trade galaxy-wide.**
 
 | Document | Content |
 |----------|---------|
 | [fifth_slice_implementation_plan.md](fifth_slice_implementation_plan.md) | Design plan for Slice 5: the unanchored both-endpoints-omitted search as a separate additive path; bounded reachable-system-map candidate query; confirmation prompt. |
 | [fifth_slice_completion_report.md](fifth_slice_completion_report.md) | Proof of completion: four-way dispatch, the bounded candidate query, the confirmation prompt, ~83s vs ~293s legacy. Carries the source-level audit and its localised remediations. |
-| [fifth_slice_restructure_implementation_plan.md](fifth_slice_restructure_implementation_plan.md) | Design plan for the candidate-query restructure addressing audit Findings 2 (per-system extrema discarding multi-commodity station pairs) and 3 (`--ls-penalty` applied after the bounded SQL slice). Probes specified; code change blocked on probe results. |
+| [fifth_slice_restructure_implementation_plan.md](fifth_slice_restructure_implementation_plan.md) | Design plan for the candidate-query restructure addressing audit Findings 2 (per-system extrema discarding multi-commodity station pairs), 3 (`--ls-penalty` applied after the bounded SQL slice), and the credits-affordability follow-up. Investigated empirically through six probes (P1–P6) under both no-`--age` and realistic `--age 1/2/7` data shapes; **decision: parked / monitored, not implemented**. 144 axis-uplift checks returned zero higher-scoring winners. Findings remain valid mechanisms; current data and scorer do not make them affect winner selection. Re-evaluation triggers and the carrier-dominance observation recorded in the plan. |
 
 ---
 

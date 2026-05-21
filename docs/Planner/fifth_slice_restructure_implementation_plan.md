@@ -287,3 +287,127 @@ unanchored helpers and `_plan_unanchored`'s pair evaluation; nothing
 on anchored, fixed-endpoint, or open-ended paths. If probe results
 invalidate the hypothesis, this plan is updated with a revised shape
 before any production code lands.
+
+## Probe results and decision
+
+P1 through P5 ran against SQLite on the live dataset with no `--age`
+set. A supplementary P6 re-ran the same axes under `--age` values of
+1, 2, and 7 days — the range Cmdrs actually use when `--age` is set,
+which is the dominant usage pattern. Question for all six: do α, δ,
+ε, or a wider slice limit produce a higher-scoring practical winner
+than the current production query shape, under the current Python
+scorer?
+
+### Summary of probe results
+
+| Probe | Question | Result |
+|---|---|---|
+| P1 | Top-50 vs wider top-N (300, 1000) at varied penalty | 0 disagreements across 5 profiles × 3 limits × 4 penalties |
+| P2 | Multi-commodity packing frequency in current winners | 0/32 winners pack more than one commodity |
+| P3 | Cost of widening K from 1 to 10 | Production-equivalent time flat; multipliers 0.98–1.01 |
+| P4 | α / δ / α+δ winner change at no-age | 0/10 uplift on every axis |
+| P5 | ε (credits-cap in SQL rank) winner change | 0/18 uplift; 5/9 profiles show real slice reordering with no winner effect |
+| P6 | All four axes under `--age` 1/2/7 | 0/18 uplift on every axis × every penalty |
+
+Combined across P4 and P6, **144 axis-uplift checks returned zero
+higher-scoring winners** surfaced by any candidate-query change.
+
+The mechanisms each axis was designed to address are real and the
+probes demonstrate them on the data:
+
+- P3 confirms the per-system reduction's K width does grow the join
+  space (pre-limit cardinality rises ~1.8× from K=1 to K=10) and
+  P4/P6's K=5 slices do admit new pairs that K=1 misses. The new
+  pairs simply do not contain a higher-scoring winner under the
+  current scorer and data.
+- P5 confirms ε's credits-cap rank reorders the slice in 5/9 credit-
+  thin profiles, dropping some pairs and admitting others. The
+  reordering never elevates a higher-scoring winner.
+- P2 confirms every production winner is single-commodity. Multi-
+  commodity packing — δ's headline benefit — is never the deciding
+  factor on current data.
+
+The mechanism behind all five negative results is consistent: a
+small handful of extreme single-commodity margins dominate the
+candidate set. The walk's `capacity × bound ≤ best_total_profit`
+cutoff terminates after 3–26 commodities, and no widening axis
+finds a pair whose practical-score winner beats those leaders.
+
+### Decision
+
+The candidate-query restructure is **not implemented**. Findings 2
+(per-system extrema discarding multi-commodity station pairs),
+Finding 3 (`--ls-penalty` applied after the bounded SQL slice), and
+the credits-affordability follow-up are **accepted as mechanically
+real but monitored, not actioned** — the bounded SQL slice as it
+stands retains the practical-score winner across every tested data
+shape, profile, and penalty under the current scorer.
+
+This is not "the audit findings were wrong." The mechanisms hold.
+It is "current data shape and current scorer do not make them
+materially affect winner selection in the tested envelope, and no
+restructure axis tested produces a different recommendation."
+
+### Re-evaluation triggers
+
+The decision is conditional on the tested envelope. Re-run the
+probes (or a refreshed equivalent built from this plan) if any of:
+
+- the distance-penalty scorer materially changes
+- default `--age` behaviour or commonly-used `--age` values change
+- stale or fleet-carrier market handling changes (a periodic
+  cleanup default, an `--age`-aware import path, etc.)
+- live data shape changes enough that the extreme single-commodity
+  margins stop dominating the candidate set
+- `trade run` users report unanchored winner disagreement against
+  `--old`, or surprising recommendations under unanchored search
+- a future audit identifies a fourth mechanism not covered by α,
+  δ, ε, or wider-N
+
+### Carrier dominance — separate concern, not restructure evidence
+
+Every P6 production winner involved a fleet carrier on at least one
+side of the trade, across all `--age` values tested:
+
+- 88.9% had a carrier destination
+- 66.7% had a carrier source
+- 55.6% were carrier-to-carrier
+- 0% were non-carrier-to-non-carrier
+
+This is a property of the **data**, not a planner bias and not
+evidence that the candidate query needs restructuring. Carrier
+markets carry the long-tail of extreme single-commodity margins
+because carrier prices are owner-set rather than game-driven; the
+unanchored search correctly reports what the data contains.
+
+Carrier-backed routes are valid market observations and are not to
+be treated as invalid. The project already gives Cmdrs the
+`--fleet-carrier` Y/N/? state filter and unanchored search includes
+them by default.
+
+The user-side concern surfaced by P6 is **execution risk**, not
+planner correctness. Carrier stock and demand are player-controlled
+and can change between an EDDN snapshot and a Cmdr's arrival, and
+the API snapshot lag between observation and flight is unavoidable.
+P6 captured concrete examples: mid-ship and large-ship one-jump at
+`--age 1` returned `Lyncis Sector QT-R b4-1/K4G-N0Z →
+HIP 17213/W4T-L9T` on Titan Drive Component with `supply_obs=6` and
+`demand_obs=10` at ~21h data age — a real margin but very thin
+execution window. The `--age`, `--supply`, `--demand`, and
+`--fleet-carrier` levers exist for Cmdrs to control this; the
+remediation, if execution risk becomes a recurring complaint, is a
+Cmdr-facing filter or a docs note, not a candidate-query change.
+
+### Probe artefacts
+
+The six probes were standalone, throwaway, untracked Python scripts
+at the repository root (`probe_p1.py` through `probe_p6_age.py`),
+with companion result files (`probe_p1_results.txt` through
+`probe_p6_results.txt`). They are not part of the production tree;
+the record of what was measured is this section. If a future probe
+run is needed, the scripts can be rebuilt from this plan.
+
+### Status
+
+Restructure investigation closed. Slice 5 stands as delivered. No
+production code change.
