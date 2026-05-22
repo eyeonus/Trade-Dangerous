@@ -72,15 +72,15 @@ reduction, not proof of global correctness.
   the helpers it calls.
 - **No regression at zero distance-penalty.** The common case (penalty
   off) must not become substantially slower than today.
-- **Scorer-pluggable.** The final distance-penalty curve is still in
-  discussion, but is expected to be monotonically non-increasing with
-  destination arrival distance: near stations multiply score by 1 (or
-  near-1), and increasingly distant stations trend downward toward 0.
-  SQL must gather a sufficiently rich candidate set so the Python
-  scorer can make the final decision after the slice is materialised;
-  the slice must not assume the final curve can be safely approximated
-  inside SQL. Validation runs against whichever Python distance-penalty
-  scorer is current at the time of implementation.
+- **Scorer-pluggable.** The distance-penalty curve is the protected
+  curve defined in `trade_run_black_box_spec.md` — monotonically
+  non-increasing with destination arrival distance, near stations
+  multiplying score by ~1, increasingly distant stations trending
+  toward 0. SQL must gather a sufficiently rich candidate set so the
+  Python scorer can make the final decision after the slice is
+  materialised; the slice must not assume the curve can be safely
+  approximated inside SQL. Validation runs against the Python scorer
+  that implements the spec curve.
 
 ## Design space
 
@@ -100,18 +100,17 @@ For distance-penalty post-pruning (Finding 3):
 - **D-2** — widen the bounded slice from 50 rows to a larger N
   (probe-determined) when a non-zero distance-penalty is in effect.
   Simple; the per-pair cargo optimiser is the slow Python step, not the
-  SQL. **Preferred route while the distance-penalty curve is still in
-  discussion**, because it preserves Python's authority over the final
-  scoring policy regardless of curve shape.
+  SQL. **Preferred route**, because it preserves Python's authority
+  over the scoring policy without baking the curve into SQL.
 - **D-3** — two-pass SQL: rank by raw realisable, take top-N; join
   `Station.ls_from_star` for dest, apply a monotonic linear
   distance-penalty proxy in SQL on that narrow set, take top 50. The
-  Python scorer continues to run on the resulting set. **Provisional
-  only.** A SQL proxy bakes a curve into the slice, which is the
+  Python scorer continues to run on the resulting set. **Off the
+  table.** A SQL proxy bakes a curve into the slice, which is the
   architectural opposite of scorer-pluggability, and is at best an
-  approximation of the Python scorer. Off the table until the
-  distance-penalty curve is finalised, and only revisited if D-2's
-  wider slice costs too much in Python evaluation time.
+  approximation of the Python scorer. Revisit only if D-2's wider
+  slice costs too much in Python evaluation time and the spec curve
+  is later revised into a shape SQL can faithfully express.
 
 For affordability not in the SQL ranking key:
 
@@ -128,8 +127,8 @@ Out of consideration:
   `--ly-per`. The deliverable is "best one-hop pair", which doesn't
   require enumerating all pairs.
 - Encoding the full distance-penalty curve in SQL. Portability and
-  ugliness aside, the curve is still in flux; baking it into the slice
-  forfeits scorer-pluggability.
+  ugliness aside, baking the curve into the slice forfeits
+  scorer-pluggability.
 
 ## Recommended starting hypothesis
 
@@ -139,8 +138,7 @@ non-zero distance-penalty is in effect; Python keeps full authority over
 final scoring), and **ε** for the affordability follow-up (row-wise
 credits cap folded into the SQL rank). Smallest blast radius, leans on
 the existing `optimise_cargo` and the current Python scorer, easiest to
-roll back. D-3 stays off the table while the distance-penalty curve is
-in discussion.
+roll back. D-3 stays off the table.
 
 ## Probes
 
@@ -212,8 +210,7 @@ production code change.
 - **K**: do we widen the per-system reduction at all, and if so to what
   value?
 - **Slice-limit growth**: D-2 chosen, the slice grows to what N when
-  the distance-penalty parameter is non-zero? D-3 stays off the table
-  until the distance-penalty curve is finalised.
+  the distance-penalty parameter is non-zero? D-3 stays off the table.
 - **δ scope**: full re-fetch of all commodities per surviving pair, or
   limited to commodities present in the slice plus their per-pair
   neighbours?
@@ -264,11 +261,9 @@ production code change.
   slower for a more correct answer.
 - MariaDB confirmation: one end-to-end run on the Linux VM against the
   chosen shape before sign-off.
-- Validation uses whichever Python distance-penalty scorer is current
-  at the time of implementation. If the scorer changes before this
-  work lands, the probes do not need to be re-run unless the change
-  alters ranking direction — it is the *ranking shape* the slice has
-  to contain, not the specific numeric output.
+- Validation uses the Python distance-penalty scorer that implements
+  the spec curve. The slice has to contain the ranking shape, not the
+  specific numeric output.
 
 ## Out of scope
 
@@ -276,9 +271,10 @@ production code change.
 - Multi-jump per hop (`--jumps-per >= 2`).
 - Finding 6 (`input()` / `EOFError` after `isatty()` returns true) —
   left as-is.
-- Choice of the final distance-penalty curve — separate piece of work;
-  this plan accommodates any Python distance-penalty scorer that is
-  monotonically non-increasing with destination arrival distance.
+- Choice of the distance-penalty curve — the spec curve stands and is
+  not under active revision. If a future contributor picks the topic
+  up, this plan's shape accommodates any scorer that is monotonically
+  non-increasing with destination arrival distance.
 
 ## Risk and rollback
 
@@ -393,10 +389,14 @@ P6 captured concrete examples: mid-ship and large-ship one-jump at
 `--age 1` returned `Lyncis Sector QT-R b4-1/K4G-N0Z →
 HIP 17213/W4T-L9T` on Titan Drive Component with `supply_obs=6` and
 `demand_obs=10` at ~21h data age — a real margin but very thin
-execution window. The `--age`, `--supply`, `--demand`, and
-`--fleet-carrier` levers exist for Cmdrs to control this; the
-remediation, if execution risk becomes a recurring complaint, is a
-Cmdr-facing filter or a docs note, not a candidate-query change.
+execution window. Titan Drive Component is a required material for
+purchasing pre-engineered SCO drives at human tech brokers, which is
+why it surfaces persistently in carrier-side data: scarce supply,
+steady demand, carriers price freely. The `--age`, `--supply`,
+`--demand`, and `--fleet-carrier` levers exist for Cmdrs to control
+this; the remediation, if execution risk becomes a recurring
+complaint, is a Cmdr-facing filter or a docs note, not a
+candidate-query change.
 
 ### Probe artefacts
 

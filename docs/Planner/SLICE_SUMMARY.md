@@ -390,6 +390,13 @@ single-commodity margins because their prices are owner-set rather than
 game-driven; the unanchored search correctly reports what the data
 contains.
 
+Titan Drive Component recurs in the P6 examples as a concrete case: it
+is a required material for purchasing pre-engineered SCO drives at human
+tech brokers, so demand is steady and supply is scarce, and carrier
+owners price it freely. The unanchored search surfaces it because the
+data legitimately shows extreme margins on it, not because of any
+planner bias toward that commodity.
+
 Carrier-backed routes are valid market observations and are not treated
 as invalid. The user-side concern is **execution risk**, not planner
 correctness: carrier stock and demand are player-controlled and can
@@ -502,6 +509,23 @@ cross-system hop with `--jumps-per >= 2` — so a default of 2 is meaningless
 until multi-jump per-hop reachability exists. The keyed default belongs with
 the slice that delivers that capability. Until then the flat default of 1
 stands.
+
+### `--sco` flag
+
+A new option declaring the user's ship has a Supercruise Overcharge drive.
+When set, it clamps `--ls-penalty` to 0 and overrides any user-supplied
+`--ls-penalty` value — the in-system travel-time concern the curve solves
+is materially weaker for SCO-equipped ships, which can reach distant
+stations in seconds rather than minutes of supercruise.
+
+```text
+--sco set        --ls-penalty treated as 0
+--sco not set    --ls-penalty works as today
+```
+
+Not scoped into any current slice. How the user signals SCO ownership —
+per-run flag, persisted ship profile, journal detection — is the UX
+question to resolve when the option lands.
 
 ---
 
