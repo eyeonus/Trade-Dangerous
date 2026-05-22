@@ -755,12 +755,12 @@ Profiles C and D), not a head-to-head candidate count read.
 | E (ly=50, j=1) | 271 | 271 | 76 |
 
 The direct-distance prefilter is necessary-not-sufficient at N>=2
-and tight in practice — accept rates 72–93%. No profile hit the
-per-commodity MATCH_LIMIT cap; the streamed cursor exhausts before
-50 reachable accepted per commodity in every case, so C3 is not
-silently truncating top reachable. The bubble cache stays small
-(76–181 source systems) because surviving commodities concentrate
-supply in a handful of systems.
+and tight in practice — accept rates 72–93%. The probe did not record
+per-commodity cap hits in the result table, so production should add
+that counter if cheap; it is the right signal for detecting future
+truncation pressure. The bubble cache stays small (76–181 source
+systems) because surviving commodities concentrate supply in a handful
+of systems..
 
 **Implications:**
 
@@ -776,12 +776,13 @@ supply in a handful of systems.
   general shape handles N>=1 uniformly; today's cross-join populator
   is removed when C3 lands.
 - **Production C3 must expose instrumentation for** the four
-  counters the probe records:
+  counters the probe records or implies:
   - pair rows examined per request (sum across commodities);
   - reachable rows accepted per request;
   - source-system bubble-cache count per request;
-  - optionally per-commodity cap-hit count (zero in every probe
-    profile, but a regression signal worth keeping if cheap to add).
+  - optionally per-commodity cap-hit count (not recorded in the P4
+    result table, but a regression signal worth keeping if cheap to
+    add).
   These ride alongside the existing wall-clock measurement so a
   production regression can be diagnosed without re-instrumenting.
 - **Architectural reuse with Piece A.** The bubble fetch + scipy
