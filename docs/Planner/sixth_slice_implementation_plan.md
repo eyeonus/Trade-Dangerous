@@ -606,6 +606,62 @@ absolute; not a meaningful regression.
   multi-hop compounding makes B2 unworkable; not required to land
   Slice 6.
 
+### P3c — B2 composed with age filter
+
+P3b's composed measurement returned every Station in reachable
+systems. The realistic production candidate query also filters by
+market-data freshness via `--age`. P3c re-measures the composed query
+with an age filter to size the production candidate set and the
+filter's cost.
+
+Composed query gains `AND EXISTS (SELECT 1 FROM StationItem WHERE
+station_id = s.station_id AND modified > :cutoff)`. Cutoff was
+DB-relative (`MAX(StationItem.modified) - 3 days`) — slightly more
+permissive than wall-clock `--age 3` would be for a freshly-imported
+database, but representative within ~1 day. Full table in the
+untracked `probe_p3c_results.md`.
+
+**Two findings.**
+
+**1. The age filter is essentially free at the composition step.** At
+Sol (50, 5): no-age composed 71.6 s, age-3 composed 73.1 s — a 2 %
+increase. SQLite's plan probes `StationItem (station_id, item_id)` PK
+once per candidate station; the predicate cost is low even at
+hundreds of thousands of candidates.
+
+**2. The age filter shrinks the candidate set by ~50x in dense
+space.** Sol kept-percentages are 2-4 % across the sweep; the
+candidate count drops from hundreds of thousands of geographically-
+reachable stations to ~10 k stations with fresh market data:
+
+| (ly, j) | no-age stations | age-3 stations | kept % |
+|---:|---:|---:|---:|
+| (15, 5) | 45,191 | 1,539 | 3.4% |
+| (30, 5) | 267,465 | 6,227 | 2.3% |
+| (50, 3) | 288,491 | 6,629 | 2.3% |
+| (50, 5) | 558,613 | 11,342 | 2.0% |
+
+Colonia (medium) keeps 5-9 %; the sparse rim anchor returns 0 fresh
+stations — its local data is all stale.
+
+**Implications:**
+
+- **Age filter belongs in the composed candidate query**, not pushed
+  into the reachable-system temp table build. Geography (B2) and
+  freshness (the EXISTS predicate) are independent concerns; mixing
+  them would tangle the implementation without performance benefit.
+- **Downstream planner cost is bounded by the post-age-filter
+  count**, not the raw reachable count. At Sol (50, 5) the planner
+  processes ~11 k candidate stations, not 558 k. Per-station market
+  evaluation, scoring, and cargo work all scale with this smaller
+  number.
+- **The 73 s composed cost at Sol (50, 5) produces ~11 k usable
+  candidates** — roughly 6 ms per candidate generated. Acceptable
+  under the same confirmation-prompt UX as Slice 5's unanchored
+  search.
+- **B2 selection unchanged.** P3c sharpens the production picture
+  around the selection; the shape decision stands.
+
 ## Decision points after probes
 
 - **Piece A shape**: A2 vs A1 vs A3.
