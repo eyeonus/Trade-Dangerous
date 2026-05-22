@@ -483,6 +483,129 @@ skipped the adjacency build, recomputing distances per BFS layer.
 Both undersold A2's strengths and missed the high-ly shallow-reach
 corner entirely. The current numbers replace that read.
 
+### P3 — Recursive CTE reachable-system subquery (Piece B)
+
+Standalone probe run against the live SQLite database. Three anchors
+(Sol dense, Colonia medium, sparse rim singleton), twelve
+`(--ly-per, --jumps-per)` combinations, three repeats per case. Three
+queries per combo: B1 alone (CTE returning distinct reachable
+system_ids), B1 composed (`Station.system_id IN (CTE)`), and at N=1
+only today's single bounding-box query alone + composed for direct
+comparison. Full table in the untracked `probe_p3_results.md`.
+
+**CTE shape lesson.** Initially written with `UNION ALL` + terminal
+`DISTINCT` (the textbook portable pattern). Dense Sol at (15, 5) did
+not terminate — UNION ALL with depth-in-row produces a path-count
+explosion in dense graphs. Switched to `UNION` (deduplication during
+recursion); cumulative CTE bounded by `|reachable| x (max_depth + 1)`.
+Both SQLite and MariaDB support UNION in recursive CTEs at the
+versions we ship against; the "portable safe" instinct on UNION ALL
+was misapplied.
+
+**Correctness:** B1 returns same system set as today's bounding-box
+query at N=1 (verified per anchor). Composed station counts match
+between B1 and bbox at N=1.
+
+**Composition preserves the index plan.** B1 composed tracks B1 alone
+within a few percent at every depth (e.g., Sol (15, 5): 982 ms alone
+vs 986 ms composed). The IN-subquery composition does not flip
+SQLite off the indexed plan — the Slice 4 audit lesson holds for the
+CTE shape.
+
+**N=1 vs bbox:** B1 is 1.5-2x slower than today's bbox at N=1
+(Sol ly=50: 3.88 ms vs 1.49 ms). Minor CTE machinery overhead;
+sub-5 ms absolute.
+
+**Where B1 falls over — dense Sol high depth:**
+
+| (ly, j) | Reachable | B1 alone (ms) | B1 composed (ms) |
+|---:|---:|---:|---:|
+| (15, 5) | 2,416 | 982 | 986 |
+| (30, 3) | 5,358 | 2,221 | 2,215 |
+| (30, 5) | 19,272 | **20,841** | 20,135 |
+| (50, 3) | 20,985 | **18,875** | 18,980 |
+| (50, 5) | 58,521 | **141,855** | **162,007** |
+
+142 seconds for the open-ended candidate query at Sol (50, 5) is
+interactive-prohibitive. The (30, 5) and (50, 3) cases at ~20 seconds
+are also rough. Above ~5,000 reachable systems the cost rises sharply
+with depth.
+
+Mechanism: even with UNION dedup the recursive engine still visits
+every reachable system at every depth it can be reached at, hashing
+each candidate against existing CTE rows. At 58k reachable × 6 depth
+slots ≈ 350k cumulative rows × per-row dedup hash + the spatial JOIN
+producing each one. SQLite handles it correctly; the constant factor
+is heavy.
+
+B1 is correct and composition-clean but its cost at scale is not
+acceptable. P3b measures the alternative shape.
+
+### P3b — B2 iterative widening (Piece B follow-on)
+
+Same anchors, same sweep, same comparison shape. B2 per call: reset
+per-request temp table, insert anchor at depth 0, then for each depth
+1..max_depth `INSERT INTO td_reachable_systems SELECT ... FROM System
+JOIN td_reachable_systems WHERE r.depth = current_depth - 1 AND NOT
+EXISTS (...)`. Layer-by-layer widening, with the temp table's PK on
+system_id keeping the dedup fast. Full table in the untracked
+`probe_p3b_results.md`.
+
+**Correctness:** B2's reachable set matches B1 at every
+`(anchor, ly, jumps)`. At N=1 both match today's bbox. The three
+shapes produce the same set; the choice is purely about cost.
+
+**Cost vs B1 — Sol dense:**
+
+| (ly, j) | B1 (ms) | B2 (ms) | B2 advantage | Reachable |
+|---:|---:|---:|---:|---:|
+| (15, 3) | 117 | 101 | 1.16x | 630 |
+| (15, 5) | 982 | 661 | 1.49x | 2,416 |
+| (30, 5) | 20,841 | 12,165 | 1.71x | 19,272 |
+| (50, 3) | 18,875 | 18,887 | tied | 20,985 |
+| (50, 5) | **141,855** | **85,009** | **1.67x** | 58,521 |
+
+B2 is faster at every heavy case by 1.5-1.7x. At low depth or small
+frontiers B2 and B1 are within measurement noise. Colonia and sparse
+anchors complete sub-50 ms regardless of shape.
+
+**Composition cost:** B2 composed wall-clock tracks B2 alone within
+noise (Sol (50, 5): 85.0 s alone vs 84.0 s composed). The temp table's
+PK-indexed system_id column makes the `Station IN (subquery)`
+composition essentially free.
+
+**N=1 vs today's bbox:** B2 is 2-3x slower than bbox at N=1 from temp
+table machinery (CREATE INDEX, DELETE, anchor INSERT). Sub-5 ms
+absolute; not a meaningful regression.
+
+**Implications for Piece B:**
+
+- **B2 selected.** Faster than B1 at every heavy case; ties or noise
+  at lower cases; minor overhead at N=1.
+- **Cost at the worst case (~85 s at Sol (50, 5)) is still slow.**
+  Structural: the dense Sol graph at depth 5 reaches 58 k systems
+  regardless of which shape walks it. B2's saving of ~57 s vs B1 at
+  this case is non-trivial and the saving compounds across hops in
+  Slice 7's multi-hop work, where the reachability query runs
+  per-hop.
+- **UX:** matches Slice 5's unanchored confirmation-prompt pattern.
+  Multi-jump open-ended on a dense ship range is an explicit user
+  request; prompt for confirmation before the slow walk.
+- **Implementation notes:** per-request temp table `td_reachable_systems`
+  created and torn down per RunRequest. Layer INSERT uses portable
+  `NOT EXISTS` for skip-already-known (supported on both SQLite and
+  MariaDB). Composed candidate query:
+  `Station.system_id IN (SELECT system_id FROM td_reachable_systems)`.
+- **Python-driven alternative considered, not selected.** Piece A's
+  machinery (bubble fetch + scipy KDTree + Python BFS) could in
+  principle generate the same reachable set faster — KDTree neighbour
+  queries on a 60 k-system bubble would likely cut Sol (50, 5) to
+  seconds rather than 85 seconds. It moves work back to Python and
+  adds scipy as a dependency to a path that's currently pure SQL.
+  Worth recording as a future optimisation lever if Slice 7's
+  multi-hop compounding makes B2 unworkable; not required to land
+  Slice 6.
+
 ## Decision points after probes
 
 - **Piece A shape**: A2 vs A1 vs A3.
