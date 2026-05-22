@@ -357,6 +357,50 @@ profile.
 Question: are the recursive CTE shapes portable in practice, not just
 in spec?
 
+## Probe results
+
+Results from each probe summarised back here as it runs. The full
+per-probe data files (`probe_pN_results.md` at the repo root) stay
+untracked.
+
+### P1 — Bubble cardinality (Piece A)
+
+Standalone probe run against the live SQLite database. Anchors covered
+Sol-region dense space, Colonia region (medium), and three high-|pos|
+systems on the rim (sparse). Seven `(jumps, ly)` combinations per
+anchor, COUNT(\*) over the bounding-box-plus-squared-distance bubble,
+median of three warm repeats. Full table in the untracked
+`probe_p1_results.md`.
+
+**Headline:** the bubble is small enough to load and walk in memory at
+every tested combination, including the worst case.
+
+**Worst-case point:** Sol at `(jumps=5, ly=20)` -> L=100 ly -> ~8,070
+systems, ~3.5 ms for the COUNT.
+
+**Density behaviour:**
+
+- Dense (Sol): roughly cubic growth with L — 51 (L=15), 108 (L=20),
+  287 (L=30), 659 (L=40), 917 (L=45), 2,082 (L=60), 8,070 (L=100).
+- Medium (Colonia): saturates around 148 systems by L=60 and stays
+  there. Colonia is an isolated pocket; multi-jump adds little
+  reachable population.
+- Sparse (rim picks): every combination returns 1. The rim anchors
+  are genuine singletons.
+
+**Implication for Piece A:** A2 (pre-fetched local bubble, one SQL
+round-trip) is feasible at every tested combination. The bubble does
+not blow up at Sol-region density even at `(5, 20)`. The remaining
+question — walk wall-clock relative to A1's per-frontier shape and to
+today's N=1 direct-distance test — is P2's, not P1's.
+
+**Note on anchor selection:** the dense band picked Sol and its two
+nearest-to-origin neighbours from the database, which surfaced a
+system named "Test" at `(-1, 0, 0)`. Counts at "Test" match Sol's
+exactly, so it does not affect the cardinality reading. The entry
+is in the live data; origin is upstream of this rewrite, not a probe
+artefact.
+
 ## Decision points after probes
 
 - **Piece A shape**: A2 vs A1 vs A3.
