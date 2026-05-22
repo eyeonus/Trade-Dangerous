@@ -662,6 +662,143 @@ stations — its local data is all stale.
 - **B2 selection unchanged.** P3c sharpens the production picture
   around the selection; the shape decision stands.
 
+### P4 — Unanchored reach-map widening shapes (Piece C)
+
+Standalone probe run against the live SQLite database. Five request
+profiles — A (ly=15, j=1), B (ly=15, j=2), C (ly=30, j=2), D (ly=50,
+j=2), E (ly=50, j=1) — fixed knobs across all: capacity 128, credits
+100M, `--age 3`, `--pad-size M`, `--min-gain-per-ton 1`. Four shapes
+at N=1 (`today`, C1, C2, C3) and three at N>=2 (C1, C2, C3 — `today`
+omitted by construction; production does not support multi-jump
+unanchored). Per-shape wall-clock budget 600 s; SQLite `interrupt()`
+on expiry. Candidates deduplicated uniformly by
+`(item_id, source_station_id, destination_station_id)` so counts are
+unique concrete candidates per shape. Best trade by the same
+`_concrete_total_profit` path production uses. Full table in the
+untracked `probe_p4_results.md`.
+
+**Headline:** C3 selected. C1 times out at every multi-jump profile;
+C2 completes only at the smallest multi-jump profile and times out at
+realistic engineered jump ranges; C3 completes every profile in
+14–44 s, exactly matches `today` at both N=1 baseline profiles, and
+agrees with C2 on the only N>=2 cross-check the data supports.
+
+**N=1 baseline (correctness gate):**
+
+| Profile | shape | wall-clock (s) | candidates | best item | best profit |
+|---|---|---:|---:|---|---:|
+| A (ly=15) | today | 80.59 | 652 | Steel | 53,020,544 |
+| A (ly=15) | C1 | 68.55 | 652 | Steel | 53,020,544 |
+| A (ly=15) | C2 | 62.63 | 652 | Steel | 53,020,544 |
+| A (ly=15) | **C3** | **33.40** | 652 | Steel | 53,020,544 |
+| E (ly=50) | today | 132.57 | 271 | Titan Drive Component | 205,863,270 |
+| E (ly=50) | C1 | 198.26 | 271 | Titan Drive Component | 205,863,270 |
+| E (ly=50) | C2 | 135.27 | 271 | Titan Drive Component | 205,863,270 |
+| E (ly=50) | **C3** | **14.60** | 271 | Titan Drive Component | 205,863,270 |
+
+All four shapes converge on identical candidate count and identical
+best trade at both N=1 profiles. C1 carries 1.5–2× CTE overhead vs
+`today` (consistent with P3's B1 read). C2 stage-1-only ≈ `today`
+within noise (same code path). C3 is 2–9× faster than `today` at N=1
+because it never materialises the reach map — at Profile E the base
+reach map is 44.9 M rows that C3 simply doesn't build.
+
+**N>=2 multi-jump:**
+
+| Profile | shape | wall-clock (s) | candidates | best item | best profit |
+|---|---|---:|---:|---|---:|
+| B (ly=15, j=2) | C1 | TIMEOUT @ 600 | — | — | — |
+| B (ly=15, j=2) | C2 | 131.16 | 1,280 | Titan Drive Component | 72,378,792 |
+| B (ly=15, j=2) | **C3** | **31.94** | 690 | Titan Drive Component | 72,378,792 |
+| C (ly=30, j=2) | C1 | TIMEOUT @ 600 | — | — | — |
+| C (ly=30, j=2) | C2 | TIMEOUT @ 600 | — | — | — |
+| C (ly=30, j=2) | **C3** | **18.13** | 291 | Titan Drive Component | 205,863,270 |
+| D (ly=50, j=2) | C1 | TIMEOUT @ 600 | — | — | — |
+| D (ly=50, j=2) | C2 | TIMEOUT @ 600 | — | — | — |
+| D (ly=50, j=2) | **C3** | **43.80** | 320 | Titan Drive Component | 205,863,270 |
+
+**C1 rejected.** Recursive CTE materialisation of the all-pairs
+multi-jump reach map times out at every multi-jump profile, including
+the smallest (ly=15, j=2). The plan's scale-risk call-out for Piece C
+("hundreds of millions of rows at 2 jumps in dense space, death") is
+confirmed by measurement.
+
+**C2 rejected for now.** The plan-faithful staged implementation —
+immutable N=1 base map, per-(commodity, stage) scratch reach holding
+only depth-exactly-K pairs — completes at Profile B (131 s) and
+agrees with C3 on the best trade there. At Profiles C and D the
+per-commodity recursive widening fans out unworkably; both time out.
+C2 is not architecturally broken; it is empirically not viable at
+realistic engineered jump ranges.
+
+**Candidate-count comparability — caveat.** N=1 candidate counts are
+strictly comparable across all four shapes (identical, by
+construction with uniform dedup). At N>=2 C2 and C3 candidate counts
+are **not** strictly comparable. C2's stage-by-stage structure runs
+N independent top-50 matches per commodity, so a single commodity
+can yield up to ~100 candidates at j=2 (capped only by dedup across
+stages). C3 caps total accepted at 50 per commodity. The B-profile
+C2 count of 1,280 vs C3's 690 reflects that, not a missing-trade
+defect. The selection evidence at N>=2 is **best-trade agreement**
+(C2 vs C3 at Profile B: identical pair, identical 72,378,792 profit)
+and **completion/runtime** (C3 the only shape that completes at
+Profiles C and D), not a head-to-head candidate count read.
+
+**C3 internal instrumentation observed:**
+
+| Profile | pairs examined | accepted | bubble cache (source systems) |
+|---|---:|---:|---:|
+| A (ly=15, j=1) | 652 | 652 | 169 |
+| B (ly=15, j=2) | 956 | 690 | 181 |
+| C (ly=30, j=2) | 356 | 291 | 95 |
+| D (ly=50, j=2) | 345 | 320 | 80 |
+| E (ly=50, j=1) | 271 | 271 | 76 |
+
+The direct-distance prefilter is necessary-not-sufficient at N>=2
+and tight in practice — accept rates 72–93%. No profile hit the
+per-commodity MATCH_LIMIT cap; the streamed cursor exhausts before
+50 reachable accepted per commodity in every case, so C3 is not
+silently truncating top reachable. The bubble cache stays small
+(76–181 source systems) because surviving commodities concentrate
+supply in a handful of systems.
+
+**Implications:**
+
+- **C3 selected for Piece C.** Reasons: identical correctness vs
+  `today` at N=1 across both small-ly and large-ly profiles, agrees
+  with C2 on the only N=2 cross-check the data supports, completes
+  every profile under budget, and removes the slice's headline scale
+  risk (no multi-jump reach map materialised).
+- **No specialised N=1 fast path needed for Piece C.** C3 is
+  meaningfully faster than `today` at both N=1 profiles — production
+  N=1 unanchored becomes faster, not slower, under the unified shape.
+  This resolves the Piece C N=1 specialisation decision point: the
+  general shape handles N>=1 uniformly; today's cross-join populator
+  is removed when C3 lands.
+- **Production C3 must expose instrumentation for** the four
+  counters the probe records:
+  - pair rows examined per request (sum across commodities);
+  - reachable rows accepted per request;
+  - source-system bubble-cache count per request;
+  - optionally per-commodity cap-hit count (zero in every probe
+    profile, but a regression signal worth keeping if cheap to add).
+  These ride alongside the existing wall-clock measurement so a
+  production regression can be diagnosed without re-instrumenting.
+- **Architectural reuse with Piece A.** The bubble fetch + scipy
+  KDTree machinery is the same shape P2 selected for `plan_jump_path`.
+  A shared `_load_local_bubble` helper and a shared per-RunRequest
+  bubble cache fit both Piece A and Piece C cleanly. Less new code
+  than C2 would have needed.
+- **Carrier dominance unchanged.** Every multi-jump winner in P4 is
+  Titan Drive Component, consistent with the carrier-dominance
+  observation already in `SLICE_SUMMARY.md`. P4 confirms but does
+  not extend that finding; no planner change required.
+- **C2 remains a documented fallback.** If the dataset later evolves
+  to a shape that breaks C3's prefilter-then-reach pattern (e.g. very
+  dense supply systems with sparse multi-jump connectivity making the
+  bubble cache memory-bound), C2's staged scratch is the reference
+  alternative to revisit.
+
 ## Decision points after probes
 
 - **Piece A shape**: A2 vs A1 vs A3.
