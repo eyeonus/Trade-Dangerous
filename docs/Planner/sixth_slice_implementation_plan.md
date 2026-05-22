@@ -401,6 +401,88 @@ exactly, so it does not affect the cardinality reading. The entry
 is in the live data; origin is upstream of this rewrite, not a probe
 artefact.
 
+### P2 — Per-frontier vs pre-fetch wall-clock (Piece A)
+
+Standalone probe run against the live SQLite database. Three sources
+(Sol dense, Colonia medium, rim singleton sparse), four destinations
+per dense/medium source (three reachable at ~25/~50/~80 ly, one
+cross-region unreachable), one cross-region unreachable for sparse.
+Twelve `(--ly-per, --jumps-per)` combinations per pair × three shapes
+(A1, A2, direct), median of three warm repeats. A1 ran with a 120s
+per-call budget (between-layers check; doesn't interrupt an in-flight
+query). A2 used a proper KDTree adjacency
+(`scipy.spatial.cKDTree.query_ball_point`) per the plan's "adjacency
+built from pos_x/y/z". Full table in the untracked
+`probe_p2_results.md`.
+
+**Sweep choice — `--ly-per` in {15, 30, 50}.** Earlier P2 used a too-
+narrow {15, 20} set carried over from P1 without questioning. The
+real spread of ship jump ranges, default through engineered, covers
+~10-50 ly per loaded jump for trade-fit hulls; 50 ly is the realistic
+upper end without stripping a hull to a flying gas can. Above that,
+cargo weight pulls the range back. {15, 30, 50} samples stock,
+optimal-module, and engineered ranges. The earlier {15, 20} corner
+missed the high-ly shallow-reach behaviour entirely.
+
+**Correctness:** A1 and A2 agree on `reached` everywhere. No A1
+timeouts triggered. The largest A1 case (Sol -> Colonia at (50, 5))
+ran 191s — the budget check fires between layers and cannot interrupt
+a single huge layer-N query. Probe-implementation quirk, not a
+finding.
+
+**Verdict: A2 dominates.** A2 wins almost every case, by huge margins
+where the dense-Sol bubble matters:
+
+| Case | (ly, j) | A1 (ms) | A2 (ms) | A2 advantage |
+|---|---|---:|---:|---:|
+| Sol -> Colonia (22 kly, unreachable) | (50, 5) | 191,461 | 55 | 3,500x |
+| Sol -> Colonia (22 kly, unreachable) | (50, 3) | 36,181 | 22 | 1,650x |
+| Sol -> G 123-7 (80 ly, reachable d=2) | (50, 5) | 5,692 | 190 | 30x |
+| Sol -> LHS 3221 (50 ly, reachable d=4 at ly=15) | (15, 5) | 678 | 8.7 | 78x |
+
+**A1 wins one narrow corner**, by small margins in absolute terms:
+destination reachable at depth 1, `--ly-per >= 30`, `--jumps-per >= 2`.
+A2 wastes a large bubble fetch on what is really a single-jump check.
+
+| Case | (ly, j) | A1 (ms) | A2 (ms) | A1 advantage |
+|---|---|---:|---:|---:|
+| Sol -> Vega (d=1, ly=50, j=5) | (50, 5) | 3.5 | 77 | 74 ms |
+| Sol -> Vega (d=1, ly=50, j=3) | (50, 3) | 3.6 | 29 | 25 ms |
+| Sol -> Vega (d=1, ly=30, j=5) | (30, 5) | 1.6 | 31 | 29 ms |
+
+A1's best win is 74 ms; A2's best win is 191 seconds. The asymmetry
+is decisive — A1 is not worth implementing as a fallback or hybrid.
+
+**Implications for Piece A:**
+
+- **A2 selected as the sole shape.** No A1 fallback, no per-layer
+  SQL machinery.
+- **Bubble cache, mandatory.** Key on
+  `(source_system_id, max_bubble_radius_ly)`. Per-RunRequest lifetime.
+  A Sol L=250 bubble is ~60k systems plus its KDTree — tens of
+  megabytes, comfortable. Without the cache, a 10x10 station-pair
+  matrix at Sol `--ly-per 50` does 7.7s of repeated bubble builds;
+  with the cache it is ~130 ms total. Applies to all anchored shapes
+  (Slices 1/2/3/4); Slice 5's unanchored search has its own reach
+  map and is unaffected.
+- **Direct-line early-out in `plan_jump_path`.** Before the bubble
+  fetch, test whether the destination is within `--ly-per` of the
+  source by squared distance. If yes, return a single-jump path.
+  Three lines; microseconds. Kills the A1-wins corner entirely —
+  every case A1 won was a "destination reachable in one direct
+  jump" case, and the early-out resolves those without ever
+  fetching a bubble. Generalises cleanly: a user at `--jumps-per 5`
+  whose destination is 22 ly away gets the same fast path.
+- **scipy as a planner dependency.** `scipy.spatial.cKDTree` lifts
+  from probe to planner. Added to `pyproject.toml` in Piece A's
+  implementation step. numpy comes along as a transitive dependency.
+
+**Earlier P2 reading (probe rev 1) is superseded.** That run used a
+too-narrow `--ly-per` sweep ({15, 20}) and an A2 implementation that
+skipped the adjacency build, recomputing distances per BFS layer.
+Both undersold A2's strengths and missed the high-ly shallow-reach
+corner entirely. The current numbers replace that read.
+
 ## Decision points after probes
 
 - **Piece A shape**: A2 vs A1 vs A3.
