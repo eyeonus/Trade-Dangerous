@@ -35,22 +35,34 @@ def plan_onehop_route(session: Session, request: RunRequest) -> run_result.RunRe
     validate_run_request(request)
     validation_ms = _elapsed_ms(validation_started)
 
+    # One reachability bubble cache lives for the lifetime of this request.
+    # Each anchor's bubble is loaded once and reused across every hop that
+    # walks from it, so a candidate matrix evaluating many destinations from
+    # a fixed origin pays for the bubble once, not once per destination.
+    bubble_cache: dict[int, object] = {}
+
     # Four-way dispatch on which endpoints the user named. Both named:
     # evaluate the station-pair matrix, no spatial search. One named: the
     # planner selects the other via the open-ended search, open_role being the
     # role of that selected endpoint. Neither named: the unanchored search
     # selects both endpoints with a galaxy-wide candidate query.
     if request.from_text and request.to_text:
-        return _plan_fixed_endpoints(session, request, started, validation_ms)
+        return _plan_fixed_endpoints(
+            session, request, started, validation_ms, bubble_cache
+        )
     if request.from_text:
         return _best_open_ended_plan(
-            session, request, started, validation_ms, open_role="destination"
+            session, request, started, validation_ms,
+            open_role="destination", bubble_cache=bubble_cache,
         )
     if request.to_text:
         return _best_open_ended_plan(
-            session, request, started, validation_ms, open_role="source"
+            session, request, started, validation_ms,
+            open_role="source", bubble_cache=bubble_cache,
         )
-    return _plan_unanchored(session, request, started, validation_ms)
+    return _plan_unanchored(
+        session, request, started, validation_ms, bubble_cache
+    )
 
 
 def _plan_fixed_endpoints(
@@ -58,6 +70,7 @@ def _plan_fixed_endpoints(
     request: RunRequest,
     started: float,
     validation_ms: float,
+    bubble_cache: dict[int, object],
 ) -> run_result.RunResult:
     """Plan one hop when both endpoints are supplied by the user."""
 
@@ -100,6 +113,7 @@ def _plan_fixed_endpoints(
         source_stations,
         destination_stations,
         request,
+        bubble_cache,
     )
 
     diagnostics = run_result.PlannerDiagnostics(
@@ -122,6 +136,7 @@ def _best_open_ended_plan(
     validation_ms: float,
     *,
     open_role: str,
+    bubble_cache: dict[int, object],
 ) -> run_result.RunResult:
     """Plan one hop with one fixed endpoint and one chosen by the planner.
 
@@ -251,6 +266,8 @@ def _best_open_ended_plan(
         _system_from_station(best_pair.destination_station),
         max_jumps_per_hop=int(request.max_jumps_per_hop or 0),
         max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
+        session=session,
+        bubble_cache=bubble_cache,
     )
     reachability_ms = _elapsed_ms(reachability_started)
     best_pair = replace(best_pair, jump_path=jump_path)
@@ -273,6 +290,7 @@ def _plan_unanchored(
     request: RunRequest,
     started: float,
     validation_ms: float,
+    bubble_cache: dict[int, object],
 ) -> run_result.RunResult:
     """Plan one hop with neither endpoint named — the planner selects both.
 
@@ -347,6 +365,8 @@ def _plan_unanchored(
         _system_from_station(best_pair.destination_station),
         max_jumps_per_hop=int(request.max_jumps_per_hop or 0),
         max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
+        session=session,
+        bubble_cache=bubble_cache,
     )
     reachability_ms = _elapsed_ms(reachability_started)
     best_pair = replace(best_pair, jump_path=jump_path)
@@ -527,6 +547,7 @@ def _best_pair_plan(
     source_stations: tuple[run_result.ResolvedStation, ...],
     destination_stations: tuple[run_result.ResolvedStation, ...],
     request: RunRequest,
+    bubble_cache: dict[int, object],
 ) -> tuple[_PairPlan, float, float, float, int]:
     best_pair = None
     reachability_ms = 0.0
@@ -548,9 +569,9 @@ def _best_pair_plan(
                     _system_from_station(destination_station),
                     max_jumps_per_hop=int(request.max_jumps_per_hop or 0),
                     max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
+                    session=session,
+                    bubble_cache=bubble_cache,
                 )
-            except failures.ReachabilityImplementationMissing:
-                raise
             except failures.NoReachableRoute:
                 reachability_ms += _elapsed_ms(reach_started)
                 continue
