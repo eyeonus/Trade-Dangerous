@@ -586,3 +586,16 @@ Not a simple message swap: `PadSizeArgument` is shared with `sell`, `buy`,
 `local`, `nav`, and `olddata`, which still use the combination model. A fix
 means either a `trade run`-specific pad parser and message, or accepting the
 mismatch.
+
+### `StationHasNoUsablePriceData` subclass wording
+
+The planner-side raise messages for `SourceHasNoSellingData` and
+`DestinationHasNoBuyingData` (in `planner/run_onehop.py`) still use internal
+phrasing — "No reachable source station had usable selling data." and
+similar. These are now surfaced through `PlannerResultError` without the
+generic data-failure footer, so the wording is the only remaining issue;
+"reachable" leaks an internal concept into a user-facing line. A small
+follow-up could reword these to match the friendlier "no usable market
+data for the chosen \<place\>" style used by the rest of the planner
+failure messages. Out of scope for the failure-message cleanup that
+introduced `PlannerResultError`.
