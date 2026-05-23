@@ -129,8 +129,9 @@ def plan_jump_path(
         )
         bubble_cache[source.system_id] = bubble
 
+    source_idx = bubble.id_to_index.get(source.system_id)
     destination_idx = bubble.id_to_index.get(destination.system_id)
-    if destination_idx is None:
+    if source_idx is None or destination_idx is None:
         # Anchor is at the bubble centre and the triangle-inequality check
         # guarantees the destination is inside it — reaching this branch
         # means a data gap in the System table around this anchor.
@@ -139,9 +140,8 @@ def plan_jump_path(
         path = bubble.path_cache[destination_idx]
     else:
         path = _bfs_jump_path(
-            source=source,
-            destination=destination,
             bubble=bubble,
+            source_idx=source_idx,
             destination_idx=destination_idx,
             max_jumps=max_jumps_per_hop,
         )
@@ -243,9 +243,8 @@ def _load_local_bubble(
 
 def _bfs_jump_path(
     *,
-    source: ResolvedSystem,
-    destination: ResolvedSystem,
     bubble: _LocalBubble,
+    source_idx: int,
     destination_idx: int,
     max_jumps: int,
 ) -> tuple[ResolvedSystem, ...] | None:
@@ -255,11 +254,9 @@ def _bfs_jump_path(
     no path of length <= max_jumps exists inside the bubble. The bubble is
     sized so that any path of the requested depth stays within it, so failure
     here means no such path exists in the galaxy under these constraints.
+    Both indices must already be resolved against bubble.id_to_index; the
+    caller catches missing systems before calling.
     """
-
-    source_idx = bubble.id_to_index.get(source.system_id)
-    if source_idx is None:
-        return None
 
     parent: dict[int, int] = {source_idx: source_idx}
     frontier = [source_idx]
@@ -280,6 +277,81 @@ def _bfs_jump_path(
                 next_frontier.append(n)
         frontier = next_frontier
     return None
+
+
+def is_system_pair_reachable(
+    session: Session,
+    source_system_id: int,
+    destination_system_id: int,
+    *,
+    max_jumps_per_hop: int,
+    max_ly_per_jump: float,
+    bubble_cache: dict[int, _LocalBubble],
+) -> bool:
+    """Return whether destination_system_id is reachable from source_system_id.
+
+    Reuses the per-RunRequest bubble cache and the bubble's path cache from
+    plan_jump_path. A cached path = reachable; cached None = unreachable;
+    absent = run BFS now, store the result, then return. Because the path
+    tuple is stored (not just a bool), a later plan_jump_path call for the
+    same pair reuses the BFS result instead of recomputing it.
+
+    The anchor's coordinates are looked up from the System table when no
+    bubble has been loaded yet for this source. Once loaded, every further
+    (source, destination) check from this anchor reuses the bubble.
+    """
+
+    if source_system_id == destination_system_id:
+        return True
+    if max_jumps_per_hop <= 0:
+        return False
+
+    bubble = bubble_cache.get(source_system_id)
+    if bubble is None:
+        anchor_row = session.execute(
+            select(
+                System.system_id,
+                System.name,
+                System.pos_x,
+                System.pos_y,
+                System.pos_z,
+            ).where(System.system_id == source_system_id)
+        ).first()
+        if anchor_row is None:
+            return False
+        name = str(anchor_row.name)
+        anchor = ResolvedSystem(
+            system_id=int(anchor_row.system_id),
+            name=name,
+            dbname=name,
+            x=float(anchor_row.pos_x),
+            y=float(anchor_row.pos_y),
+            z=float(anchor_row.pos_z),
+        )
+        bubble_radius = max_jumps_per_hop * max_ly_per_jump
+        bubble = _load_local_bubble(
+            session, anchor, bubble_radius, max_ly_per_jump
+        )
+        bubble_cache[source_system_id] = bubble
+
+    destination_idx = bubble.id_to_index.get(destination_system_id)
+    if destination_idx is None:
+        return False
+    if destination_idx in bubble.path_cache:
+        return bubble.path_cache[destination_idx] is not None
+
+    source_idx = bubble.id_to_index.get(source_system_id)
+    if source_idx is None:
+        # Anchor should always be in its own bubble; defensive guard.
+        return False
+    path = _bfs_jump_path(
+        bubble=bubble,
+        source_idx=source_idx,
+        destination_idx=destination_idx,
+        max_jumps=max_jumps_per_hop,
+    )
+    bubble.path_cache[destination_idx] = path
+    return path is not None
 
 
 def _reconstruct_path(

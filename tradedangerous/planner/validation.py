@@ -107,17 +107,6 @@ def validate_run_request(request: RunRequest) -> None:
             option_name="--jumps-per",
         )
 
-    # An omitted endpoint triggers the open-ended search, which is bounded to
-    # same-system (--jumps-per 0) or single-jump (--jumps-per 1) reachability.
-    # Multi-jump open-ended search is not yet supported.
-    if (not request.from_text or not request.to_text) and (
-        request.max_jumps_per_hop not in (0, 1)
-    ):
-        raise UnsupportedRunShape(
-            "--from or --to may only be omitted with --jumps-per 0 or 1.",
-            option_name="--jumps-per",
-        )
-
     if request.max_ly_per_jump is None or request.max_ly_per_jump <= 0:
         raise InvalidNumericOption(
             "--ly-per must be greater than zero.",

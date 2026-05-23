@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import (
@@ -41,6 +42,7 @@ from .failures import (
     SourceStationIneligible,
     StationHasNoMarket,
 )
+from .reachability import is_system_pair_reachable
 from .run_request import RunRequest
 from .run_result import ResolvedStation, ResolvedSystem, TradeCandidate
 
@@ -756,31 +758,58 @@ def fetch_stations_by_id(
 _UNANCHORED_MATCH_LIMIT = 50
 
 
+@dataclass(frozen=True, slots=True)
+class UnanchoredCounters:
+    """Instrumentation counters from one unanchored search run.
+
+    Examined counts pairs that survived the SQL direct-distance prefilter;
+    accepted counts those whose reachability check then passed. Bubble
+    systems is the per-request bubble cache size at end-of-run; cap hits is
+    the number of commodities that hit the per-commodity cap before the
+    stream exhausted. These ride alongside wall-clock measurement so a
+    regression is diagnosable without re-instrumenting.
+    """
+
+    pairs_examined: int = 0
+    pairs_accepted: int = 0
+    bubble_systems: int = 0
+    per_commodity_cap_hits: int = 0
+
+
 def fetch_unanchored_trade_candidates(
     session: Session,
     request: RunRequest,
-) -> tuple[TradeCandidate, ...]:
+    bubble_cache: dict[int, object],
+) -> tuple[tuple[TradeCandidate, ...], UnanchoredCounters]:
     """Fetch the bounded best-trade candidate set for an unanchored search.
 
     Neither endpoint is named, so the search is galaxy-wide and cannot
     materialise every profitable trade. The query is exhaustive in
     consideration but bounded in materialisation:
 
-      1. A reachable-system map is built once as a run-scoped temporary table:
-         every ordered system pair within --ly-per (--jumps-per 1), or skipped
-         entirely when --jumps-per 0 collapses reachability to same-system.
-      2. Each commodity is reduced, supply and demand separately, to its best
+      1. Each commodity is reduced, supply and demand separately, to its best
          price per system, carrying the station that achieves it.
-      3. The two reductions are matched through the reachability map, ranked
-         by gross profit-per-unit, and the top slice is kept.
+      2. For --jumps-per 0 the two reductions are matched by same-system
+         equality and the top slice is kept.
+      3. For --jumps-per >= 1 the SQL pair query prefilters by direct
+         distance (bbox + sphere at --jumps-per * --ly-per) and streams
+         the candidate cursor; each row's actual reachability is then
+         checked via the shared bubble cache, accepting up to the per-
+         commodity cap.
 
     Commodities are walked in descending order of their galaxy-wide
     profit-per-unit bound. A pair's total profit cannot exceed
     capacity x best-profit-per-unit, so once a concrete trade of total profit
-    T has been seen, any commodity whose capacity x bound is at or below T can
-    win nothing and the walk stops — a single pass, since the order is
-    descending. The reductions and the map keep the candidate set in SQL; only
-    the bounded top slice per surviving commodity crosses into Python.
+    T has been seen, any commodity whose capacity x bound is at or below T
+    can win nothing and the walk stops — a single pass, since the order is
+    descending. The reductions keep the candidate set in SQL; only the
+    bounded slice per surviving commodity crosses into Python.
+
+    The reach map that prior slices used (all ordered pairs in --ly-per
+    range) is gone: at multi-jump in dense space it grows to hundreds of
+    millions of rows. The direct-distance prefilter plus on-demand reach
+    via Piece A's bubble cache replaces it without ever materialising a
+    multi-jump pair set.
     """
 
     available_credits = int(request.starting_credits or 0) - request.insurance_reserve
@@ -788,6 +817,10 @@ def fetch_unanchored_trade_candidates(
     capacity = int(request.capacity_units or 0)
     per_item_limit = request.cargo_limit_per_item
     same_system = request.max_jumps_per_hop == 0
+    max_ly = float(request.max_ly_per_jump or 0.0)
+    max_jumps = int(request.max_jumps_per_hop or 0)
+    l_max = max_jumps * max_ly
+    l_max_sq = l_max * l_max
 
     metadata = MetaData()
     modified_type = StationItem.__table__.c.modified.type
@@ -815,31 +848,17 @@ def fetch_unanchored_trade_candidates(
         Index("ix_td_unanchored_demand_sys", "system_id"),
         prefixes=["TEMPORARY"],
     )
-    reach_temp = None
-    if not same_system:
-        reach_temp = Table(
-            "td_unanchored_reach",
-            metadata,
-            Column("s", BigInteger),
-            Column("d", BigInteger),
-            prefixes=["TEMPORARY"],
-        )
 
     connection = session.connection()
     # Tune the connection for bulk work: temp tables in memory and a larger
     # page cache on SQLite, session-scoped commit and lock tuning on MariaDB.
-    # The reachable-system map runs to millions of rows and is re-scanned per
-    # commodity; without the cache headroom each scan pages out and reloads.
     begin_bulk_mode(session)
-    _create_unanchored_temps(connection, supply_temp, demand_temp, reach_temp)
-    try:
-        if reach_temp is not None:
-            _populate_reach_map(
-                connection,
-                reach_temp,
-                float(request.max_ly_per_jump or 0.0),
-            )
+    _create_unanchored_temps(connection, supply_temp, demand_temp)
 
+    pairs_examined = 0
+    pairs_accepted = 0
+    cap_hits = 0
+    try:
         item_bounds, item_names = _unanchored_item_bounds(session)
 
         candidates: list[TradeCandidate] = []
@@ -855,9 +874,30 @@ def fetch_unanchored_trade_candidates(
             _reduce_demand_by_system(
                 session, demand_temp, item_id, request, cutoff
             )
-            for row in _match_reachable_trades(
-                session, supply_temp, demand_temp, reach_temp, request
-            ):
+
+            if same_system:
+                rows = _match_same_system_trades(
+                    session, supply_temp, demand_temp, request
+                )
+                accepted_for_item = len(rows)
+            else:
+                rows, examined, accepted_for_item, hit_cap = (
+                    _match_via_on_demand_reach(
+                        session,
+                        supply_temp,
+                        demand_temp,
+                        request,
+                        bubble_cache,
+                        l_max,
+                        l_max_sq,
+                    )
+                )
+                pairs_examined += examined
+                if hit_cap:
+                    cap_hits += 1
+            pairs_accepted += accepted_for_item
+
+            for row in rows:
                 candidate = _unanchored_candidate_from_row(
                     row, item_id, item_names.get(item_id, "")
                 )
@@ -868,69 +908,41 @@ def fetch_unanchored_trade_candidates(
                         candidate, capacity, available_credits, per_item_limit
                     ),
                 )
-        return tuple(candidates)
-    finally:
-        _drop_unanchored_temps(connection, supply_temp, demand_temp, reach_temp)
-
-
-def _create_unanchored_temps(connection, supply_temp, demand_temp, reach_temp) -> None:
-    """Create the run-scoped temporary tables, replacing any stale leftovers."""
-
-    for table in (reach_temp, demand_temp, supply_temp):
-        if table is not None:
-            table.drop(connection, checkfirst=True)
-    supply_temp.create(connection)
-    demand_temp.create(connection)
-    if reach_temp is not None:
-        reach_temp.create(connection)
-
-
-def _drop_unanchored_temps(connection, supply_temp, demand_temp, reach_temp) -> None:
-    """Drop the run-scoped temporary tables once the search has finished."""
-
-    for table in (reach_temp, demand_temp, supply_temp):
-        if table is not None:
-            table.drop(connection, checkfirst=True)
-
-
-def _populate_reach_map(connection, reach_temp: Table, max_ly: float) -> None:
-    """Fill the reachable-system map with every ordered system pair in range.
-
-    A bounding box on the indexed System.pos_x/pos_y/pos_z columns is the
-    coarse filter; an exact squared-distance test refines it without a square
-    root. The map is built once and reused for every commodity — the property
-    that keeps the per-commodity cost flat.
-    """
-
-    source_system = aliased(System)
-    destination_system = aliased(System)
-    dx = destination_system.pos_x - source_system.pos_x
-    dy = destination_system.pos_y - source_system.pos_y
-    dz = destination_system.pos_z - source_system.pos_z
-    pair_select = (
-        select(source_system.system_id, destination_system.system_id)
-        .select_from(source_system)
-        .join(
-            destination_system,
-            and_(
-                destination_system.pos_x.between(
-                    source_system.pos_x - max_ly, source_system.pos_x + max_ly
-                ),
-                destination_system.pos_y.between(
-                    source_system.pos_y - max_ly, source_system.pos_y + max_ly
-                ),
-                destination_system.pos_z.between(
-                    source_system.pos_z - max_ly, source_system.pos_z + max_ly
-                ),
-                dx * dx + dy * dy + dz * dz <= max_ly * max_ly,
+        return (
+            tuple(candidates),
+            UnanchoredCounters(
+                pairs_examined=pairs_examined,
+                pairs_accepted=pairs_accepted,
+                bubble_systems=len(bubble_cache),
+                per_commodity_cap_hits=cap_hits,
             ),
         )
-    )
-    connection.execute(reach_temp.insert().from_select(["s", "d"], pair_select))
-    # Index after the bulk load: the match query searches the map by source
-    # system, and an unindexed multi-million-row scan per commodity is the
-    # cost this shape exists to avoid.
-    Index("ix_td_unanchored_reach_s", reach_temp.c.s).create(connection)
+    finally:
+        # A ^C deep inside SQLite can leave the session's transaction in a
+        # broken state, so the cleanup DROPs below would then raise their own
+        # exception and mask the original KeyboardInterrupt. Swallow any
+        # cleanup failure: the temp tables are session-scoped and the run is
+        # being torn down anyway.
+        try:
+            _drop_unanchored_temps(connection, supply_temp, demand_temp)
+        except Exception:
+            pass
+
+
+def _create_unanchored_temps(connection, supply_temp, demand_temp) -> None:
+    """Create the run-scoped temporary tables, replacing any stale leftovers."""
+
+    demand_temp.drop(connection, checkfirst=True)
+    supply_temp.drop(connection, checkfirst=True)
+    supply_temp.create(connection)
+    demand_temp.create(connection)
+
+
+def _drop_unanchored_temps(connection, supply_temp, demand_temp) -> None:
+    """Drop the run-scoped temporary tables once the search has finished."""
+
+    demand_temp.drop(connection, checkfirst=True)
+    supply_temp.drop(connection, checkfirst=True)
 
 
 def _unanchored_item_bounds(
@@ -1112,49 +1124,25 @@ def _reduce_demand_by_system(
     )
 
 
-def _match_reachable_trades(
-    session: Session,
-    supply_temp: Table,
-    demand_temp: Table,
-    reach_temp: Table | None,
-    request: RunRequest,
-) -> list:
-    """Match reduced supply to reduced demand through the reachability map.
+def _realisable_profit_expression(supply_temp: Table, demand_temp: Table, request: RunRequest):
+    """Build the realisable-profit ranking expression used by both match shapes.
 
-    With a reachability map (--jumps-per 1) the per-system supply and demand
-    rows are joined through it; with --jumps-per 0 the join is a same-system
-    equality. The result is ranked by capacity/supply/demand/limit-capped
-    total profit — unit profit multiplied by the smaller of the per-row
-    supply and demand each capped at the per-request ceiling. Affordability
-    is enforced later by `optimise_cargo`, not in this SQL ranking key. The
-    top slice is kept.
+    Rank by realisable total, not unit profit. A pair with a high unit margin
+    but only one ton of supply or demand can be worth less than a full-hold
+    pair at a smaller margin, and the bounded slice would otherwise clip the
+    latter. The realisable tonnage is the smaller of supply, demand, and the
+    per-request ceiling (capacity, narrowed by --limit when set); cap each
+    row's supply_units and demand_units to that ceiling, then take the
+    smaller of the capped pair.
+
+    Credits-affordability would be the third row-wise cap (credits divided
+    by supply_price), but at ordinary Cmdr balances it is rarely the binding
+    constraint, and folding the integer division into the rank expression
+    materially complicates the SQL. Left out deliberately; the walk's cutoff
+    arithmetic (capacity * bound) still overestimates the realised total, so
+    omitting credits cannot terminate the walk early.
     """
 
-    profit = demand_temp.c.demand_price - supply_temp.c.supply_price
-    # A self-pair (same station as source and destination) is never a valid
-    # trade hop. Exclude it in SQL so the bounded top slice cannot be partly
-    # spent on rows that would be dropped by _group_pairs anyway.
-    filters = [
-        profit >= request.min_gain_per_ton,
-        supply_temp.c.station_id != demand_temp.c.station_id,
-    ]
-    if request.max_gain_per_ton > 0:
-        filters.append(profit <= request.max_gain_per_ton)
-
-    # Rank by realisable total, not unit profit. A pair with a high unit
-    # margin but only one ton of supply or demand can be worth less than a
-    # full-hold pair at a smaller margin, and the bounded slice would
-    # otherwise clip the latter. The realisable tonnage is the smaller of
-    # supply, demand, and the per-request ceiling (capacity, narrowed by
-    # --limit when set); cap each row's supply_units and demand_units to
-    # that ceiling, then take the smaller of the capped pair.
-    #
-    # Credits-affordability would be the third row-wise cap (credits divided
-    # by supply_price), but at ordinary Cmdr balances it is rarely the
-    # binding constraint, and folding the integer division into the rank
-    # expression materially complicates the SQL. Left out deliberately; the
-    # walk's cutoff arithmetic (capacity * bound) still overestimates the
-    # realised total, so omitting credits cannot terminate the walk early.
     capacity = int(request.capacity_units or 0)
     per_item_limit = request.cargo_limit_per_item
     ceiling = capacity
@@ -1172,8 +1160,35 @@ def _match_reachable_trades(
         (capped_supply < capped_demand, capped_supply),
         else_=capped_demand,
     )
-    realisable_profit = realisable_units * profit
+    profit = demand_temp.c.demand_price - supply_temp.c.supply_price
+    return realisable_units * profit
 
+
+def _match_same_system_trades(
+    session: Session,
+    supply_temp: Table,
+    demand_temp: Table,
+    request: RunRequest,
+) -> list:
+    """Match supply to demand within the same system, --jumps-per 0 only.
+
+    No reach check needed because both sides are required to share a system.
+    Result ranked by realisable total profit; top slice kept.
+    """
+
+    profit = demand_temp.c.demand_price - supply_temp.c.supply_price
+    # A self-pair (same station as source and destination) is never a valid
+    # trade hop.
+    filters = [
+        profit >= request.min_gain_per_ton,
+        supply_temp.c.station_id != demand_temp.c.station_id,
+    ]
+    if request.max_gain_per_ton > 0:
+        filters.append(profit <= request.max_gain_per_ton)
+
+    realisable_profit = _realisable_profit_expression(
+        supply_temp, demand_temp, request
+    )
     columns = (
         supply_temp.c.station_id,
         supply_temp.c.supply_price,
@@ -1184,28 +1199,162 @@ def _match_reachable_trades(
         demand_temp.c.demand_units,
         demand_temp.c.modified,
     )
-    if reach_temp is None:
-        joined = supply_temp.join(
-            demand_temp,
-            demand_temp.c.system_id == supply_temp.c.system_id,
-        )
-    else:
-        joined = supply_temp.join(
-            reach_temp,
-            reach_temp.c.s == supply_temp.c.system_id,
-        ).join(
-            demand_temp,
-            demand_temp.c.system_id == reach_temp.c.d,
-        )
-
     stmt = (
         select(*columns)
-        .select_from(joined)
+        .select_from(
+            supply_temp.join(
+                demand_temp,
+                demand_temp.c.system_id == supply_temp.c.system_id,
+            )
+        )
         .where(and_(*filters))
         .order_by(realisable_profit.desc())
         .limit(_UNANCHORED_MATCH_LIMIT)
     )
     return session.execute(stmt).all()
+
+
+# Streaming batch size for the on-demand reach matcher. Not a hard cap on
+# examined rows — the cursor keeps streaming until the per-commodity accept
+# cap is hit or the result set is exhausted. Just controls how many rows
+# fetchmany pulls per round-trip.
+_ON_DEMAND_REACH_BATCH = 5000
+
+
+def _match_via_on_demand_reach(
+    session: Session,
+    supply_temp: Table,
+    demand_temp: Table,
+    request: RunRequest,
+    bubble_cache: dict[int, object],
+    l_max: float,
+    l_max_sq: float,
+) -> tuple[list, int, int, bool]:
+    """Stream pairs through a direct-distance prefilter; reach-check per row.
+
+    The SQL pair query cross-joins supply x demand temp tables, joins each
+    side to System for coords, and applies a direct-distance prefilter
+    (bbox + sphere at l_max = --jumps-per * --ly-per). Result is ordered
+    by realisable profit DESC, no LIMIT — Python streams it and asks the
+    bubble cache whether each row is *actually* reachable in --jumps-per
+    hops. The prefilter is necessary-not-sufficient at multi-jump: a pair
+    within straight-line l_max may still need more than --jumps-per actual
+    hops. The bubble cache + BFS gives the truth; the prefilter just cuts
+    the cross-join from "every pair" to "every pair plausibly in range".
+
+    Returns: (accepted_rows, pairs_examined, pairs_accepted, hit_cap).
+    pairs_examined counts rows fetched from the cursor; pairs_accepted
+    counts those whose reachability check passed; hit_cap is True if the
+    per-commodity cap stopped the stream before exhaustion.
+    """
+
+    profit = demand_temp.c.demand_price - supply_temp.c.supply_price
+    supply_sys = aliased(System)
+    demand_sys = aliased(System)
+    dx = demand_sys.pos_x - supply_sys.pos_x
+    dy = demand_sys.pos_y - supply_sys.pos_y
+    dz = demand_sys.pos_z - supply_sys.pos_z
+
+    filters = [
+        profit >= request.min_gain_per_ton,
+        supply_temp.c.station_id != demand_temp.c.station_id,
+        demand_sys.pos_x.between(
+            supply_sys.pos_x - l_max, supply_sys.pos_x + l_max
+        ),
+        demand_sys.pos_y.between(
+            supply_sys.pos_y - l_max, supply_sys.pos_y + l_max
+        ),
+        demand_sys.pos_z.between(
+            supply_sys.pos_z - l_max, supply_sys.pos_z + l_max
+        ),
+        dx * dx + dy * dy + dz * dz <= l_max_sq,
+    ]
+    if request.max_gain_per_ton > 0:
+        filters.append(profit <= request.max_gain_per_ton)
+
+    realisable_profit = _realisable_profit_expression(
+        supply_temp, demand_temp, request
+    )
+
+    # Join order: supply -> supply_sys (anchor coords) -> demand (cross)
+    # -> demand_sys (dest coords). The bbox + sq-dist filters narrow the
+    # cross-join heavily before the result-row build.
+    stmt = (
+        select(
+            supply_temp.c.system_id.label("source_system_id"),
+            supply_temp.c.station_id.label("supply_station_id"),
+            supply_temp.c.supply_price.label("supply_price"),
+            supply_temp.c.supply_units.label("supply_units"),
+            supply_temp.c.modified.label("supply_modified"),
+            demand_temp.c.system_id.label("dest_system_id"),
+            demand_temp.c.station_id.label("demand_station_id"),
+            demand_temp.c.demand_price.label("demand_price"),
+            demand_temp.c.demand_units.label("demand_units"),
+            demand_temp.c.modified.label("demand_modified"),
+        )
+        .select_from(
+            supply_temp.join(
+                supply_sys,
+                supply_sys.system_id == supply_temp.c.system_id,
+            ).join(
+                demand_temp,
+                supply_temp.c.station_id != demand_temp.c.station_id,
+            ).join(
+                demand_sys,
+                demand_sys.system_id == demand_temp.c.system_id,
+            )
+        )
+        .where(and_(*filters))
+        .order_by(realisable_profit.desc())
+    )
+
+    max_jumps = int(request.max_jumps_per_hop or 0)
+    max_ly = float(request.max_ly_per_jump or 0.0)
+    accepted_rows: list = []
+    examined = 0
+    hit_cap = False
+
+    result = session.execute(stmt)
+    try:
+        done = False
+        while not done:
+            batch = result.fetchmany(_ON_DEMAND_REACH_BATCH)
+            if not batch:
+                break
+            for row in batch:
+                examined += 1
+                if not is_system_pair_reachable(
+                    session,
+                    int(row.source_system_id),
+                    int(row.dest_system_id),
+                    max_jumps_per_hop=max_jumps,
+                    max_ly_per_jump=max_ly,
+                    bubble_cache=bubble_cache,
+                ):
+                    continue
+                # _unanchored_candidate_from_row expects positional row[0..7]:
+                # (supply_station_id, supply_price, supply_units, supply_modified,
+                #  demand_station_id, demand_price, demand_units, demand_modified).
+                accepted_rows.append(
+                    (
+                        row.supply_station_id,
+                        row.supply_price,
+                        row.supply_units,
+                        row.supply_modified,
+                        row.demand_station_id,
+                        row.demand_price,
+                        row.demand_units,
+                        row.demand_modified,
+                    )
+                )
+                if len(accepted_rows) >= _UNANCHORED_MATCH_LIMIT:
+                    hit_cap = True
+                    done = True
+                    break
+    finally:
+        result.close()
+
+    return accepted_rows, examined, len(accepted_rows), hit_cap
 
 
 def _unanchored_candidate_from_row(row, item_id: int, item_name: str) -> TradeCandidate:

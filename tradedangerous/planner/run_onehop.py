@@ -303,7 +303,9 @@ def _plan_unanchored(
     """
 
     market_started = time.perf_counter()
-    candidates = data_gateway.fetch_unanchored_trade_candidates(session, request)
+    candidates, unanchored_counters = data_gateway.fetch_unanchored_trade_candidates(
+        session, request, bubble_cache
+    )
     if not candidates:
         raise failures.NoProfitableTrades(
             "No profitable trades were found anywhere in reachable range."
@@ -380,6 +382,10 @@ def _plan_unanchored(
         cargo_optimisation_ms=cargo_optimisation_ms,
         total_planner_ms=_elapsed_ms(started),
         candidate_trade_count=candidate_trade_count,
+        unanchored_pairs_examined=unanchored_counters.pairs_examined,
+        unanchored_pairs_accepted=unanchored_counters.pairs_accepted,
+        unanchored_bubble_systems=unanchored_counters.bubble_systems,
+        unanchored_per_commodity_cap_hits=unanchored_counters.per_commodity_cap_hits,
     )
     return _assemble_result(request, best_pair, diagnostics)
 

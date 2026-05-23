@@ -1351,23 +1351,38 @@ def run(results, cmdenv, tdb):
             # re-validates as its own input contract; the repeat is cheap.
             validate_run_request(request)
 
-            # Both endpoints omitted: the galaxy-wide unanchored search. It is
-            # markedly slower than any anchored shape, so it runs only behind
-            # an interactive confirmation; with no TTY it cannot prompt and
-            # aborts cleanly with guidance. The planner stays non-interactive.
+            # Both endpoints omitted: the galaxy-wide search. It is markedly
+            # slower than a search that names either endpoint, so it runs
+            # only behind an interactive confirmation; with no TTY it cannot
+            # prompt and aborts cleanly with guidance. The planner stays
+            # non-interactive.
             if _is_unanchored_request(request):
                 if not sys.stdin.isatty():
                     return _abort_unanchored_run(
                         results,
                         "trade run with neither --from nor --to runs a slow "
-                        "galaxy-wide search and needs interactive confirmation.\n"
-                        "Re-run in an interactive terminal, or anchor the search "
-                        "with --from and/or --to.",
+                        "galaxy-wide search\n"
+                        "and needs interactive confirmation.\n"
+                        "Re-run in an interactive terminal, or narrow the "
+                        "search by naming\n"
+                        "--from <system> and/or --to <system>.",
                     )
                 print(
-                    "Searching with neither --from nor --to scans the whole "
-                    "galaxy for the single best trade. This is much slower than "
-                    "an anchored search and can take several minutes.",
+                    "Searching with neither --from nor --to scans the entire "
+                    "galaxy for one\n"
+                    "best trade. This is dramatically slower than naming "
+                    "either endpoint,\n"
+                    "and the run can take anywhere from minutes to "
+                    "substantially longer\n"
+                    "depending on the data and filters in play.\n"
+                    "\n"
+                    "Strongly recommended before continuing:\n"
+                    "  - Name a starting system with --from, a destination "
+                    "with --to, or both.\n"
+                    "  - Apply filters to cut the candidate set: --age "
+                    "<days>, --pad-size,\n"
+                    "    --planetary, --fc N.\n"
+                    "Either narrows the search substantially.",
                     flush=True,
                 )
                 if input("Continue? [y/N] ").strip().lower() not in ("y", "yes"):

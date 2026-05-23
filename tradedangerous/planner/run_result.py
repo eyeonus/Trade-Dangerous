@@ -142,6 +142,15 @@ class PlannerDiagnostics:
     render_ms: float = 0.0
     total_planner_ms: float = 0.0
     candidate_trade_count: int = 0
+    # Unanchored on-demand-reach instrumentation (zero outside the unanchored
+    # path). Examined counts pairs surviving the SQL direct-distance prefilter;
+    # accepted counts those whose actual reachability check passed. Bubble
+    # systems is the size of the per-request bubble cache at end-of-run; cap
+    # hits is the number of commodities that hit the per-commodity cap.
+    unanchored_pairs_examined: int = 0
+    unanchored_pairs_accepted: int = 0
+    unanchored_bubble_systems: int = 0
+    unanchored_per_commodity_cap_hits: int = 0
 
 
 @dataclass(frozen=True, slots=True)
