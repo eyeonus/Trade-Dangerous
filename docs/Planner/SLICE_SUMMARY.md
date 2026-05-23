@@ -549,6 +549,68 @@ slow case is the real one. The early-cutoff acceleration measured
 during Slice 6 validation runs is not representative of clean-data
 performance.
 
+### No separate `NoAffordableCargo` diagnosis for `trade run`
+
+Do not add a separate diagnostic pass to distinguish:
+
+```text
+profitable trades exist, but the commander cannot afford any useful cargo
+```
+
+from the broader planner result:
+
+```text
+No profitable trade was found with the current settings.
+```
+
+This is an intentional product/engineering decision, not an omitted check.
+
+Reasons:
+
+- The distinction is expensive to prove because the planner would have to keep or re-run enough candidate state to separate “no profitable candidate exists” from “candidate exists but cannot be bought after credits / insurance / limit constraints”.
+- It is an edge case in normal play. Even very low balances can usually buy some cheap commodity if range, filters, and market data are otherwise viable.
+- If a commander is so broke that market trading cannot buy meaningful cargo, `trade run` is the wrong recovery tool. The practical advice is outside the route planner: do a local mission, courier work, sell modules/cargo, or otherwise raise starting capital.
+- The current message is sufficiently accurate for the planner’s purpose: the supplied settings did not produce an actionable profitable trade.
+- More specific “you cannot afford cargo” wording would not materially improve the next action inside `trade run`, and risks spending runtime on a diagnostic that rarely matters.
+
+Keep the user-facing failure under the existing no-result family:
+
+```text
+No profitable trade was found with the current settings.
+```
+
+Do not add a costly affordability-only probe unless a cheap signal already falls out of the main candidate path.### No separate `NoAffordableCargo` diagnosis for `trade run`
+
+Do not add a separate diagnostic pass to distinguish:
+
+```text
+profitable trades exist, but the commander cannot afford any useful cargo
+```
+
+from the broader planner result:
+
+```text
+No profitable trade was found with the current settings.
+```
+
+This is an intentional product/engineering decision, not an omitted check.
+
+Reasons:
+
+- The distinction is expensive to prove because the planner would have to keep or re-run enough candidate state to separate “no profitable candidate exists” from “candidate exists but cannot be bought after credits / insurance / limit constraints”.
+- It is an edge case in normal play. Even very low balances can usually buy some cheap commodity if range, filters, and market data are otherwise viable.
+- If a commander is so broke that market trading cannot buy meaningful cargo, `trade run` is the wrong recovery tool. The practical advice is outside the route planner: do a local mission, courier work, sell modules/cargo, or otherwise raise starting capital.
+- The current message is sufficiently accurate for the planner’s purpose: the supplied settings did not produce an actionable profitable trade.
+- More specific “you cannot afford cargo” wording would not materially improve the next action inside `trade run`, and risks spending runtime on a diagnostic that rarely matters.
+
+Keep the user-facing failure under the existing no-result family:
+
+```text
+No profitable trade was found with the current settings.
+```
+
+Do not add a costly affordability-only probe unless a cheap signal already falls out of the main candidate path.
+
 ---
 
 ## Filter Semantics Reference
