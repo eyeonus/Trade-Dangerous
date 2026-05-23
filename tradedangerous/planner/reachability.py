@@ -159,14 +159,14 @@ def plan_jump_path(
             },
         )
 
-    # distance_ly is straight-line source-to-destination for now; the polyline
-    # vs straight-line decision is task #4 and revisits this in one place.
-    distance_ly = math.sqrt(distance_sq)
+    # distance_ly is polyline distance: the sum of leg lengths actually flown.
+    # For multi-jump paths through systems that bend off the direct line, this
+    # exceeds the straight-line endpoint distance and is the more honest figure.
     return JumpPath(
         source_system_id=source.system_id,
         destination_system_id=destination.system_id,
         systems=path,
-        distance_ly=distance_ly,
+        distance_ly=_polyline_distance(path),
         jumps=len(path) - 1,
         is_same_system=False,
         is_reachable=True,
@@ -310,11 +310,13 @@ def _unreachable_message(max_jumps_per_hop: int, max_ly_per_jump: float) -> str:
     )
 
 
-def system_distance_ly(source: ResolvedSystem, destination: ResolvedSystem) -> float:
-    """Return Euclidean system distance in light years."""
+def _polyline_distance(systems: tuple[ResolvedSystem, ...]) -> float:
+    """Sum straight-line leg lengths along the ordered system sequence."""
 
-    return math.sqrt(
-        (source.x - destination.x) ** 2
-        + (source.y - destination.y) ** 2
-        + (source.z - destination.z) ** 2
-    )
+    total = 0.0
+    for a, b in zip(systems, systems[1:]):
+        dx = b.x - a.x
+        dy = b.y - a.y
+        dz = b.z - a.z
+        total += math.sqrt(dx * dx + dy * dy + dz * dz)
+    return total

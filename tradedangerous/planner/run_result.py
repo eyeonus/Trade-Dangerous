@@ -94,6 +94,14 @@ class CargoPlan:
 
 @dataclass(frozen=True, slots=True)
 class JumpPath:
+    """One source-to-destination jump path produced by the reachability walk.
+
+    distance_ly is the polyline length — the sum of straight-line leg lengths
+    along ``systems``, i.e. the distance actually flown. For multi-jump paths
+    through systems that bend off the direct line, this exceeds the straight-
+    line endpoint distance and is the more meaningful figure to display.
+    """
+
     source_system_id: int
     destination_system_id: int
     systems: tuple[ResolvedSystem, ...]
