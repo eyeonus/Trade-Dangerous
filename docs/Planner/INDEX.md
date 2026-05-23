@@ -79,6 +79,14 @@ Each completed slice has an implementation plan (what needs to be done) and a co
 | [fifth_slice_completion_report.md](fifth_slice_completion_report.md) | Proof of completion: four-way dispatch, the bounded candidate query, the confirmation prompt, ~83s vs ~293s legacy. Carries the source-level audit and its localised remediations. |
 | [fifth_slice_restructure_implementation_plan.md](fifth_slice_restructure_implementation_plan.md) | Design plan for the candidate-query restructure addressing audit Findings 2 (per-system extrema discarding multi-commodity station pairs), 3 (`--ls-penalty` applied after the bounded SQL slice), and the credits-affordability follow-up. Investigated empirically through six probes (P1–P6) under both no-`--age` and realistic `--age 1/2/7` data shapes; **decision: parked / monitored, not implemented**. 144 axis-uplift checks returned zero higher-scoring winners. Findings remain valid mechanisms; current data and scorer do not make them affect winner selection. Re-evaluation triggers and the carrier-dominance observation recorded in the plan. |
 
+### Slice 6 — Multi-Jump Per-Hop Reachability (Complete)
+**`--jumps-per >= 2` works for every shape; default keyed to `--ly-per`; planner failure messages cleaned up.**
+
+| Document | Content |
+|----------|---------|
+| [sixth_slice_implementation_plan.md](sixth_slice_implementation_plan.md) | Design plan for Slice 6: three pieces (fixed-endpoint pair reachability, open-ended reachable-station query, unanchored reach map), five probes (P1–P5) gated before code, the keyed `--jumps-per` default, and the failure-message sharpening. Probe results recorded inline. |
+| [sixth_slice_completion_report.md](sixth_slice_completion_report.md) | Proof of completion: A2 bubble + BFS for Piece A, B2 iterative widening into `td_reachable_systems` for Piece B, C3 on-demand reach during match for Piece C, `JumpPath.distance_ly` redefined as polyline length, keyed default, validation pin removed, `PlannerResultError` with five message-family wordings, unanchored prompt rewritten, `^C` cleanup-mask closed. `--old` no longer holds any one-hop shape the new planner cannot serve. |
+
 ---
 
 ## Reference and Technical Notes

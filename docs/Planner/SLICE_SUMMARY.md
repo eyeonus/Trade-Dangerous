@@ -286,6 +286,103 @@ Full record: `docs/Planner/fifth_slice_completion_report.md`.
 
 ---
 
+## Slice 6 — Multi-Jump Per-Hop Reachability (complete)
+
+`--jumps-per >= 2` works for every trade run shape — fixed endpoints,
+one endpoint omitted, and both omitted. The slice also lands the
+deferred default keyed to `--ly-per` and the user-facing failure-message
+cleanup. `--old` no longer holds any one-hop shape the new planner
+cannot serve.
+
+**Supported shape:** every Slice 1–5 shape with `--jumps-per` now any
+non-negative integer rather than restricted to 0 or 1 outside the
+fixed-station case.
+
+**Delivered:**
+
+- `plan_jump_path` runs a single bounded BFS over a pre-fetched local
+  bubble around the source system (Piece A — settled by probe P2).
+  In-memory adjacency built with `scipy.spatial.cKDTree.query_ball_tree`
+  once at bubble load. A direct-distance early-out covers the
+  destination-is-one-jump-away case at microsecond cost. A
+  per-RunRequest `_LocalBubble` cache holds adjacency plus a path cache
+  so the answer is computed once per `(source, destination)` system
+  pair regardless of which station combination on those systems asks.
+  `is_system_pair_reachable` is the public single-pair reach check used
+  by the unanchored search.
+- `_reachable_station_query` widens layer-by-layer into a
+  per-RunRequest temporary table `td_reachable_systems` (Piece B —
+  settled by probes P3 and P3b). The composed candidate query joins
+  to that table by system id. The age filter stays in the composed
+  query, not the temp-table build (probe P3c).
+- `fetch_unanchored_trade_candidates` streams candidate
+  `(supply, demand)` pairs through a direct-distance prefilter and a
+  per-pair reach check using Piece A's bubble cache (Piece C — settled
+  by probe P4). No multi-jump pair map is materialised. Production
+  N=1 is faster than the previous cross-join shape because the 44 M-row
+  reach map is never built. `UnanchoredCounters` records pairs
+  examined, pairs accepted, bubble-cache source-system count, and
+  per-commodity cap hits.
+- `JumpPath.distance_ly` is the polyline length (sum of leg distances).
+  The straight-line reading lost meaning the moment a path could bend.
+- `--jumps-per` default is keyed to `--ly-per`: `--ly-per <= 12.5`
+  defaults to 2, anything longer keeps the historical default of 1.
+  Argparse default is `None` so the request builder can tell
+  "omitted" from explicit `--jumps-per 1`; explicit values pass
+  through untouched. The legacy `--old` branch restores its
+  historical default of 1 at the top of its branch.
+- Validation's omitted-endpoint `--jumps-per` pin is gone; the
+  non-negative-integer check remains.
+- New `PlannerResultError` in `commands/exceptions.py` prints
+  `Error: <message>` with no "possible causes" footer.
+  `_planner_result_message` in `run_cmd.py` builds five user-facing
+  wordings from the failure type and the endpoints the user named —
+  "from X to Y unreachable", "no profitable trade from X to Y",
+  "from X", "to Y", and the unanchored case. Wording uses "with the
+  current jump settings" rather than internal terms ("origin",
+  "anchor", "selected endpoints"), and recommends `--jumps-per` only
+  where increasing it is plausibly the fix.
+- The unanchored confirmation prompt was rewritten away from
+  "anchored / unanchored" terminology and toward a stronger, honest
+  reading of the run cost (anywhere from minutes to substantially
+  longer), recommending naming an endpoint or applying filters.
+  Wrapped to 80-column output.
+- A `^C` deep inside SQLite during the unanchored search left the
+  session transaction broken; the subsequent cleanup of the per-run
+  temp tables then raised `PendingRollbackError`, masking the original
+  `KeyboardInterrupt`. The drop call is now wrapped in
+  `try / except Exception: pass`; the temp tables are session-scoped
+  and the run is being torn down anyway.
+
+**Verified:** multi-jump exercised against `--old` across all three
+shapes; route validity is the gate, not route identity. Polyline
+arithmetic spot-checked (Sol → Lave at `--ly-per 30`: 144.47 LY
+polyline against 114.54 LY straight line). Keyed default verified at
+Sol (`--ly-per 12` → 2 jumps; `--ly-per 30` → 1 jump; boundary `12.5`
+→ 2 jumps). Explicit `--jumps-per 0` and `--jumps-per 1` preserved.
+Failure-message family exercised in turn; "to-only" verified by
+inspection as the symmetric branch of the from-only case in the same
+builder. N=0 and Slice 1–5 N=1 shapes re-run; behaviour unchanged.
+
+**Performance:** the unanchored multi-jump search is the slow shape
+by nature, gated by the existing confirmation prompt. With realistic
+filters (`--age`, `--pad-size`, `--planetary`, `--fc N`) the run
+completes in roughly 2–3 minutes on the live data; without filters it
+is interactively prohibitive on dense space. N=1 unanchored is faster
+after this slice than before (probe P4: 132 s → 14.6 s at the dense
+profile), because C3 removes the cross-join reach map. Anchored
+multi-jump shapes return within seconds.
+
+**Deferred (not cut):** multi-hop routing (`--hops > 1`) — the route
+frontier, pruning, and route shaping; the larger body of work still
+ahead. `--start-jumps` / `--end-jumps`. A full MariaDB end-to-end
+across the three multi-jump shapes against the Linux VM (production
+reuses Slice 5's dialect-portable patterns; probes ran SQLite).
+
+Full record: `docs/Planner/sixth_slice_completion_report.md`.
+
+---
+
 ## Project Notes
 
 ### Data scale
@@ -518,30 +615,6 @@ judged to outweigh it.
 
 Agreed direction not yet scheduled into a slice — pick these up when the
 relevant slice opens.
-
-### `--jumps-per` default keyed to `--ly-per`
-
-Slice 3 changes the `--jumps-per` default from 2 to 1. Tromador and eyeonus
-have since agreed to refine that default further: it should depend on
-`--ly-per`. Their reasoning — the 2026 game's larger average jump ranges make
-2 jumps per hop one too many for most ships; the exception is a new player
-still flying a starter ship, whose short jump range shows up as a low
-`--ly-per`.
-
-The rule applies to the **default only** — an explicit `--jumps-per` always
-wins:
-
-```text
---ly-per <= 12.5    default --jumps-per 2
---ly-per >  12.5    default --jumps-per 1
-```
-
-Considered for Slice 4 and deferred: the new planner cannot yet fly a 2-jump
-hop — `plan_jump_path` raises `ReachabilityImplementationMissing` for any
-cross-system hop with `--jumps-per >= 2` — so a default of 2 is meaningless
-until multi-jump per-hop reachability exists. The keyed default belongs with
-the slice that delivers that capability. Until then the flat default of 1
-stands.
 
 ### `--sco` flag
 
