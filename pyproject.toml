@@ -49,6 +49,7 @@ dependencies = [
     "orjson>=3.11.5",
     "requests",
     "rich==13.7.1",
+    "scipy>=1.11",
     "sqlalchemy>=2.0,<3.0",
 ]
 
