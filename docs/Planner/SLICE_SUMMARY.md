@@ -419,6 +419,39 @@ is 2 or more (`_MIN_MEANINGFUL_DEMAND` in `data_gateway.py`).
 The `demand_level` and `supply_level` columns are hardcoded to `-1` by
 `spansh_plug.py` and carry no information — do not use them as a signal.
 
+### Runaway unit-profit prices and a possible default `--max-gain-per-ton` cap
+
+Slice 6 testing surfaced an unanchored winner with Gold at a sell price of
+~4.7M cr/ton. Gold's normal sell range is around 50K cr/ton; a ~100x figure
+is almost certainly carrier price-edit noise — a price posted to EDDN
+briefly, then changed, never available long enough for a Cmdr to execute.
+Plausible motives include deliberate data-poisoning, or owners using a
+carrier to move credits to an alt account. The planner cannot tell intent
+from data; it correctly reports what the snapshot contained.
+
+The Titan Drive Component routes that recur in unanchored winners (see the
+Carrier dominance section above) are different in kind: TDC is a crafting
+reagent for engineered SCO drives, genuinely scarce, and carrier-owners
+price it freely — standard MMO auction-house economics. Those margins are
+high but plausible; the Gold one is not.
+
+Under discussion between Tromador and eyeonus: a default cap on
+`--max-gain-per-ton` (value TBD) that would hide the obviously-artificial
+extremes while leaving legitimate high-margin trades visible. Out of scope
+for Slice 6; logged here so the surfaced case isn't forgotten.
+
+Performance side-effect — the noise is not only an output-cleanliness
+issue. `fetch_unanchored_trade_candidates` walks commodities in
+descending profit-per-unit bound and stops when
+`capacity * profit_bound <= best_total_profit`. A single carrier-noise
+trade sets `best_total_profit` to an astronomical value on the first
+commodity, and every legitimate commodity afterwards gets pruned.
+Wall-clock therefore *appears* fast under noise and gets dramatically
+slower with `--fc N` or any other filter that removes the noise — the
+slow case is the real one. The early-cutoff acceleration measured
+during Slice 6 validation runs is not representative of clean-data
+performance.
+
 ---
 
 ## Filter Semantics Reference
