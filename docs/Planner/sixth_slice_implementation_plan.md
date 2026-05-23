@@ -760,7 +760,7 @@ per-commodity cap hits in the result table, so production should add
 that counter if cheap; it is the right signal for detecting future
 truncation pressure. The bubble cache stays small (76–181 source
 systems) because surviving commodities concentrate supply in a handful
-of systems..
+of systems.
 
 **Implications:**
 
