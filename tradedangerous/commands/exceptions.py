@@ -50,6 +50,26 @@ For more help, see the TradeDangerous Wiki:
     https://github.com/eyeonus/Trade-Dangerous/wiki
 """
 
+class PlannerResultError(TradeException):
+    """
+        Raised when the new planner finished but produced no actionable
+        result, and supplied a complete user-facing message itself.
+
+        Distinct from NoDataError so the planner's specific wording is shown
+        as-is, without the generic 'possible causes' footer that suits the
+        legacy data-failure cases. The dispatcher prints str(exc), which is
+        the planner's chosen message preceded by 'Error: '.
+
+        Attributes:
+            errorStr        The full user-facing message from the planner.
+    """
+    def __init__(self, errorStr):
+        self.errorStr = errorStr
+
+    def __str__(self):
+        return f"Error: {self.errorStr}"
+
+
 class GameDataError(TradeException):
     """
         Raised when imported or journal data is internally inconsistent

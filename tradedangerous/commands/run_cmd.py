@@ -9,7 +9,7 @@ from tradedangerous.tradedb import describeAge, TradeDB, Station, System
 from tradedangerous.tradecalc import NoHopsError, Route, TradeCalc, UserAbortedRun
 
 from .commandenv import Needs, ResultRow
-from .exceptions import CommandLineError, NoDataError
+from .exceptions import CommandLineError, NoDataError, PlannerResultError
 from .parsing import (
     BlackMarketSwitch, FleetCarrierArgument, MutuallyExclusiveGroup,
     NoPlanetSwitch, SettlementArgument, PadSizeArgument, ParseArgument,
@@ -1327,6 +1327,78 @@ def _is_unanchored_request(request) -> bool:
     return not request.from_text and not request.to_text
 
 
+def _planner_result_message(exc, request) -> str:
+    """Build the user-facing message for a planner failure that has no result.
+
+    The new planner knows enough about the search shape to say what actually
+    happened, so the legacy 'possible causes' footer (which advises checking
+    for missing systems or stale prices) is misleading here. The wording
+    follows the failure spec: it names the endpoints the user typed where
+    they typed them, talks about 'jump settings' rather than internal terms,
+    and only recommends --jumps-per where increasing it is genuinely the
+    likely fix.
+
+    StationHasNoUsablePriceData (and its subclasses) carry their own
+    specific message from the planner — they describe a different kind of
+    failure (a named station has no usable data) — and are surfaced as-is.
+    """
+
+    if isinstance(exc, StationHasNoUsablePriceData):
+        return exc.message
+
+    from_named = bool(request.from_text)
+    to_named = bool(request.to_text)
+
+    if (
+        isinstance(exc, NoReachableRoute)
+        and from_named
+        and to_named
+    ):
+        # Fixed endpoints, but the jump settings cannot connect them.
+        return (
+            f"No route was found from {request.from_text} to "
+            f"{request.to_text} with the current jump settings.\n"
+            f"\n"
+            f"Try increasing --jumps-per or choosing a closer start or "
+            f"destination."
+        )
+
+    if from_named and to_named:
+        # Fixed endpoints are connectable, but no profitable trade exists.
+        return (
+            f"No profitable trade was found from {request.from_text} to "
+            f"{request.to_text} with the current jump settings.\n"
+            f"\n"
+            f"Try relaxing filters or choosing a different start or "
+            f"destination."
+        )
+
+    if from_named:
+        return (
+            f"No profitable trade was found from {request.from_text} with "
+            f"the current jump settings.\n"
+            f"\n"
+            f"Try increasing --jumps-per, choosing a different starting "
+            f"point, or relaxing filters."
+        )
+
+    if to_named:
+        return (
+            f"No profitable trade was found to {request.to_text} with the "
+            f"current jump settings.\n"
+            f"\n"
+            f"Try increasing --jumps-per, choosing a different destination, "
+            f"or relaxing filters."
+        )
+
+    # Unanchored: neither endpoint named.
+    return (
+        "No profitable trade was found with the current jump settings.\n"
+        "\n"
+        "Try increasing --jumps-per or relaxing filters."
+    )
+
+
 def _abort_unanchored_run(results, message):
     """Print a message and return an empty result set: a clean no-op exit.
 
@@ -1401,7 +1473,12 @@ def run(results, cmdenv, tdb):
             NoReachableRoute,
             StationHasNoUsablePriceData,
         ) as exc:
-            raise NoDataError(exc.message) from exc
+            # The new planner has the context to say what actually
+            # happened; do not wrap in NoDataError's generic 'possible
+            # causes' footer, which is wrong for these failures.
+            raise PlannerResultError(
+                _planner_result_message(exc, request)
+            ) from exc
         except (AmbiguousPlace, InvalidRunRequest, UnknownPlace) as exc:
             raise CommandLineError(exc.message) from exc
         except PlannerFailure as exc:
