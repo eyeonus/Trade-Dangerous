@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import (
@@ -15,6 +17,7 @@ from sqlalchemy import (
     and_,
     case,
     func,
+    literal,
     select,
 )
 from sqlalchemy.orm import Session, aliased
@@ -212,63 +215,156 @@ def _station_attribute_predicates(request: RunRequest):
     return tuple(predicates)
 
 
-def _system_reach_predicates(anchor_system: ResolvedSystem, max_ly: float):
-    """Return SQL predicates selecting systems within max_ly of an anchor system.
-
-    A bounding box on the indexed System.pos_x/pos_y/pos_z columns is the
-    coarse filter; an exact squared-distance test refines it without a square
-    root. Both run SQL-side, so spatial narrowing happens before any join to
-    station or market data.
-    """
-
-    ax, ay, az = anchor_system.x, anchor_system.y, anchor_system.z
-    reach_sq = max_ly * max_ly
-    dx = System.pos_x - ax
-    dy = System.pos_y - ay
-    dz = System.pos_z - az
-    return (
-        System.pos_x.between(ax - max_ly, ax + max_ly),
-        System.pos_y.between(ay - max_ly, ay + max_ly),
-        System.pos_z.between(az - max_ly, az + max_ly),
-        dx * dx + dy * dy + dz * dz <= reach_sq,
-    )
-
-
-def _reachable_station_id_query(
+@contextmanager
+def _reachable_station_query(
+    session: Session,
     anchor_system: ResolvedSystem,
     request: RunRequest,
-) -> Select:
-    """Return a SELECT of station ids reachable from the anchor in one jump.
+) -> Iterator[Select]:
+    """Yield a SELECT of station ids reachable from the anchor within --jumps-per.
 
-    This is a subquery, not a materialised id list. Callers compose it into a
-    larger statement with ``.in_(...)`` so the reachable set never leaves SQL.
-    Handing a large id list back to a later query as a literal ``IN (...)``
-    flips SQLite off the StationItem primary key and onto a galaxy-wide index
-    scan; keeping the set as a subquery holds the plan on the primary key.
+    For --jumps-per 0 (same-system) no temp table is needed; the helper yields
+    today's bounded query. For --jumps-per >= 1 the helper builds a per-call
+    temp table ``td_reachable_systems``, seeds it with the anchor, and grows
+    it one layer at a time up to --jumps-per before yielding the composed
+    SELECT. The table is dropped on exit, even if the caller raises.
 
-    Spatial narrowing still runs first: the System bounding box is itself a
-    nested subquery, so the in-range systems are resolved before the Station
-    attribute filters and well before the caller touches the market table.
+    Callers compose the yielded SELECT via ``.in_(...)`` so the reachable set
+    stays in SQL — handing a large id list to a later query as a literal
+    ``IN (...)`` would flip SQLite off the StationItem primary key onto a
+    galaxy-wide index scan, exactly the legacy preload-first failure this
+    rewrite exists to avoid.
     """
 
     if request.max_jumps_per_hop == 0:
-        # --jumps-per 0: same-system supercruise only, no hyperspace jump.
-        system_filter = System.system_id == anchor_system.system_id
-    else:
-        # --jumps-per 1: every system within a single loaded jump.
-        system_filter = and_(
-            *_system_reach_predicates(
-                anchor_system,
-                float(request.max_ly_per_jump or 0.0),
+        # Same-system supercruise: no jump, no temp table.
+        in_range_systems = select(System.system_id).where(
+            System.system_id == anchor_system.system_id
+        )
+        yield select(Station.station_id).where(
+            and_(
+                Station.system_id.in_(in_range_systems),
+                *_station_attribute_predicates(request),
             )
         )
-    in_range_systems = select(System.system_id).where(system_filter)
+        return
 
-    filters = [
-        Station.system_id.in_(in_range_systems),
-        *_station_attribute_predicates(request),
-    ]
-    return select(Station.station_id).where(and_(*filters))
+    connection = session.connection()
+    metadata = MetaData()
+    # Mirror the System pos column type so the spatial maths inside the layer
+    # INSERT runs as floats on either backend without an implicit cast.
+    pos_type = System.__table__.c.pos_x.type
+    temp = Table(
+        "td_reachable_systems",
+        metadata,
+        Column("system_id", BigInteger, primary_key=True),
+        Column("pos_x", pos_type),
+        Column("pos_y", pos_type),
+        Column("pos_z", pos_type),
+        Column("depth", Integer),
+        # Depth index lets each layer's JOIN find the previous frontier
+        # without scanning the whole accumulated set, which is what makes
+        # later layers stay cheap as the table grows.
+        Index("ix_td_reachable_systems_depth", "depth"),
+        prefixes=["TEMPORARY"],
+    )
+    # Drop any leftover from a previous interrupted call before recreating.
+    temp.drop(connection, checkfirst=True)
+    temp.create(connection)
+    try:
+        _populate_reachable_systems(
+            connection,
+            temp,
+            anchor_system,
+            float(request.max_ly_per_jump or 0.0),
+            int(request.max_jumps_per_hop),
+        )
+        yield select(Station.station_id).where(
+            and_(
+                Station.system_id.in_(select(temp.c.system_id)),
+                *_station_attribute_predicates(request),
+            )
+        )
+    finally:
+        temp.drop(connection, checkfirst=True)
+
+
+def _populate_reachable_systems(
+    connection,
+    temp: Table,
+    anchor: ResolvedSystem,
+    max_ly: float,
+    max_jumps: int,
+) -> None:
+    """Seed the anchor at depth 0 and grow the reachable set one layer at a time.
+
+    Each layer K adds systems within max_ly of any depth-(K-1) system that
+    aren't already in the table. Bounding box first on the indexed System
+    pos columns, squared-distance refines. The NOT EXISTS dedup keeps the
+    table free of duplicates as overlapping neighbourhoods would otherwise
+    produce them.
+    """
+
+    connection.execute(
+        temp.insert().values(
+            system_id=anchor.system_id,
+            pos_x=anchor.x,
+            pos_y=anchor.y,
+            pos_z=anchor.z,
+            depth=0,
+        )
+    )
+    if max_jumps <= 0:
+        return
+
+    ly_sq = max_ly * max_ly
+    for prev_depth in range(max_jumps):
+        next_depth = prev_depth + 1
+        r = temp.alias()
+        dx = System.pos_x - r.c.pos_x
+        dy = System.pos_y - r.c.pos_y
+        dz = System.pos_z - r.c.pos_z
+        layer_select = (
+            select(
+                System.system_id,
+                System.pos_x,
+                System.pos_y,
+                System.pos_z,
+                literal(next_depth).label("depth"),
+            )
+            .distinct()
+            .select_from(
+                System.__table__.join(
+                    r,
+                    and_(
+                        r.c.depth == prev_depth,
+                        System.pos_x.between(
+                            r.c.pos_x - max_ly, r.c.pos_x + max_ly
+                        ),
+                        System.pos_y.between(
+                            r.c.pos_y - max_ly, r.c.pos_y + max_ly
+                        ),
+                        System.pos_z.between(
+                            r.c.pos_z - max_ly, r.c.pos_z + max_ly
+                        ),
+                        dx * dx + dy * dy + dz * dz <= ly_sq,
+                    ),
+                )
+            )
+            .where(
+                ~(
+                    select(temp.c.system_id)
+                    .where(temp.c.system_id == System.system_id)
+                    .exists()
+                )
+            )
+        )
+        connection.execute(
+            temp.insert().from_select(
+                ["system_id", "pos_x", "pos_y", "pos_z", "depth"],
+                layer_select,
+            )
+        )
 
 
 def _type_id_filter_values(
@@ -448,7 +544,7 @@ def fetch_open_ended_trade_candidates(
     the supply query from the fixed origin and the demand query from reachable
     stations.
 
-    The reachable stations stay a subquery (see _reachable_station_id_query),
+    The reachable stations stay a subquery (see _reachable_station_query),
     never a materialised id list: handed to a query as a large literal
     IN (...) they would flip SQLite onto a galaxy-wide index scan, so as a
     subquery the query holds the StationItem primary key. The fixed endpoint
@@ -457,133 +553,136 @@ def fetch_open_ended_trade_candidates(
     matched on item_id in Python; a single self-join would instead let SQLite
     scan the market table galaxy-wide by item_id, so the two sides stay apart.
 
+    The temp table backing the reachable-systems set is created by the
+    context manager on entry and dropped on exit, so the whole supply +
+    demand fetch must run inside the ``with`` block.
+
     Failure classification is left to the caller: this returns an empty tuple
     when no candidate survives, rather than probing for a specific reason.
     """
 
-    reachable_query = _reachable_station_id_query(anchor_system, request)
+    with _reachable_station_query(session, anchor_system, request) as reachable_query:
+        # open_role names the endpoint the planner selects; the spatially-
+        # reached set fills that side's query and the fixed endpoint fills the
+        # other. The reachable set stays a subquery so SQLite keeps the
+        # StationItem primary key; a large literal id list would flip it onto
+        # a galaxy-wide index scan. The fixed endpoint is one named place,
+        # small, so a literal id list is safe there.
+        if open_role == "source":
+            supply_station_filter = StationItem.station_id.in_(reachable_query)
+            demand_station_filter = StationItem.station_id.in_(fixed_station_ids)
+        else:
+            supply_station_filter = StationItem.station_id.in_(fixed_station_ids)
+            demand_station_filter = StationItem.station_id.in_(reachable_query)
 
-    # open_role names the endpoint the planner selects; the spatially-reached
-    # set fills that side's query and the fixed endpoint fills the other. The
-    # reachable set stays a subquery so SQLite keeps the StationItem primary
-    # key; a large literal id list would flip it onto a galaxy-wide index
-    # scan. The fixed endpoint is one named place, small, so a literal id
-    # list is safe there.
-    if open_role == "source":
-        supply_station_filter = StationItem.station_id.in_(reachable_query)
-        demand_station_filter = StationItem.station_id.in_(fixed_station_ids)
-    else:
-        supply_station_filter = StationItem.station_id.in_(fixed_station_ids)
-        demand_station_filter = StationItem.station_id.in_(reachable_query)
+        available_credits = int(request.starting_credits or 0) - request.insurance_reserve
+        cutoff = _age_cutoff(request.age_days)
 
-    available_credits = int(request.starting_credits or 0) - request.insurance_reserve
-    cutoff = _age_cutoff(request.age_days)
+        supply_filters = [
+            supply_station_filter,
+            StationItem.supply_price > 0,
+            StationItem.supply_units > 0,
+            StationItem.supply_price <= available_credits,
+        ]
+        if request.min_supply is not None:
+            supply_filters.append(StationItem.supply_units >= request.min_supply)
+        if cutoff is not None:
+            supply_filters.append(StationItem.modified >= cutoff)
 
-    supply_filters = [
-        supply_station_filter,
-        StationItem.supply_price > 0,
-        StationItem.supply_units > 0,
-        StationItem.supply_price <= available_credits,
-    ]
-    if request.min_supply is not None:
-        supply_filters.append(StationItem.supply_units >= request.min_supply)
-    if cutoff is not None:
-        supply_filters.append(StationItem.modified >= cutoff)
-
-    supply_rows = session.execute(
-        select(
-            StationItem.item_id,
-            StationItem.station_id,
-            StationItem.supply_price,
-            StationItem.supply_units,
-            StationItem.modified,
-        ).where(and_(*supply_filters))
-    ).all()
-    if not supply_rows:
-        return ()
-
-    demand_filters = [
-        demand_station_filter,
-        StationItem.demand_price > 0,
-        StationItem.demand_units >= _MIN_MEANINGFUL_DEMAND,
-    ]
-    if request.min_demand is not None:
-        demand_filters.append(StationItem.demand_units >= request.min_demand)
-    if cutoff is not None:
-        demand_filters.append(StationItem.modified >= cutoff)
-
-    demand_rows = session.execute(
-        select(
-            StationItem.item_id,
-            StationItem.station_id,
-            StationItem.demand_price,
-            StationItem.demand_units,
-            StationItem.modified,
-        ).where(and_(*demand_filters))
-    ).all()
-    if not demand_rows:
-        return ()
-
-    demand_by_item: dict[int, list] = {}
-    for row in demand_rows:
-        demand_by_item.setdefault(int(row[0]), []).append(row)
-
-    supply_item_ids = {int(row[0]) for row in supply_rows}
-    item_names = {
-        int(item_id): str(name)
-        for item_id, name in session.execute(
-            select(Item.item_id, Item.name).where(
-                Item.item_id.in_(tuple(supply_item_ids))
-            )
+        supply_rows = session.execute(
+            select(
+                StationItem.item_id,
+                StationItem.station_id,
+                StationItem.supply_price,
+                StationItem.supply_units,
+                StationItem.modified,
+            ).where(and_(*supply_filters))
         ).all()
-    }
+        if not supply_rows:
+            return ()
 
-    min_gain = request.min_gain_per_ton
-    max_gain = request.max_gain_per_ton
+        demand_filters = [
+            demand_station_filter,
+            StationItem.demand_price > 0,
+            StationItem.demand_units >= _MIN_MEANINGFUL_DEMAND,
+        ]
+        if request.min_demand is not None:
+            demand_filters.append(StationItem.demand_units >= request.min_demand)
+        if cutoff is not None:
+            demand_filters.append(StationItem.modified >= cutoff)
 
-    candidates = []
-    for supply in supply_rows:
-        item_id = int(supply[0])
-        demand_matches = demand_by_item.get(item_id)
-        if not demand_matches:
-            continue
-        source_station_id = int(supply[1])
-        buy_price = int(supply[2])
-        source_supply_units = int(supply[3])
-        source_age = _age_days(supply[4])
-        item_name = item_names.get(item_id, "")
-        for demand in demand_matches:
-            destination_station_id = int(demand[1])
-            if destination_station_id == source_station_id:
-                # Same-station self-pair, never a valid hop. The fixed and
-                # reachable station sets legitimately overlap on a same-system
-                # search, so the source != destination invariant is enforced
-                # here, per pair.
-                continue
-            sell_price = int(demand[2])
-            profit_per_unit = sell_price - buy_price
-            if profit_per_unit < min_gain:
-                continue
-            if max_gain > 0 and profit_per_unit > max_gain:
-                continue
-            candidates.append(
-                TradeCandidate(
-                    item_id=item_id,
-                    item_name=item_name,
-                    source_station_id=source_station_id,
-                    destination_station_id=destination_station_id,
-                    buy_price=buy_price,
-                    sell_price=sell_price,
-                    profit_per_unit=profit_per_unit,
-                    source_supply_units=source_supply_units,
-                    destination_demand_units=int(demand[3]),
-                    source_age_days=source_age,
-                    destination_age_days=_age_days(demand[4]),
+        demand_rows = session.execute(
+            select(
+                StationItem.item_id,
+                StationItem.station_id,
+                StationItem.demand_price,
+                StationItem.demand_units,
+                StationItem.modified,
+            ).where(and_(*demand_filters))
+        ).all()
+        if not demand_rows:
+            return ()
+
+        demand_by_item: dict[int, list] = {}
+        for row in demand_rows:
+            demand_by_item.setdefault(int(row[0]), []).append(row)
+
+        supply_item_ids = {int(row[0]) for row in supply_rows}
+        item_names = {
+            int(item_id): str(name)
+            for item_id, name in session.execute(
+                select(Item.item_id, Item.name).where(
+                    Item.item_id.in_(tuple(supply_item_ids))
                 )
-            )
+            ).all()
+        }
 
-    candidates.sort(key=lambda c: (-c.profit_per_unit, c.item_name))
-    return tuple(candidates)
+        min_gain = request.min_gain_per_ton
+        max_gain = request.max_gain_per_ton
+
+        candidates = []
+        for supply in supply_rows:
+            item_id = int(supply[0])
+            demand_matches = demand_by_item.get(item_id)
+            if not demand_matches:
+                continue
+            source_station_id = int(supply[1])
+            buy_price = int(supply[2])
+            source_supply_units = int(supply[3])
+            source_age = _age_days(supply[4])
+            item_name = item_names.get(item_id, "")
+            for demand in demand_matches:
+                destination_station_id = int(demand[1])
+                if destination_station_id == source_station_id:
+                    # Same-station self-pair, never a valid hop. The fixed and
+                    # reachable station sets legitimately overlap on a same-
+                    # system search, so the source != destination invariant
+                    # is enforced here, per pair.
+                    continue
+                sell_price = int(demand[2])
+                profit_per_unit = sell_price - buy_price
+                if profit_per_unit < min_gain:
+                    continue
+                if max_gain > 0 and profit_per_unit > max_gain:
+                    continue
+                candidates.append(
+                    TradeCandidate(
+                        item_id=item_id,
+                        item_name=item_name,
+                        source_station_id=source_station_id,
+                        destination_station_id=destination_station_id,
+                        buy_price=buy_price,
+                        sell_price=sell_price,
+                        profit_per_unit=profit_per_unit,
+                        source_supply_units=source_supply_units,
+                        destination_demand_units=int(demand[3]),
+                        source_age_days=source_age,
+                        destination_age_days=_age_days(demand[4]),
+                    )
+                )
+
+        candidates.sort(key=lambda c: (-c.profit_per_unit, c.item_name))
+        return tuple(candidates)
 
 
 def any_reachable_station_pair(
@@ -606,12 +705,12 @@ def any_reachable_station_pair(
     excluded from the probe.
     """
 
-    reachable_query = _reachable_station_id_query(anchor_system, request)
-    if len(fixed_station_ids) == 1:
-        reachable_query = reachable_query.where(
-            Station.station_id != fixed_station_ids[0]
-        )
-    return session.execute(reachable_query.limit(1)).first() is not None
+    with _reachable_station_query(session, anchor_system, request) as reachable_query:
+        if len(fixed_station_ids) == 1:
+            reachable_query = reachable_query.where(
+                Station.station_id != fixed_station_ids[0]
+            )
+        return session.execute(reachable_query.limit(1)).first() is not None
 
 
 def fetch_stations_by_id(
