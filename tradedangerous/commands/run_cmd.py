@@ -117,8 +117,13 @@ switches = [
         ),
     ),
     ParseArgument('--jumps-per',
+        # Default deliberately None: the new planner keys the default off
+        # --ly-per (see run_request._resolve_jumps_per_hop); the legacy --old
+        # path restores its historical default of 1 at the top of its branch.
+        # Leaving the parser default as None is what lets either path tell
+        # "user omitted the flag" from "user explicitly passed --jumps-per 1".
         help = 'Maximum number of jumps (system-to-system) per hop.',
-        default = 1,
+        default = None,
         dest = 'maxJumpsPer',
         metavar = 'N',
         type = int,
@@ -1404,8 +1409,15 @@ def run(results, cmdenv, tdb):
         
         return results
     
+    # Restore the legacy --old planner's historical --jumps-per default. The
+    # argparse default is now None so the new planner can distinguish omitted
+    # from explicit; the legacy code below reads cmdenv.maxJumpsPer in many
+    # arithmetic and comparison sites that expect an int.
+    if cmdenv.maxJumpsPer is None:
+        cmdenv.maxJumpsPer = 1
+
     cmdenv.DEBUG1("loading trades")
-    
+
     if tdb.tradingCount == 0:
         raise NoDataError("Database does not contain any profitable trades.")
     

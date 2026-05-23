@@ -67,7 +67,10 @@ def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
         from_text=getattr(cmdenv, "starting", None),
         to_text=getattr(cmdenv, "ending", None),
         hops=getattr(cmdenv, "hops", 1),
-        max_jumps_per_hop=getattr(cmdenv, "maxJumpsPer", None),
+        max_jumps_per_hop=_resolve_jumps_per_hop(
+            getattr(cmdenv, "maxJumpsPer", None),
+            getattr(cmdenv, "maxLyPer", None),
+        ),
         max_ly_per_jump=getattr(cmdenv, "maxLyPer", None),
         age_days=getattr(cmdenv, "maxAge", None),
         min_gain_per_ton=getattr(cmdenv, "minGainPerTon", 1),
@@ -112,6 +115,39 @@ def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
         prune_score=getattr(cmdenv, "pruneScores", 0.0) or 0.0,
         prune_hops=getattr(cmdenv, "pruneHops", 3),
     )
+
+
+# --jumps-per default rule. With --ly-per <= 12.5 LY (typical of an unmodified
+# small/medium ship), one jump per hop tends to leave too few reachable
+# destinations to be useful, so two jumps is a better starting point. Longer
+# jump ranges already reach plenty of systems with a single jump, so the old
+# default of 1 stays appropriate there.
+_SHORT_RANGE_LY = 12.5
+_DEFAULT_JUMPS_PER_HOP_SHORT_RANGE = 2
+_DEFAULT_JUMPS_PER_HOP_LONG_RANGE = 1
+
+
+def _resolve_jumps_per_hop(
+    raw_value: int | None,
+    max_ly_per_jump: float | None,
+) -> int | None:
+    """Apply the keyed default only when --jumps-per was omitted.
+
+    Explicit values from the command line — including 0 and 1 — pass through
+    untouched. With --jumps-per omitted, a short jump range defaults to two
+    jumps per hop; anything longer defaults to one. If --ly-per is also
+    missing the long-range default is returned, but validation will reject
+    the missing --ly-per first, so that fallback is never actually used.
+    """
+
+    if raw_value is not None:
+        return raw_value
+    if (
+        max_ly_per_jump is not None
+        and max_ly_per_jump <= _SHORT_RANGE_LY
+    ):
+        return _DEFAULT_JUMPS_PER_HOP_SHORT_RANGE
+    return _DEFAULT_JUMPS_PER_HOP_LONG_RANGE
 
 
 def _normalise_state_filter(value: object) -> tuple[str, ...]:
