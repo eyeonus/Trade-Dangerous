@@ -76,8 +76,6 @@ per-hop pruning gate (related to the deferred `--prune-score`).
 
 ### Piece A — Frontier model and search loop
 
-### Piece A — Frontier model and search loop
-
 A frontier node captures the state at the end of hop K: which station
 the cargo just sold at, the cargo and jump path that brought it there,
 accumulated profit and score so far, and credits available for hop K+1's
@@ -425,54 +423,6 @@ locally verified reachable within the planned hop budget. Candidate
 examples are Sol -> Lave or Sol -> Shinrarta Dezhra, but do not trust
 memory here: preflight the pair with the current database and Slice 6
 reachability helpers before using it as a probe case.
-
-Use a command shape like:
-
-```text
-trade run --from Sol --to Lave --hops 3 --jumps-per 2 --ly-per 30 --capacity 128 --credits 5000000
-```
-
-Adjust the named destination or jump settings if the preflight says the
-pair is not reachable in three trade hops. At hop 2, count how many of
-the 50 frontier nodes have Y's system inside their per-source bubble —
-i.e. can complete in one final trade hop.
-
-**Decision rule:**
-- If most can reach (≥ 50% of frontier): no special prefilter; rank by score and let the last-hop evaluation drop the unreachable nodes.
-- If few can: add a soft prefilter to the frontier-trim — penalise nodes whose direct distance to Y exceeds `(hops_remaining * --jumps-per * --ly-per)`, so they fall out before the layer trim.
-
-Slice 6's `is_system_pair_reachable` is the building block in either
-direction; this probe is about whether the planner needs to *bias*
-toward feasibility, not whether the check itself works.
-
-### P2 — Frontier width sweep at hop 1
-
-**Question:** Is 50 a meaningful frontier width for representative
-trading-corpus runs, or is the 50th-best route at hop 1 already noise?
-
-**Probe:** for `--from Colonia/Jaques --jumps-per 2 --ly-per 20
---capacity 128 --credits 5000000`, take Slice 3's
-`_best_open_ended_plan` candidate list, score every pair, sort, log the
-top 100 practical scores. Inspect the curve.
-
-**Decision rule:**
-- If 50th best ≥ ~25% of 1st best: width = 50 is meaningful.
-- If 50th best is already noise (< 5% of 1st best): consider dropping the default to 20 or 25.
-
-This probe shapes the constant defaults; the structural search code is
-the same either way.
-
-### P3 — Last-hop `--to` reach feasibility
-
-**Question:** For `--from X --to Y --hops N`, does the frontier need a
-forward-feasibility bias so hop K's frontier favours nodes within
-realistic distance of Y? Or is the natural high-profit ranking enough?
-
-**Probe:** first choose a named origin/destination pair that is locally
-verified reachable within the planned hop budget. Candidate examples are
-Sol -> Lave or Sol -> Shinrarta Dezhra, but do not trust memory here:
-preflight the pair with the current database and Slice 6 reachability
-helpers before using it as a probe case.
 
 Use a command shape like:
 
