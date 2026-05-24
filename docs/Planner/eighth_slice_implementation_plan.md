@@ -395,6 +395,26 @@ The bubble cache from Slice 6 already amortises BFS across calls; this
 probe measures the real hot path: reachable set, market fetch, pair
 grouping, cargo fitting, scoring, and trimming.
 
+**Outcome:** settled. Fetch/query work dominates per-node expansion
+(~83% of p50 elapsed across both profiles, fetch p50 ~1.5-1.7 s of
+~2.0 s total). Cargo optimisation is the minority cost. Add a per-
+request reachable-set memo keyed on (source_system_id,
+max_jumps_per_hop, max_ly_per_jump). Instrument memo hit rate and
+timing so the actual saving is measured rather than assumed; the memo
+attacks only the temp-table build portion of the bundled fetch_ms, so
+the win is bounded by that fraction.
+
+The terminal_hop=False filter is required. Intermediate destinations
+must be onward-source viable; demand-only stations are valid final
+destinations but must not occupy the intermediate frontier. This is
+primarily a route-quality / frontier-hygiene rule, with runtime impact
+to be measured — replacing cheap dead-end calls with real viable
+expansions may improve route quality without reducing wall-clock.
+
+Full per-call timings recorded in
+`research/perf/probe_slice8_p1_p2.{py,json,log}` (working files,
+removed at slice close).
+
 ### P2 — Frontier width sweep at hop 1
 
 **Question:** Is 50 a meaningful frontier width for representative
@@ -412,6 +432,20 @@ Inspect the curve.
 This probe shapes the constant defaults; the structural search code is
 the same either way.
 
+**Outcome:** settled. With `--fleet-carrier N` (the clean decision
+input), the top-100 score curve is smooth: #10 at 95.4% of #1, #25 at
+44.5%, #50 at 39.7%, #100 at 37.8%. The 50th-vs-1st ratio is
+comfortably above the 25% threshold. Keep
+`_MULTIHOP_EXPANSION_WIDTH = _MULTIHOP_FRONTIER_WIDTH = 50`.
+
+The default-profile cliff (#10 at 9.2%, #50 at 1.8%) is carrier-noise
+behaviour: ranks 1-5 are variants of the same noise winners, real
+trades begin at #10. This is not evidence that width 50 is too wide.
+
+Full score curve recorded in
+`research/perf/probe_slice8_p1_p2.{py,json,log}` (working files,
+removed at slice close).
+
 ### P3 — Last-hop `--to` reach feasibility
 
 **Question:** For `--from X --to Y --hops N`, does the frontier need a
@@ -423,6 +457,13 @@ locally verified reachable within the planned hop budget. Candidate
 examples are Sol -> Lave or Sol -> Shinrarta Dezhra, but do not trust
 memory here: preflight the pair with the current database and Slice 6
 reachability helpers before using it as a probe case.
+
+Sol is retained as the default P3 origin because the P1/P2 probe
+confirmed it is dense enough for Slice 8 frontier testing: both
+profiles produced large hop-1 candidate sets and 135k+ grouped
+profitable station pairs. This only settles origin density. P3 must
+still preflight the selected destination and jump settings with the
+current database before treating the fixed-terminal probe as valid.
 
 Use a command shape like:
 
