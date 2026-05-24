@@ -55,10 +55,13 @@ Two constants rather than one because the two concepts are not the same:
 a generous expansion width lets each individual node explore widely;
 the frontier width is what bounds the total search cost between hops.
 
-Hidden constants rather than wiring `--max-routes` now: the user-facing
-meaning of `--max-routes` (displayed routes? retained partials?
-per-depth? per-node?) is not settled, and Slice 8 should not bake one
-interpretation in before that decision is made.
+Hidden constants rather than wiring `--max-routes` now: the black-box
+spec defines `--max-routes` as the maximum number of partial routes
+retained between expansion stages, so its future mapping is
+`_MULTIHOP_FRONTIER_WIDTH`. It is not the final display count and not
+the per-node child count. Slice 8 still defers the user-facing option,
+so `_MULTIHOP_FRONTIER_WIDTH` remains a constant for now;
+`_MULTIHOP_EXPANSION_WIDTH` stays an internal fan-out cap.
 
 The search is heuristic, not globally optimal. A truly optimal N-hop
 plan over the full reachable graph is combinatorial; beam search with
@@ -70,6 +73,8 @@ per-hop pruning gate (related to the deferred `--prune-score`).
 ---
 
 ## Pieces
+
+### Piece A — Frontier model and search loop
 
 ### Piece A — Frontier model and search loop
 
@@ -91,6 +96,14 @@ class _FrontierNode:
     hop_jump_path: JumpPath | None       # jump path of the hop into this node (None at origin)
 ```
 
+Intermediate destinations are not terminal recommendations. For hops
+1..N-1, a destination must also be viable as the source of a later hop:
+supply-only stations may start routes, demand-only stations may end
+routes, but mid-route stations must have usable onward selling data under
+the current filters. This is a frontier-quality constraint, not a
+global station rule — the final hop may still end at a demand-only
+station.
+
 Search outline:
 
 ```text
@@ -102,6 +115,7 @@ for hop in 1 .. N - 1:
             session, node.station, request,
             available_credits=node.available_credits,
             top_k=_MULTIHOP_EXPANSION_WIDTH,
+            terminal_hop=False,
             bubble_cache=bubble_cache,
         )
         next_frontier.extend(child_from_trade(node, trade) for trade in children)
@@ -113,9 +127,13 @@ for hop in 1 .. N - 1:
 # Final hop:
 if --to:
     finalists = [
-        fixed_pair_plan_from(node, request.to_text)
+        fixed_pair_plan_from(
+            node,
+            resolved_to_stations,
+            available_credits=node.available_credits,
+            terminal_hop=True,
+        )
         for node in frontier
-        if reachable(node.station, --to)
     ]
 else:
     finalists = []
@@ -124,6 +142,7 @@ else:
             session, node.station, request,
             available_credits=node.available_credits,
             top_k=1,             # only need each node's single best terminal hop
+            terminal_hop=True,
             bubble_cache=bubble_cache,
         )
         finalists.extend(child_from_trade(node, trade) for trade in children)
@@ -154,6 +173,7 @@ def best_open_ended_trades_from(
     *,
     available_credits: int,
     top_k: int,
+    terminal_hop: bool,
     bubble_cache: dict[int, _LocalBubble],
 ) -> list[_HopCandidate]: ...
 ```
@@ -162,14 +182,29 @@ def best_open_ended_trades_from(
 practical score, and raw profit. The list is sorted by practical score
 descending and truncated to `top_k`.
 
-`_best_open_ended_plan` becomes the K=1 caller of this helper (plus the
-single-hop diagnostics accumulation and `_assemble_result` call) when
-`--hops == 1`. No behaviour change for the one-hop path.
+`terminal_hop` controls whether demand-only destinations are allowed.
+When `False`, the helper must keep only destination stations that are
+also viable onward sources under the current source-side filters. When
+`True`, the helper may end at any valid destination station.
+
+`_best_open_ended_plan` becomes the K=1 caller of this helper with
+`terminal_hop=True` (plus the single-hop diagnostics accumulation and
+`_assemble_result` call) when `--hops == 1`. No behaviour change for the
+one-hop path.
 
 `available_credits` is plumbed through rather than recomputed inside —
 multi-hop needs to call the helper with a per-node budget, which is not
 `request.starting_credits - request.insurance_reserve` anywhere past
-hop 1.
+hop 1. That means the data gateway functions must also accept
+`available_credits` explicitly:
+
+```python
+fetch_open_ended_trade_candidates(..., available_credits=available_credits)
+fetch_station_pair_candidates(..., available_credits=available_credits)
+```
+
+Single-hop callers pass the initial trade budget. Multi-hop callers pass
+the frontier node's budget.
 
 ### Piece C — Fixed terminal-hop evaluation
 
@@ -217,22 +252,59 @@ In `validation.py`:
 - Add `if request.hops < 1: InvalidNumericOption("--hops must be at least 1.", option_name="--hops")`.
 - Add `if request.hops > _MULTIHOP_MAX_HOPS: InvalidNumericOption("--hops exceeds the supported maximum.", option_name="--hops")`. Settle the constant: spec just says "excessive" — propose 25 as a sensible upper bound (any trader running more than 25 hops in one plan is using the wrong tool).
 - Add `if request.hops > 1 and request.from_text is None: UnsupportedRunShape("Multi-hop currently requires --from.", option_name="--from")`.
+- Add `if request.margin < 0 or request.margin > 1: InvalidNumericOption("--margin must be between 0 and 1.", option_name="--margin")`. Negative margin invents extra capital; values above 1 make accumulated profit reduce buying power below the base budget.
 - The existing `unsupported` table stays: `--direct`, `--towards`, `--loop`, `--via`, `--avoid`, `--unique`, `--loop-interval`, `--shorten`, `--checklist`, `--x52-pro` continue to reject.
-- The `unsupported_non_zero` table stays unchanged: `--start-jumps`, `--end-jumps`, `--max-routes`, `--prune-score` continue to reject.
+- The `unsupported_non_zero` table stays unchanged except for `--prune-hops`: `--start-jumps`, `--end-jumps`, `--max-routes`, `--prune-score` continue to reject when non-zero.
+- Add `if request.prune_hops != 3: UnsupportedRunShape("--prune-hops is not supported for this planner slice.", option_name="--prune-hops")`. The parser default is 3, so only explicit non-default use is rejected.
 
-### Piece F — Failure messages
+Mirror the deferred-option checks in `validateRunArgumentsFast()` where they already exist so command-layer early rejection and planner validation remain aligned.
 
-Extend `_planner_result_message` in `run_cmd.py` with a `request.hops > 1`
-branch carrying three new wordings:
+### Piece F — Partial-route failures and failure messages
+
+A multi-hop search may fail after already finding useful completed hops.
+Do not discard that work. If at least one trade hop has completed before
+the frontier gets stuck, return the best partial route found so far with
+a clear warning that the requested N-hop route was not completed.
+
+Examples:
 
 ```text
-"No profitable continuation was found after hop K of N from X with the current settings."
-"No N-hop route from X to Y was profitable under the current settings."
-"No reachable N-hop route from X to Y under the current jump settings."
+WARNING: Requested 5 hops, but no viable continuation was found after hop 3.
+Showing the best 3-hop partial route found.
+
+WARNING: Requested 4 hops to Lave, but no reachable/profitable final hop was found.
+Showing the best 3-hop partial route found.
 ```
 
-Exact wording settles at implementation time; the families are: empty
-mid-route frontier, all final hops unprofitable, no last-hop reach to Y.
+This is not an extra diagnostic pass. The partial route is reconstructed
+from the existing best frontier node, so it uses state already produced
+by normal search. If no trade hop was completed, there is no partial
+route to show and the command raises the normal no-result failure.
+
+Extend `_planner_result_message` in `run_cmd.py` only for true no-result
+multi-hop failures. Partial-route failures should travel through the
+normal `RunResult` path with `RunResult.warnings`, not through
+`PlannerResultError`.
+
+The multi-hop planner must attach enough structured context to warnings
+or raised failures for the command layer and renderer to describe what
+happened without parsing message text. Use the existing
+`PlannerFailure.details` mapping for raised no-result failures and
+`RunResult.warnings` for rendered partial routes. Useful context:
+
+```text
+completed_hops  # number of completed trade hops in the partial route
+requested_hops  # requested route length
+phase           # "expansion" or "final"
+reason          # "no_viable_continuation", "no_reachable_route", or "no_viable_trade"
+```
+
+Do not run extra diagnostic probes solely to distinguish "profitable but
+unaffordable" from "no profitable trade". That distinction is deliberately
+not a separate `trade run` user-facing diagnosis. If affordability-only
+knowledge falls out of the normal candidate/cargo path for free, it may
+be counted for debug diagnostics, but the user-facing failure remains in
+the broader no-viable-trade family.
 
 The one-hop family stays unchanged. The multi-hop branch only activates
 when `request.hops > 1`, so existing single-hop messages are unaffected.
@@ -243,18 +315,24 @@ when `request.hops > 1`, so existing single-hop messages are unaffected.
 for the next hop's cargo buy are:
 
 ```text
-available_credits = (starting_credits - insurance_reserve)
-                  + (1 - margin) * accumulated_raw_profit
+base_trade_budget = starting_credits - insurance_reserve
+trusted_profit = floor((1 - margin) * accumulated_raw_profit)
+available_credits = base_trade_budget + trusted_profit
 ```
+
+The value passed to candidate generation and cargo optimisation must be
+an integer. Do not let a fractional margin leak a float into cargo
+fitting: the optimiser relies on integer credit arithmetic.
 
 Margin only affects what the planner is willing to *spend*; raw profits
 and the final credits readout stay raw. The renderer is unaffected by
 margin — it displays accumulated raw profit and the actual ending
 credits, not the margin-adjusted budget.
 
-Margin is currently zero by default and the validation does not gate on
-it; that stays. Tromador can pass `--margin 0.25` and have it shape
-hop 2's cargo budget without changing what the route reports as profit.
+Validation must reject negative margins and margins greater than 1 before
+planning. The default remains zero. Tromador can pass `--margin 0.25`
+and have it shape hop 2's cargo budget without changing what the route
+reports as profit.
 
 ### Piece H — Diagnostics
 
@@ -277,25 +355,103 @@ Three probes, run against the live database before any planner code is
 written. Each settles a perf or correctness question; outcomes are
 recorded inline in this document as they complete.
 
-### P1 — Reach-set cost per source, repeated
+### P1 — Per-node expansion cost, repeated
 
-**Question:** Multi-hop calls `_reachable_station_query` once per frontier
-node per hop layer (50 sources × N-1 hops). The temp table behind it is
-built per call. Is that cost bearable, or does the build need to be
-factored behind a per-request memo keyed on `(source_system_id,
-max_jumps_per_hop, max_ly_per_jump)`?
+**Question:** Multi-hop calls the open-ended expansion helper once per
+frontier node per hop layer. Is the full per-node expansion cost
+bearable at the planned beam width, or does the helper need earlier
+bounding before cargo optimisation?
 
-**Probe:** time 50 successive `_reachable_station_query` builds from
-distinct source systems within a `--from Colonia/Jaques --jumps-per 2
---ly-per 20` context. Compare total wall-clock against one large reach
-query covering all 50 sources at once.
+**Probe:** build a representative hop-1 frontier from a dense inhabited
+Bubble origin, not from the old Colonia benchmark corpus. Start with a
+candidate such as:
+
+```text
+trade run --from Sol --jumps-per 2 --ly-per 30 --capacity 128 --credits 5000000
+```
+
+If the current database makes Sol a poor probe seed, choose another
+well-populated Bubble origin and record the reason. Then time 50 calls
+to `best_open_ended_trades_from(...)` from the resulting frontier source
+stations with `top_k=_MULTIHOP_EXPANSION_WIDTH` and
+`terminal_hop=False`.
+
+Record, per call and in total:
+
+```text
+elapsed_ms
+reachable/temp-table build time
+candidate row count
+grouped station-pair count
+cargo optimiser calls
+children returned
+```
+
+Also record the same counters for `terminal_hop=True` on the final-hop
+shape, because final hops may admit demand-only stations that
+intermediate hops deliberately reject.
 
 **Decision rule:**
-- If 50 calls < ~2 s total: leave per-call build; simplest code.
-- If much higher: factor temp-table build behind a per-request memo on the source-system key.
+- If 50 full expansions fit comfortably inside the Slice 8 performance
+  target, keep the simple per-node helper.
+- If expansion cost is dominated by cargo optimisation across too many
+  grouped pairs, add an early bound/top-K gate before full cargo
+  optimisation.
+- If expansion cost is dominated specifically by reachable temp-table
+  churn, factor the reachable build behind a per-request memo keyed on
+  `(source_system_id, max_jumps_per_hop, max_ly_per_jump)`.
 
 The bubble cache from Slice 6 already amortises BFS across calls; this
-probe is specifically about the SQL temp-table churn.
+probe measures the real hot path: reachable set, market fetch, pair
+grouping, cargo fitting, scoring, and trimming.
+
+### P2 — Frontier width sweep at hop 1
+
+**Question:** Is 50 a meaningful frontier width for representative
+Bubble multi-hop runs, or is the 50th-best route at hop 1 already noise?
+
+**Probe:** using the same non-Colonia seed selected for P1, take the
+candidate list that would feed `best_open_ended_trades_from(...)`, score
+every grouped station pair, sort, and log the top 100 practical scores.
+Inspect the curve.
+
+**Decision rule:**
+- If 50th best ≥ ~25% of 1st best: width = 50 is meaningful.
+- If 50th best is already noise (< 5% of 1st best): consider dropping the default to 20 or 25.
+
+This probe shapes the constant defaults; the structural search code is
+the same either way.
+
+### P3 — Last-hop `--to` reach feasibility
+
+**Question:** For `--from X --to Y --hops N`, does the frontier need a
+forward-feasibility bias so hop K's frontier favours nodes within
+realistic distance of Y? Or is the natural high-profit ranking enough?
+
+**Probe:** first choose a named Bubble origin/destination pair that is
+locally verified reachable within the planned hop budget. Candidate
+examples are Sol -> Lave or Sol -> Shinrarta Dezhra, but do not trust
+memory here: preflight the pair with the current database and Slice 6
+reachability helpers before using it as a probe case.
+
+Use a command shape like:
+
+```text
+trade run --from Sol --to Lave --hops 3 --jumps-per 2 --ly-per 30 --capacity 128 --credits 5000000
+```
+
+Adjust the named destination or jump settings if the preflight says the
+pair is not reachable in three trade hops. At hop 2, count how many of
+the 50 frontier nodes have Y's system inside their per-source bubble —
+i.e. can complete in one final trade hop.
+
+**Decision rule:**
+- If most can reach (≥ 50% of frontier): no special prefilter; rank by score and let the last-hop evaluation drop the unreachable nodes.
+- If few can: add a soft prefilter to the frontier-trim — penalise nodes whose direct distance to Y exceeds `(hops_remaining * --jumps-per * --ly-per)`, so they fall out before the layer trim.
+
+Slice 6's `is_system_pair_reachable` is the building block in either
+direction; this probe is about whether the planner needs to *bias*
+toward feasibility, not whether the check itself works.
 
 ### P2 — Frontier width sweep at hop 1
 
@@ -320,10 +476,22 @@ the same either way.
 forward-feasibility bias so hop K's frontier favours nodes within
 realistic distance of Y? Or is the natural high-profit ranking enough?
 
-**Probe:** synthesise `--from Colonia/Jaques --to Sol --hops 3`
-(well-separated, plenty of intermediate territory). At hop 2, count how
-many of the 50 frontier nodes have Y's system inside their per-source
-bubble — i.e. can complete in one hop.
+**Probe:** first choose a named origin/destination pair that is locally
+verified reachable within the planned hop budget. Candidate examples are
+Sol -> Lave or Sol -> Shinrarta Dezhra, but do not trust memory here:
+preflight the pair with the current database and Slice 6 reachability
+helpers before using it as a probe case.
+
+Use a command shape like:
+
+```text
+trade run --from Sol --to Lave --hops 3 --jumps-per 2 --ly-per 30 --capacity 128 --credits 5000000
+```
+
+Adjust the named destination or jump settings if the preflight says the
+pair is not reachable in three trade hops. At hop 2, count how many of
+the 50 frontier nodes have Y's system inside their per-source bubble —
+i.e. can complete in one final trade hop.
 
 **Decision rule:**
 - If most can reach (≥ 50% of frontier): no special prefilter; rank by score and let the last-hop evaluation drop the unreachable nodes.
@@ -340,9 +508,9 @@ toward feasibility, not whether the check itself works.
 Slice 8 is complete when:
 
 1. `trade run --from X --hops N` plans an N-hop route from X ending at a planner-chosen station, with buy/sell sequences and propagated credits.
-2. `trade run --from X --to Y --hops N` plans an N-hop route from X ending at Y, or fails cleanly with a multi-hop `NoReachableRoute` if no such route exists.
+2. `trade run --from X --to Y --hops N` plans an N-hop route from X ending at Y. If the search gets stuck after at least one completed hop, it renders the best partial route found with a warning that the requested N-hop route was not completed. If no hop can be completed, it fails cleanly with the appropriate no-result message.
 3. `--margin` reduces the planner's available cargo budget at hop K+1 by `margin * profit_at_hop_K` (cumulative).
-4. The renderer shows each hop in sequence with its own buy/sell/fly block. No renderer changes required to *read* multi-hop routes — the existing iteration over `route.hops` already does this. A per-hop "credits in hand" or per-hop cumulative-gain display is out of scope.
+4. The renderer shows each hop in sequence with its own buy/sell/fly block and renders any `RunResult.warnings` before the route. A per-hop "credits in hand" or per-hop cumulative-gain display is out of scope.
 5. All Slice 1–7 shapes continue to work unchanged at `--hops 1`. Behavioural identity, not just compilation.
 6. Validation rejects:
    - `--hops < 1`
@@ -350,8 +518,8 @@ Slice 8 is complete when:
    - `--hops > 1` with no `--from`
    - The deferred option list (`--via`, `--avoid`, `--towards`, `--loop`, `--unique`, `--loop-interval`, `--shorten`, `--routes != 1`, `--prune-score`, `--start-jumps`, `--end-jumps`, `--checklist`, `--x52-pro`, `--direct`) continues to reject cleanly. No silent acceptance.
 7. `PlannerDiagnostics` exposes `hops_planned`, `multihop_frontier_widths` per layer, and `multihop_expansions_examined`.
-8. Spot-checked against `--old` on `run-typical` (`--from Colonia/Jaques --capacity 128 --credits 5000000 --hops 2 --jumps-per 2 --ly-per 20`): new planner's route is valid, profitable, and materially faster (target: well under the ~30 s baseline).
-9. Spot-checked against `--old` on the `--from X --to Y --hops N` shape for at least one well-separated origin/destination pair at N = 3.
+8. Spot-checked against `--old` on a non-Colonia seeded Bubble run selected during probes, for example `--from Sol --capacity 128 --credits 5000000 --hops 2 --jumps-per 2 --ly-per 30`: new planner's route is valid, profitable, and materially faster than the legacy path on the same command.
+9. Spot-checked against `--old` on the `--from X --to Y --hops N` shape for at least one locally preflighted, reachable Bubble origin/destination pair at N = 3.
 
 ---
 
