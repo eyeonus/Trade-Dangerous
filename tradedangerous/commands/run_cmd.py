@@ -25,7 +25,6 @@ from tradedangerous.planner.failures import (
     StationHasNoUsablePriceData,
     UnknownPlace,
 )
-)
 from tradedangerous.planner.render_text import render_run_result
 from tradedangerous.planner.run_onehop import plan_onehop_route
 from tradedangerous.planner.run_request import run_request_from_cmdenv
