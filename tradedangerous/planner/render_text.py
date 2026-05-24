@@ -57,6 +57,16 @@ def _render_hop(hop: PlannedHop, hop_index: int) -> list[str]:
             f"(+{line.total_profit:n} cr)"
         )
 
+    if any(
+        line.bulk_sale_tax_sensitive
+        and line.quantity == line.effective_destination_demand_units
+        for line in hop.cargo.lines
+    ):
+        lines.append(
+            "    Metals/Minerals capped at 25% of destination demand "
+            "to avoid the bulk-sale price reduction."
+        )
+
     lines.append(f"  Fly to {hop.destination_station.dbname}")
 
     if hop.jump_path.is_same_system:

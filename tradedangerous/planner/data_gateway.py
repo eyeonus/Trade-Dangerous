@@ -17,13 +17,14 @@ from sqlalchemy import (
     Table,
     and_,
     case,
+    cast,
     func,
     literal,
     select,
 )
 from sqlalchemy.orm import Session, aliased
 
-from tradedangerous.db.orm_models import Item, Station, StationItem, System
+from tradedangerous.db.orm_models import Category, Item, Station, StationItem, System
 from tradedangerous.db.station_types import (
     DISPLAY_NAMES,
     FLEET_CARRIER_TYPE_IDS,
@@ -404,6 +405,7 @@ def fetch_station_pair_candidates(
 
     available_credits = int(request.starting_credits or 0) - request.insurance_reserve
     cutoff = _age_cutoff(request.age_days)
+    sensitive_category_ids = _bulk_sale_tax_category_ids(session)
 
     filters = [
         source_item.station_id == source.station_id,
@@ -441,6 +443,7 @@ def fetch_station_pair_candidates(
             destination_item.demand_price,
             destination_item.demand_units,
             destination_item.modified,
+            Item.category_id,
         )
         .join(destination_item, destination_item.item_id == source_item.item_id)
         .join(Item, Item.item_id == source_item.item_id)
@@ -456,6 +459,19 @@ def fetch_station_pair_candidates(
         source_age = _age_days(row[4])
         destination_age = _age_days(row[7])
         profit_per_unit = int(row[5]) - int(row[2])
+        demand_units = int(row[6])
+        sensitive = int(row[8]) in sensitive_category_ids
+        # floor(demand * 0.25); Python integer division on non-negative
+        # ints rounds toward zero, which matches floor for the values
+        # here.
+        effective_demand = demand_units // 4 if sensitive else demand_units
+        if effective_demand <= 0:
+            # The bulk-sale cap reduces this Metals/Minerals row to zero
+            # safe cargo at the advertised sell price. Buying data is
+            # fine, so the empty-result path treats this as "no profitable
+            # trade" rather than promoting it to a destination-side data
+            # failure.
+            continue
         candidates.append(
             TradeCandidate(
                 item_id=int(row[0]),
@@ -466,9 +482,11 @@ def fetch_station_pair_candidates(
                 sell_price=int(row[5]),
                 profit_per_unit=profit_per_unit,
                 source_supply_units=int(row[3]),
-                destination_demand_units=int(row[6]),
+                destination_demand_units=demand_units,
                 source_age_days=source_age,
                 destination_age_days=destination_age,
+                bulk_sale_tax_sensitive=sensitive,
+                effective_destination_demand_units=effective_demand,
             )
         )
 
@@ -579,6 +597,7 @@ def fetch_open_ended_trade_candidates(
 
         available_credits = int(request.starting_credits or 0) - request.insurance_reserve
         cutoff = _age_cutoff(request.age_days)
+        sensitive_category_ids = _bulk_sale_tax_category_ids(session)
 
         supply_filters = [
             supply_station_filter,
@@ -630,14 +649,17 @@ def fetch_open_ended_trade_candidates(
             demand_by_item.setdefault(int(row[0]), []).append(row)
 
         supply_item_ids = {int(row[0]) for row in supply_rows}
-        item_names = {
-            int(item_id): str(name)
-            for item_id, name in session.execute(
-                select(Item.item_id, Item.name).where(
-                    Item.item_id.in_(tuple(supply_item_ids))
-                )
-            ).all()
-        }
+        # Fetch name and category_id together so the per-candidate
+        # sensitivity check costs one dict lookup, not another query.
+        item_names: dict[int, str] = {}
+        item_categories: dict[int, int] = {}
+        for item_id, name, category_id in session.execute(
+            select(Item.item_id, Item.name, Item.category_id).where(
+                Item.item_id.in_(tuple(supply_item_ids))
+            )
+        ).all():
+            item_names[int(item_id)] = str(name)
+            item_categories[int(item_id)] = int(category_id)
 
         min_gain = request.min_gain_per_ton
         max_gain = request.max_gain_per_ton
@@ -653,6 +675,7 @@ def fetch_open_ended_trade_candidates(
             source_supply_units = int(supply[3])
             source_age = _age_days(supply[4])
             item_name = item_names.get(item_id, "")
+            sensitive = item_categories.get(item_id) in sensitive_category_ids
             for demand in demand_matches:
                 destination_station_id = int(demand[1])
                 if destination_station_id == source_station_id:
@@ -667,6 +690,17 @@ def fetch_open_ended_trade_candidates(
                     continue
                 if max_gain > 0 and profit_per_unit > max_gain:
                     continue
+                demand_units = int(demand[3])
+                # floor(demand * 0.25); Python integer division on
+                # non-negative ints rounds toward zero, matching floor.
+                effective_demand = demand_units // 4 if sensitive else demand_units
+                if effective_demand <= 0:
+                    # Bulk-sale cap reduces this Metals/Minerals row to
+                    # zero safe cargo at the advertised price. Another
+                    # demand row for the same item at a different station
+                    # may still produce a usable cap, so we drop this
+                    # pair only, not the whole item.
+                    continue
                 candidates.append(
                     TradeCandidate(
                         item_id=item_id,
@@ -677,9 +711,11 @@ def fetch_open_ended_trade_candidates(
                         sell_price=sell_price,
                         profit_per_unit=profit_per_unit,
                         source_supply_units=source_supply_units,
-                        destination_demand_units=int(demand[3]),
+                        destination_demand_units=demand_units,
                         source_age_days=source_age,
                         destination_age_days=_age_days(demand[4]),
+                        bulk_sale_tax_sensitive=sensitive,
+                        effective_destination_demand_units=effective_demand,
                     )
                 )
 
@@ -814,6 +850,7 @@ def fetch_unanchored_trade_candidates(
 
     available_credits = int(request.starting_credits or 0) - request.insurance_reserve
     cutoff = _age_cutoff(request.age_days)
+    sensitive_item_ids = _bulk_sale_tax_sensitive_item_ids(session)
     capacity = int(request.capacity_units or 0)
     per_item_limit = request.cargo_limit_per_item
     same_system = request.max_jumps_per_hop == 0
@@ -844,6 +881,12 @@ def fetch_unanchored_trade_candidates(
         Column("station_id", BigInteger),
         Column("demand_price", Integer),
         Column("demand_units", Integer),
+        # Raw demand_units stays unchanged for display and post-walk
+        # processing; effective_demand_units carries the bulk-sale-tax
+        # cap (floor(demand * 0.25) for Metals/Minerals, raw otherwise)
+        # so the realisable-profit ranking can read it directly without
+        # an inline CASE per row.
+        Column("effective_demand_units", Integer),
         Column("modified", modified_type),
         Index("ix_td_unanchored_demand_sys", "system_id"),
         prefixes=["TEMPORARY"],
@@ -868,11 +911,12 @@ def fetch_unanchored_trade_candidates(
             # best concrete trade seen, no later commodity can either.
             if capacity * profit_bound <= best_total_profit:
                 break
+            is_sensitive = item_id in sensitive_item_ids
             _reduce_supply_by_system(
                 session, supply_temp, item_id, request, available_credits, cutoff
             )
             _reduce_demand_by_system(
-                session, demand_temp, item_id, request, cutoff
+                session, demand_temp, item_id, request, cutoff, is_sensitive
             )
 
             if same_system:
@@ -899,7 +943,7 @@ def fetch_unanchored_trade_candidates(
 
             for row in rows:
                 candidate = _unanchored_candidate_from_row(
-                    row, item_id, item_names.get(item_id, "")
+                    row, item_id, item_names.get(item_id, ""), is_sensitive
                 )
                 candidates.append(candidate)
                 best_total_profit = max(
@@ -1066,20 +1110,32 @@ def _reduce_demand_by_system(
     item_id: int,
     request: RunRequest,
     cutoff: datetime | None,
+    is_sensitive: bool,
 ) -> None:
     """Reduce one commodity's demand to the dearest eligible station per system.
 
     The mirror of the supply reduction: ROW_NUMBER ranks each system's
     eligible buyers, dearest first with station id as the tie-break, and the
     outer query keeps rank one. Standard SQL, identical on every backend.
+
+    is_sensitive is known at call time — True for Metals/Minerals items —
+    and drives the bulk-sale-tax cap: effective_demand_units is set to
+    floor(demand_units * 0.25) when sensitive, otherwise to demand_units.
+    The SQL ranking in _realisable_profit_expression reads that column
+    directly so the cap reshapes which pair wins.
     """
 
     session.execute(demand_temp.delete())
 
+    # Sensitive items with raw demand 2 or 3 floor to effective 0 and
+    # cannot produce a usable trade, so filter them out at SQL rather than
+    # materialise dead rows. Non-sensitive items keep the existing
+    # _MIN_MEANINGFUL_DEMAND >= 2 floor for dormant-buy-side noise.
+    min_demand_floor = 4 if is_sensitive else _MIN_MEANINGFUL_DEMAND
     filters = [
         StationItem.item_id == item_id,
         StationItem.demand_price > 0,
-        StationItem.demand_units >= _MIN_MEANINGFUL_DEMAND,
+        StationItem.demand_units >= min_demand_floor,
         *_station_attribute_predicates(request),
     ]
     if request.min_demand is not None:
@@ -1087,12 +1143,28 @@ def _reduce_demand_by_system(
     if cutoff is not None:
         filters.append(StationItem.modified >= cutoff)
 
+    # cast(demand * 0.25 AS INTEGER) is the dialect-portable floor: both
+    # SQLite and MariaDB return float for the multiplication and truncate
+    # toward zero on the integer cast, which equals floor for the non-
+    # negative demand values here. is_sensitive is known in Python so the
+    # conditional collapses to one column expression rather than a SQL
+    # CASE per row.
+    if is_sensitive:
+        effective_demand_expr = cast(
+            StationItem.demand_units * 0.25, Integer
+        ).label("effective_demand_units")
+    else:
+        effective_demand_expr = StationItem.demand_units.label(
+            "effective_demand_units"
+        )
+
     ranked = (
         select(
             Station.system_id.label("system_id"),
             StationItem.station_id.label("station_id"),
             StationItem.demand_price.label("demand_price"),
             StationItem.demand_units.label("demand_units"),
+            effective_demand_expr,
             StationItem.modified.label("modified"),
             func.row_number()
             .over(
@@ -1114,11 +1186,19 @@ def _reduce_demand_by_system(
         ranked.c.station_id,
         ranked.c.demand_price,
         ranked.c.demand_units,
+        ranked.c.effective_demand_units,
         ranked.c.modified,
     ).where(ranked.c.rank_in_system == 1)
     session.execute(
         demand_temp.insert().from_select(
-            ["system_id", "station_id", "demand_price", "demand_units", "modified"],
+            [
+                "system_id",
+                "station_id",
+                "demand_price",
+                "demand_units",
+                "effective_demand_units",
+                "modified",
+            ],
             dearest_per_system,
         )
     )
@@ -1152,9 +1232,12 @@ def _realisable_profit_expression(supply_temp: Table, demand_temp: Table, reques
         (supply_temp.c.supply_units > ceiling, ceiling),
         else_=supply_temp.c.supply_units,
     )
+    # effective_demand_units already carries the bulk-sale-tax cap when
+    # the commodity is sensitive (see _reduce_demand_by_system); cap it
+    # against the ceiling to get realisable demand.
     capped_demand = case(
-        (demand_temp.c.demand_units > ceiling, ceiling),
-        else_=demand_temp.c.demand_units,
+        (demand_temp.c.effective_demand_units > ceiling, ceiling),
+        else_=demand_temp.c.effective_demand_units,
     )
     realisable_units = case(
         (capped_supply < capped_demand, capped_supply),
@@ -1357,11 +1440,17 @@ def _match_via_on_demand_reach(
     return accepted_rows, examined, len(accepted_rows), hit_cap
 
 
-def _unanchored_candidate_from_row(row, item_id: int, item_name: str) -> TradeCandidate:
+def _unanchored_candidate_from_row(
+    row, item_id: int, item_name: str, is_sensitive: bool,
+) -> TradeCandidate:
     """Build a TradeCandidate from one matched supply/demand row."""
 
     buy_price = int(row[1])
     sell_price = int(row[5])
+    demand_units = int(row[6])
+    # floor(demand * 0.25); Python integer division on non-negative ints
+    # rounds toward zero, matching floor.
+    effective_demand = demand_units // 4 if is_sensitive else demand_units
     return TradeCandidate(
         item_id=item_id,
         item_name=item_name,
@@ -1371,9 +1460,11 @@ def _unanchored_candidate_from_row(row, item_id: int, item_name: str) -> TradeCa
         sell_price=sell_price,
         profit_per_unit=sell_price - buy_price,
         source_supply_units=int(row[2]),
-        destination_demand_units=int(row[6]),
+        destination_demand_units=demand_units,
         source_age_days=_age_days(row[3]),
         destination_age_days=_age_days(row[7]),
+        bulk_sale_tax_sensitive=is_sensitive,
+        effective_destination_demand_units=effective_demand,
     )
 
 
@@ -1386,9 +1477,10 @@ def _concrete_total_profit(
     """Return a realisable total profit for trading one candidate alone.
 
     This is a deliberate lower bound on the best achievable trade: a single
-    commodity, capped by capacity, supply, demand, affordability, and --limit.
-    The walk's cutoff needs a lower bound — understating it only widens the
-    search, never discards the winner.
+    commodity, capped by capacity, supply, effective demand (already
+    bulk-sale-cap aware), affordability, and --limit. The walk's cutoff
+    needs a lower bound — understating it only widens the search, never
+    discards the winner.
     """
 
     if candidate.buy_price <= 0:
@@ -1396,7 +1488,7 @@ def _concrete_total_profit(
     units = min(
         capacity,
         candidate.source_supply_units,
-        candidate.destination_demand_units,
+        candidate.effective_destination_demand_units,
         available_credits // candidate.buy_price,
     )
     if per_item_limit > 0:
@@ -1437,6 +1529,57 @@ def _resolved_station_from_model(station: Station, system: ResolvedSystem) -> Re
 # at such a row produces one-tonne noise routes. Genuine destination markets
 # carry a demand of 2 or more, so that is the floor for a row to count.
 _MIN_MEANINGFUL_DEMAND = 2
+
+
+# Elite charges a per-unit penalty when more than 25% of a station's
+# advertised demand is sold in one go on Metals and Minerals. The post-25%
+# discount curve is not precisely documented and varies by station and
+# state, so the planner does not try to model discounted prices; instead
+# it caps the planned destination quantity at floor(demand * 0.25) for
+# affected commodities, keeping the advertised sell price in force on the
+# planned quantity. The classification is canonical (EDCD/FDevIDs
+# category names), so the resolver matches on Category.name rather than
+# hardcoded ids — ids are deployment-local, names are the contract.
+_BULK_SALE_TAX_CATEGORY_NAMES = ("Metals", "Minerals")
+
+
+def _bulk_sale_tax_category_ids(session: Session) -> frozenset[int]:
+    """Resolve the bulk-sale-tax category names to local category_ids.
+
+    Run once per candidate-fetch path. Returns an empty set if neither
+    category exists in the local database — behaviour reverts to "no
+    commodity is bulk-tax-sensitive", a safe degradation rather than a
+    crash. Category.name is CIString, so the IN match is case-insensitive
+    on both backends.
+    """
+
+    rows = session.execute(
+        select(Category.category_id).where(
+            Category.name.in_(_BULK_SALE_TAX_CATEGORY_NAMES)
+        )
+    ).all()
+    return frozenset(int(row[0]) for row in rows)
+
+
+def _bulk_sale_tax_sensitive_item_ids(session: Session) -> frozenset[int]:
+    """Resolve bulk-sale-tax sensitive item_ids in one query.
+
+    The unanchored walk iterates every profitable item and benefits from
+    a flat membership set rather than re-resolving the category for each
+    item. Returns an empty set when no sensitive categories are present
+    locally — safe degradation, same as _bulk_sale_tax_category_ids.
+    """
+
+    sensitive_category_ids = _bulk_sale_tax_category_ids(session)
+    if not sensitive_category_ids:
+        return frozenset()
+    rows = session.execute(
+        select(Item.item_id).where(
+            Item.category_id.in_(tuple(sensitive_category_ids))
+        )
+    ).all()
+    return frozenset(int(row[0]) for row in rows)
+
 
 _KNOWN_PAD_SIZES = ("S", "M", "L")
 

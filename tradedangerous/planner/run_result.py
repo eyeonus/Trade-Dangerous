@@ -66,6 +66,16 @@ class TradeCandidate:
     destination_demand_units: int
     source_age_days: float | None
     destination_age_days: float | None
+    # Elite penalises selling more than 25% of a station's demand in one go
+    # on Metals and Minerals. bulk_sale_tax_sensitive is True for items in
+    # either category; effective_destination_demand_units is the capped
+    # value cargo fitting and unanchored ranking treat as the destination-
+    # side quantity limit — floor(destination_demand_units * 0.25) when
+    # sensitive, equal to destination_demand_units otherwise. The
+    # advertised sell price is left untouched because no quantity above the
+    # safe threshold is ever planned.
+    bulk_sale_tax_sensitive: bool
+    effective_destination_demand_units: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +90,13 @@ class CargoLine:
     total_profit: int
     source_supply_units: int
     destination_demand_units: int
+    # Carried through from TradeCandidate so the renderer can flag hops
+    # where the bulk-sale cap actively shaped the cargo plan. A sensitive
+    # line with quantity == effective_destination_demand_units is one the
+    # cap bound; sensitive lines with quantity below that were bound by
+    # supply, capacity remainder, or credits first.
+    bulk_sale_tax_sensitive: bool
+    effective_destination_demand_units: int
 
 
 @dataclass(frozen=True, slots=True)

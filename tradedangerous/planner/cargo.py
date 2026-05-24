@@ -156,6 +156,8 @@ def optimise_cargo(
                 total_profit=quantity * trade.profit_per_unit,
                 source_supply_units=trade.source_supply_units,
                 destination_demand_units=trade.destination_demand_units,
+                bulk_sale_tax_sensitive=trade.bulk_sale_tax_sensitive,
+                effective_destination_demand_units=trade.effective_destination_demand_units,
             )
         )
 
@@ -187,7 +189,7 @@ def _build_bounded_candidates(
 
         max_quantity = min(
             trade.source_supply_units,
-            trade.destination_demand_units,
+            trade.effective_destination_demand_units,
             capacity_units,
             available_credits // trade.buy_price,
         )
