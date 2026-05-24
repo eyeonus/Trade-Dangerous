@@ -87,6 +87,14 @@ Each completed slice has an implementation plan (what needs to be done) and a co
 | [sixth_slice_implementation_plan.md](sixth_slice_implementation_plan.md) | Design plan for Slice 6: three pieces (fixed-endpoint pair reachability, open-ended reachable-station query, unanchored reach map), five probes (P1–P5) gated before code, the keyed `--jumps-per` default, and the failure-message sharpening. Probe results recorded inline. |
 | [sixth_slice_completion_report.md](sixth_slice_completion_report.md) | Proof of completion: A2 bubble + BFS for Piece A, B2 iterative widening into `td_reachable_systems` for Piece B, C3 on-demand reach during match for Piece C, `JumpPath.distance_ly` redefined as polyline length, keyed default, validation pin removed, `PlannerResultError` with five message-family wordings, unanchored prompt rewritten, `^C` cleanup-mask closed. `--old` no longer holds any one-hop shape the new planner cannot serve. |
 
+### Slice 7 — Bulk-Sale-Tax Safe Demand Cap (Complete)
+**Metals/Minerals destination quantity capped at `floor(demand * 0.25)` to avoid the in-game bulk-sale price penalty.**
+
+| Document | Content |
+|----------|---------|
+| [seventh_slice_implementation_plan.md](seventh_slice_implementation_plan.md) | Design plan for Slice 7: conservative 25% safe cap on Metals/Minerals destination demand, no discounted-price modelling, EDCD/FDevIDs category as source of truth, deferred `--bulk-tax-mode` option. Supporting research in [mined_tax.md](mined_tax.md) / [mined_tax.pdf](mined_tax.pdf). |
+| [seventh_slice_completion_report.md](seventh_slice_completion_report.md) | Proof of completion: sensitivity resolution via `Category.name`, DTO fields on `TradeCandidate` / `CargoLine`, all three fetch paths wired (fixed-pair, open-ended, unanchored), dialect-portable `cast(... * 0.25, Integer)` for the SQL floor, hop-level renderer note. Verification at Prince Prominence -> Evangelisti showed Gold and Beryllium cap-binding at exact `floor(demand / 4)` values. |
+
 ---
 
 ## Reference and Technical Notes
@@ -108,6 +116,11 @@ Engineering notes on data scale and diagnostics:
 
 ### [old_carrier_discrepancy_brief.md](old_carrier_discrepancy_brief.md)
 Historical record of a specific fleet-carrier data issue. Likely reference material for debugging.
+
+### [bulk_sale_tax_candidates.sql](bulk_sale_tax_candidates.sql)
+SQL helper that surfaces Metals/Minerals trade pairs suitable for verifying the bulk-sale-tax 25% destination-demand cap. Excludes fleet carriers so candidates reflect background-sim economy rather than owner-set prices.
+
+**Purpose:** Quick way to pick a verification pair when testing the cap mechanic; safer than picking from memory because demand values drift with EDDN refresh.
 
 ---
 

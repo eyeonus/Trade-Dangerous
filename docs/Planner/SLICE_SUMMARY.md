@@ -383,6 +383,87 @@ Full record: `docs/Planner/sixth_slice_completion_report.md`.
 
 ---
 
+## Slice 7 — Bulk-Sale-Tax Safe Demand Cap (complete)
+
+Elite penalises selling more than 25% of a station's advertised
+demand in one transaction on Metals and Minerals. The planner caps
+the planned destination quantity at `floor(demand * 0.25)` for
+affected commodities; the advertised sell price is left alone
+because no quantity above the safe threshold is ever planned. A
+correctness fix landed ahead of multi-hop so future capital
+propagation builds on truthful per-hop profit.
+
+**Supported shape:** every Slice 1-6 shape — fixed-endpoint pair,
+omitted-`--from`, omitted-`--to`, unanchored. The cap is universal:
+any sensitive commodity at any destination is capped.
+
+**Delivered:**
+
+- Two helpers in `data_gateway.py` resolve the EDCD/FDevIDs category
+  names "Metals" and "Minerals" against `Category.name` (the
+  contract) rather than hardcoded local ids (deployment-local
+  artefacts). `_bulk_sale_tax_category_ids` returns the category
+  frozenset; `_bulk_sale_tax_sensitive_item_ids` returns the flat
+  item frozenset the unanchored walk uses for O(1) membership.
+- `TradeCandidate` and `CargoLine` gain `bulk_sale_tax_sensitive: bool`
+  and `effective_destination_demand_units: int`. Raw demand stays on
+  the DTO for display and downstream awareness; the effective field
+  is what cargo fitting and unanchored ranking treat as the
+  destination-side quantity cap.
+- Fixed-pair and open-ended paths compute effective demand in Python
+  via integer floor division (`demand_units // 4`); rows that would
+  cap to effective zero are dropped per-pair, and the empty-result
+  path treats this as "no profitable trade" rather than promoting it
+  to a destination-side data failure.
+- Unanchored carries `effective_demand_units` as a column on
+  `td_unanchored_demand`, written via dialect-portable
+  `cast(StationItem.demand_units * 0.25, Integer)` so SQLite and
+  MariaDB both produce the floor without leaning on `FLOOR()` (which
+  SQLite only ships when math functions are compiled in).
+  `_realisable_profit_expression` reads the column directly so the
+  cap reshapes which pair wins in SQL. The demand floor in the
+  candidate filter rises from `_MIN_MEANINGFUL_DEMAND = 2` to `4`
+  when sensitive, so rows that would cap to zero are filtered before
+  materialisation.
+- Cargo optimiser and the unanchored concrete-profit lower bound
+  consume `effective_destination_demand_units`. Non-sensitive items
+  are unchanged (effective == raw). The walk's outer cutoff
+  (`capacity * profit_bound`) keeps using raw `profit_bound` — an
+  overestimate for sensitive items, which only widens the search and
+  never discards a winner.
+- Renderer emits a hop-level note when at least one CargoLine on the
+  hop has `bulk_sale_tax_sensitive AND quantity ==
+  effective_destination_demand_units`: "Metals/Minerals capped at
+  25% of destination demand to avoid the bulk-sale price reduction."
+  One occurrence per affected hop, not per line.
+
+**Verified:** fixed-pair Prince Prominence -> Evangelisti Colony at
+`--capacity 2048` loaded Gold at 859 (= `floor(3436 / 4)`) and
+Beryllium at 259 (= `floor(1038 / 4)`); both exactly cap-bound,
+confirmed against destination demand values queried directly. Silver
+took the capacity remainder, demonstrating the cap composes
+correctly with capacity. Open-ended omitted-`--from` to Evangelisti
+reproduced the same cap values from a different source. Unanchored
+accepted by symmetry — the cap flows through the same
+`effective_destination_demand_units` field used by the verified
+anchored paths, and incremental QA at minutes per unanchored run
+does not pay back. Run-short Colonia benchmark unchanged
+(non-sensitive winners). Hop-level note appears as designed on
+cap-affected runs and is silent on the non-sensitive benchmark.
+
+**Deferred (not cut):** multi-hop routing (`--hops > 1`), now able to
+compound per-hop profit on truthful sell-price assumptions. A
+`--bulk-tax-mode safe|ignore|estimate` user option (the slice plan
+deferred this deliberately; the current conservative
+full-price-on-safe-quantity is the right default until the post-25%
+discount curve is better understood). A MariaDB end-to-end across
+the unanchored cap path (production patterns are dialect-portable;
+verification ran on SQLite).
+
+Full record: `docs/Planner/seventh_slice_completion_report.md`.
+
+---
+
 ## Project Notes
 
 ### Data scale
@@ -610,6 +691,27 @@ No profitable trade was found with the current settings.
 ```
 
 Do not add a costly affordability-only probe unless a cheap signal already falls out of the main candidate path.
+
+### Reference probe — bulk-sale-tax cap
+
+A known-working fixed-pair probe that exercises the Metals/Minerals
+`floor(demand * 0.25)` cap:
+
+```text
+trade run \
+  --from "Col 285 Sector DU-B b28-8/Prince Prominence" \
+  --to   "LP 98-132/Evangelisti Colony" \
+  --capacity 2048 --credits 100000000 \
+  --hops 1 --jumps-per 8 --ly-per 40
+```
+
+The optimiser fills 2048 t with three sensitive commodities. The two
+highest-margin ones cap-bind at exactly `floor(demand / 4)`, the third
+takes the capacity remainder under its own (non-binding) cap. Demand
+values drift, so the exact quantities change over time; if no sensitive
+commodity ends up cap-binding, `docs/Planner/bulk_sale_tax_candidates.sql`
+will surface fresh pairs where `supply >= safe_cap` and
+`safe_cap < test capacity`.
 
 ---
 
