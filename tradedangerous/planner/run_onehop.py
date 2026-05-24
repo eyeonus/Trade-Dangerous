@@ -258,7 +258,7 @@ def _best_open_ended_plan(
     if best_pair is None:
         raise failures.NoProfitableTrades(
             "No viable cargo plan was available."
-        ))
+        )
 
     reachability_started = time.perf_counter()
     jump_path = plan_jump_path(
