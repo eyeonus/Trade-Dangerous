@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .failures import NoAffordableCargo, NoProfitableTrades
+from .failures import NoProfitableTrades
 from .run_result import CargoLine, CargoPlan, TradeCandidate
 
 
@@ -34,9 +34,7 @@ def optimise_cargo(
         cargo_limit_per_item=cargo_limit_per_item,
     )
     if not bounded:
-        if any(c.profit_per_unit > 0 for c in candidates):
-            raise NoAffordableCargo("No profitable cargo can be afforded.")
-        raise NoProfitableTrades("No profitable trade candidates were available.")
+        raise NoProfitableTrades("No viable cargo plan was available.")
 
     bounded.sort(
         key=lambda c: (
@@ -136,7 +134,7 @@ def optimise_cargo(
     )
 
     if best_profit <= 0:
-        raise NoAffordableCargo("No profitable cargo can be afforded.")
+        raise NoProfitableTrades("No viable cargo plan was available.")
 
     lines = []
     for candidate, quantity in zip(bounded, best_quantities):

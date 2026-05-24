@@ -272,7 +272,7 @@ Examples:
 WARNING: Requested 5 hops, but no viable continuation was found after hop 3.
 Showing the best 3-hop partial route found.
 
-WARNING: Requested 4 hops to Lave, but no reachable/profitable final hop was found.
+WARNING: Requested 4 hops to Lave, but no viable final hop was found.
 Showing the best 3-hop partial route found.
 ```
 
@@ -281,16 +281,12 @@ from the existing best frontier node, so it uses state already produced
 by normal search. If no trade hop was completed, there is no partial
 route to show and the command raises the normal no-result failure.
 
-Extend `_planner_result_message` in `run_cmd.py` only for true no-result
-multi-hop failures. Partial-route failures should travel through the
-normal `RunResult` path with `RunResult.warnings`, not through
-`PlannerResultError`.
+Partial-route failures should travel through the normal `RunResult` path
+with `RunResult.warnings`, not through `PlannerResultError`.
+`_planner_result_message` only handles true no-result multi-hop failures.
 
-The multi-hop planner must attach enough structured context to warnings
-or raised failures for the command layer and renderer to describe what
-happened without parsing message text. Use the existing
-`PlannerFailure.details` mapping for raised no-result failures and
-`RunResult.warnings` for rendered partial routes. Useful context:
+Warnings and raised no-result failures should carry enough structured
+context to describe what happened without parsing message text:
 
 ```text
 completed_hops  # number of completed trade hops in the partial route
@@ -299,12 +295,8 @@ phase           # "expansion" or "final"
 reason          # "no_viable_continuation", "no_reachable_route", or "no_viable_trade"
 ```
 
-Do not run extra diagnostic probes solely to distinguish "profitable but
-unaffordable" from "no profitable trade". That distinction is deliberately
-not a separate `trade run` user-facing diagnosis. If affordability-only
-knowledge falls out of the normal candidate/cargo path for free, it may
-be counted for debug diagnostics, but the user-facing failure remains in
-the broader no-viable-trade family.
+Do not distinguish affordability-only failures in Slice 8; per project
+policy, those remain part of the broad no-viable-trade/no-result family.
 
 The one-hop family stays unchanged. The multi-hop branch only activates
 when `request.hops > 1`, so existing single-hop messages are unaffected.

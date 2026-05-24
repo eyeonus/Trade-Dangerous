@@ -116,10 +116,6 @@ class NoProfitableTrades(PlannerFailure):
     """No profitable trades satisfy the request constraints."""
 
 
-class NoAffordableCargo(PlannerFailure):
-    """Profitable trades exist, but none can be bought with available credits."""
-
-
 class PlannerCancelled(PlannerFailure):
     """The planner was cancelled before completion."""
 

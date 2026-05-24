@@ -19,12 +19,12 @@ from .parsing import (
 from tradedangerous.planner.failures import (
     AmbiguousPlace,
     InvalidRunRequest,
-    NoAffordableCargo,
     NoProfitableTrades,
     NoReachableRoute,
     PlannerFailure,
     StationHasNoUsablePriceData,
     UnknownPlace,
+)
 )
 from tradedangerous.planner.render_text import render_run_result
 from tradedangerous.planner.run_onehop import plan_onehop_route
@@ -1468,7 +1468,6 @@ def run(results, cmdenv, tdb):
             results.data = plan_onehop_route(session, request)
             results.summary.exception = ""
         except (
-            NoAffordableCargo,
             NoProfitableTrades,
             NoReachableRoute,
             StationHasNoUsablePriceData,

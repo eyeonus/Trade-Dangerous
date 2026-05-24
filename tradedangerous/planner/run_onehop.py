@@ -236,7 +236,7 @@ def _best_open_ended_plan(
                 - request.insurance_reserve,
                 cargo_limit_per_item=request.cargo_limit_per_item,
             )
-        except failures.NoAffordableCargo:
+        except failures.NoProfitableTrades:
             cargo_optimisation_ms += _elapsed_ms(cargo_started)
             continue
         cargo_optimisation_ms += _elapsed_ms(cargo_started)
@@ -256,9 +256,9 @@ def _best_open_ended_plan(
             best_pair = pair
 
     if best_pair is None:
-        raise failures.NoAffordableCargo(
-            "Profitable trades exist, but no cargo can be afforded."
-        )
+        raise failures.NoProfitableTrades(
+            "No viable cargo plan was available."
+        ))
 
     reachability_started = time.perf_counter()
     jump_path = plan_jump_path(
@@ -337,7 +337,7 @@ def _plan_unanchored(
                 - request.insurance_reserve,
                 cargo_limit_per_item=request.cargo_limit_per_item,
             )
-        except failures.NoAffordableCargo:
+        except failures.NoProfitableTrades:
             cargo_optimisation_ms += _elapsed_ms(cargo_started)
             continue
         cargo_optimisation_ms += _elapsed_ms(cargo_started)
@@ -357,8 +357,8 @@ def _plan_unanchored(
             best_pair = pair
 
     if best_pair is None:
-        raise failures.NoAffordableCargo(
-            "Profitable trades exist, but no cargo can be afforded."
+        raise failures.NoProfitableTrades(
+            "No viable cargo plan was available."
         )
 
     reachability_started = time.perf_counter()
@@ -614,7 +614,7 @@ def _best_pair_plan(
                     - request.insurance_reserve,
                     cargo_limit_per_item=request.cargo_limit_per_item,
                 )
-            except failures.NoAffordableCargo:
+            except failures.NoProfitableTrades:
                 cargo_optimisation_ms += _elapsed_ms(cargo_started)
                 continue
             cargo_optimisation_ms += _elapsed_ms(cargo_started)
@@ -658,8 +658,8 @@ def _best_pair_plan(
         raise failures.NoProfitableTrades(
             "No profitable trades were found across reachable station pairs."
         )
-    raise failures.NoAffordableCargo(
-        "Profitable trades exist, but no cargo can be afforded."
+    raise failures.NoProfitableTrades(
+        "No viable cargo plan was available."
     )
 
 
