@@ -484,6 +484,29 @@ Slice 6's `is_system_pair_reachable` is the building block in either
 direction; this probe is about whether the planner needs to *bias*
 toward feasibility, not whether the check itself works.
 
+**Outcome:** settled enough to reject pure score-only trimming for
+fixed-terminal multi-hop.
+
+In both profiles, the score-only hop-2 frontier retained 0/50 nodes able
+to reach Lave in the final trade hop, and 0/50 even inside the direct
+60 LY feasibility envelope. The frontier followed profit density rather
+than the destination vector.
+
+Before finalising the trim rule, extend the probe to inspect the full
+pre-trim hop-2 candidate pool. If feasible near-destination candidates
+exist there, apply a destination-feasibility bias during frontier trim.
+If none exist, the bias must begin at an earlier layer or the run should
+fall back to the partial-route result path.
+
+For fixed `--to`, any node outside the remaining direct-distance envelope
+cannot complete the requested route and should be strongly penalised or
+excluded from the complete-route frontier, while still allowing the best
+partial route to be returned if no complete route survives.
+
+Full per-node results recorded in
+`research/perf/probe_slice8_p3.{py,json,log}` (working files, removed at
+slice close).
+
 ---
 
 ## Acceptance Criteria
