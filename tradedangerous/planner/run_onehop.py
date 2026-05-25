@@ -781,7 +781,27 @@ def _plan_multi_hop(
                 key=lambda candidate: candidate.accumulated_practical_score,
                 reverse=True,
             )
-            frontier = next_frontier[:_MULTIHOP_FRONTIER_WIDTH]
+            if to_system_xyz is not None:
+                # Fixed-terminal: keep at most one node per destination system
+                # in the trim. Without this, frontier slots get spent on
+                # near-duplicates — several stations in the same destination
+                # system, all with similar per-hop profit — crowding out
+                # strategically valuable but lower-scoring alternatives at
+                # other systems. Dedup runs after the score sort so each
+                # system is represented by its best-scoring node.
+                seen_systems: set[int] = set()
+                deduped: list[_FrontierNode] = []
+                for node in next_frontier:
+                    system_id = node.station.system_id
+                    if system_id in seen_systems:
+                        continue
+                    seen_systems.add(system_id)
+                    deduped.append(node)
+                    if len(deduped) >= _MULTIHOP_FRONTIER_WIDTH:
+                        break
+                frontier = deduped
+            else:
+                frontier = next_frontier[:_MULTIHOP_FRONTIER_WIDTH]
             frontier_widths.append(len(frontier))
             layer_stats.append(
                 run_result.LayerStats(
