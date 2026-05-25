@@ -376,6 +376,9 @@ def best_open_ended_trades_from(
     terminal_hop: bool,
     bubble_cache: dict[int, object],
     reachable_memo: dict | None = None,
+    destination_envelope_xyz: tuple[float, float, float] | None = None,
+    destination_envelope_ly: float | None = None,
+    expansion_stats: run_result.ExpansionStats | None = None,
 ) -> list[_HopCandidate]:
     """Return the top-K best forward trades from a single source station.
 
@@ -399,9 +402,20 @@ def best_open_ended_trades_from(
        already guaranteed in-range systems, but plan_jump_path returns the
        actual polyline path needed at render time.
 
+    ``destination_envelope_xyz`` and ``destination_envelope_ly``, when
+    supplied, narrow the destination set in SQL so the candidate fetch
+    only materialises destinations within that direct-distance envelope
+    of the requested anchor. Multi-hop fixed-terminal expansion uses this
+    so out-of-envelope candidates are never built, grouped, scored, or
+    jump-pathed in Python.
+
     The returned list is sorted by practical_score descending and capped at
     top_k.
     """
+
+    helper_started = time.perf_counter()
+    if expansion_stats is not None:
+        expansion_stats.expansion_calls += 1
 
     source_system = _system_from_station(source_station)
 
@@ -414,8 +428,15 @@ def best_open_ended_trades_from(
         available_credits=available_credits,
         terminal_hop=terminal_hop,
         reachable_memo=reachable_memo,
+        destination_envelope_xyz=destination_envelope_xyz,
+        destination_envelope_ly=destination_envelope_ly,
+        expansion_stats=expansion_stats,
     )
+    if expansion_stats is not None:
+        expansion_stats.candidate_rows += len(candidates)
     if not candidates:
+        if expansion_stats is not None:
+            expansion_stats.elapsed_ms += _elapsed_ms(helper_started)
         return []
 
     open_station_ids = tuple(
@@ -427,6 +448,8 @@ def best_open_ended_trades_from(
     )
 
     grouped_pairs = _group_pairs(candidates)
+    if expansion_stats is not None:
+        expansion_stats.grouped_pairs += len(grouped_pairs)
 
     # Score every viable pair first; defer the jump-path computation until
     # after the top-K trim so we only pay it for survivors.
@@ -439,6 +462,8 @@ def best_open_ended_trades_from(
             # cover the ids it was handed; missing entries indicate a data
             # race rather than a planner bug.
             continue
+        if expansion_stats is not None:
+            expansion_stats.cargo_calls += 1
         try:
             cargo = optimise_cargo(
                 pair_candidates,
@@ -485,6 +510,9 @@ def best_open_ended_trades_from(
             )
         )
 
+    if expansion_stats is not None:
+        expansion_stats.children_returned += len(hop_candidates)
+        expansion_stats.elapsed_ms += _elapsed_ms(helper_started)
     return hop_candidates
 
 
@@ -496,6 +524,7 @@ def best_fixed_pair_trade_from(
     *,
     available_credits: int,
     bubble_cache: dict[int, object],
+    final_hop_stats: run_result.FinalHopStats | None = None,
 ) -> _HopCandidate | None:
     """Return the single best fixed-pair trade from one source to any of the
     given destinations, or None if no viable trade exists.
@@ -507,10 +536,17 @@ def best_fixed_pair_trade_from(
     fixed-pair path; the only difference is that per-pair failures are
     swallowed and the function returns the best (or None) rather than
     raising classified failures.
+
+    When ``final_hop_stats`` is supplied, the helper records per-source
+    aggregates so the planner can report which frontier nodes reached
+    the destination, how many market candidates were found, and how
+    many viable cargo plans the final hop produced.
     """
 
     source_system = _system_from_station(source_station)
     best: _HopCandidate | None = None
+    saw_reachable = False
+    saw_viable_cargo = False
     for destination in destination_stations:
         if destination.station_id == source_station.station_id:
             continue
@@ -525,6 +561,7 @@ def best_fixed_pair_trade_from(
             )
         except failures.NoReachableRoute:
             continue
+        saw_reachable = True
         try:
             candidates = data_gateway.fetch_station_pair_candidates(
                 session,
@@ -537,6 +574,8 @@ def best_fixed_pair_trade_from(
             # Either side missing usable data — skip this pair; another
             # destination in the --to set may still produce a viable trade.
             continue
+        if final_hop_stats is not None:
+            final_hop_stats.market_candidates_found += len(candidates)
         if not candidates:
             continue
         try:
@@ -548,6 +587,7 @@ def best_fixed_pair_trade_from(
             )
         except failures.NoProfitableTrades:
             continue
+        saw_viable_cargo = True
         practical_score = score_with_destination_penalty(
             cargo.total_profit,
             destination_distance_ls=destination.ls_from_star,
@@ -561,26 +601,13 @@ def best_fixed_pair_trade_from(
                 practical_score=practical_score,
                 raw_profit=cargo.total_profit,
             )
+    if final_hop_stats is not None:
+        final_hop_stats.frontier_nodes_attempted += 1
+        if saw_reachable:
+            final_hop_stats.nodes_with_reachable_destination += 1
+        if saw_viable_cargo:
+            final_hop_stats.viable_cargo_plans += 1
     return best
-
-
-def _within_distance_envelope(
-    station: run_result.ResolvedStation,
-    to_system_x: float,
-    to_system_y: float,
-    to_system_z: float,
-    envelope_ly: float,
-) -> bool:
-    """Return whether a station's system is within ``envelope_ly`` of --to.
-
-    Squared comparison rather than a sqrt — same ordering, no library call,
-    and a meaningful saving when called once per frontier node per hop.
-    """
-
-    dx = station.x - to_system_x
-    dy = station.y - to_system_y
-    dz = station.z - to_system_z
-    return (dx * dx + dy * dy + dz * dz) <= envelope_ly * envelope_ly
 
 
 def _plan_multi_hop(
@@ -601,14 +628,14 @@ def _plan_multi_hop(
     parent chain back to the origin.
 
     With --to set the search must end at one of Y's eligible stations. To
-    keep the frontier pointed at Y rather than wandering, after each layer
-    trim each candidate is checked against a direct-distance envelope
-    ``remaining_hops * --jumps-per * --ly-per`` from Y; out-of-envelope
-    nodes are dropped (a later slice may keep them as partial-route
-    fallback candidates). The final hop with --to set then runs a per-node
-    fixed-pair evaluation against Y's stations; the Slice 6 graph reach
-    check still gates which destinations are actually reachable, the
-    envelope is only a necessary feasibility filter.
+    keep the frontier pointed at Y rather than wandering, each intermediate
+    layer's candidate fetch is restricted in SQL to destination systems
+    within ``remaining_hops * --jumps-per * --ly-per`` of Y — out-of-envelope
+    systems never leave the database into Python. The final hop with --to
+    set then runs a per-frontier-node fixed-pair evaluation against Y's
+    stations; the graph reach check still gates which destinations are
+    actually reachable, the envelope is only a necessary feasibility
+    filter.
 
     Credits propagate hop-to-hop. available_credits at hop K+1 is
     ``base_trade_budget + floor((1 - margin) * accumulated_raw_profit)`` —
@@ -684,16 +711,42 @@ def _plan_multi_hop(
     candidate_trade_count = 0
     frontier_widths: list[int] = []
     expansions_examined = 0
+    layer_stats: list[run_result.LayerStats] = []
+    expansion_stats = run_result.ExpansionStats()
+    final_hop_stats: run_result.FinalHopStats | None = (
+        run_result.FinalHopStats() if to_system_xyz is not None else None
+    )
 
     try:
         # Intermediate hops 1..N-1: terminal_hop=False keeps demand-only
         # destinations off the frontier so they cannot occupy a node that
         # must be a viable onward source.
         for hop_layer in range(1, request.hops):
-            search_started = time.perf_counter()
+            # For fixed --to the destinations of this layer's expansion must
+            # land within remaining_hops * jumps_per * ly_per of --to so that
+            # the remaining hops can plausibly close on it. We pass the
+            # envelope into the candidate fetch so out-of-envelope systems
+            # never make it into Python at all — the demand-side reachable
+            # subquery is narrowed against the temp table's pos columns.
+            envelope_xyz: tuple[float, float, float] | None = None
+            envelope_ly: float | None = None
+            if to_system_xyz is not None:
+                remaining_hops = request.hops - hop_layer
+                envelope_xyz = to_system_xyz
+                envelope_ly = float(
+                    remaining_hops
+                    * int(request.max_jumps_per_hop or 0)
+                    * float(request.max_ly_per_jump or 0.0)
+                )
+
+            layer_started = time.perf_counter()
+            layer_frontier_in = len(frontier)
+            layer_expansion_calls = 0
+            layer_children_generated = 0
             next_frontier: list[_FrontierNode] = []
             for node in frontier:
                 expansions_examined += 1
+                layer_expansion_calls += 1
                 children = best_open_ended_trades_from(
                     session,
                     node.station,
@@ -703,36 +756,18 @@ def _plan_multi_hop(
                     terminal_hop=False,
                     bubble_cache=bubble_cache,
                     reachable_memo=reachable_memo,
+                    destination_envelope_xyz=envelope_xyz,
+                    destination_envelope_ly=envelope_ly,
+                    expansion_stats=expansion_stats,
                 )
                 for trade in children:
                     next_frontier.append(
                         _make_child_node(node, trade, request, base_trade_budget)
                     )
                     candidate_trade_count += 1
-            market_query_ms += _elapsed_ms(search_started)
-
-            if to_system_xyz is not None:
-                # Drop nodes that cannot reach --to in the hops still to run,
-                # measured by the direct-distance envelope. Out-of-envelope
-                # nodes are discarded here; partial-route fallback is the
-                # next slice's concern.
-                remaining_hops = request.hops - hop_layer
-                envelope_ly = float(
-                    remaining_hops
-                    * int(request.max_jumps_per_hop or 0)
-                    * float(request.max_ly_per_jump or 0.0)
-                )
-                next_frontier = [
-                    candidate
-                    for candidate in next_frontier
-                    if _within_distance_envelope(
-                        candidate.station,
-                        to_system_xyz[0],
-                        to_system_xyz[1],
-                        to_system_xyz[2],
-                        envelope_ly,
-                    )
-                ]
+                    layer_children_generated += 1
+            layer_elapsed_ms = _elapsed_ms(layer_started)
+            market_query_ms += layer_elapsed_ms
 
             if not next_frontier:
                 # Step 5 will replace this raise with partial-route handling
@@ -748,12 +783,22 @@ def _plan_multi_hop(
             )
             frontier = next_frontier[:_MULTIHOP_FRONTIER_WIDTH]
             frontier_widths.append(len(frontier))
+            layer_stats.append(
+                run_result.LayerStats(
+                    layer_index=hop_layer,
+                    frontier_size_in=layer_frontier_in,
+                    expansion_calls=layer_expansion_calls,
+                    children_generated=layer_children_generated,
+                    children_kept=len(frontier),
+                    elapsed_ms=layer_elapsed_ms,
+                )
+            )
 
         # Final hop: terminal_hop=True allows demand-only destinations. With
         # --to set, each surviving frontier node is matched against Y's
         # stations as a fixed-pair plan; without --to, one open-ended pick
         # per node is enough.
-        search_started = time.perf_counter()
+        final_hop_started = time.perf_counter()
         finalists: list[_FrontierNode] = []
         if to_system_xyz is not None:
             for node in frontier:
@@ -765,6 +810,7 @@ def _plan_multi_hop(
                     request,
                     available_credits=node.available_credits,
                     bubble_cache=bubble_cache,
+                    final_hop_stats=final_hop_stats,
                 )
                 if trade is not None:
                     finalists.append(
@@ -783,13 +829,17 @@ def _plan_multi_hop(
                     terminal_hop=True,
                     bubble_cache=bubble_cache,
                     reachable_memo=reachable_memo,
+                    expansion_stats=expansion_stats,
                 )
                 for trade in children:
                     finalists.append(
                         _make_child_node(node, trade, request, base_trade_budget)
                     )
                     candidate_trade_count += 1
-        market_query_ms += _elapsed_ms(search_started)
+        final_hop_elapsed_ms = _elapsed_ms(final_hop_started)
+        market_query_ms += final_hop_elapsed_ms
+        if final_hop_stats is not None:
+            final_hop_stats.elapsed_ms = final_hop_elapsed_ms
 
         if not finalists:
             # Fixed --to: most likely no surviving frontier node can
@@ -815,10 +865,9 @@ def _plan_multi_hop(
         data_gateway.release_reachable_memo(session, reachable_memo)
 
     # market_query_ms here is the whole forward-expansion cost (fetch,
-    # cargo, scoring, jump-path lookup), which per probe P1 is dominated
-    # by fetch work. The reachability_ms and cargo_optimisation_ms breakdown
-    # is not separately tracked through the helper for now; if a future
-    # tuning pass needs finer detail, the helper can return per-call timings.
+    # cargo, scoring, jump-path lookup). The richer breakdown lives in
+    # multihop_layers / multihop_expansion_stats / multihop_final_hop_stats
+    # — see the diagnostic renderer for a compact summary.
     diagnostics = run_result.PlannerDiagnostics(
         validation_ms=validation_ms,
         resolution_ms=resolution_ms,
@@ -829,6 +878,9 @@ def _plan_multi_hop(
         hops_planned=request.hops,
         multihop_frontier_widths=tuple(frontier_widths),
         multihop_expansions_examined=expansions_examined,
+        multihop_layers=tuple(layer_stats),
+        multihop_expansion_stats=expansion_stats,
+        multihop_final_hop_stats=final_hop_stats,
     )
     return run_result.RunResult(routes=(route,), diagnostics=diagnostics)
 

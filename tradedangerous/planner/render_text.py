@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .run_result import PlannedHop, PlannedRoute, RunResult
+from .run_result import PlannedHop, PlannedRoute, PlannerDiagnostics, RunResult
 
 
 def render_run_result(result: RunResult) -> str:
@@ -25,6 +25,11 @@ def render_run_result(result: RunResult) -> str:
 
         if route_index < len(result.routes):
             lines.append("")
+
+    # Multi-hop diagnostic summary, appended after the route. Single-hop
+    # diagnostics are not surfaced here; the multi-hop fields stay at their
+    # defaults for any single-hop run and the block is skipped.
+    lines.extend(_render_multihop_diagnostics(result.diagnostics))
 
     return "\n".join(lines)
 
@@ -86,4 +91,61 @@ def _render_hop(hop: PlannedHop, hop_index: int) -> list[str]:
         )
 
     lines.append(f"  Sell cargo for {hop.raw_profit:n} cr gain")
+    return lines
+
+
+def _render_multihop_diagnostics(diagnostics: PlannerDiagnostics) -> list[str]:
+    """Render the compact multi-hop instrumentation block.
+
+    Multi-hop runs surface their per-layer, per-call, and final-hop counts
+    here so the timing and pruning shape is visible in normal output. A
+    single-hop run leaves the multi-hop fields at defaults and gets no
+    block. The format aims to fit one block on screen rather than dumping
+    every counter onto its own line.
+    """
+
+    if diagnostics.hops_planned <= 1:
+        return []
+
+    lines = ["", "Diagnostics:"]
+    lines.append(
+        f"  Total: {diagnostics.total_planner_ms:.0f}ms "
+        f"(resolution {diagnostics.resolution_ms:.0f}ms, "
+        f"station-filter {diagnostics.station_filter_ms:.0f}ms, "
+        f"search {diagnostics.market_query_ms:.0f}ms)"
+    )
+
+    expansion = diagnostics.multihop_expansion_stats
+    if expansion is not None and expansion.expansion_calls > 0:
+        lines.append(
+            f"  Expansion: {expansion.expansion_calls} calls, "
+            f"memo {expansion.memo_hits}/{expansion.memo_misses} hit/miss, "
+            f"{expansion.candidate_rows:n} candidate rows, "
+            f"{expansion.grouped_pairs:n} pairs, "
+            f"{expansion.cargo_calls:n} cargo calls, "
+            f"{expansion.children_returned:n} children, "
+            f"{expansion.elapsed_ms:.0f}ms"
+        )
+
+    for layer in diagnostics.multihop_layers:
+        lines.append(
+            f"  Layer {layer.layer_index}: "
+            f"{layer.frontier_size_in} in, "
+            f"{layer.expansion_calls} calls, "
+            f"{layer.children_generated:n} children, "
+            f"kept {layer.children_kept} "
+            f"({layer.elapsed_ms:.0f}ms)"
+        )
+
+    final_hop = diagnostics.multihop_final_hop_stats
+    if final_hop is not None and final_hop.frontier_nodes_attempted > 0:
+        lines.append(
+            f"  Final hop: "
+            f"{final_hop.frontier_nodes_attempted} attempted, "
+            f"{final_hop.nodes_with_reachable_destination} reach destination, "
+            f"{final_hop.market_candidates_found:n} market candidates, "
+            f"{final_hop.viable_cargo_plans} viable, "
+            f"{final_hop.elapsed_ms:.0f}ms"
+        )
+
     return lines

@@ -45,7 +45,7 @@ from .failures import (
 )
 from .reachability import is_system_pair_reachable
 from .run_request import RunRequest
-from .run_result import ResolvedStation, ResolvedSystem, TradeCandidate
+from .run_result import ExpansionStats, ResolvedStation, ResolvedSystem, TradeCandidate
 
 
 def validate_station_filters(
@@ -225,6 +225,9 @@ def _reachable_station_query(
     request: RunRequest,
     *,
     reachable_memo: dict | None = None,
+    destination_envelope_xyz: tuple[float, float, float] | None = None,
+    destination_envelope_ly: float | None = None,
+    expansion_stats: ExpansionStats | None = None,
 ) -> Iterator[Select]:
     """Yield a SELECT of station ids reachable from the anchor within --jumps-per.
 
@@ -241,6 +244,15 @@ def _reachable_station_query(
     responsible for releasing them at end-of-request via
     ``release_reachable_memo`` so they do not linger.
 
+    When ``destination_envelope_xyz`` and ``destination_envelope_ly`` are both
+    supplied, the yielded SELECT additionally restricts the reachable set to
+    systems within a bounding box plus squared-distance check against those
+    coordinates. The temp table already carries pos_x/y/z columns from the
+    BFS build, so the filter runs against the temp directly with no extra
+    System join. Multi-hop fixed-terminal expansion uses this to drop
+    destinations that cannot plausibly close on --to in the remaining hops,
+    before they ever leave SQL into Python.
+
     Callers compose the yielded SELECT via ``.in_(...)`` so the reachable set
     stays in SQL — handing a large id list to a later query as a literal
     ``IN (...)`` would flip SQLite off the StationItem primary key onto a
@@ -249,7 +261,18 @@ def _reachable_station_query(
     """
 
     if request.max_jumps_per_hop == 0:
-        # Same-system supercruise: no jump, no temp table.
+        # Same-system supercruise: no jump, no temp table. With an envelope
+        # supplied the only reachable system is the anchor itself, so the
+        # envelope collapses to a single distance check on the anchor.
+        if destination_envelope_xyz is not None and destination_envelope_ly is not None:
+            dx = anchor_system.x - destination_envelope_xyz[0]
+            dy = anchor_system.y - destination_envelope_xyz[1]
+            dz = anchor_system.z - destination_envelope_xyz[2]
+            envelope_sq = destination_envelope_ly * destination_envelope_ly
+            if (dx * dx + dy * dy + dz * dz) > envelope_sq:
+                # Anchor outside envelope — no reachable stations qualify.
+                yield select(Station.station_id).where(literal(False))
+                return
         in_range_systems = select(System.system_id).where(
             System.system_id == anchor_system.system_id
         )
@@ -262,71 +285,104 @@ def _reachable_station_query(
         return
 
     memo_key: tuple[int, int, float] | None = None
+    temp: Table | None = None
     if reachable_memo is not None:
         memo_key = (
             int(anchor_system.system_id),
             int(request.max_jumps_per_hop),
             float(request.max_ly_per_jump or 0.0),
         )
-        cached = reachable_memo.get(memo_key)
-        if cached is not None:
-            # Cached entry is (temp_table, select_query); yield the SELECT.
-            yield cached[1]
-            return
+        temp = reachable_memo.get(memo_key)
+        if expansion_stats is not None:
+            if temp is not None:
+                expansion_stats.memo_hits += 1
+            else:
+                expansion_stats.memo_misses += 1
 
     connection = session.connection()
-    metadata = MetaData()
-    # Mirror the System pos column type so the spatial maths inside the layer
-    # INSERT runs as floats on either backend without an implicit cast.
-    pos_type = System.__table__.c.pos_x.type
-    if memo_key is None:
-        table_name = "td_reachable_systems"
-    else:
-        # Per-key temp table so concurrent memoised entries can coexist within
-        # one session. ly_per is encoded as integer hundredths to keep the name
-        # stable across equivalent float representations.
-        table_name = (
-            f"td_reachable_systems_{memo_key[0]}_"
-            f"{memo_key[1]}_{int(memo_key[2] * 100)}"
+    built_locally = temp is None
+    if temp is None:
+        metadata = MetaData()
+        # Mirror the System pos column type so the spatial maths inside the layer
+        # INSERT runs as floats on either backend without an implicit cast.
+        pos_type = System.__table__.c.pos_x.type
+        if memo_key is None:
+            table_name = "td_reachable_systems"
+        else:
+            # Per-key temp table so concurrent memoised entries can coexist
+            # within one session. ly_per is encoded as integer hundredths to
+            # keep the name stable across equivalent float representations.
+            table_name = (
+                f"td_reachable_systems_{memo_key[0]}_"
+                f"{memo_key[1]}_{int(memo_key[2] * 100)}"
+            )
+        temp = Table(
+            table_name,
+            metadata,
+            Column("system_id", BigInteger, primary_key=True),
+            Column("pos_x", pos_type),
+            Column("pos_y", pos_type),
+            Column("pos_z", pos_type),
+            Column("depth", Integer),
+            # Depth index lets each layer's JOIN find the previous frontier
+            # without scanning the whole accumulated set, which is what makes
+            # later layers stay cheap as the table grows.
+            Index(f"ix_{table_name}_depth", "depth"),
+            prefixes=["TEMPORARY"],
         )
-    temp = Table(
-        table_name,
-        metadata,
-        Column("system_id", BigInteger, primary_key=True),
-        Column("pos_x", pos_type),
-        Column("pos_y", pos_type),
-        Column("pos_z", pos_type),
-        Column("depth", Integer),
-        # Depth index lets each layer's JOIN find the previous frontier
-        # without scanning the whole accumulated set, which is what makes
-        # later layers stay cheap as the table grows.
-        Index(f"ix_{table_name}_depth", "depth"),
-        prefixes=["TEMPORARY"],
-    )
-    # Drop any leftover from a previous interrupted call before recreating.
-    temp.drop(connection, checkfirst=True)
-    temp.create(connection)
+        # Drop any leftover from a previous interrupted call before recreating.
+        temp.drop(connection, checkfirst=True)
+        temp.create(connection)
+        try:
+            _populate_reachable_systems(
+                connection,
+                temp,
+                anchor_system,
+                float(request.max_ly_per_jump or 0.0),
+                int(request.max_jumps_per_hop),
+            )
+        except Exception:
+            temp.drop(connection, checkfirst=True)
+            raise
+        if memo_key is not None:
+            reachable_memo[memo_key] = temp
+
     try:
-        _populate_reachable_systems(
-            connection,
-            temp,
-            anchor_system,
-            float(request.max_ly_per_jump or 0.0),
-            int(request.max_jumps_per_hop),
-        )
-        select_query = select(Station.station_id).where(
+        # System-id source: either the unfiltered temp, or an envelope-
+        # narrowed subselect against the temp's pos columns. Bounding box
+        # first lets the database short-circuit before the squared-distance
+        # refinement; the temp set is bounded by the BFS, so the test runs
+        # on at most a few thousand rows.
+        if (
+            destination_envelope_xyz is not None
+            and destination_envelope_ly is not None
+        ):
+            to_x, to_y, to_z = destination_envelope_xyz
+            env = destination_envelope_ly
+            envelope_sq = env * env
+            dx = temp.c.pos_x - to_x
+            dy = temp.c.pos_y - to_y
+            dz = temp.c.pos_z - to_z
+            system_id_source = select(temp.c.system_id).where(
+                and_(
+                    temp.c.pos_x.between(to_x - env, to_x + env),
+                    temp.c.pos_y.between(to_y - env, to_y + env),
+                    temp.c.pos_z.between(to_z - env, to_z + env),
+                    dx * dx + dy * dy + dz * dz <= envelope_sq,
+                )
+            )
+        else:
+            system_id_source = select(temp.c.system_id)
+        yield select(Station.station_id).where(
             and_(
-                Station.system_id.in_(select(temp.c.system_id)),
+                Station.system_id.in_(system_id_source),
                 *_station_attribute_predicates(request),
             )
         )
-        if memo_key is not None:
-            reachable_memo[memo_key] = (temp, select_query)
-        yield select_query
     finally:
         # Memoised tables outlive this context; release_reachable_memo drops
         # them at end of request. Non-memoised tables drop here as before.
-        if memo_key is None:
+        if memo_key is None and built_locally:
             temp.drop(connection, checkfirst=True)
 
 
@@ -342,7 +398,7 @@ def release_reachable_memo(session: Session, memo: dict) -> None:
     if not memo:
         return
     connection = session.connection()
-    for temp_table, _select in memo.values():
+    for temp_table in memo.values():
         try:
             temp_table.drop(connection, checkfirst=True)
         except Exception:
@@ -619,6 +675,9 @@ def fetch_open_ended_trade_candidates(
     available_credits: int,
     terminal_hop: bool = True,
     reachable_memo: dict | None = None,
+    destination_envelope_xyz: tuple[float, float, float] | None = None,
+    destination_envelope_ly: float | None = None,
+    expansion_stats: ExpansionStats | None = None,
 ) -> tuple[TradeCandidate, ...]:
     """Fetch profitable trades between a fixed endpoint and reachable stations.
 
@@ -649,6 +708,15 @@ def fetch_open_ended_trade_candidates(
     repeated callers for the same source-system / jump / range key reuse a
     single built table.
 
+    When ``destination_envelope_xyz`` and ``destination_envelope_ly`` are
+    supplied, the reachable set is additionally restricted to systems within
+    that direct-distance envelope of the supplied coordinates. Multi-hop
+    fixed-terminal expansion uses this to prune destinations that cannot
+    plausibly close on --to in the remaining hops, so the demand query
+    never materialises rows that would only be dropped post-fetch. The
+    envelope is meaningful only when ``open_role="destination"`` — the open
+    side fills the demand query in that direction.
+
     The temp table backing the reachable-systems set is created by the
     context manager on entry and dropped on exit (or kept alive in the memo
     when one is supplied), so the whole supply + demand fetch must run inside
@@ -663,6 +731,9 @@ def fetch_open_ended_trade_candidates(
         anchor_system,
         request,
         reachable_memo=reachable_memo,
+        destination_envelope_xyz=destination_envelope_xyz,
+        destination_envelope_ly=destination_envelope_ly,
+        expansion_stats=expansion_stats,
     ) as reachable_query:
         # open_role names the endpoint the planner selects; the spatially-
         # reached set fills that side's query and the fixed endpoint fills the

@@ -148,6 +148,54 @@ class PlannedRoute:
     ending_credits: int
 
 
+@dataclass(slots=True)
+class ExpansionStats:
+    """Aggregate counters across all per-frontier-node expansion calls.
+
+    Mutated in place during a multi-hop run, then snapshotted onto
+    ``PlannerDiagnostics`` for inspection. Mutable because the same
+    instance threads through every expansion helper call so the data
+    gateway can contribute memo hit/miss counts without a side channel.
+    """
+
+    expansion_calls: int = 0
+    memo_hits: int = 0
+    memo_misses: int = 0
+    candidate_rows: int = 0
+    grouped_pairs: int = 0
+    cargo_calls: int = 0
+    children_returned: int = 0
+    elapsed_ms: float = 0.0
+
+
+@dataclass(slots=True)
+class FinalHopStats:
+    """Per-run accounting for the final hop of a fixed-terminal multi-hop.
+
+    Open-terminal multi-hop final hops use the same expansion helper as
+    intermediate hops, so they accumulate into ExpansionStats and leave
+    this DTO at its defaults.
+    """
+
+    frontier_nodes_attempted: int = 0
+    nodes_with_reachable_destination: int = 0
+    market_candidates_found: int = 0
+    viable_cargo_plans: int = 0
+    elapsed_ms: float = 0.0
+
+
+@dataclass(frozen=True, slots=True)
+class LayerStats:
+    """One intermediate-layer snapshot, recorded after the trim."""
+
+    layer_index: int
+    frontier_size_in: int
+    expansion_calls: int
+    children_generated: int
+    children_kept: int
+    elapsed_ms: float
+
+
 @dataclass(frozen=True, slots=True)
 class PlannerDiagnostics:
     validation_ms: float = 0.0
@@ -177,6 +225,13 @@ class PlannerDiagnostics:
     hops_planned: int = 1
     multihop_frontier_widths: tuple[int, ...] = ()
     multihop_expansions_examined: int = 0
+    # Richer multi-hop instrumentation. multihop_layers is one entry per
+    # intermediate layer; multihop_expansion_stats aggregates per-call
+    # counters across the whole run; multihop_final_hop_stats is filled
+    # only when the final hop runs the fixed-terminal --to evaluation.
+    multihop_layers: tuple[LayerStats, ...] = ()
+    multihop_expansion_stats: ExpansionStats | None = None
+    multihop_final_hop_stats: FinalHopStats | None = None
 
 
 @dataclass(frozen=True, slots=True)
