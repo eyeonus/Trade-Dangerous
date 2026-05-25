@@ -484,24 +484,49 @@ Slice 6's `is_system_pair_reachable` is the building block in either
 direction; this probe is about whether the planner needs to *bias*
 toward feasibility, not whether the check itself works.
 
-**Outcome:** settled enough to reject pure score-only trimming for
-fixed-terminal multi-hop.
+**Outcome:** settled. Pure score-only trimming is unsafe for
+fixed-terminal multi-hop. In the Sol -> Lave N=3 probe, both candidate
+destinations preflighted as reachable within the full three-hop budget,
+but the score-only hop-2 frontier retained 0/50 nodes that could reach
+Lave in the final hop.
 
-In both profiles, the score-only hop-2 frontier retained 0/50 nodes able
-to reach Lave in the final trade hop, and 0/50 even inside the direct
-60 LY feasibility envelope. The frontier followed profit density rather
-than the destination vector.
+The wider pre-trim hop-2 pool did contain near-destination candidates:
+31/1700 in the default profile and 44/2500 in the no-carriers profile
+were inside the 60 LY final-hop envelope. They were simply buried below
+the score-only trim cut.
 
-Before finalising the trim rule, extend the probe to inspect the full
-pre-trim hop-2 candidate pool. If feasible near-destination candidates
-exist there, apply a destination-feasibility bias during frontier trim.
-If none exist, the bias must begin at an earlier layer or the run should
-fall back to the partial-route result path.
+For fixed `--to`, frontier trimming must therefore partition candidates
+by remaining-route feasibility:
 
-For fixed `--to`, any node outside the remaining direct-distance envelope
-cannot complete the requested route and should be strongly penalised or
-excluded from the complete-route frontier, while still allowing the best
-partial route to be returned if no complete route survives.
+- in-envelope candidates form the complete-route frontier and are kept
+  score-ranked;
+- out-of-envelope candidates may be retained only as partial-route
+  fallback candidates;
+- if no in-envelope candidate exists at a layer, the complete-route
+  search is considered stuck and Piece F's partial-route behaviour
+  applies.
+
+The direct-distance envelope is a necessary feasibility filter, not a
+proof of reachability. Final-hop reachability still uses the Slice 6
+graph check.
+
+Implementation note: apply the envelope from the first layer where
+`--to` is known, not only at hop 2. The envelope tightens as remaining
+hops decrease:
+
+```text
+envelope_ly = remaining_hops * --jumps-per * --ly-per
+```
+
+So at N=3:
+
+```text
+after hop 1: 2 * 2 * 30 = 120 LY
+after hop 2: 1 * 2 * 30 =  60 LY
+```
+
+That keeps the search pointed generally toward the destination without
+prematurely forcing a single corridor.
 
 Full per-node results recorded in
 `research/perf/probe_slice8_p3.{py,json,log}` (working files, removed at
