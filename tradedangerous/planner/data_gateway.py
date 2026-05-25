@@ -223,14 +223,23 @@ def _reachable_station_query(
     session: Session,
     anchor_system: ResolvedSystem,
     request: RunRequest,
+    *,
+    reachable_memo: dict | None = None,
 ) -> Iterator[Select]:
     """Yield a SELECT of station ids reachable from the anchor within --jumps-per.
 
     For --jumps-per 0 (same-system) no temp table is needed; the helper yields
     today's bounded query. For --jumps-per >= 1 the helper builds a per-call
-    temp table ``td_reachable_systems``, seeds it with the anchor, and grows
-    it one layer at a time up to --jumps-per before yielding the composed
-    SELECT. The table is dropped on exit, even if the caller raises.
+    temp table seeded with the anchor and grown one layer at a time up to
+    --jumps-per before yielding the composed SELECT. Without ``reachable_memo``
+    the table is dropped on exit, even if the caller raises.
+
+    When ``reachable_memo`` is supplied, the helper caches the temp table in
+    the memo keyed on ``(source_system_id, max_jumps_per_hop, max_ly_per_jump)``
+    so repeated callers for the same key reuse a single built table. Memoised
+    tables are uniquely named and outlive the ``with`` block; the caller is
+    responsible for releasing them at end-of-request via
+    ``release_reachable_memo`` so they do not linger.
 
     Callers compose the yielded SELECT via ``.in_(...)`` so the reachable set
     stays in SQL — handing a large id list to a later query as a literal
@@ -252,13 +261,36 @@ def _reachable_station_query(
         )
         return
 
+    memo_key: tuple[int, int, float] | None = None
+    if reachable_memo is not None:
+        memo_key = (
+            int(anchor_system.system_id),
+            int(request.max_jumps_per_hop),
+            float(request.max_ly_per_jump or 0.0),
+        )
+        cached = reachable_memo.get(memo_key)
+        if cached is not None:
+            # Cached entry is (temp_table, select_query); yield the SELECT.
+            yield cached[1]
+            return
+
     connection = session.connection()
     metadata = MetaData()
     # Mirror the System pos column type so the spatial maths inside the layer
     # INSERT runs as floats on either backend without an implicit cast.
     pos_type = System.__table__.c.pos_x.type
+    if memo_key is None:
+        table_name = "td_reachable_systems"
+    else:
+        # Per-key temp table so concurrent memoised entries can coexist within
+        # one session. ly_per is encoded as integer hundredths to keep the name
+        # stable across equivalent float representations.
+        table_name = (
+            f"td_reachable_systems_{memo_key[0]}_"
+            f"{memo_key[1]}_{int(memo_key[2] * 100)}"
+        )
     temp = Table(
-        "td_reachable_systems",
+        table_name,
         metadata,
         Column("system_id", BigInteger, primary_key=True),
         Column("pos_x", pos_type),
@@ -268,7 +300,7 @@ def _reachable_station_query(
         # Depth index lets each layer's JOIN find the previous frontier
         # without scanning the whole accumulated set, which is what makes
         # later layers stay cheap as the table grows.
-        Index("ix_td_reachable_systems_depth", "depth"),
+        Index(f"ix_{table_name}_depth", "depth"),
         prefixes=["TEMPORARY"],
     )
     # Drop any leftover from a previous interrupted call before recreating.
@@ -282,14 +314,42 @@ def _reachable_station_query(
             float(request.max_ly_per_jump or 0.0),
             int(request.max_jumps_per_hop),
         )
-        yield select(Station.station_id).where(
+        select_query = select(Station.station_id).where(
             and_(
                 Station.system_id.in_(select(temp.c.system_id)),
                 *_station_attribute_predicates(request),
             )
         )
+        if memo_key is not None:
+            reachable_memo[memo_key] = (temp, select_query)
+        yield select_query
     finally:
-        temp.drop(connection, checkfirst=True)
+        # Memoised tables outlive this context; release_reachable_memo drops
+        # them at end of request. Non-memoised tables drop here as before.
+        if memo_key is None:
+            temp.drop(connection, checkfirst=True)
+
+
+def release_reachable_memo(session: Session, memo: dict) -> None:
+    """Drop every temp table held in a reachable-set memo and clear it.
+
+    Multi-hop planning keeps reachable-system temp tables alive across calls
+    via the memo so the per-key build is paid once per
+    ``(source_system, jumps_per, ly_per)`` tuple. At request teardown the
+    memo must be released so the tables do not linger across requests.
+    """
+
+    if not memo:
+        return
+    connection = session.connection()
+    for temp_table, _select in memo.values():
+        try:
+            temp_table.drop(connection, checkfirst=True)
+        except Exception:
+            # Mirrors the unanchored teardown: the request is already being
+            # torn down, so a drop failure here cannot help recovery.
+            pass
+    memo.clear()
 
 
 def _populate_reachable_systems(
@@ -393,17 +453,21 @@ def fetch_station_pair_candidates(
     source: ResolvedStation,
     destination: ResolvedStation,
     request: RunRequest,
+    *,
+    available_credits: int,
 ) -> tuple[TradeCandidate, ...]:
     """Fetch profitable commodities for one source/destination station pair.
 
     Runs the selective join first. Diagnostic probes to classify source-side
-    or destination-side missing data are deferred to the zero-result path only.
+    or destination-side missing data are deferred to the zero-result path
+    only. ``available_credits`` is the credit budget for the hop's buy step;
+    single-hop callers pass ``starting_credits - insurance_reserve``, multi-
+    hop callers pass the per-frontier-node budget after the margin haircut.
     """
 
     source_item = aliased(StationItem)
     destination_item = aliased(StationItem)
 
-    available_credits = int(request.starting_credits or 0) - request.insurance_reserve
     cutoff = _age_cutoff(request.age_days)
     sensitive_category_ids = _bulk_sale_tax_category_ids(session)
 
@@ -552,6 +616,9 @@ def fetch_open_ended_trade_candidates(
     request: RunRequest,
     *,
     open_role: str,
+    available_credits: int,
+    terminal_hop: bool = True,
+    reachable_memo: dict | None = None,
 ) -> tuple[TradeCandidate, ...]:
     """Fetch profitable trades between a fixed endpoint and reachable stations.
 
@@ -573,15 +640,30 @@ def fetch_open_ended_trade_candidates(
     matched on item_id in Python; a single self-join would instead let SQLite
     scan the market table galaxy-wide by item_id, so the two sides stay apart.
 
+    ``available_credits`` is the credit budget for the hop's buy step; the
+    supply query filters out commodities whose unit price exceeds it.
+    ``terminal_hop=False`` adds an extra demand-side predicate so destination
+    stations without onward selling data are dropped — intermediate frontier
+    nodes must remain viable onward sources. ``reachable_memo`` opts the
+    underlying reachable-set temp table into the per-request memo so
+    repeated callers for the same source-system / jump / range key reuse a
+    single built table.
+
     The temp table backing the reachable-systems set is created by the
-    context manager on entry and dropped on exit, so the whole supply +
-    demand fetch must run inside the ``with`` block.
+    context manager on entry and dropped on exit (or kept alive in the memo
+    when one is supplied), so the whole supply + demand fetch must run inside
+    the ``with`` block.
 
     Failure classification is left to the caller: this returns an empty tuple
     when no candidate survives, rather than probing for a specific reason.
     """
 
-    with _reachable_station_query(session, anchor_system, request) as reachable_query:
+    with _reachable_station_query(
+        session,
+        anchor_system,
+        request,
+        reachable_memo=reachable_memo,
+    ) as reachable_query:
         # open_role names the endpoint the planner selects; the spatially-
         # reached set fills that side's query and the fixed endpoint fills the
         # other. The reachable set stays a subquery so SQLite keeps the
@@ -595,7 +677,6 @@ def fetch_open_ended_trade_candidates(
             supply_station_filter = StationItem.station_id.in_(fixed_station_ids)
             demand_station_filter = StationItem.station_id.in_(reachable_query)
 
-        available_credits = int(request.starting_credits or 0) - request.insurance_reserve
         cutoff = _age_cutoff(request.age_days)
         sensitive_category_ids = _bulk_sale_tax_category_ids(session)
 
@@ -631,6 +712,25 @@ def fetch_open_ended_trade_candidates(
             demand_filters.append(StationItem.demand_units >= request.min_demand)
         if cutoff is not None:
             demand_filters.append(StationItem.modified >= cutoff)
+
+        if not terminal_hop:
+            # Intermediate frontier nodes must also be viable onward sources;
+            # demand-only stations are valid only at the route end. Apply the
+            # source-side selling-data check as a correlated EXISTS so the
+            # database can use the StationItem primary key.
+            onward_supply = aliased(StationItem)
+            onward_filters = [
+                onward_supply.station_id == StationItem.station_id,
+                onward_supply.supply_price > 0,
+                onward_supply.supply_units > 0,
+            ]
+            if request.min_supply is not None:
+                onward_filters.append(onward_supply.supply_units >= request.min_supply)
+            if cutoff is not None:
+                onward_filters.append(onward_supply.modified >= cutoff)
+            demand_filters.append(
+                select(literal(1)).where(and_(*onward_filters)).exists()
+            )
 
         demand_rows = session.execute(
             select(

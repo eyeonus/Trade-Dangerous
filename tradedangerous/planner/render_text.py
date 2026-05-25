@@ -10,6 +10,13 @@ def render_run_result(result: RunResult) -> str:
 
     lines: list[str] = []
 
+    # Surface planner warnings (e.g. partial multi-hop routes) before the route
+    # block so the reader sees them before reading the trade plan.
+    for warning in result.warnings:
+        lines.append(f"WARNING: {warning}")
+    if result.warnings and result.routes:
+        lines.append("")
+
     for route_index, route in enumerate(result.routes, start=1):
         if len(result.routes) > 1:
             lines.append(f"Route {route_index}")

@@ -26,7 +26,7 @@ from tradedangerous.planner.failures import (
     UnknownPlace,
 )
 from tradedangerous.planner.render_text import render_run_result
-from tradedangerous.planner.run_onehop import plan_onehop_route
+from tradedangerous.planner.run_onehop import plan_route
 from tradedangerous.planner.run_request import run_request_from_cmdenv
 from tradedangerous.planner.run_result import RunResult
 from tradedangerous.planner.validation import validate_run_request
@@ -391,11 +391,28 @@ def validateRunArgumentsFast(cmdenv):
                 raise CommandLineError(
                     f"{option_name} is not supported for this planner slice."
                 )
-        
+
+        # --prune-hops defaults to 3 at the parser; reject only non-default
+        # values since the pruning controls remain deferred.
+        if getattr(cmdenv, "pruneHops", 3) != 3:
+            raise CommandLineError(
+                "--prune-hops is not supported for this planner slice."
+            )
+
         if getattr(cmdenv, "routes", 1) != 1:
             raise CommandLineError(
                 "Only --routes 1 is currently supported."
             )
+
+        # Multi-hop currently requires --from; open-origin and both-omitted
+        # multi-hop shapes are deferred.
+        hops = getattr(cmdenv, "hops", 1)
+        if hops is not None and hops > 1 and not getattr(cmdenv, "starting", None):
+            raise CommandLineError("--hops > 1 requires --from")
+
+        margin = getattr(cmdenv, "margin", 0.0) or 0.0
+        if margin < 0 or margin > 1:
+            raise CommandLineError("--margin must be between 0 and 1.")
 
 class Checklist:
     """
@@ -1423,8 +1440,8 @@ def run(results, cmdenv, tdb):
             # Validate before the unanchored confirmation prompt. A request
             # that cannot run must fail immediately with its error, not after
             # a confirmation the planner would only then refuse — far likelier
-            # the user simply mistyped the command. plan_onehop_route
-            # re-validates as its own input contract; the repeat is cheap.
+            # the user simply mistyped the command. plan_route re-validates
+            # as its own input contract; the repeat is cheap.
             validate_run_request(request)
 
             # Both endpoints omitted: the galaxy-wide search. It is markedly
@@ -1464,7 +1481,7 @@ def run(results, cmdenv, tdb):
                 if input("Continue? [y/N] ").strip().lower() not in ("y", "yes"):
                     return _abort_unanchored_run(results, "Search cancelled.")
 
-            results.data = plan_onehop_route(session, request)
+            results.data = plan_route(session, request)
             results.summary.exception = ""
         except (
             NoProfitableTrades,

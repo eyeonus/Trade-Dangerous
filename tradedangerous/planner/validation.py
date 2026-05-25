@@ -12,6 +12,12 @@ from .failures import (
 from .run_request import RunRequest
 
 
+# Upper bound on --hops. The spec mandates "an excessive hop count beyond the
+# supported search policy" must reject; 25 covers any realistic trader plan
+# while keeping the worst-case frontier expansion bounded.
+_MULTIHOP_MAX_HOPS = 25
+
+
 def validate_run_request(request: RunRequest) -> None:
     """Reject requests outside the currently enabled planner shape."""
 
@@ -19,10 +25,24 @@ def validate_run_request(request: RunRequest) -> None:
     _require_present(request.starting_credits, "--credits")
     _require_present(request.max_ly_per_jump, "--ly-per")
 
-    if request.hops != 1:
-        raise UnsupportedRunShape(
-            "Only --hops 1 is currently supported.",
+    if request.hops < 1:
+        raise InvalidNumericOption(
+            "--hops must be at least 1.",
             option_name="--hops",
+        )
+
+    if request.hops > _MULTIHOP_MAX_HOPS:
+        raise InvalidNumericOption(
+            "--hops exceeds the supported maximum.",
+            option_name="--hops",
+        )
+
+    # Multi-hop currently needs a named origin. Open-origin and both-omitted
+    # multi-hop shapes are deferred to a later slice.
+    if request.hops > 1 and request.from_text is None:
+        raise UnsupportedRunShape(
+            "Multi-hop currently requires --from.",
+            option_name="--from",
         )
 
     unsupported = (
@@ -57,6 +77,14 @@ def validate_run_request(request: RunRequest) -> None:
                 option_name=option_name,
             )
 
+    # --prune-hops defaults to 3 at the parser; reject only non-default values
+    # since the pruning controls remain deferred to a later slice.
+    if request.prune_hops != 3:
+        raise UnsupportedRunShape(
+            "--prune-hops is not supported for this planner slice.",
+            option_name="--prune-hops",
+        )
+
     if request.routes != 1:
         raise UnsupportedRunShape(
             "Only --routes 1 is currently supported.",
@@ -87,6 +115,15 @@ def validate_run_request(request: RunRequest) -> None:
         raise InvalidNumericOption(
             "--insurance must leave credits available for trading.",
             option_name="--insurance",
+        )
+
+    # --margin is a fraction of accumulated profit the planner will not trust as
+    # buying power for later hops. Negative margins would invent capital; values
+    # above 1 would shrink the budget below the base trade budget.
+    if request.margin < 0 or request.margin > 1:
+        raise InvalidNumericOption(
+            "--margin must be between 0 and 1.",
+            option_name="--margin",
         )
 
     if request.cargo_limit_per_item < 0:

@@ -168,6 +168,15 @@ class PlannerDiagnostics:
     unanchored_pairs_accepted: int = 0
     unanchored_bubble_systems: int = 0
     unanchored_per_commodity_cap_hits: int = 0
+    # Multi-hop instrumentation. hops_planned is 1 for any single-hop run and N
+    # for an N-hop plan. multihop_frontier_widths records the surviving
+    # frontier size at the end of each expansion layer, useful for spotting a
+    # frontier that collapses well before the target hop count.
+    # multihop_expansions_examined is the total number of per-node expansions
+    # evaluated during the run.
+    hops_planned: int = 1
+    multihop_frontier_widths: tuple[int, ...] = ()
+    multihop_expansions_examined: int = 0
 
 
 @dataclass(frozen=True, slots=True)
