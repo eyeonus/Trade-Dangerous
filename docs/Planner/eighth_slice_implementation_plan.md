@@ -67,8 +67,9 @@ The search is heuristic, not globally optimal. A truly optimal N-hop
 plan over the full reachable graph is combinatorial; beam search with
 realistic widths produces routes comparable to `--old`'s heuristics
 while staying fast. Quality is verified against `--old` on the
-benchmark corpus; if it regresses, the natural follow-up is a smarter
-per-hop pruning gate (related to the deferred `--prune-score`).
+non-Colonia Bubble probe cases; if it regresses, the natural follow-up
+is a smarter per-hop pruning gate (related to the deferred 
+`--prune-score`).
 
 ---
 
@@ -218,6 +219,23 @@ produce a profitable last hop, raise a multi-hop `NoProfitableTrades`.
 
 Cost is bounded by frontier width × |Y stations|, which for a station Y
 is 50 × 1 and for a system Y is 50 × (eligible stations in system).
+
+For fixed `--to`, intermediate frontier trimming is partitioned by the
+remaining-route direct-distance envelope:
+
+```text
+envelope_ly = remaining_hops * --jumps-per * --ly-per
+```
+
+Nodes inside the envelope form the complete-route frontier and are kept
+score-ranked. Nodes outside the envelope may be retained only as
+partial-route fallback candidates. If the complete-route frontier becomes
+empty after at least one completed hop, return the best partial route per
+Piece F. If it is empty before any hop completes, raise the normal
+no-result failure.
+
+The envelope is only a necessary feasibility filter. Final-hop
+reachability still uses the Slice 6 graph reachability check.
 
 ### Piece D — Public entry rename
 
@@ -547,7 +565,7 @@ Slice 8 is complete when:
    - `--hops < 1`
    - `--hops > _MULTIHOP_MAX_HOPS`
    - `--hops > 1` with no `--from`
-   - The deferred option list (`--via`, `--avoid`, `--towards`, `--loop`, `--unique`, `--loop-interval`, `--shorten`, `--routes != 1`, `--prune-score`, `--start-jumps`, `--end-jumps`, `--checklist`, `--x52-pro`, `--direct`) continues to reject cleanly. No silent acceptance.
+   - The deferred option list (`--via`, `--avoid`, `--towards`, `--loop`, `--unique`, `--loop-interval`, `--shorten`, `--routes != 1`, `--max-routes != 0`, `--prune-score`, `--prune-hops != 3`, `--start-jumps`, `--end-jumps`, `--checklist`, `--x52-pro`, `--direct`) continues to reject cleanly. No silent acceptance.
 7. `PlannerDiagnostics` exposes `hops_planned`, `multihop_frontier_widths` per layer, and `multihop_expansions_examined`.
 8. Spot-checked against `--old` on a non-Colonia seeded Bubble run selected during probes, for example `--from Sol --capacity 128 --credits 5000000 --hops 2 --jumps-per 2 --ly-per 30`: new planner's route is valid, profitable, and materially faster than the legacy path on the same command.
 9. Spot-checked against `--old` on the `--from X --to Y --hops N` shape for at least one locally preflighted, reachable Bubble origin/destination pair at N = 3.
@@ -571,7 +589,7 @@ Carried forward, not cut:
 
 ## Deferred-Decision Notes
 
-- **Beam-width as `--max-routes`.** Slice 8 hides both width constants. When `--max-routes` lands, settle which of the two it controls (or whether it is a third concept — for example, the number of *displayed* routes).
+- **Beam-width as `--max-routes`.** Slice 8 hides both width constants. The black-box spec maps future `--max-routes` to `_MULTIHOP_FRONTIER_WIDTH`: the number of partial routes retained between expansion stages. `_MULTIHOP_EXPANSION_WIDTH` remains an internal per-node fan-out cap unless later evidence says otherwise.
 - **Oscillation A↔B.** Accepted under this scope. If A↔B is a genuinely strong trade pair, the frontier may settle there; `--unique` is the proper fix and will land in its own slice.
 - **Beam vs. globally-optimal multi-hop.** Beam search is heuristic. With realistic widths and small N (≤ 5 typically), it should produce routes competitive with `--old`'s own heuristics. Regression on the benchmark corpus would be the trigger for a smarter pruning gate.
 - **`run_onehop.py` file rename.** After Slice 8 the file name is misleading — it hosts the entry point for both one-hop and multi-hop dispatch. A rename to `run_route.py` (or moving the multi-hop body into its own file with the dispatcher in `__init__.py`) is reasonable, but is left out of this slice as pure churn.
