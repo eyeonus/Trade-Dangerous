@@ -530,6 +530,100 @@ Full record: `docs/Planner/seventh_slice_completion_report.md`.
 
 ---
 
+## Slice 9 — Max Price Filter and Testable Route Output (complete)
+
+Two independent support pieces alongside the multi-hop work: an absolute
+commodity-price cap and an expanded plain-text route output. The output
+expansion is renderer-only and does not change planner behaviour.
+
+**Supported shape:** every Slice 1-8 shape — fixed-pair, omitted-`--from`,
+omitted-`--to`, unanchored, and known-origin multi-hop — now respects an
+absolute price cap, and prints route results with auditable per-hop and
+cumulative figures.
+
+**Delivered:**
+
+- `--max-price` / `--mp` adds a row-local cap on absolute commodity
+  prices. Default 1,500,000 cr/t; `--max-price 0` disables. Active
+  values apply as SQL predicates on `StationItem.supply_price` and
+  `StationItem.demand_price` across every candidate-fetch path:
+  fixed-pair, the failure-classifier source / destination probes,
+  open-ended (including the onward-supply EXISTS used by multi-hop
+  intermediate hops), the unanchored per-commodity reductions, and
+  the unanchored item-bound walk. Capping the bound walk tightens
+  the early-cutoff bound; the bound stays admissible.
+- Default chosen against a live-database probe. Carrier fiction
+  exists on both sides: 2,120 carrier supply rows and 383 carrier
+  demand rows exceed 1.5M cr/t, supply topping out at 60.78M cr/t
+  (Titan Maw Deep Tissue Sample) and demand at 49.85M cr/t (Titan
+  Deep Tissue Sample). Highest non-carrier prices observed are
+  1,049,029 cr/t (supply) and 1,085,334 cr/t (demand), both well
+  under the chosen default — no legitimate row is removed at 1.5M.
+  Both-sides capping is the right call: supply-side fiction is more
+  prevalent than demand-side and is not naturally filtered, since a
+  Cmdr with multi-billion credits sees no upper bound from
+  affordability alone.
+- Legacy `--old` branch unchanged. Argparse default is `None` so the
+  new planner can tell "omitted" (apply configured default) from
+  "explicit 0" (disabled); the `--old` branch maps `None` back to 0
+  on entry to preserve its historical no-cap behaviour. Validation
+  rejects negative `--max-price`; zero is allowed.
+- Renderer expanded so route output exposes the per-hop buy / travel
+  / sell / profit / cumulative numbers required for manual
+  inspection. Route header now carries starting credits alongside
+  total profit and final credits. Each hop renders as ordered blocks
+  — From, Buy, Travel, To, Sell, Hop totals — with line-level totals
+  (quantity, unit price, line cost / sale value, per-tonne profit,
+  line profit) and hop-level closure (buy cost, sale value, hop
+  profit, cumulative profit, post-sale credit balance). Cumulative
+  profit and the credit balance are threaded across hops by the
+  renderer; the figures are raw, not margin-adjusted, so they match
+  the in-game balance after the sale.
+- Existing renderer features preserved: partial-route warnings
+  before the route, multi-hop diagnostics after, the bulk-sale-tax
+  cap note inside the Buy block when a Metals / Minerals line
+  cap-binds, and the practical-score line in the route header when
+  score differs from raw profit.
+
+**Verified:** smoke commands across the supported shapes — same-system
+supercruise (Colonia short benchmark), multi-jump path with
+intermediate systems (Sol -> ... -> Lave), multi-hop with cumulative
+threading (Sol -> Lave at 3 hops), the bulk-sale-tax cap probe (Prince
+Prominence -> Evangelisti at 2048t). Negative `--max-price` rejected
+cleanly. `--max-price 1000` cuts legitimate sell-side trades by design
+at that deliberately low cap — the probe evidence settles the
+both-sides decision in light of the symmetry.
+
+**Deferred (not cut):**
+
+- **Performance Re-baseline of the unanchored shape under
+  `--max-price` default.** The slice plan called for re-measuring
+  unanchored wall-clock so the Slice 6 "early-cutoff acceleration
+  is not representative of clean-data performance" caveat could be
+  updated with honest clean-data numbers. Deferred to the multi-hop
+  follow-up that revisits Slice 8: that work is likely to touch
+  shared helpers and disturb wall-clock anyway, so measuring once
+  afterwards saves the double-record. The Slice 6 caveat stays
+  accurate in the meantime.
+- **Fixed-station multi-hop route quality.** Slice 8 verified its
+  destination-system diversity trim on `--from "Sol" --to "Lave"`
+  (system-expanded origin) at 7,838,971 cr matching `--old`. The
+  fixed-station shape `--from "Sol/Abraham Lincoln" --to "Lave/Lave
+  Station"` on the same `--hops 3 --jumps-per 2 --ly-per 30 --fc N
+  --age 2` returns 1,237,504 cr against `--old`'s 3,045,686 cr.
+  Confirmed not caused by `--max-price`: same result with
+  `--max-price 0`. Mechanism is beam-search myopia rather than beam
+  concentration: with a pinned origin the Hop 1 frontier loses the
+  system-expansion diversity that the Slice 8 fix relied on, and
+  per-hop accumulated-score trimming favours myopic destinations
+  over moderate ones that open excellent onward trades. Picked up
+  as the next piece of work — revisiting Slice 8 — with probe set
+  and design discussion warranted before any code change.
+
+Full record: `docs/Planner/ninth_slice_completion_report.md`.
+
+---
+
 ## Project Notes
 
 ### Data scale
