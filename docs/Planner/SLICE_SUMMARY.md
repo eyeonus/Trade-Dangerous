@@ -286,6 +286,72 @@ Full record: `docs/Planner/fifth_slice_completion_report.md`.
 
 ---
 
+## Slice 8 — Vanilla Multi-Hop from Known Origin (complete)
+
+Known-origin multi-hop routing. The planner now supports vanilla multi-hop
+from a supplied origin, with or without a fixed destination.
+
+**Supported shapes:**
+
+```text
+trade run --from X --hops N
+trade run --from X --to Y --hops N
+```
+
+**Delivered:**
+
+- `run_onehop.py` renamed to `run_route.py`; `run_cmd.py` now imports
+  `plan_route` from the renamed module.
+- Multi-hop search builds layered route frontiers from the known `--from`
+  endpoint and propagates credits hop-to-hop using the established margin
+  haircut.
+- Intermediate hops use `terminal_hop=False`, so demand-only stations can end
+  a route but cannot occupy a mid-route frontier slot that must be a viable
+  onward source.
+- Fixed-terminal `--to` multi-hop uses a remaining-hop direct-distance
+  envelope to keep the search pointed at the destination. The envelope is
+  pushed into SQL, composing with the reachable-station query so
+  out-of-envelope destinations are filtered before Python materialisation,
+  grouping, cargo fitting, scoring, and sorting.
+- Fixed-terminal global frontier trimming now applies destination-system
+  diversity: after score sorting, at most one frontier node per destination
+  system survives into the next layer. This preserves bounded beam width while
+  avoiding near-duplicate station/system clusters consuming the frontier.
+- Partial multi-hop results are returned when the search completes at least
+  one hop but cannot complete the requested hop count. The planner emits
+  structured `PartialRouteWarning` values; `render_text.py` owns the
+  user-facing warning wording and diagnostics are preserved.
+
+**Verified:** fixed-terminal Sol -> Lave at 3 hops now matches the legacy
+route profit exactly while remaining materially faster:
+
+```text
+new planner:  7,838,971 cr, ~32.5s real
+legacy --old: 7,838,971 cr, ~46.4s real
+```
+
+The quality trace showed the previous lower-profit result was not a cargo,
+price, scoring, SQL-envelope, per-parent expansion, or final-hop mismatch.
+The legacy-quality route produced the same total through the new helpers as
+through `--old`; it had previously died only at hop-1 global frontier trim
+(`Sol/Shen -> Charunder`, per-parent rank 14, global rank 316). The
+destination-system diversity trim recovered the route without widening the
+beam.
+
+A controlled partial-route probe exercised the three warning branches:
+expansion-layer collapse after a completed hop, final-hop collapse with no
+reachable destination, and final-hop collapse with reachable destination but
+no viable trade.
+
+**Deferred (not cut):** omitted `--from`, both endpoints omitted, `--via`,
+`--avoid`, `--towards`, `--loop`, `--unique`, `--loop-interval`, `--shorten`,
+`--routes` top-N, `--max-routes`, `--prune-score`, `--prune-hops`,
+`--start-jumps`, and `--end-jumps`.
+
+Full record: `docs/Planner/eighth_slice_completion_report.md`.
+
+---
+
 ## Slice 6 — Multi-Jump Per-Hop Reachability (complete)
 
 `--jumps-per >= 2` works for every trade run shape — fixed endpoints,

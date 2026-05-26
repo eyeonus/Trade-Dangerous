@@ -95,7 +95,17 @@ Each completed slice has an implementation plan (what needs to be done) and a co
 | [seventh_slice_implementation_plan.md](seventh_slice_implementation_plan.md) | Design plan for Slice 7: conservative 25% safe cap on Metals/Minerals destination demand, no discounted-price modelling, EDCD/FDevIDs category as source of truth, deferred `--bulk-tax-mode` option. Supporting research in [mined_tax.md](mined_tax.md) / [mined_tax.pdf](mined_tax.pdf). |
 | [seventh_slice_completion_report.md](seventh_slice_completion_report.md) | Proof of completion: sensitivity resolution via `Category.name`, DTO fields on `TradeCandidate` / `CargoLine`, all three fetch paths wired (fixed-pair, open-ended, unanchored), dialect-portable `cast(... * 0.25, Integer)` for the SQL floor, hop-level renderer note. Verification at Prince Prominence -> Evangelisti showed Gold and Beryllium cap-binding at exact `floor(demand / 4)` values. |
 
+### Slice 8 — Vanilla Multi-Hop from Known Origin (Complete)
+**Known-origin multi-hop planning for `--from X --hops N` and fixed-terminal `--from X --to Y --hops N`.**
+
+| Document | Content |
+|----------|---------|
+| [eighth_slice_implementation_plan.md](eighth_slice_implementation_plan.md) | Design plan for Slice 8: vanilla multi-hop from a known origin, fixed-terminal route shaping, frontier and expansion widths, SQL-side destination envelope pruning, destination-system frontier diversity, deferred advanced route modifiers. |
+| [eighth_slice_completion_report.md](eighth_slice_completion_report.md) | Proof of completion: known-origin multi-hop implemented, fixed-terminal Sol -> Lave matches legacy profit while remaining faster, SQL envelope pruning restored performance, system-diverse frontier trim restored route quality, partial-route warning branches probed. |
+
 ---
+
+## Reference and Technical Notes
 
 ## Reference and Technical Notes
 
