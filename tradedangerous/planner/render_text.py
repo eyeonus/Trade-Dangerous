@@ -61,38 +61,72 @@ def _render_warning(warning: PartialRouteWarning) -> str:
 
 
 def _render_route(route: PlannedRoute) -> list[str]:
+    """Render one route: a header block followed by one block per hop.
+
+    The header carries the figures that scope the route as a whole — endpoints,
+    starting credits, total profit, final credits, and the practical score when
+    it differs from raw profit. Per-hop blocks repeat the same shape so a
+    multi-hop route is readable straight through. Cumulative profit and the
+    running credit balance are tracked here and threaded into each hop.
+    """
+
     lines = [
+        "Route:",
         (
-            f"{route.stations[0].dbname} -> "
+            f"  {route.stations[0].dbname} -> "
             f"{route.stations[-1].dbname}"
         ),
-        f"Total gain: {route.total_raw_profit:n} cr",
-        f"Final credits: {route.ending_credits:n} cr",
+        f"  Starting credits: {route.starting_credits:n} cr",
+        f"  Total route profit: {route.total_raw_profit:n} cr",
+        f"  Final credits: {route.ending_credits:n} cr",
     ]
 
     if route.total_practical_score != route.total_raw_profit:
-        lines.append(f"Practical score: {route.total_practical_score:,.0f}")
+        lines.append(
+            f"  Practical score: {route.total_practical_score:,.0f}"
+        )
 
+    cumulative_profit = 0
     for hop_index, hop in enumerate(route.hops, start=1):
         lines.append("")
-        lines.extend(_render_hop(hop, hop_index))
+        lines.extend(
+            _render_hop(
+                hop,
+                hop_index,
+                route.starting_credits,
+                cumulative_profit,
+            )
+        )
+        cumulative_profit += hop.raw_profit
 
     return lines
 
 
-def _render_hop(hop: PlannedHop, hop_index: int) -> list[str]:
+def _render_hop(
+    hop: PlannedHop,
+    hop_index: int,
+    starting_credits: int,
+    cumulative_before: int,
+) -> list[str]:
+    """Render one hop: From, Buy, Travel, To, Sell, Hop totals.
+
+    The blocks read top to bottom in the order a Cmdr would actually fly the
+    hop. starting_credits and cumulative_before are passed in so the hop
+    totals block can show the post-sale credit balance — raw, not margin-
+    adjusted, since the displayed figure should match what shows up in the
+    in-game balance.
+    """
+
     lines = [
         f"Hop {hop_index}:",
-        f"  Buy at {hop.source_station.dbname}",
+        f"  From: {hop.source_station.dbname}",
+        "",
+        "  Buy:",
     ]
-
     for line in hop.cargo.lines:
         lines.append(
-            "    "
-            f"{line.quantity:n} x {line.item_name} "
-            f"@ {line.buy_price:n} cr "
-            f"-> {line.sell_price:n} cr "
-            f"(+{line.total_profit:n} cr)"
+            f"    {line.quantity:n} t {line.item_name} "
+            f"@ {line.buy_price:n} cr/t = {line.total_cost:n} cr"
         )
 
     if any(
@@ -105,8 +139,8 @@ def _render_hop(hop: PlannedHop, hop_index: int) -> list[str]:
             "to avoid the bulk-sale price reduction."
         )
 
-    lines.append(f"  Fly to {hop.destination_station.dbname}")
-
+    lines.append("")
+    lines.append("  Travel:")
     if hop.jump_path.is_same_system:
         lines.append("    Same-system supercruise")
     else:
@@ -116,7 +150,34 @@ def _render_hop(hop: PlannedHop, hop_index: int) -> list[str]:
             f"{hop.jump_path.distance_ly:.2f} ly: {path}"
         )
 
-    lines.append(f"  Sell cargo for {hop.raw_profit:n} cr gain")
+    lines.append("")
+    lines.append(f"  To: {hop.destination_station.dbname}")
+    lines.append("")
+    lines.append("  Sell:")
+    total_sale_value = 0
+    for line in hop.cargo.lines:
+        sale_value = line.quantity * line.sell_price
+        total_sale_value += sale_value
+        lines.append(
+            f"    {line.quantity:n} t {line.item_name} "
+            f"@ {line.sell_price:n} cr/t = {sale_value:n} cr"
+        )
+        lines.append(
+            f"      Profit: {line.profit_per_unit:n} cr/t, "
+            f"{line.total_profit:n} cr total"
+        )
+
+    cumulative_after = cumulative_before + hop.raw_profit
+    credits_after_sale = starting_credits + cumulative_after
+
+    lines.append("")
+    lines.append("  Hop totals:")
+    lines.append(f"    Buy cost: {hop.cargo.total_cost:n} cr")
+    lines.append(f"    Sale value: {total_sale_value:n} cr")
+    lines.append(f"    Hop profit: {hop.raw_profit:n} cr")
+    lines.append(f"    Cumulative profit: {cumulative_after:n} cr")
+    lines.append(f"    Credits after sale: {credits_after_sale:n} cr")
+
     return lines
 
 
