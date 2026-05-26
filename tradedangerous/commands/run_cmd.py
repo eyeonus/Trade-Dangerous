@@ -26,7 +26,7 @@ from tradedangerous.planner.failures import (
     UnknownPlace,
 )
 from tradedangerous.planner.render_text import render_run_result
-from tradedangerous.planner.run_onehop import plan_route
+from tradedangerous.planner.run_route import plan_route
 from tradedangerous.planner.run_request import run_request_from_cmdenv
 from tradedangerous.planner.run_result import RunResult
 from tradedangerous.planner.validation import validate_run_request

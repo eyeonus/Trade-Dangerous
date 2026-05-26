@@ -770,8 +770,51 @@ def _plan_multi_hop(
             market_query_ms += layer_elapsed_ms
 
             if not next_frontier:
-                # Step 5 will replace this raise with partial-route handling
-                # so completed hops are not discarded.
+                # Record the collapsed layer as well as successful layers.
+                # Partial-route diagnostics should show where the search got
+                # stuck, not merely the last layer that produced survivors.
+                layer_stats.append(
+                    run_result.LayerStats(
+                        layer_index=hop_layer,
+                        frontier_size_in=layer_frontier_in,
+                        expansion_calls=layer_expansion_calls,
+                        children_generated=layer_children_generated,
+                        children_kept=0,
+                        elapsed_ms=layer_elapsed_ms,
+                    )
+                )
+                
+                # No child survived this expansion layer. On the first layer
+                # that means no trade hop was ever completed, so this is still
+                # the normal no-result failure. On later layers, the current
+                # frontier already represents useful completed hops; return the
+                # best partial route with a structured warning instead of
+                # discarding that work through PlannerResultError.
+                partial = _best_partial_node(frontier)
+                if partial is not None:
+                    route = _reconstruct_route(partial, request)
+                    warning = run_result.PartialRouteWarning(
+                        completed_hops=partial.hop_index,
+                        requested_hops=request.hops,
+                        phase="expansion",
+                        reason="no_viable_continuation",
+                    )
+                    return _multihop_result(
+                        request=request,
+                        route=route,
+                        started=started,
+                        validation_ms=validation_ms,
+                        resolution_ms=resolution_ms,
+                        station_filter_ms=station_filter_ms,
+                        market_query_ms=market_query_ms,
+                        candidate_trade_count=candidate_trade_count,
+                        frontier_widths=frontier_widths,
+                        expansions_examined=expansions_examined,
+                        layer_stats=layer_stats,
+                        expansion_stats=expansion_stats,
+                        final_hop_stats=final_hop_stats,
+                        warning=warning,
+                    )
                 raise failures.NoProfitableTrades(
                     "No viable continuation was found for the requested "
                     "route length."
@@ -862,10 +905,44 @@ def _plan_multi_hop(
             final_hop_stats.elapsed_ms = final_hop_elapsed_ms
 
         if not finalists:
-            # Fixed --to: most likely no surviving frontier node can
-            # actually reach Y under the jump settings; without --to it
-            # is the broader no-profitable-trade case. Step 5 will refine
-            # this branch into partial-route output where it makes sense.
+            # The final-hop collapse is the canonical partial-route case:
+            # the route reached hop N-1 but could not complete the requested
+            # terminal hop. Preserve the best completed frontier node as a
+            # route and let the renderer explain whether the final hop failed
+            # because no destination was reachable or because no viable trade
+            # survived. If the frontier somehow contains no completed trade,
+            # keep the ordinary no-result failures below.
+            partial = _best_partial_node(frontier)
+            if partial is not None:
+                reason = "no_viable_trade"
+                if (
+                    final_hop_stats is not None
+                    and final_hop_stats.nodes_with_reachable_destination == 0
+                ):
+                    reason = "no_reachable_route"
+                route = _reconstruct_route(partial, request)
+                warning = run_result.PartialRouteWarning(
+                    completed_hops=partial.hop_index,
+                    requested_hops=request.hops,
+                    phase="final",
+                    reason=reason,
+                )
+                return _multihop_result(
+                    request=request,
+                    route=route,
+                    started=started,
+                    validation_ms=validation_ms,
+                    resolution_ms=resolution_ms,
+                    station_filter_ms=station_filter_ms,
+                    market_query_ms=market_query_ms,
+                    candidate_trade_count=candidate_trade_count,
+                    frontier_widths=frontier_widths,
+                    expansions_examined=expansions_examined,
+                    layer_stats=layer_stats,
+                    expansion_stats=expansion_stats,
+                    final_hop_stats=final_hop_stats,
+                    warning=warning,
+                )
             if to_system_xyz is not None:
                 raise failures.NoReachableRoute(
                     "No frontier station could complete the route to the "
@@ -884,6 +961,46 @@ def _plan_multi_hop(
     finally:
         data_gateway.release_reachable_memo(session, reachable_memo)
 
+    return _multihop_result(
+        request=request,
+        route=route,
+        started=started,
+        validation_ms=validation_ms,
+        resolution_ms=resolution_ms,
+        station_filter_ms=station_filter_ms,
+        market_query_ms=market_query_ms,
+        candidate_trade_count=candidate_trade_count,
+        frontier_widths=frontier_widths,
+        expansions_examined=expansions_examined,
+        layer_stats=layer_stats,
+        expansion_stats=expansion_stats,
+        final_hop_stats=final_hop_stats,
+    )
+
+
+def _multihop_result(
+    *,
+    request: RunRequest,
+    route: run_result.PlannedRoute,
+    started: float,
+    validation_ms: float,
+    resolution_ms: float,
+    station_filter_ms: float,
+    market_query_ms: float,
+    candidate_trade_count: int,
+    frontier_widths: list[int],
+    expansions_examined: int,
+    layer_stats: list[run_result.LayerStats],
+    expansion_stats: run_result.ExpansionStats,
+    final_hop_stats: run_result.FinalHopStats | None,
+    warning: run_result.PartialRouteWarning | None = None,
+) -> run_result.RunResult:
+    """Build a multi-hop RunResult with diagnostics and optional warning."""
+    
+    # Complete and partial multi-hop routes use the same diagnostics builder.
+    # Partial-route handling should only change the warning payload, not lose
+    # the search counters that explain how far the frontier progressed.
+    #
     # market_query_ms here is the whole forward-expansion cost (fetch,
     # cargo, scoring, jump-path lookup). The richer breakdown lives in
     # multihop_layers / multihop_expansion_stats / multihop_final_hop_stats
@@ -902,7 +1019,34 @@ def _plan_multi_hop(
         multihop_expansion_stats=expansion_stats,
         multihop_final_hop_stats=final_hop_stats,
     )
-    return run_result.RunResult(routes=(route,), diagnostics=diagnostics)
+    
+    # The planner emits structured facts; renderer wording belongs in
+    # render_text.py so CLI output can change without rewriting planner state.
+    warnings = () if warning is None else (warning,)
+    return run_result.RunResult(
+        routes=(route,),
+        diagnostics=diagnostics,
+        warnings=warnings,
+    )
+
+
+def _best_partial_node(frontier: list[_FrontierNode]) -> _FrontierNode | None:
+    """Return the best completed partial route in a frontier, if any.
+    
+    Origin nodes have hop_index 0 and cannot be rendered as useful partial
+    trade routes: there is no cargo, no destination, and no completed hop to
+    show. Once hop_index is at least 1, the node has a complete parent chain
+    and _reconstruct_route() can turn it into a normal PlannedRoute without
+    re-running any search work.
+    """
+    
+    completed = [node for node in frontier if node.hop_index > 0]
+    if not completed:
+        return None
+    return max(
+        completed,
+        key=lambda node: node.accumulated_practical_score,
+    )
 
 
 def _make_child_node(

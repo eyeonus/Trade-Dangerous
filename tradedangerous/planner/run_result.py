@@ -235,7 +235,22 @@ class PlannerDiagnostics:
 
 
 @dataclass(frozen=True, slots=True)
+class PartialRouteWarning:
+    """Structured warning for a rendered partial multi-hop route.
+    
+    The planner emits facts only; the text renderer owns user-facing wording.
+    phase is currently "expansion" or "final". reason is currently one of
+    "no_viable_continuation", "no_reachable_route", or "no_viable_trade".
+    """
+    
+    completed_hops: int
+    requested_hops: int
+    phase: str
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
 class RunResult:
     routes: tuple[PlannedRoute, ...]
     diagnostics: PlannerDiagnostics = field(default_factory=PlannerDiagnostics)
-    warnings: tuple[str, ...] = ()
+    warnings: tuple[PartialRouteWarning, ...] = ()

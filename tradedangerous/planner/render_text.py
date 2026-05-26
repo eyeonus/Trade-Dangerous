@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from .run_result import PlannedHop, PlannedRoute, PlannerDiagnostics, RunResult
+from .run_result import (
+    PartialRouteWarning,
+    PlannedHop,
+    PlannedRoute,
+    PlannerDiagnostics,
+    RunResult,
+)
 
 
 def render_run_result(result: RunResult) -> str:
@@ -13,7 +19,7 @@ def render_run_result(result: RunResult) -> str:
     # Surface planner warnings (e.g. partial multi-hop routes) before the route
     # block so the reader sees them before reading the trade plan.
     for warning in result.warnings:
-        lines.append(f"WARNING: {warning}")
+        lines.append(f"WARNING: {_render_warning(warning)}")
     if result.warnings and result.routes:
         lines.append("")
 
@@ -32,6 +38,26 @@ def render_run_result(result: RunResult) -> str:
     lines.extend(_render_multihop_diagnostics(result.diagnostics))
 
     return "\n".join(lines)
+
+
+def _render_warning(warning: PartialRouteWarning) -> str:
+    """Render structured planner warnings as user-facing text."""
+
+    if warning.phase == "final":
+        if warning.reason == "no_reachable_route":
+            detail = "no reachable final hop was found"
+        else:
+            detail = "no viable final hop was found"
+    else:
+        detail = (
+            f"no viable continuation was found after hop "
+            f"{warning.completed_hops}"
+        )
+
+    return (
+        f"Requested {warning.requested_hops} hops, but {detail}. "
+        f"Showing the best {warning.completed_hops}-hop partial route found."
+    )
 
 
 def _render_route(route: PlannedRoute) -> list[str]:
