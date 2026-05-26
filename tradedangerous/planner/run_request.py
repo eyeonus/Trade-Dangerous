@@ -5,6 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
+# Default cap on absolute commodity prices for trade run. Preserves observed
+# legitimate non-carrier high-margin trades while removing obvious multi-
+# million carrier-fiction rows. --max-price 0 disables the filter entirely.
+DEFAULT_MAX_PRICE = 1_500_000
+
+
 @dataclass(frozen=True, slots=True)
 class RunRequest:
     """Parsed trade run inputs, independent of command-layer objects."""
@@ -22,6 +28,7 @@ class RunRequest:
     age_days: float | None = None
     min_gain_per_ton: int = 1
     max_gain_per_ton: int = 0
+    max_price: int = DEFAULT_MAX_PRICE
     min_supply: int | None = None
     min_demand: int | None = None
     pad_size: str | None = None
@@ -75,6 +82,7 @@ def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
         age_days=getattr(cmdenv, "maxAge", None),
         min_gain_per_ton=getattr(cmdenv, "minGainPerTon", 1),
         max_gain_per_ton=getattr(cmdenv, "maxGainPerTon", 0),
+        max_price=_resolve_max_price(getattr(cmdenv, "maxPrice", None)),
         min_supply=getattr(cmdenv, "supply", None),
         min_demand=getattr(cmdenv, "demand", None),
         pad_size=_normalise_pad_size(getattr(cmdenv, "padSize", None)),
@@ -148,6 +156,19 @@ def _resolve_jumps_per_hop(
     ):
         return _DEFAULT_JUMPS_PER_HOP_SHORT_RANGE
     return _DEFAULT_JUMPS_PER_HOP_LONG_RANGE
+
+
+def _resolve_max_price(raw_value: int | None) -> int:
+    """Apply the default only when --max-price was omitted.
+
+    An explicit --max-price 0 is the user's "disable absolute price
+    filtering" signal and must pass through untouched. The default is
+    applied only when the flag was omitted altogether (raw_value is None).
+    """
+
+    if raw_value is None:
+        return DEFAULT_MAX_PRICE
+    return raw_value
 
 
 def _normalise_state_filter(value: object) -> tuple[str, ...]:

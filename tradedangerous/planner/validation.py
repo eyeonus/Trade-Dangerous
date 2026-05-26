@@ -183,6 +183,14 @@ def validate_run_request(request: RunRequest) -> None:
             option_name="--max-gain-per-ton",
         )
 
+    # --max-price is the absolute commodity-price cap. Zero is allowed and
+    # means "disable the cap"; negative values are rejected.
+    if request.max_price < 0:
+        raise InvalidNumericOption(
+            "--max-price must not be negative.",
+            option_name="--max-price",
+        )
+
     if request.no_planet and request.planetary_filter:
         raise ContradictoryOptions(
             "--no-planet cannot be combined with --planetary.",

@@ -203,6 +203,19 @@ switches = [
         type = "credits",
         default = 0
     ),
+    ParseArgument('--max-price', '--mp',
+        # Parser default is None so the new planner can distinguish
+        # "omitted" (apply the configured default) from "explicit 0"
+        # (disable the cap). The legacy --old branch maps None to 0
+        # to keep its historical no-cap behaviour.
+        help = (
+            'Maximum commodity market price to use (cr/t). '
+            'Default: 1,500,000. Use 0 to disable.'
+        ),
+        dest = 'maxPrice',
+        type = "credits",
+        default = None,
+    ),
     ParseArgument('--unique',
         help = 'Only visit each station once.',
         action = 'store_true',
@@ -1507,6 +1520,14 @@ def run(results, cmdenv, tdb):
     # arithmetic and comparison sites that expect an int.
     if cmdenv.maxJumpsPer is None:
         cmdenv.maxJumpsPer = 1
+
+    # Restore the legacy --old planner's historical no-cap behaviour for
+    # --max-price. The argparse default is now None so the new planner can
+    # tell omitted (apply the configured default) from explicit 0 (disabled).
+    # The legacy path is unchanged by this slice; 0 means the absolute price
+    # cap is not applied.
+    if cmdenv.maxPrice is None:
+        cmdenv.maxPrice = 0
 
     cmdenv.DEBUG1("loading trades")
 

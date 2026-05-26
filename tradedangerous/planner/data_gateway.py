@@ -552,6 +552,11 @@ def fetch_station_pair_candidates(
     if cutoff is not None:
         filters.append(source_item.modified >= cutoff)
         filters.append(destination_item.modified >= cutoff)
+    if request.max_price > 0:
+        # Absolute commodity-price cap. Applied row-local on both sides so
+        # outlier supply or demand prices cannot leak into candidate rows.
+        filters.append(source_item.supply_price <= request.max_price)
+        filters.append(destination_item.demand_price <= request.max_price)
 
     stmt = (
         select(
@@ -634,6 +639,11 @@ def _classify_zero_result_failure(
         source_filters.append(StationItem.supply_units >= request.min_supply)
     if cutoff is not None:
         source_filters.append(StationItem.modified >= cutoff)
+    if request.max_price > 0:
+        # Apply the cap to the failure probe too: a station whose only rows
+        # are above the cap genuinely has no usable selling data under the
+        # current settings, and the probe must report it consistently.
+        source_filters.append(StationItem.supply_price <= request.max_price)
 
     if not session.execute(
         select(StationItem.item_id).where(and_(*source_filters)).limit(1)
@@ -653,6 +663,13 @@ def _classify_zero_result_failure(
         destination_filters.append(StationItem.demand_units >= request.min_demand)
     if cutoff is not None:
         destination_filters.append(StationItem.modified >= cutoff)
+    if request.max_price > 0:
+        # Mirror the supply-side probe: a destination whose only buy rows
+        # are above the cap has no usable buying data under the user's
+        # settings.
+        destination_filters.append(
+            StationItem.demand_price <= request.max_price
+        )
 
     if not session.execute(
         select(StationItem.item_id).where(and_(*destination_filters)).limit(1)
@@ -761,6 +778,10 @@ def fetch_open_ended_trade_candidates(
             supply_filters.append(StationItem.supply_units >= request.min_supply)
         if cutoff is not None:
             supply_filters.append(StationItem.modified >= cutoff)
+        if request.max_price > 0:
+            supply_filters.append(
+                StationItem.supply_price <= request.max_price
+            )
 
         supply_rows = session.execute(
             select(
@@ -783,6 +804,10 @@ def fetch_open_ended_trade_candidates(
             demand_filters.append(StationItem.demand_units >= request.min_demand)
         if cutoff is not None:
             demand_filters.append(StationItem.modified >= cutoff)
+        if request.max_price > 0:
+            demand_filters.append(
+                StationItem.demand_price <= request.max_price
+            )
 
         if not terminal_hop:
             # Intermediate frontier nodes must also be viable onward sources;
@@ -799,6 +824,12 @@ def fetch_open_ended_trade_candidates(
                 onward_filters.append(onward_supply.supply_units >= request.min_supply)
             if cutoff is not None:
                 onward_filters.append(onward_supply.modified >= cutoff)
+            if request.max_price > 0:
+                # An onward-source station with no rows under the cap is
+                # not a usable intermediate hop under the user's settings.
+                onward_filters.append(
+                    onward_supply.supply_price <= request.max_price
+                )
             demand_filters.append(
                 select(literal(1)).where(and_(*onward_filters)).exists()
             )
@@ -1073,7 +1104,7 @@ def fetch_unanchored_trade_candidates(
     pairs_accepted = 0
     cap_hits = 0
     try:
-        item_bounds, item_names = _unanchored_item_bounds(session)
+        item_bounds, item_names = _unanchored_item_bounds(session, request)
 
         candidates: list[TradeCandidate] = []
         best_total_profit = 0
@@ -1162,6 +1193,7 @@ def _drop_unanchored_temps(connection, supply_temp, demand_temp) -> None:
 
 def _unanchored_item_bounds(
     session: Session,
+    request: RunRequest,
 ) -> tuple[list[tuple[int, int]], dict[int, str]]:
     """Return per-commodity profit-per-unit bounds, highest first, with names.
 
@@ -1172,13 +1204,25 @@ def _unanchored_item_bounds(
     per-commodity reductions apply the precise filters. The loose form keeps
     this a pair of covering-index aggregates over the partial supply/demand
     indexes.
+
+    --max-price tightens the bound when active: rows above the cap cannot
+    produce candidates downstream, so excluding them from the min/max
+    aggregates is still admissible (the result remains an upper bound on
+    achievable profit-per-unit) while letting the walk's early-cutoff fire
+    sooner on clean data.
     """
+
+    supply_filters = [StationItem.supply_price > 0]
+    demand_filters = [StationItem.demand_price > 0]
+    if request.max_price > 0:
+        supply_filters.append(StationItem.supply_price <= request.max_price)
+        demand_filters.append(StationItem.demand_price <= request.max_price)
 
     min_supply = {
         int(item_id): int(price)
         for item_id, price in session.execute(
             select(StationItem.item_id, func.min(StationItem.supply_price))
-            .where(StationItem.supply_price > 0)
+            .where(and_(*supply_filters))
             .group_by(StationItem.item_id)
         )
     }
@@ -1186,7 +1230,7 @@ def _unanchored_item_bounds(
         int(item_id): int(price)
         for item_id, price in session.execute(
             select(StationItem.item_id, func.max(StationItem.demand_price))
-            .where(StationItem.demand_price > 0)
+            .where(and_(*demand_filters))
             .group_by(StationItem.item_id)
         )
     }
@@ -1237,6 +1281,8 @@ def _reduce_supply_by_system(
         filters.append(StationItem.supply_units >= request.min_supply)
     if cutoff is not None:
         filters.append(StationItem.modified >= cutoff)
+    if request.max_price > 0:
+        filters.append(StationItem.supply_price <= request.max_price)
 
     ranked = (
         select(
@@ -1313,6 +1359,8 @@ def _reduce_demand_by_system(
         filters.append(StationItem.demand_units >= request.min_demand)
     if cutoff is not None:
         filters.append(StationItem.modified >= cutoff)
+    if request.max_price > 0:
+        filters.append(StationItem.demand_price <= request.max_price)
 
     # cast(demand * 0.25 AS INTEGER) is the dialect-portable floor: both
     # SQLite and MariaDB return float for the multiplication and truncate
