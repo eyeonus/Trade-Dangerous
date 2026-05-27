@@ -433,11 +433,13 @@ builder. N=0 and Slice 1–5 N=1 shapes re-run; behaviour unchanged.
 **Performance:** the unanchored multi-jump search is the slow shape
 by nature, gated by the existing confirmation prompt. With realistic
 filters (`--age`, `--pad-size`, `--planetary`, `--fc N`) the run
-completes in roughly 2–3 minutes on the live data; without filters it
-is interactively prohibitive on dense space. N=1 unanchored is faster
-after this slice than before (probe P4: 132 s → 14.6 s at the dense
-profile), because C3 removes the cross-join reach map. Anchored
-multi-jump shapes return within seconds.
+completes in ~2m 33s wall-clock on the live data (measured
+2026-05-27 post the unanchored slow-case remediation — see the
+Slice 9 entry); without filters it remains interactively prohibitive
+on dense space. N=1 unanchored is faster after this slice than
+before (probe P4: 132 s → 14.6 s at the dense profile), because C3
+removes the cross-join reach map. Anchored multi-jump shapes return
+within seconds.
 
 **Deferred (not cut):** multi-hop routing (`--hops > 1`) — the route
 frontier, pruning, and route shaping; the larger body of work still
@@ -596,15 +598,27 @@ both-sides decision in light of the symmetry.
 
 **Deferred (not cut):**
 
-- **Performance Re-baseline of the unanchored shape under
-  `--max-price` default.** The slice plan called for re-measuring
-  unanchored wall-clock so the Slice 6 "early-cutoff acceleration
-  is not representative of clean-data performance" caveat could be
-  updated with honest clean-data numbers. Deferred to the multi-hop
-  follow-up that revisits Slice 8: that work is likely to touch
-  shared helpers and disturb wall-clock anyway, so measuring once
-  afterwards saves the double-record. The Slice 6 caveat stays
-  accurate in the meantime.
+- **Unanchored slow-case re-baseline — investigated and remediated.**
+  The Slice 9 plan deferred re-measuring unanchored wall-clock to
+  the multi-hop follow-up. When the deferred re-baseline was
+  attempted (2026-05-27) the run did not complete in usable time
+  even under realistic filters, escalating the deferral to a
+  root-cause investigation. Two SQLite cost-model failures were
+  proven against the live database via probe v2-v6: an empty-temp
+  pathology on `_match_via_on_demand_reach` (~5 minutes per empty
+  walk because the planner runs a `System x System` cross-join
+  before discovering zero matches), and a bad join order on
+  non-empty temps (missing temp-table statistics anchor the join
+  on `System` instead of the ~1-3K-row temp tables). Remediation
+  in commit `14d1222f`: empty-temp guard plus `ANALYZE` on both
+  temp tables before each match. Both pieces are required —
+  `ANALYZE` alone does not fix the empty case (probe v6: 256 s on
+  walk 1 with empty temps, post-`ANALYZE`). Measured wall-clock
+  post-fix: ~2m 33s on the live data under `--age 3 --fc N
+  --planetary N --pad-size L --jumps-per 3 --ly-per 30`, with and
+  without the default `--max-price` cap (identical route in both
+  cases). Full investigation record:
+  `docs/Planner/unanchored_slow_handover.md`.
 - **Fixed-station multi-hop route quality — investigated and closed.**
   The smoke-test divergence on `--from "Sol/Abraham Lincoln" --to
   "Lave/Lave Station" --hops 3` (1,237,504 cr new vs 3,045,686 cr
@@ -779,17 +793,20 @@ Under discussion between Tromador and eyeonus: a default cap on
 extremes while leaving legitimate high-margin trades visible. Out of scope
 for Slice 6; logged here so the surfaced case isn't forgotten.
 
-Performance side-effect — the noise is not only an output-cleanliness
+Performance side-effect — the noise was not only an output-cleanliness
 issue. `fetch_unanchored_trade_candidates` walks commodities in
 descending profit-per-unit bound and stops when
 `capacity * profit_bound <= best_total_profit`. A single carrier-noise
 trade sets `best_total_profit` to an astronomical value on the first
 commodity, and every legitimate commodity afterwards gets pruned.
-Wall-clock therefore *appears* fast under noise and gets dramatically
-slower with `--fc N` or any other filter that removes the noise — the
-slow case is the real one. The early-cutoff acceleration measured
-during Slice 6 validation runs is not representative of clean-data
-performance.
+Wall-clock therefore *appeared* fast under noise and got dramatically
+slower with `--fc N` or any other filter that removed the noise — the
+slow case was the real one. That early-cutoff masking concealed
+the underlying SQLite cost-model failures in the match step
+(empty-temp pathology + missing temp-table statistics), which were
+diagnosed and remediated 2026-05-27 — see the Slice 9 entry and
+`docs/Planner/unanchored_slow_handover.md`. Post-remediation
+clean-data wall-clock is ~2m 33s under realistic filters.
 
 ### No separate `NoAffordableCargo` diagnosis for `trade run`
 

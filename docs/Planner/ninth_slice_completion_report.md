@@ -212,30 +212,64 @@ Committed as `a0c22484`.
 
 ## Deferrals
 
-### Performance Re-baseline (out of slice)
+### Performance Re-baseline (out of slice) — investigated and remediated
 
 The slice plan called for re-measuring unanchored wall-clock under
 `--max-price` default so the Slice 6 caveat — "early-cutoff
 acceleration is not representative of clean-data performance" —
-could be updated with honest numbers. The three commands were:
+could be updated with honest numbers. Originally deferred to the
+multi-hop follow-up that revisits Slice 8. When the re-baseline
+was attempted (2026-05-27) the run did not complete in usable time
+even under realistic filters, escalating to a root-cause
+investigation. Two SQLite cost-model failures were proven against
+the live database via probes v2–v6:
+
+- **Empty-temp pathology.** SQLite picks a query plan for the
+  match step that drives a `System x System` cross-join and
+  treats the run-scoped temp tables (`td_unanchored_supply`,
+  `td_unanchored_demand`) as inner probes. When either temp table
+  has no rows — the norm for carrier-only commodities at the top
+  of the bound list under `--fc N` — the join still evaluates
+  millions of spatial pairs before discovering zero matches. ~5
+  minutes per empty walk on the live data.
+- **Missing temp-table statistics.** Even on non-empty temps,
+  SQLite picks the same System-driven plan because the temp
+  tables have no row-count stats. The cost model anchors on
+  `System` (~80K rows, has stats from database build) and inverts
+  the join order against the ~1-3K-row temp tables.
+
+Remediation in commit `14d1222f`: empty-temp guard
+(`_temp_has_rows`) before `_match_via_on_demand_reach`, plus
+`ANALYZE td_unanchored_supply; ANALYZE td_unanchored_demand;`
+after each per-commodity reduction. Both pieces are required —
+`ANALYZE` alone does not fix the empty case (writes nothing
+useful to `sqlite_stat1` for an empty table; same bad plan
+persists, proven by probe v6: 256 s on walk 1 with empty temps
+post-`ANALYZE`).
+
+Measured wall-clock post-remediation, under realistic filters
+(`--age 3 --fc N --planetary N --pad-size L --jumps-per 3
+--ly-per 30 --capacity 720 --credits 200M`):
 
 ```text
-trade run --capacity 720 --credits 200000000 --hops 1 --jumps-per 2 --ly-per 30 --age 1
-trade run --capacity 720 --credits 200000000 --hops 1 --jumps-per 2 --ly-per 30 --age 1 --fc N
-trade run --capacity 720 --credits 200000000 --hops 1 --jumps-per 2 --ly-per 30 --age 1 --max-price 0
+--max-price 0               : 2m 33.228s real
+default --max-price (1.5M)  : 2m 33.839s real
 ```
 
-Deferred to the multi-hop follow-up that revisits Slice 8. That work
-is likely to touch shared helpers — `_reachable_station_query`, the
-temp-table memo, possibly the candidate-fetch shape — and any of
-those would disturb unanchored wall-clock too. Recording timings now
-and re-recording them after the multi-hop changes would double the
-work for a snapshot already known to be provisional. The Slice 6
-caveat remains accurate until the re-baseline is run.
+Identical route in both cases (Bhattra/Levinson Orbital →
+Fengiri/Mille Gateway, 35,742,249 cr profit, 469 t Gold + 251 t
+Silver, 2 jumps over 51.41 ly).
 
-### Fixed-station multi-hop route quality (Slice 8 follow-up)
+The `--age 1` shape from the original three-command re-baseline
+was superseded: the local database's freshest entry is ~2 days
+old, so `--age 1` would not exercise representative data.
 
-Smoke testing of the multi-hop Part B output exposed a regression on
+Full investigation record:
+`docs/Planner/unanchored_slow_handover.md`.
+
+### Fixed-station multi-hop route quality (Slice 8 follow-up) — investigated and closed
+
+Smoke testing of the multi-hop Part B output exposed a divergence on
 the fixed-station shape that Slice 8 did not verify:
 
 ```text
@@ -247,43 +281,30 @@ new planner:  1,237,504 cr
 legacy --old: 3,045,686 cr
 ```
 
-Confirmed not caused by `--max-price`: the same command with
-`--max-price 0` returns the identical 1,237,504 cr figure.
+The handover (`docs/Planner/slice_8_followup_handover.md`)
+hypothesised beam-search myopia. Investigation (2026-05-26,
+commit `f360da46`) ruled that out and traced the divergence to a
+phantom demand row at LP 855-34/Acton Port: `supply_units = 2323,
+demand_units = 1` — the dormant buy side of a stocked commodity.
+Slice 3's `_MIN_MEANINGFUL_DEMAND = 2` correctly rejects the row,
+so the new planner declines the trade; legacy `--old` does not
+filter on the demand floor and computes its 3,045,686 cr total
+against an in-game-unfillable Hop 1 sale.
 
-Slice 8 verified its destination-system diversity trim on `--from
-"Sol"` (system-expanded origin), at 7,838,971 cr matching `--old`.
-The fixed-station shape was not in that verification.
-
-The mechanism is beam-search myopia rather than beam concentration.
-Slice 8 addressed concentration: near-duplicate stations in the same
-destination system crowding the top-50 frontier slots, fixed by
-keeping at most one node per destination system in the global trim.
-With a pinned origin, the Hop 1 frontier loses the system-expansion
-diversity the Slice 8 fix relied on. The diagnostics from the
-regression run confirm the shape:
+Closely comparable shapes confirm the new planner is healthy:
 
 ```text
-Layer 1: 1 in, 1 calls, 50 children, kept 36
-Layer 2: 36 in, 36 calls, 649 children, kept 50
+trade run --from "Sol" --to "Lave/Lave Station" --hops 3
+  new:   5,059,696 cr   (3.1% ahead of --old)
+  --old: 4,907,264 cr
+
+trade run --from "Sol" --to "LP 855-34/Acton Port" --hops 1
+  both planners: 882,176 cr
 ```
 
-Either the LP 855-34 system (whose Acton Port is the route's
-critical intermediate in the `--old` answer) does not survive Hop 1's
-per-hop profit ranking into the top 36 unique-system frontier nodes,
-or it survives but the LP 855-34 -> Delkar transition does not
-survive Layer 2's accumulated-score trim of the 649 generated
-children to the kept 50.
-
-Either way, beam scoring by accumulated per-hop profit favours
-myopic destinations: a moderate Hop 1 that opens excellent onward
-trades is dropped in favour of a stronger Hop 1 that does not lead
-anywhere as profitable. The Slice 8 fix does not help here because
-the problem is search shape, not duplication.
-
-To pick up as the next piece of work — revisiting Slice 8 — with a
-probe set and design discussion before any code change. A hopeful
-one-line beam widening or scoring tweak is unlikely to produce a
-robust fix.
+The hypothesised beam-search myopia was not the mechanism. Full
+close-out: `docs/Planner/slice_8_followup_handover.md` (carries a
+Resolution section appended at close-out time).
 
 ## Files Changed
 
