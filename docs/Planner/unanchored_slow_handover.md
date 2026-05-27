@@ -61,11 +61,15 @@ Both pieces required, inline in `tradedangerous/planner/data_gateway.py`:
    walk in v4b). Flips the SQLite plan from System-driven
    (`SCAN System_1`) to temp-driven (`SCAN td_unanchored_supply`).
 
-Both pieces use SQL identical across SQLite and MariaDB/MySQL
-(`ANALYZE <table>`, `SELECT 1 FROM <table> LIMIT 1`), so they stay
-inline in the planner — no `db/utils.py` dialect dispatch needed.
-Cost characteristics differ between backends but behaviour is correct
-on both.
+The `_temp_has_rows` guard uses portable SQL
+(`SELECT 1 FROM <table> LIMIT 1`) and stays inline in the planner.
+`ANALYZE` is NOT portable — SQLite accepts `ANALYZE <table>` but
+MariaDB/MySQL requires `ANALYZE TABLE <table>` (mandatory `TABLE`
+keyword) — so the ANALYZE call goes through `analyze_temp_table()`
+in `db/utils.py` under "Query planner statistics". On SQLite the
+helper runs ANALYZE; on MariaDB/MySQL it is a no-op (InnoDB's
+`innodb_stats_auto_recalc` handles statistics refresh in the
+background). See follow-up commit `abce23a0`.
 
 Optional follow-up (not blocking, separate decision):
 
@@ -211,10 +215,16 @@ Settled by v3-v6. Both pieces required, in this order, inline in
    row, skip the match and return `([], 0, 0, False)` directly.
    Handles the empty-temp pathology (which `ANALYZE` alone cannot
    fix — see v6 in Falsified Hypotheses).
-2. **`ANALYZE td_unanchored_supply; ANALYZE td_unanchored_demand;`**
-   after the guard passes, before the match. Flips the SQLite plan
-   from System-driven to temp-driven; identical SQL on SQLite and
-   MariaDB/MySQL so it stays inline in the planner.
+2. **`analyze_temp_table(session, supply_temp)` then
+   `analyze_temp_table(session, demand_temp)`** after the guard
+   passes, before the match. The helper lives in `db/utils.py`
+   under "Query planner statistics" — on SQLite it issues
+   `ANALYZE <table>` which flips the plan from System-driven to
+   temp-driven; on MariaDB/MySQL it is a no-op (InnoDB
+   auto-recalc). `ANALYZE` is not portable SQL — SQLite's bare
+   form becomes `ANALYZE TABLE <name>` on MariaDB/MySQL — hence
+   the dialect dispatch in the helper rather than inline
+   `text(...)` in the planner. See follow-up commit `abce23a0`.
 
 Optional follow-up (separate decision; not blocking the fix):
 
@@ -254,6 +264,17 @@ Observed still climbing after over 6 minutes.
    Tissue Sample, empty temps, post-`ANALYZE`) took 256 s — same
    plan as v3's no-`ANALYZE` empty case. The guard is load-bearing;
    both pieces of the remediation are required.
+8. **"`ANALYZE <table>` is identical SQL on SQLite and MariaDB/MySQL,
+   so the call can stay inline in the planner."** Falsified
+   post-remediation (same day): the fix landed on MariaDB and the
+   first non-empty match raised `pymysql 1064: ... near
+   'td_unanchored_supply' at line 1`. MariaDB/MySQL requires the
+   `TABLE` keyword: `ANALYZE TABLE <table>` — the bare SQLite
+   form is a syntax error. Corrected in commit `abce23a0` by
+   moving the call behind `analyze_temp_table()` in `db/utils.py`
+   per the project's dialect-helper convention. Lesson:
+   "looks portable" is not the same as "is portable"; cross-dialect
+   SQL claims need both backends tested or marked unverified.
 
 ---
 
