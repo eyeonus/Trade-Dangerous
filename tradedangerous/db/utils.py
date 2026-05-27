@@ -406,6 +406,37 @@ def mysql_set_bulk_session(session: Session) -> None:
 
 
 # -----------------------------------------------------------------------------
+# Query planner statistics
+# -----------------------------------------------------------------------------
+
+def analyze_temp_table(session: Session, table: Table) -> None:
+    """Refresh planner statistics on a transient/scratch temp table.
+
+    SQLite has no automatic statistics refresh. The unanchored
+    multi-jump match in tradedangerous/planner/data_gateway.py
+    relies on this — without current cardinality on the
+    run-scoped temp tables, SQLite's cost model anchors on
+    System (~80K rows, stats from database build) and inverts
+    the join order against the much smaller temp tables.
+    Running ANALYZE here flips the plan to drive from the temp
+    tables.
+
+    MariaDB/MySQL: InnoDB has innodb_stats_auto_recalc on by
+    default and refreshes statistics in the background when
+    row count changes meaningfully. Treated as a no-op here.
+
+    If a MariaDB-specific pathology turns up later, the
+    equivalent statement is ANALYZE TABLE <name> — the TABLE
+    keyword is mandatory on MariaDB/MySQL, so the bare SQLite
+    syntax is not portable. Don't paste the SQLite literal into
+    a shared branch.
+    """
+
+    if is_sqlite(session):
+        session.execute(text(f"ANALYZE {table.name}"))
+
+
+# -----------------------------------------------------------------------------
 # csvexport helpers (schema introspection)
 # -----------------------------------------------------------------------------
 # These functions are used by csvexport.exportTableToFile() to reconstruct

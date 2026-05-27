@@ -26,6 +26,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Session, aliased
 
 from tradedangerous.db.orm_models import Category, Item, Station, StationItem, System
+from tradedangerous.db.utils import analyze_temp_table
 from tradedangerous.db.station_types import (
     DISPLAY_NAMES,
     FLEET_CARRIER_TYPE_IDS,
@@ -1146,8 +1147,8 @@ def fetch_unanchored_trade_candidates(
                     accepted_for_item = 0
                     hit_cap = False
                 else:
-                    session.execute(text(f"ANALYZE {supply_temp.name}"))
-                    session.execute(text(f"ANALYZE {demand_temp.name}"))
+                    analyze_temp_table(session, supply_temp)
+                    analyze_temp_table(session, demand_temp)
                     rows, examined, accepted_for_item, hit_cap = (
                         _match_via_on_demand_reach(
                             session,
