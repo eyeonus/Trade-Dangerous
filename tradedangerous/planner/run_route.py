@@ -1,4 +1,4 @@
-"""One-hop trade run planner orchestration."""
+"""Trade run planner orchestration."""
 
 from __future__ import annotations
 

@@ -21,6 +21,7 @@ from sqlalchemy import (
     func,
     literal,
     select,
+    text,
 )
 from sqlalchemy.orm import Session, aliased
 
@@ -1127,17 +1128,37 @@ def fetch_unanchored_trade_candidates(
                 )
                 accepted_for_item = len(rows)
             else:
-                rows, examined, accepted_for_item, hit_cap = (
-                    _match_via_on_demand_reach(
-                        session,
-                        supply_temp,
-                        demand_temp,
-                        request,
-                        bubble_cache,
-                        l_max,
-                        l_max_sq,
+                # The multi-jump match runs into two SQLite cost-model
+                # failures without temp-table stats: an empty side
+                # stalls the System x System cross-join plan for ~5
+                # minutes per walk before returning zero rows, and
+                # even non-empty temps get the wrong join order
+                # because the planner has no cardinality to weigh
+                # against System's ~80K rows. Skip the match when
+                # either side is empty, then ANALYZE the populated
+                # temps so the planner anchors on them.
+                if not (
+                    _temp_has_rows(session, supply_temp)
+                    and _temp_has_rows(session, demand_temp)
+                ):
+                    rows = []
+                    examined = 0
+                    accepted_for_item = 0
+                    hit_cap = False
+                else:
+                    session.execute(text(f"ANALYZE {supply_temp.name}"))
+                    session.execute(text(f"ANALYZE {demand_temp.name}"))
+                    rows, examined, accepted_for_item, hit_cap = (
+                        _match_via_on_demand_reach(
+                            session,
+                            supply_temp,
+                            demand_temp,
+                            request,
+                            bubble_cache,
+                            l_max,
+                            l_max_sq,
+                        )
                     )
-                )
                 pairs_examined += examined
                 if hit_cap:
                     cap_hits += 1
@@ -1189,6 +1210,21 @@ def _drop_unanchored_temps(connection, supply_temp, demand_temp) -> None:
 
     demand_temp.drop(connection, checkfirst=True)
     supply_temp.drop(connection, checkfirst=True)
+
+
+def _temp_has_rows(session: Session, temp_table: Table) -> bool:
+    """O(1) emptiness check on a run-scoped temp table.
+
+    SQLite's planner falls back to a default-cardinality heuristic for
+    tables it has no stats on, and the resulting plan for the
+    unanchored multi-jump match can stall for minutes per empty walk
+    on the live data before returning zero rows. Caller uses this to
+    skip the match step when either side is empty.
+    """
+
+    return session.execute(
+        text(f"SELECT 1 FROM {temp_table.name} LIMIT 1")
+    ).first() is not None
 
 
 def _unanchored_item_bounds(
