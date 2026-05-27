@@ -605,20 +605,21 @@ both-sides decision in light of the symmetry.
   shared helpers and disturb wall-clock anyway, so measuring once
   afterwards saves the double-record. The Slice 6 caveat stays
   accurate in the meantime.
-- **Fixed-station multi-hop route quality.** Slice 8 verified its
-  destination-system diversity trim on `--from "Sol" --to "Lave"`
-  (system-expanded origin) at 7,838,971 cr matching `--old`. The
-  fixed-station shape `--from "Sol/Abraham Lincoln" --to "Lave/Lave
-  Station"` on the same `--hops 3 --jumps-per 2 --ly-per 30 --fc N
-  --age 2` returns 1,237,504 cr against `--old`'s 3,045,686 cr.
-  Confirmed not caused by `--max-price`: same result with
-  `--max-price 0`. Mechanism is beam-search myopia rather than beam
-  concentration: with a pinned origin the Hop 1 frontier loses the
-  system-expansion diversity that the Slice 8 fix relied on, and
-  per-hop accumulated-score trimming favours myopic destinations
-  over moderate ones that open excellent onward trades. Picked up
-  as the next piece of work — revisiting Slice 8 — with probe set
-  and design discussion warranted before any code change.
+- **Fixed-station multi-hop route quality — investigated and closed.**
+  The smoke-test divergence on `--from "Sol/Abraham Lincoln" --to
+  "Lave/Lave Station" --hops 3` (1,237,504 cr new vs 3,045,686 cr
+  `--old`) was probed 2026-05-26 and traced to a phantom demand row
+  at LP 855-34/Acton Port: `supply_units = 2323, demand_units = 1` —
+  the dormant buy side of a stocked commodity. Slice 3's
+  `_MIN_MEANINGFUL_DEMAND = 2` correctly rejects the row; legacy does
+  not, and computes the 3,045,686 cr total against an
+  in-game-unfillable Hop 1 sale. Closely comparable shapes confirm
+  the new planner is healthy: `--from "Sol" --to "Lave/Lave Station"
+  --hops 3` returns 5,059,696 cr against `--old`'s 4,907,264 cr (new
+  ahead by 3.1%), and one-hop `--from "Sol" --to "LP
+  855-34/Acton Port"` is 882,176 cr on both planners. The handover's
+  beam-search-myopia hypothesis was not the mechanism. Full
+  close-out: `docs/Planner/slice_8_followup_handover.md`.
 
 Full record: `docs/Planner/ninth_slice_completion_report.md`.
 
