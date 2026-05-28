@@ -37,12 +37,12 @@ def validate_run_request(request: RunRequest) -> None:
             option_name="--hops",
         )
 
-    # Multi-hop currently needs a named origin. Open-origin and both-omitted
-    # multi-hop shapes are deferred to a later slice.
-    if request.hops > 1 and request.from_text is None:
+    # Multi-hop needs at least one named endpoint. With --from it grows the
+    # route forward; with only --to it grows backward from the destination.
+    # The fully unanchored multi-hop shape (both endpoints omitted) is deferred.
+    if request.hops > 1 and request.from_text is None and request.to_text is None:
         raise UnsupportedRunShape(
-            "Multi-hop currently requires --from.",
-            option_name="--from",
+            "Multi-hop requires --from or --to.",
         )
 
     unsupported = (

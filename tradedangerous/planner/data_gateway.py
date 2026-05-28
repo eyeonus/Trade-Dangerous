@@ -720,9 +720,11 @@ def fetch_open_ended_trade_candidates(
 
     ``available_credits`` is the credit budget for the hop's buy step; the
     supply query filters out commodities whose unit price exceeds it.
-    ``terminal_hop=False`` adds an extra demand-side predicate so destination
-    stations without onward selling data are dropped — intermediate frontier
-    nodes must remain viable onward sources. ``reachable_memo`` opts the
+    ``terminal_hop=False`` adds an onward-viability predicate on the open side
+    so a one-sided dead end cannot hold an intermediate frontier slot: an open
+    destination must be able to sell onward (checked as onward supply), an open
+    source must be able to buy onward (checked as onward demand). The route end
+    needs no such check. ``reachable_memo`` opts the
     underlying reachable-set temp table into the per-request memo so
     repeated callers for the same source-system / jump / range key reuse a
     single built table.
@@ -770,6 +772,42 @@ def fetch_open_ended_trade_candidates(
         cutoff = _age_cutoff(request.age_days)
         sensitive_category_ids = _bulk_sale_tax_category_ids(session)
 
+        # Intermediate frontier nodes must stay viable for the *next* hop, so a
+        # one-sided dead end cannot occupy a mid-route slot. The check rides on
+        # whichever side the planner chooses (the open side), testing the role
+        # that side needs next:
+        #   open destination (forward)  must sell onward -> onward supply rows
+        #   open source      (backward) must buy onward  -> onward demand rows
+        # A correlated EXISTS keeps the database on the StationItem primary key.
+        # terminal_hop (the route end) needs no onward check.
+        onward_exists = None
+        if not terminal_hop:
+            onward = aliased(StationItem)
+            onward_filters = [onward.station_id == StationItem.station_id]
+            if open_role == "source":
+                onward_filters += [
+                    onward.demand_price > 0,
+                    onward.demand_units >= _MIN_MEANINGFUL_DEMAND,
+                ]
+                if request.min_demand is not None:
+                    onward_filters.append(onward.demand_units >= request.min_demand)
+                if cutoff is not None:
+                    onward_filters.append(onward.modified >= cutoff)
+                if request.max_price > 0:
+                    onward_filters.append(onward.demand_price <= request.max_price)
+            else:
+                onward_filters += [
+                    onward.supply_price > 0,
+                    onward.supply_units > 0,
+                ]
+                if request.min_supply is not None:
+                    onward_filters.append(onward.supply_units >= request.min_supply)
+                if cutoff is not None:
+                    onward_filters.append(onward.modified >= cutoff)
+                if request.max_price > 0:
+                    onward_filters.append(onward.supply_price <= request.max_price)
+            onward_exists = select(literal(1)).where(and_(*onward_filters)).exists()
+
         supply_filters = [
             supply_station_filter,
             StationItem.supply_price > 0,
@@ -784,6 +822,10 @@ def fetch_open_ended_trade_candidates(
             supply_filters.append(
                 StationItem.supply_price <= request.max_price
             )
+        if onward_exists is not None and open_role == "source":
+            # Backward open source: require onward demand so the next hop back
+            # can sell into it.
+            supply_filters.append(onward_exists)
 
         supply_rows = session.execute(
             select(
@@ -810,31 +852,10 @@ def fetch_open_ended_trade_candidates(
             demand_filters.append(
                 StationItem.demand_price <= request.max_price
             )
-
-        if not terminal_hop:
-            # Intermediate frontier nodes must also be viable onward sources;
-            # demand-only stations are valid only at the route end. Apply the
-            # source-side selling-data check as a correlated EXISTS so the
-            # database can use the StationItem primary key.
-            onward_supply = aliased(StationItem)
-            onward_filters = [
-                onward_supply.station_id == StationItem.station_id,
-                onward_supply.supply_price > 0,
-                onward_supply.supply_units > 0,
-            ]
-            if request.min_supply is not None:
-                onward_filters.append(onward_supply.supply_units >= request.min_supply)
-            if cutoff is not None:
-                onward_filters.append(onward_supply.modified >= cutoff)
-            if request.max_price > 0:
-                # An onward-source station with no rows under the cap is
-                # not a usable intermediate hop under the user's settings.
-                onward_filters.append(
-                    onward_supply.supply_price <= request.max_price
-                )
-            demand_filters.append(
-                select(literal(1)).where(and_(*onward_filters)).exists()
-            )
+        if onward_exists is not None and open_role == "destination":
+            # Forward open destination: require onward supply so it can sell
+            # the next hop's cargo.
+            demand_filters.append(onward_exists)
 
         demand_rows = session.execute(
             select(

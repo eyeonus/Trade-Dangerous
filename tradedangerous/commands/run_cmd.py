@@ -417,11 +417,17 @@ def validateRunArgumentsFast(cmdenv):
                 "Only --routes 1 is currently supported."
             )
 
-        # Multi-hop currently requires --from; open-origin and both-omitted
-        # multi-hop shapes are deferred.
+        # Multi-hop needs at least one named endpoint. With --from it grows the
+        # route forward; with only --to it grows backward from the destination.
+        # The fully unanchored multi-hop shape (both omitted) is deferred.
         hops = getattr(cmdenv, "hops", 1)
-        if hops is not None and hops > 1 and not getattr(cmdenv, "starting", None):
-            raise CommandLineError("--hops > 1 requires --from")
+        if (
+            hops is not None
+            and hops > 1
+            and not getattr(cmdenv, "starting", None)
+            and not getattr(cmdenv, "ending", None)
+        ):
+            raise CommandLineError("Multi-hop requires --from or --to.")
 
         margin = getattr(cmdenv, "margin", 0.0) or 0.0
         if margin < 0 or margin > 1:
