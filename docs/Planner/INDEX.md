@@ -103,6 +103,22 @@ Each completed slice has an implementation plan (what needs to be done) and a co
 | [eighth_slice_implementation_plan.md](eighth_slice_implementation_plan.md) | Design plan for Slice 8: vanilla multi-hop from a known origin, fixed-terminal route shaping, frontier and expansion widths, SQL-side destination envelope pruning, destination-system frontier diversity, deferred advanced route modifiers. |
 | [eighth_slice_completion_report.md](eighth_slice_completion_report.md) | Proof of completion: known-origin multi-hop implemented, fixed-terminal Sol -> Lave matches legacy profit while remaining faster, SQL envelope pruning restored performance, system-diverse frontier trim restored route quality, partial-route warning branches probed. |
 
+### Slice 9 — Max Price Filter and Testable Route Output (Complete)
+**Absolute commodity-price cap (`--max-price`) and expanded auditable plain-text route output.**
+
+| Document | Content |
+|----------|---------|
+| [ninth_slice_implementation_plan.md](ninth_slice_implementation_plan.md) | Design plan for Slice 9: a row-local `--max-price` cap applied across every candidate-fetch path, default sized against live data, plus the renderer expansion for per-hop and cumulative auditable figures. |
+| [ninth_slice_completion_report.md](ninth_slice_completion_report.md) | Proof of completion: `--max-price` wired across all fetch paths, carrier-fiction probe evidence behind the default, renderer per-hop/cumulative output, and the deferred unanchored re-baseline and fixed-station route-quality investigations closed. |
+
+### Slice 10 — Open-Origin Multi-Hop (Complete)
+**Multi-hop to a fixed destination with the origin chosen by the planner (`--to Y --hops N`, `--from` omitted); the route is grown backward from Y.**
+
+| Document | Content |
+|----------|---------|
+| [tenth_slice_implementation_plan.md](tenth_slice_implementation_plan.md) | Design plan for Slice 10: backward beam search from the fixed destination, the `best_open_ended_trades_into` primitive, the generalised `terminal_hop` onward-viability EXISTS, per-station coalescing trim, and credit-optimistic expansion plus a forward credit-correction pass. |
+| [tenth_slice_completion_report.md](tenth_slice_completion_report.md) | Proof of completion: the backward open-origin search, the cargo bound admissibility fix proven exact, the bounded correction (exact early-stop plus a tunable cap), and four verification runs at low credits showing the wall-clock inversion removed and correction reduced to milliseconds. |
+
 ---
 
 ## Reference and Technical Notes

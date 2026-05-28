@@ -90,6 +90,12 @@ price-sorted); the per-pair candidate query shape (selective join first,
 diagnostic probes only on the zero-result path); and the ORM->DTO boundary
 (`ResolvedSystem` DTO instead of a leaked ORM `System`).
 
+That cargo bound was later replaced wholesale (Slice 10): the
+`continue`-not-`break` fractional form was a feasible-solution value, not a true
+over-estimate, and could prune the real optimum once the credit budget binds.
+The current bound relaxes capacity and credits in turn and takes the smaller
+single-constraint optimum — see the Slice 10 entry.
+
 ---
 
 ## Slice 3 — Open-Ended One-Hop Search (complete)
@@ -636,6 +642,117 @@ both-sides decision in light of the symmetry.
   close-out: `docs/Planner/slice_8_followup_handover.md`.
 
 Full record: `docs/Planner/ninth_slice_completion_report.md`.
+
+---
+
+## Slice 10 — Open-Origin Multi-Hop (complete)
+
+Multi-hop to a fixed destination with the origin chosen by the planner — the
+multi-hop twin of Slice 4's open-origin one-hop. The route is grown *backwards*
+from the destination, one hop's reach at a time; there is no origin sphere built
+up front, and no destination envelope (open origin moves away from the one fixed
+point, it does not aim at it).
+
+**Supported shape:**
+
+```text
+trade run --to Y --hops N        (--from omitted, N >= 2)
+```
+
+alongside known-origin multi-hop (Slice 8) and every one-hop shape. Both
+endpoints omitted at `--hops > 1` (fully unanchored multi-hop) stays rejected in
+validation — deferred to a later slice.
+
+**Delivered:**
+
+- The `hops > 1` branch of `plan_route` now dispatches on endpoints, mirroring
+  the one-hop branch: `--from` set -> known-origin multi-hop (existing);
+  `--from` omitted, `--to` set -> the new backward search; both omitted ->
+  rejected. The validation gate was relaxed from "multi-hop requires --from" to
+  "multi-hop requires --from or --to" in both `validation.py` and the
+  command-layer guard in `run_cmd.py`.
+- `best_open_ended_trades_into` is the backward per-node primitive — the
+  direction-mirror of the forward `best_open_ended_trades_from`. It asks "who
+  profitably sells into this station?" via
+  `fetch_open_ended_trade_candidates(open_role="source")`, groups by the chosen
+  source, fits cargo, scores with the ls-penalty on the fixed node's
+  `ls_from_star` (the hop's true destination), and computes jump paths for the
+  top-K survivors only. The reachable source set stays a SQL subquery, never a
+  materialised id list.
+- The `terminal_hop` onward-viability `EXISTS` was generalised to attach to
+  whichever side is open, checking the role the *next* hop needs: onward supply
+  for an open destination (forward), onward demand for an open source
+  (backward). It stays a correlated `EXISTS` on the `StationItem` primary key.
+- Each backward layer is trimmed by per-station coalescing then beam width:
+  candidates are grouped by the emerged source station, the highest optimistic
+  accumulated-score node per station is kept, then the frontier is score-trimmed
+  to `_MULTIHOP_FRONTIER_WIDTH` (50). Source-system diversity (the Slice 8
+  fixed-terminal refinement) was deliberately left out — per-station coalescing
+  was enough at the current data shape.
+- Money flows forward but the search runs backward, so credits are handled in
+  two stages. Backward expansion is **credit-optimistic**: cargo is fitted
+  against a deliberately non-binding budget, so the beam ranks on an upper-bound
+  profit (`--max-price` and every other SQL filter still apply; only the
+  per-row affordability pre-filter is relaxed for this phase). A **forward
+  credit-correction pass** then re-fits each finished chain hop by hop against
+  the real running budget (`base_trade_budget + floor((1 - margin) *
+  accumulated_profit)`), building the real `PlannedHop`s. A chain is kept only
+  if every hop re-fits affordably; the winner is the highest *corrected*
+  practical score, since correction can reorder the finalists. Partial routes
+  and the no-survivor failure degrade cleanly, mirroring the forward path.
+
+**Performance and correctness round (after first implementation):**
+
+The first working version was much slower, and under tight credits the
+correction pass could blow up badly. A measurement-led round closed both, and
+fixed a latent cargo bug found along the way. The four changed files here (`cargo.py`, `run_route.py`, `run_result.py`,
+`render_text.py`) are this round; the shape itself was the core commit.
+
+- **Cargo bound fix.** Branch-and-bound's pruning bound spent the credit budget
+  with integer quantities — a feasible-solution value (a lower bound), not an
+  upper bound — so when credits bind it could prune the true optimum and return
+  a lower-profit cargo. It is now an admissible bound: relax cargo capacity and
+  the credit budget in turn, solve each single-constraint knapsack exactly, and
+  take the smaller result. Proven exact against a brute-force harness (24,000
+  randomised cases, zero mismatches). This supersedes the Slice 2 audit note
+  above.
+- **Cargo search made bounded.** The correct-but-looser bound made the search
+  explode on large binding-credit instances, so the incumbent is seeded with
+  the better of two greedy feasible fills, and a hard node-visit cap backstops
+  the worst case. An exact greedy fast path skips the search entirely when the
+  credit budget cannot bind the plan — the common case in the credit-optimistic
+  backward expansion.
+- **Bounded correction.** Re-costing thousands of finalists against the real
+  budget was the dominant cost. The pass now caps re-costing at the best
+  `_OPEN_ORIGIN_CORRECTION_WIDTH` (200) finalists by optimistic score, with an
+  exact early-stop: a corrected score never exceeds its optimistic score, so
+  once the best corrected route beats the next finalist's optimistic score, no
+  lower-ranked finalist can win and the loop stops. On every measured run the
+  early-stop did the work and the cap never bound, so the result is identical to
+  re-costing all finalists.
+- Diagnostics gained a cargo fast/branch-and-bound split and a correction block
+  (`CorrectionStats`). These are the only DTO/renderer additions in the slice —
+  the route shape out is unchanged.
+
+**Verified:** open-origin `--to "Lave/Lave Station" --hops 3` and the
+system-form `--to "Sol"` produced valid routes ending at a Y station, every hop
+reachable and affordable under the real forward budget. The bounded correction
+was confirmed lossless against the un-capped pass — identical profit, with the
+exact early-stop firing well before the 200-finalist cap on every measured run.
+Run at a low 1M-credit budget — the case that stresses credit-correction — it
+returned flyable routes rather than over-stated ones. Wall-clock is roughly
+2–3.5 min across the tested filter sets, shrinking as filters tighten (3m35 with
+none down to 2m00 with the most), and the earlier inversion — tighter filters
+running slower than no filters — is gone. The cargo bound fix was proven exact
+against the 24,000-case brute-force harness.
+
+**Deferred (not cut):** fully unanchored multi-hop (`--hops N`, both endpoints
+omitted) — the next shape slice; all route modifiers and search/display controls
+still gated in validation; source-system diversity on the backward trim (not
+needed at the current data shape); the forward-open `--from X --hops N` shape's
+own wall-clock, which is a separate Slice 8 concern, not touched here.
+
+Full record: `docs/Planner/tenth_slice_completion_report.md`.
 
 ---
 
