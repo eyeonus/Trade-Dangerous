@@ -355,11 +355,6 @@ docs/Planner/tenth_slice_completion_report.md
 
 ## Noted for later
 
-- **Carrier-fiction / `--max-price` cross-link.** The "carrier dominance" and
-  "runaway unit-profit prices" notes in `SLICE_SUMMARY.md` predate Slice 9 and
-  still read as though the silly carrier prices are an open problem. They should
-  point at `--max-price` (1.5M default) as the lever that now clips the
-  absolute-price extremes. Roll into this slice's doc pass.
 - **Envelope for an open *source*.** The reachable-set envelope is currently
   documented as meaningful only for an open destination. Open-origin multi-hop
   does not need it, so no change now; if a future shape fixes a second point

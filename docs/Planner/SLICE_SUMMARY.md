@@ -756,9 +756,12 @@ correctness: carrier stock and demand are player-controlled and can
 change between an EDDN snapshot and a Cmdr's arrival, and the API
 snapshot lag between observation and flight is unavoidable. The
 `--age`, `--supply`, `--demand`, and `--fleet-carrier` Y/N/? filters
-give Cmdrs the levers to control this. If execution risk becomes a
-recurring complaint, the remediation is a Cmdr-facing filter or a docs
-note, not a candidate-query change.
+give Cmdrs the levers to control this. The separate problem of owner-set
+prices far above any game-driven value — the extreme-price tail of
+carrier fiction — is clipped by the `--max-price` default (Slice 9), an
+absolute-price sanity cap rather than an execution-risk lever. If
+execution risk becomes a recurring complaint, the remediation is a
+Cmdr-facing filter or a docs note, not a candidate-query change.
 
 ### Commodity supply and demand values
 
@@ -772,7 +775,7 @@ is 2 or more (`_MIN_MEANINGFUL_DEMAND` in `data_gateway.py`).
 The `demand_level` and `supply_level` columns are hardcoded to `-1` by
 `spansh_plug.py` and carry no information — do not use them as a signal.
 
-### Runaway unit-profit prices and a possible default `--max-gain-per-ton` cap
+### Runaway unit-profit prices and the `--max-price` cap
 
 Slice 6 testing surfaced an unanchored winner with Gold at a sell price of
 ~4.7M cr/ton. Gold's normal sell range is around 50K cr/ton; a ~100x figure
@@ -788,10 +791,18 @@ reagent for engineered SCO drives, genuinely scarce, and carrier-owners
 price it freely — standard MMO auction-house economics. Those margins are
 high but plausible; the Gold one is not.
 
-Under discussion between Tromador and eyeonus: a default cap on
-`--max-gain-per-ton` (value TBD) that would hide the obviously-artificial
-extremes while leaving legitimate high-margin trades visible. Out of scope
-for Slice 6; logged here so the surfaced case isn't forgotten.
+Slice 9 shipped `--max-price` (default 1,500,000 cr/t), an absolute
+commodity-price cap, and it removes this case: the ~4.7M cr/t Gold sell
+price is far above the cap, so the row is filtered before it can win. The
+default was sized against the live data so no legitimate non-carrier row
+(highest observed just over 1M cr/t) is lost — see the Slice 9 entry.
+
+A default cap on `--max-gain-per-ton` remains a separate idea under
+discussion between Tromador and eyeonus. It is a different axis — it caps
+per-ton *profit* (sell minus buy), not absolute price — so it would catch
+an artificial margin built from two otherwise in-range prices that
+`--max-price` passes. Out of scope here; logged so the option isn't
+forgotten.
 
 Performance side-effect — the noise was not only an output-cleanliness
 issue. `fetch_unanchored_trade_candidates` walks commodities in
