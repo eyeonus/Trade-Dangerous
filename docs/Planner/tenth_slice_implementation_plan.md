@@ -181,23 +181,50 @@ handle this in two stages:
    credit balance, and builds the `PlannedHop`s. Run it over each finalist and
    pick the best corrected one.
 
-Correctness guarantee: the result is always a valid, flyable route — the
-forward pass never invents budget it does not have. The only imperfection is
-that the beam *ranked* on optimistic profit, so a credit-bound chain could be
-ranked slightly high and then corrected down. For normal trading budgets credit
-rarely binds on intermediate hops, so this is a quality nuance, not a
-correctness problem, and it sits squarely inside the spec's "comparable
-practical value, not exact optimum" standard. The near-broke commander is
-already out of scope under the settled "no separate no-affordable-cargo
-diagnosis" decision.
+Re-fitting can **fail**, and the pass must handle that rather than assume the
+forward walk always succeeds. A hop chosen optimistically may be unaffordable
+under the real running budget; `optimise_cargo` then raises `NoProfitableTrades`
+(its hard quantity cap includes `available_credits // buy_price`). So:
 
-To keep the forward pass cheap (no re-querying), each backward node carries the
-chosen pair's candidate trade list so `optimise_cargo` can be re-run against the
-real budget. The candidate lists are per-pair and small; the beam is bounded.
+- Correct finalists in descending optimistic score. For each, walk forward from
+  the emerged origin and re-fit every hop against the real running budget.
+- If any hop raises `NoProfitableTrades`, **discard that finalist** and move to
+  the next.
+- A finalist is eligible only if *every* hop re-fits. Among eligible finalists,
+  pick the highest **corrected** practical score — correction can reorder them,
+  so score the corrected chains, not the optimistic ones.
+- The same discard-and-fall-back rule applies to partial-route reconstruction:
+  a shorter chain is returned only if all of its hops re-fit.
+- If no finalist and no partial survives correction, the result is a clean
+  no-profitable-trade / no-route failure — never a crash, never an over-stated
+  route. That is the same family the near-broke commander falls into, out of
+  scope under the settled "no separate no-affordable-cargo diagnosis" decision;
+  the planner still has to degrade cleanly.
+
+Correctness guarantee, restated: any route returned has had every hop re-fitted
+and confirmed affordable under the real forward budget. The remaining
+imperfection is only that the beam *ranked* on optimistic profit during
+expansion, so the globally-best route could in principle be trimmed before it
+reaches the finalist set. For normal trading budgets credit rarely binds, so
+this is a quality nuance well inside the spec's "comparable practical value, not
+exact optimum" standard.
+
+To keep correction cheap (no re-querying), each backward node carries the chosen
+pair's `TradeCandidate` tuple — the new `hop_candidates` field described under
+Chain mechanics — so `optimise_cargo` re-runs against the real budget directly.
+The candidate lists are per-pair and small; the beam is bounded.
 
 ### Chain mechanics
 
-The frontier node dataclass `_FrontierNode` (run_route.py:55) is reused as-is.
+The frontier node dataclass `_FrontierNode` (run_route.py:55) is reused with
+**one addition**: a trailing optional field `hop_candidates`, holding the
+`TradeCandidate` tuple for the hop that arrived at the node (with the matching
+field on `_HopCandidate`, the expansion result the node is built from). It
+defaults to `None`, so the forward path and its `_make_child_node` are
+untouched — forward cargo is fitted against the correct budget at expansion time
+and is never re-fitted. The backward path populates it, because the
+credit-correction pass needs the original candidates to re-run `optimise_cargo`,
+not the optimistic `CargoPlan` (which `optimise_cargo` cannot take as input).
 The build and reconstruct helpers differ by direction:
 
 - **Seed** is Y's stations at `hop_index = 0` with no cargo (mirror of the
@@ -274,9 +301,15 @@ Where the work lives, restated for this slice:
 
 ## Validation plan
 
-No automated harness (project decision). Spot-check against `--old`, which
-supports an omitted `--from` for multi-hop, and confirm route validity rather
-than route identity.
+No automated harness (project decision). Use `--old` (which supports an omitted
+`--from` for multi-hop) as a comparison **probe, not an oracle** — route
+validity is primary, not parity with `--old`.
+
+This week's documented false regression is exactly why: `--old` accepted a route
+built on a dormant buy-side row with `demand_units = 1`, which the new planner
+correctly rejects under `_MIN_MEANINGFUL_DEMAND = 2`. A higher `--old` profit
+can therefore be a legacy route the game cannot actually fill, not a real
+regression.
 
 Smoke commands (final values chosen against the live DB at implementation
 time; `--age` tuned to local data freshness):
@@ -299,8 +332,13 @@ Checks:
 
 - Route is valid: every hop reachable under the jump settings, every hop a real
   buy/sell, route ends at a Y station.
-- Practical value equal-or-better than `--old` for a comparable shape, allowing
-  market drift; materially faster wall-clock.
+- Route valid and materially faster wall-clock, with comparable-or-better
+  practical value allowing market drift.
+- If `--old` reports higher profit, do **not** call it a regression until the
+  legacy route's hops have been checked against current planner rules —
+  `_MIN_MEANINGFUL_DEMAND`, the bulk-sale-tax cap, and `--max-price`. Only a
+  legacy route whose every hop obeys those and still out-profits the new route
+  is a genuine quality regression.
 - A low `--credits` run still returns a flyable route (the forward pass binds
   cargo to the real budget) rather than an over-stated one.
 - Partial-route warning fires cleanly when N hops cannot be completed.
