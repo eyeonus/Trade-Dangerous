@@ -8,6 +8,33 @@ from .failures import NoProfitableTrades
 from .run_result import CargoLine, CargoPlan, TradeCandidate
 
 
+# Debug instrumentation: how often the exact greedy fast path is taken versus
+# the branch-and-bound fallback. A plain dict so it can be mutated without a
+# module-level rebinding. Reset per run by the planner and surfaced in the
+# diagnostics line, so the cargo cost split is visible without a profiler.
+_cargo_path_counts = {"fast": 0, "recursive": 0}
+
+
+def reset_cargo_counters() -> None:
+    """Zero the cargo path counters at the start of a planner run."""
+    _cargo_path_counts["fast"] = 0
+    _cargo_path_counts["recursive"] = 0
+
+
+def cargo_counters() -> tuple[int, int]:
+    """Return (fast_path_hits, recursive_hits) since the last reset."""
+    return _cargo_path_counts["fast"], _cargo_path_counts["recursive"]
+
+
+# Hard ceiling on branch-and-bound node visits per optimise_cargo call. A
+# seeded, tightly-bounded search settles real cargo problems in far fewer
+# nodes than this; the cap exists only so an adversarial commodity mix can
+# never hang the planner. If it is ever hit the search returns the best
+# feasible plan found so far (always at least the greedy seed), so the result
+# stays valid — at worst slightly under-optimal on a pathological instance.
+_SEARCH_NODE_LIMIT = 100_000
+
+
 @dataclass(frozen=True, slots=True)
 class _BoundedCandidate:
     trade: TradeCandidate
@@ -45,39 +72,75 @@ def optimise_cargo(
         reverse=True,
     )
 
+    # Positions into `bounded` ordered by profit per credit (profit_per_unit /
+    # buy_price) descending. The credit-relaxation half of the pruning bound
+    # walks items in this order; precomputed once so each bound call stays O(n).
+    credit_order = sorted(
+        range(len(bounded)),
+        key=lambda i: bounded[i].trade.profit_per_unit / bounded[i].trade.buy_price,
+        reverse=True,
+    )
+
     best_quantities = [0] * len(bounded)
     current_quantities = [0] * len(bounded)
     best_profit = 0
     best_cost = 0
+    visited = 0
 
-    def fractional_upper_bound(
+    def optimistic_upper_bound(
         index: int,
         remaining_capacity: int,
         remaining_credits: int,
         current_profit: int,
     ) -> float:
-        bound = float(current_profit)
+        # Admissible upper bound for pruning. Each of the two shared constraints
+        # — cargo capacity and the running credit budget — is relaxed away in
+        # turn, the remaining single-constraint knapsack solved optimally, and
+        # the *smaller* of the two results used. Dropping a constraint can only
+        # raise the optimum, so each half is a true over-estimate of the real
+        # subtree optimum; the min of two over-estimates is the tighter one and
+        # still an over-estimate, so "bound <= best" pruning stays safe.
+        #
+        # Both halves are needed. The capacity half alone is far too loose when
+        # credits bind — it ignores the budget, barely prunes, and the search
+        # explodes; the credit half alone is loose when capacity binds.
+        # Whichever constraint actually bites supplies the tight bound.
+        #
+        # A single greedy that *spends* the budget would be unsafe: that is a
+        # feasible-solution value (a lower bound), which can fall below the
+        # subtree optimum and prune the best plan. The real credit constraint
+        # is still enforced in search(), which only generates affordable combos.
+
+        # Capacity relaxation: greedy by profit-per-unit (bounded is already in
+        # that order), integer fill — exact for unit cargo weights.
+        capacity = remaining_capacity
+        cap_bound = 0.0
         for idx in range(index, len(bounded)):
-            candidate = bounded[idx]
-            trade = candidate.trade
-            if remaining_capacity <= 0:
+            if capacity <= 0:
                 break
-            if remaining_credits < trade.buy_price:
+            candidate = bounded[idx]
+            quantity = min(candidate.max_quantity, capacity)
+            cap_bound += quantity * candidate.trade.profit_per_unit
+            capacity -= quantity
+
+        # Credit relaxation: fractional knapsack on the budget, greedy by
+        # profit-per-credit. Allowing the last item to be taken fractionally is
+        # what makes this an over-estimate rather than a feasible value.
+        budget = float(remaining_credits)
+        credit_bound = 0.0
+        for pos in credit_order:
+            if pos < index:
+                # Already decided by an outer search level.
                 continue
+            if budget <= 0:
+                break
+            candidate = bounded[pos]
+            buy_price = candidate.trade.buy_price
+            quantity = min(candidate.max_quantity, budget / buy_price)
+            credit_bound += quantity * candidate.trade.profit_per_unit
+            budget -= quantity * buy_price
 
-            quantity = min(
-                candidate.max_quantity,
-                remaining_capacity,
-                remaining_credits // trade.buy_price,
-            )
-            if quantity <= 0:
-                continue
-
-            bound += quantity * trade.profit_per_unit
-            remaining_capacity -= quantity
-            remaining_credits -= quantity * trade.buy_price
-
-        return bound
+        return current_profit + min(cap_bound, credit_bound)
 
     def search(
         index: int,
@@ -86,7 +149,14 @@ def optimise_cargo(
         current_profit: int,
         current_cost: int,
     ) -> None:
-        nonlocal best_cost, best_profit, best_quantities
+        nonlocal best_cost, best_profit, best_quantities, visited
+
+        # Safety cap: bail out of an over-large search, keeping the best
+        # feasible plan found so far. Never reached for realistic cargo
+        # problems once the incumbent is seeded.
+        visited += 1
+        if visited > _SEARCH_NODE_LIMIT:
+            return
 
         if index >= len(bounded):
             if current_profit > best_profit:
@@ -96,7 +166,7 @@ def optimise_cargo(
             return
 
         if (
-            fractional_upper_bound(
+            optimistic_upper_bound(
                 index,
                 remaining_capacity,
                 remaining_credits,
@@ -125,13 +195,71 @@ def optimise_cargo(
             )
         current_quantities[index] = 0
 
-    search(
-        index=0,
-        remaining_capacity=capacity_units,
-        remaining_credits=available_credits,
-        current_profit=0,
-        current_cost=0,
-    )
+    def greedy_feasible(order):
+        # A feasible plan respecting BOTH capacity and credits, taking items in
+        # the given order. Used to seed the search incumbent so the admissible
+        # bound prunes hard from the root.
+        quantities = [0] * len(bounded)
+        capacity = capacity_units
+        budget = available_credits
+        profit = 0
+        cost = 0
+        for idx in order:
+            if capacity <= 0:
+                break
+            candidate = bounded[idx]
+            buy_price = candidate.trade.buy_price
+            quantity = min(candidate.max_quantity, capacity, budget // buy_price)
+            if quantity <= 0:
+                continue
+            quantities[idx] = quantity
+            capacity -= quantity
+            budget -= quantity * buy_price
+            profit += quantity * candidate.trade.profit_per_unit
+            cost += quantity * buy_price
+        return quantities, profit, cost
+
+    if _credit_cannot_bind(bounded, capacity_units, available_credits):
+        # Exact greedy fast path. With unit cargo weights and a budget that
+        # cannot bind, taking the highest profit-per-unit candidates first up to
+        # capacity is optimal — the same answer branch-and-bound reaches, but
+        # without the recursion. bounded is already sorted by profit-per-unit,
+        # so one pass fills the hold. This is the common case for the
+        # open-origin backward search, which fits cargo against a deliberately
+        # non-binding optimistic budget.
+        _cargo_path_counts["fast"] += 1
+        remaining_capacity = capacity_units
+        for index, candidate in enumerate(bounded):
+            if remaining_capacity <= 0:
+                break
+            quantity = min(candidate.max_quantity, remaining_capacity)
+            if quantity <= 0:
+                continue
+            best_quantities[index] = quantity
+            best_profit += quantity * candidate.trade.profit_per_unit
+            best_cost += quantity * candidate.trade.buy_price
+            remaining_capacity -= quantity
+    else:
+        _cargo_path_counts["recursive"] += 1
+        # Seed the incumbent with the better of two cheap feasible greedies —
+        # one ranked by profit-per-unit, one by profit-per-credit — so the
+        # admissible bound has a strong lower bound to prune against from the
+        # first node. Starting from a zero incumbent is what let the search
+        # explode when credits bind.
+        seed_quantities, seed_profit, seed_cost = max(
+            (greedy_feasible(range(len(bounded))), greedy_feasible(credit_order)),
+            key=lambda seed: seed[1],
+        )
+        best_quantities = seed_quantities
+        best_profit = seed_profit
+        best_cost = seed_cost
+        search(
+            index=0,
+            remaining_capacity=capacity_units,
+            remaining_credits=available_credits,
+            current_profit=0,
+            current_cost=0,
+        )
 
     if best_profit <= 0:
         raise NoProfitableTrades("No viable cargo plan was available.")
@@ -198,3 +326,21 @@ def _build_bounded_candidates(
             bounded.append(_BoundedCandidate(trade=trade, max_quantity=max_quantity))
 
     return bounded
+
+
+def _credit_cannot_bind(
+    bounded: list[_BoundedCandidate],
+    capacity_units: int,
+    available_credits: int,
+) -> bool:
+    """Return True when the credit budget cannot constrain the cargo plan.
+
+    If filling the entire hold with the most expensive available candidate
+    still costs no more than the budget, no quantity choice can be limited by
+    credits — so the greedy fill by profit-per-unit is the exact optimum and
+    the branch-and-bound search is unnecessary. ``bounded`` is non-empty here:
+    optimise_cargo returns early when it is empty.
+    """
+
+    max_buy_price = max(candidate.trade.buy_price for candidate in bounded)
+    return available_credits >= capacity_units * max_buy_price

@@ -214,6 +214,24 @@ def _render_multihop_diagnostics(diagnostics: PlannerDiagnostics) -> list[str]:
             f"{expansion.elapsed_ms:.0f}ms"
         )
 
+    if diagnostics.cargo_fast_path_hits or diagnostics.cargo_recursive_hits:
+        lines.append(
+            f"  Cargo: {diagnostics.cargo_fast_path_hits:n} fast-path, "
+            f"{diagnostics.cargo_recursive_hits:n} branch-and-bound"
+        )
+
+    correction = diagnostics.multihop_correction_stats
+    if correction is not None and correction.finalists_generated > 0:
+        lines.append(
+            f"  Correction: {correction.finalists_generated} finalists, "
+            f"{correction.finalists_attempted} attempted, "
+            f"{correction.finalists_corrected} corrected, "
+            f"{correction.cargo_calls:n} cargo calls "
+            f"({correction.fast_path_hits:n} fast-path, "
+            f"{correction.branch_and_bound_hits:n} b&b), "
+            f"{correction.elapsed_ms:.0f}ms"
+        )
+
     for layer in diagnostics.multihop_layers:
         lines.append(
             f"  Layer {layer.layer_index}: "

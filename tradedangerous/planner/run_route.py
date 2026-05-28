@@ -8,7 +8,7 @@ from dataclasses import dataclass, replace
 from sqlalchemy.orm import Session
 
 from . import data_gateway, failures, resolver, run_result
-from .cargo import optimise_cargo
+from .cargo import cargo_counters, optimise_cargo, reset_cargo_counters
 from .reachability import plan_jump_path
 from .run_request import RunRequest
 from .score import score_with_destination_penalty
@@ -71,6 +71,25 @@ _MULTIHOP_FRONTIER_WIDTH = 50
 # dearest buy price observed in the live data is around 60M cr/ton.
 _OPTIMISTIC_PRICE_PER_TON = 1_000_000_000
 
+# How many candidate routes the planner fully costs out before picking the
+# winner, when only a destination is given (no --from).
+#
+# In that mode the planner searches backwards from the destination and can end
+# up with thousands of complete candidate routes (the code calls them
+# "finalists"). To choose between them it has to re-do each route's cargo, hop
+# by hop, against your *real* running money — during the search it pretends
+# money is unlimited so the search itself stays fast. That re-costing is the
+# slow part, and doing it for thousands of routes was what made these runs take
+# minutes. So we only re-cost the best 200, ranked by the search's rough score.
+#
+# 200 is a tuning knob, not a magic number: higher is safer (less chance of
+# skipping the real winner) but slower, lower is faster but riskier. ~200 keeps
+# the re-costing to a few tens of seconds in the slowest case we measured. The
+# early-stop just below also quits sooner, for free, whenever it can prove the
+# remaining routes can't win; this cap is what keeps things bounded in the case
+# where money is tight and that shortcut can't help.
+_OPEN_ORIGIN_CORRECTION_WIDTH = 200
+
 
 @dataclass(frozen=True, slots=True)
 class _FrontierNode:
@@ -122,6 +141,9 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
     validation_started = time.perf_counter()
     validate_run_request(request)
     validation_ms = _elapsed_ms(validation_started)
+
+    # Zero the cargo path counters so the diagnostics reflect only this run.
+    reset_cargo_counters()
 
     # One reachability bubble cache lives for the lifetime of this request.
     # Each anchor's bubble is loaded once and reused across every hop that
@@ -1186,6 +1208,7 @@ def _multihop_result(
     layer_stats: list[run_result.LayerStats],
     expansion_stats: run_result.ExpansionStats,
     final_hop_stats: run_result.FinalHopStats | None,
+    correction_stats: run_result.CorrectionStats | None = None,
     warning: run_result.PartialRouteWarning | None = None,
 ) -> run_result.RunResult:
     """Build a multi-hop RunResult with diagnostics and optional warning."""
@@ -1198,6 +1221,7 @@ def _multihop_result(
     # cargo, scoring, jump-path lookup). The richer breakdown lives in
     # multihop_layers / multihop_expansion_stats / multihop_final_hop_stats
     # — see the diagnostic renderer for a compact summary.
+    cargo_fast_hits, cargo_recursive_hits = cargo_counters()
     diagnostics = run_result.PlannerDiagnostics(
         validation_ms=validation_ms,
         resolution_ms=resolution_ms,
@@ -1211,6 +1235,9 @@ def _multihop_result(
         multihop_layers=tuple(layer_stats),
         multihop_expansion_stats=expansion_stats,
         multihop_final_hop_stats=final_hop_stats,
+        cargo_fast_path_hits=cargo_fast_hits,
+        cargo_recursive_hits=cargo_recursive_hits,
+        multihop_correction_stats=correction_stats,
     )
     
     # The planner emits structured facts; renderer wording belongs in
@@ -1523,6 +1550,14 @@ def _plan_open_origin_multi_hop(
 
         # Final backward layer (hop N): find the origin sources. terminal_hop=
         # True — the origin is a pure source and needs no onward-demand check.
+        # Unlike the forward open-terminal final hop, this hands correction
+        # several origin candidates per node, not one: the forward credit-
+        # correction pass can reject a chain whose best optimistic origin is
+        # unaffordable under the real budget, and a lower-ranked but affordable
+        # origin from the same node should still be allowed to win. Widening is
+        # cheap — best_open_ended_trades_into already cargo-scores every grouped
+        # pair before the top_k trim, so this adds only jump-path lookups and
+        # correction attempts, not expansion cargo calls.
         final_hop_started = time.perf_counter()
         finalist_nodes: list[_FrontierNode] = []
         for node in frontier:
@@ -1532,7 +1567,7 @@ def _plan_open_origin_multi_hop(
                 node.station,
                 request,
                 optimistic_credits=optimistic_credits,
-                top_k=1,
+                top_k=_MULTIHOP_EXPANSION_WIDTH,
                 terminal_hop=True,
                 bubble_cache=bubble_cache,
                 reachable_memo=reachable_memo,
@@ -1546,18 +1581,42 @@ def _plan_open_origin_multi_hop(
 
         # Forward credit-correction: re-fit each finalist's hops against the
         # real running budget and keep those that fully re-fit. Correction can
-        # reorder them, so the winner is the highest *corrected* score.
+        # reorder them, so the winner is the highest *corrected* score. The
+        # phase is instrumented (its own counters and the cargo-counter delta)
+        # because it is a distinct cost centre from expansion.
+        correction_stats = run_result.CorrectionStats(
+            finalists_generated=len(finalist_nodes)
+        )
+        correction_started = time.perf_counter()
+        correction_fast_before, correction_bb_before = cargo_counters()
         best_route: run_result.PlannedRoute | None = None
         finalist_nodes.sort(
             key=lambda candidate: candidate.accumulated_practical_score,
             reverse=True,
         )
         for node in finalist_nodes:
+            # Exact early-stop: a corrected score never exceeds its optimistic
+            # score, so once the best corrected route we hold beats this
+            # finalist's optimistic score, no lower-ranked finalist can win.
+            # Fires when credits do not bind (corrected ~= optimistic).
+            if (
+                best_route is not None
+                and node.accumulated_practical_score
+                <= best_route.total_practical_score
+            ):
+                break
+            # Correction budget: cap how many finalists are re-fitted. When
+            # credits bind the early-stop rarely fires, so this bound is what
+            # keeps correction under control.
+            if correction_stats.finalists_attempted >= _OPEN_ORIGIN_CORRECTION_WIDTH:
+                break
+            correction_stats.finalists_attempted += 1
             corrected = _correct_open_origin_chain(
                 node, request, base_trade_budget
             )
             if corrected is None:
                 continue
+            correction_stats.finalists_corrected += 1
             if (
                 best_route is None
                 or corrected.total_practical_score
@@ -1570,6 +1629,10 @@ def _plan_open_origin_multi_hop(
             # the best completed shorter chain that survives correction.
             partial = _best_open_origin_partial(
                 frontier, request, base_trade_budget
+            )
+            _finalise_correction_stats(
+                correction_stats, correction_started,
+                correction_fast_before, correction_bb_before,
             )
             if partial is not None:
                 route, completed_hops = partial
@@ -1593,6 +1656,7 @@ def _plan_open_origin_multi_hop(
                     layer_stats=layer_stats,
                     expansion_stats=expansion_stats,
                     final_hop_stats=final_hop_stats,
+                    correction_stats=correction_stats,
                     warning=warning,
                 )
             raise failures.NoProfitableTrades(
@@ -1600,6 +1664,10 @@ def _plan_open_origin_multi_hop(
                 "route length."
             )
 
+        _finalise_correction_stats(
+            correction_stats, correction_started,
+            correction_fast_before, correction_bb_before,
+        )
         route = best_route
     finally:
         data_gateway.release_reachable_memo(session, reachable_memo)
@@ -1618,6 +1686,7 @@ def _plan_open_origin_multi_hop(
         layer_stats=layer_stats,
         expansion_stats=expansion_stats,
         final_hop_stats=final_hop_stats,
+        correction_stats=correction_stats,
     )
 
 
@@ -1768,23 +1837,50 @@ def _best_open_origin_partial(
     """Return the best completed shorter chain that survives credit correction.
 
     The backward mirror of _best_partial_node, with the forward credit-
-    correction pass applied: each completed frontier node (hop_index > 0) is
-    re-fitted in descending optimistic score, and the first that fully re-fits
-    is returned with its hop count. None if no completed node survives.
+    correction pass applied. Credit correction can reorder chains — a lower
+    optimistic chain may re-fit better than a higher one — so every completed
+    frontier node (hop_index > 0) is corrected and the one with the highest
+    *corrected* practical score is returned with its hop count, matching how
+    the finalist path chooses its winner. None if no completed node survives.
     """
 
-    completed = [node for node in frontier if node.hop_index > 0]
-    if not completed:
-        return None
-    completed.sort(
-        key=lambda node: node.accumulated_practical_score,
-        reverse=True,
-    )
-    for node in completed:
+    best_route: run_result.PlannedRoute | None = None
+    best_hops = 0
+    for node in frontier:
+        if node.hop_index <= 0:
+            continue
         route = _correct_open_origin_chain(node, request, base_trade_budget)
-        if route is not None:
-            return route, node.hop_index
-    return None
+        if route is None:
+            continue
+        if (
+            best_route is None
+            or route.total_practical_score > best_route.total_practical_score
+        ):
+            best_route = route
+            best_hops = node.hop_index
+    if best_route is None:
+        return None
+    return best_route, best_hops
+
+
+def _finalise_correction_stats(
+    stats: run_result.CorrectionStats,
+    started: float,
+    fast_before: int,
+    bb_before: int,
+) -> None:
+    """Fill the cargo split and elapsed time on a CorrectionStats.
+
+    The fast/branch-and-bound split is the global cargo-counter delta across the
+    correction phase, so it isolates correction's optimise_cargo work from the
+    expansion work that ran before it.
+    """
+
+    fast_after, bb_after = cargo_counters()
+    stats.fast_path_hits = fast_after - fast_before
+    stats.branch_and_bound_hits = bb_after - bb_before
+    stats.cargo_calls = stats.fast_path_hits + stats.branch_and_bound_hits
+    stats.elapsed_ms = _elapsed_ms(started)
 
 
 def _plan_unanchored(

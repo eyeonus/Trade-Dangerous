@@ -184,6 +184,27 @@ class FinalHopStats:
     elapsed_ms: float = 0.0
 
 
+@dataclass(slots=True)
+class CorrectionStats:
+    """Forward credit-correction accounting for the open-origin search.
+
+    Zero outside the open-origin (omitted --from) multi-hop path.
+    finalists_generated is the size of the final-layer finalist pool;
+    attempted/corrected count how many chains were re-fitted and how many fully
+    re-fit under the real running budget. The cargo split is the share of
+    optimise_cargo work spent in correction, measured as the counter delta
+    across the correction phase.
+    """
+
+    finalists_generated: int = 0
+    finalists_attempted: int = 0
+    finalists_corrected: int = 0
+    cargo_calls: int = 0
+    fast_path_hits: int = 0
+    branch_and_bound_hits: int = 0
+    elapsed_ms: float = 0.0
+
+
 @dataclass(frozen=True, slots=True)
 class LayerStats:
     """One intermediate-layer snapshot, recorded after the trim."""
@@ -232,6 +253,14 @@ class PlannerDiagnostics:
     multihop_layers: tuple[LayerStats, ...] = ()
     multihop_expansion_stats: ExpansionStats | None = None
     multihop_final_hop_stats: FinalHopStats | None = None
+    # Cargo optimiser path split (debug). fast-path is the exact greedy fill
+    # taken when credit cannot bind; recursive is the branch-and-bound
+    # fallback. Both zero outside runs that fit cargo. Surfaced in the
+    # diagnostics line to show where cargo time goes.
+    cargo_fast_path_hits: int = 0
+    cargo_recursive_hits: int = 0
+    # Open-origin credit-correction accounting. None outside that path.
+    multihop_correction_stats: CorrectionStats | None = None
 
 
 @dataclass(frozen=True, slots=True)
