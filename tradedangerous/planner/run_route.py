@@ -36,10 +36,10 @@ class _HopCandidate:
     parent and accumulating profit/score and the post-hop credit budget.
 
     Open-origin (backward) expansion reuses this struct via
-    best_open_ended_trades_into. There destination_station carries the chosen
-    *source* — the station the route reaches when the chain is walked backward
-    from a node — and hop_candidates is populated so the forward credit-
-    correction pass can re-fit cargo against the real budget.
+    best_open_ended_hop_candidates. There destination_station carries the
+    chosen *source* — the station the route reaches when the chain is walked
+    backward from a node — and hop_candidates is populated so the forward
+    credit-correction pass can re-fit cargo against the real budget.
     """
 
     destination_station: run_result.ResolvedStation
@@ -163,8 +163,9 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
         return _plan_multi_hop(
             session, request, started, validation_ms, bubble_cache
         )
-    return _plan_open_origin_multi_hop(
-        session, request, started, validation_ms, bubble_cache
+    return _plan_open_anchor_multi_hop(
+        session, request, started, validation_ms, bubble_cache,
+        open_role="source",
     )
 
 
@@ -577,11 +578,12 @@ def best_open_ended_trades_from(
     return hop_candidates
 
 
-def best_open_ended_trades_into(
+def best_open_ended_hop_candidates(
     session: Session,
-    destination_station: run_result.ResolvedStation,
+    anchor_station: run_result.ResolvedStation,
     request: RunRequest,
     *,
+    open_role: str,
     optimistic_credits: int,
     top_k: int,
     terminal_hop: bool,
@@ -589,46 +591,53 @@ def best_open_ended_trades_into(
     reachable_memo: dict | None = None,
     expansion_stats: run_result.ExpansionStats | None = None,
 ) -> list[_HopCandidate]:
-    """Return the top-K best backward trades INTO a single destination station.
+    """Return the top-K best optimistic single-hop trades on the open side.
 
-    The backward mirror of best_open_ended_trades_from. Open-origin multi-hop
-    expands each frontier node (a destination reached so far) by asking "who
-    profitably sells INTO this station?" — open_role="source", so the planner
-    chooses the source and this station is the fixed destination.
+    The direction-neutral per-node expansion primitive for single-anchor open
+    multi-hop. ``anchor_station`` is this hop's fixed endpoint; its trade role
+    is the opposite of ``open_role``, and the planner picks the open station:
+
+      open_role="source"       backward: who profitably sells INTO the anchor?
+                                the anchor is this hop's destination.
+      open_role="destination"  forward:  what can the anchor sell onward, and
+                                to where? the anchor is this hop's source.
 
     Cargo is fitted credit-optimistically: ``optimistic_credits`` is far above
     any real buy price, so affordability never binds and the beam ranks chains
     on an upper-bound profit. The real running budget is applied later by the
     forward credit-correction pass. ``terminal_hop=False`` requires the chosen
-    source to also have onward *demand* (so the next hop back can sell into
-    it); the origin layer passes ``terminal_hop=True`` because the origin is a
-    pure source.
+    open station to stay viable for the next hop (onward demand for an open
+    source, onward supply for an open destination); the route-end layer passes
+    ``terminal_hop=True``.
 
-    The ls-penalty scores against this fixed destination's distance from its
-    arrival star — the true destination of each source -> destination hop,
-    matching forward semantics.
+    The ls-penalty scores against the hop's destination distance from its
+    arrival star — the anchor when it is the destination (open source), the
+    chosen station when it is (open destination) — matching forward semantics.
 
-    Jump paths are computed only for the top-K survivors. They are anchored on
-    the fixed destination's bubble (one bubble build per node, reused across
-    every candidate source) and reversed to source -> destination flight order;
-    leg distances are symmetric, so the polyline length is unchanged.
+    Jump paths are computed only for the top-K survivors, anchored on the fixed
+    endpoint's bubble (one bubble build per node, reused across every
+    candidate). For an open source the path comes back destination -> source
+    and is reversed to source -> destination flight order; for an open
+    destination it is already in flight order. Leg distances are symmetric, so
+    the polyline length is unchanged.
 
-    Each returned _HopCandidate carries the chosen source in destination_station
-    and the per-pair TradeCandidate tuple in hop_candidates for the re-fit.
+    Each returned _HopCandidate carries the chosen open station in
+    destination_station and the per-pair TradeCandidate tuple in hop_candidates
+    for the forward credit-correction re-fit.
     """
 
     helper_started = time.perf_counter()
     if expansion_stats is not None:
         expansion_stats.expansion_calls += 1
 
-    destination_system = _system_from_station(destination_station)
+    anchor_system = _system_from_station(anchor_station)
 
     candidates = data_gateway.fetch_open_ended_trade_candidates(
         session,
-        (destination_station.station_id,),
-        destination_system,
+        (anchor_station.station_id,),
+        anchor_system,
         request,
-        open_role="source",
+        open_role=open_role,
         available_credits=optimistic_credits,
         terminal_hop=terminal_hop,
         reachable_memo=reachable_memo,
@@ -641,10 +650,17 @@ def best_open_ended_trades_into(
             expansion_stats.elapsed_ms += _elapsed_ms(helper_started)
         return []
 
-    open_station_ids = tuple(
-        {candidate.source_station_id for candidate in candidates}
-    )
-    source_stations = data_gateway.fetch_stations_by_id(
+    # The open side is whichever role the planner chooses; the anchor fills the
+    # other. Group on the open station and materialise only those DTOs.
+    if open_role == "source":
+        open_station_ids = tuple(
+            {candidate.source_station_id for candidate in candidates}
+        )
+    else:
+        open_station_ids = tuple(
+            {candidate.destination_station_id for candidate in candidates}
+        )
+    open_stations = data_gateway.fetch_stations_by_id(
         session,
         open_station_ids,
     )
@@ -653,9 +669,9 @@ def best_open_ended_trades_into(
     if expansion_stats is not None:
         expansion_stats.grouped_pairs += len(grouped_pairs)
 
-    # Score every viable backward pair first; defer the jump-path computation
-    # until after the top-K trim so we only pay it for survivors. The
-    # destination is fixed, so _group_pairs keys differ only by source station.
+    # Score every viable pair first; defer the jump-path computation until
+    # after the top-K trim so we only pay it for survivors. The anchor is
+    # fixed, so _group_pairs keys differ only by the open station.
     scored: list[
         tuple[
             float,
@@ -664,11 +680,12 @@ def best_open_ended_trades_into(
             tuple[run_result.TradeCandidate, ...],
         ]
     ] = []
-    for (source_id, _destination_id), pair_candidates in grouped_pairs.items():
-        source_station = source_stations.get(source_id)
-        if source_station is None:
-            # A source that lost its DTO during the fetch — defensive skip
-            # rather than a KeyError, mirroring the forward helper.
+    for (source_id, destination_id), pair_candidates in grouped_pairs.items():
+        open_id = source_id if open_role == "source" else destination_id
+        open_station = open_stations.get(open_id)
+        if open_station is None:
+            # An open station that lost its DTO during the fetch — defensive
+            # skip rather than a KeyError, mirroring the forward helper.
             continue
         if expansion_stats is not None:
             expansion_stats.cargo_calls += 1
@@ -681,27 +698,34 @@ def best_open_ended_trades_into(
             )
         except failures.NoProfitableTrades:
             continue
+        # ls-penalty rides on the hop's destination: the anchor when the open
+        # side is the source, the chosen station when it is the destination.
+        destination_distance_ls = (
+            anchor_station.ls_from_star
+            if open_role == "source"
+            else open_station.ls_from_star
+        )
         practical_score = score_with_destination_penalty(
             cargo.total_profit,
-            destination_distance_ls=destination_station.ls_from_star,
+            destination_distance_ls=destination_distance_ls,
             penalty_percent=request.ls_penalty_percent,
         )
-        scored.append((practical_score, source_station, cargo, pair_candidates))
+        scored.append((practical_score, open_station, cargo, pair_candidates))
 
     scored.sort(key=lambda item: item[0], reverse=True)
 
     hop_candidates: list[_HopCandidate] = []
-    for practical_score, source_station, cargo, pair_candidates in scored:
+    for practical_score, open_station, cargo, pair_candidates in scored:
         if len(hop_candidates) >= top_k:
             break
-        source_system = _system_from_station(source_station)
+        open_system = _system_from_station(open_station)
         try:
-            # Anchor reachability on the fixed destination so its bubble is
-            # built once and reused across every candidate source; the path
-            # comes back destination -> source and is reversed below.
+            # Anchor reachability on the fixed endpoint so its bubble is built
+            # once and reused across every candidate; plan_jump_path returns
+            # the path anchor -> open.
             jump_path = plan_jump_path(
-                destination_system,
-                source_system,
+                anchor_system,
+                open_system,
                 max_jumps_per_hop=int(request.max_jumps_per_hop or 0),
                 max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
                 session=session,
@@ -711,14 +735,22 @@ def best_open_ended_trades_into(
             # The reachable subquery already filtered to in-range systems, so
             # this is a corner case — fall through to the next-best candidate.
             continue
+        # Store the hop in source -> destination flight order. For an open
+        # source the anchor is the destination, so anchor -> open is
+        # destination -> source and is reversed; for an open destination
+        # anchor -> open is already source -> destination.
+        hop_jump_path = (
+            _reverse_jump_path(jump_path)
+            if open_role == "source"
+            else jump_path
+        )
         hop_candidates.append(
             _HopCandidate(
-                # Backward: destination_station carries the chosen SOURCE — the
-                # station the route reaches when walked back from this node.
-                # The hop itself is source -> this (fixed) destination.
-                destination_station=source_station,
+                # destination_station carries the chosen OPEN station — the
+                # station the chain reaches at this node.
+                destination_station=open_station,
                 cargo=cargo,
-                jump_path=_reverse_jump_path(jump_path),
+                jump_path=hop_jump_path,
                 practical_score=practical_score,
                 raw_profit=cargo.total_profit,
                 hop_candidates=pair_candidates,
@@ -1358,48 +1390,71 @@ def _reconstruct_route(
     )
 
 
-def _plan_open_origin_multi_hop(
+def _plan_open_anchor_multi_hop(
     session: Session,
     request: RunRequest,
     started: float,
     validation_ms: float,
     bubble_cache: dict[int, object],
+    *,
+    open_role: str,
 ) -> run_result.RunResult:
-    """Plan an N-hop route to a named --to destination with the origin open.
+    """Plan an N-hop route with one fixed endpoint and the other open.
 
-    The mirror of _plan_multi_hop for an omitted --from. The search grows the
-    route *backward* from Y: seed on Y's eligible destination stations, then at
-    each layer ask "who profitably sells into this node?"
-    (best_open_ended_trades_into, open_role="source"). Each layer is a single
-    hop's reach, beam-trimmed, so no large origin sphere is built up front.
+    The single engine for both single-anchor open multi-hop shapes, keyed on
+    ``open_role`` — the trade role of the endpoint the planner selects:
 
-    Backward expansion is credit-optimistic — cargo is fitted as if money is no
-    object, so the beam ranks on an upper-bound profit. Money actually flows
-    forward, so once a chain reaches N hops the forward credit-correction pass
-    (_correct_open_origin_chain) walks it from the emerged origin and re-fits
-    each hop's cargo against the real running budget. A chain is returned only
-    if every hop re-fits; finalists are ranked by their *corrected* score.
+      open_role="source"       --to Y, --from omitted: grow the route backward
+                               from Y, asking each layer "who sells into this
+                               node?". The emerged origin is the last layer.
+      open_role="destination"  --from X, --to omitted: grow the route forward
+                               from X, asking each layer "what can this node
+                               sell onward?". The emerged destination is last.
 
-    Per-station coalescing trims each backward layer: among chains arriving at
-    the same source station only the highest-scoring survives, before the
-    frontier-width score trim. Backward expansion from a station depends only on
-    that station, so a lower-scoring chain to the same source is dominated.
+    Either way the search seeds on the fixed endpoint's eligible stations and
+    expands one hop's reach at a time via best_open_ended_hop_candidates,
+    beam-trimmed, so no large open-side sphere is built up front.
+
+    Expansion is credit-optimistic — cargo is fitted as if money is no object,
+    so the beam ranks on an upper-bound profit. Money flows forward (origin to
+    destination) whichever way the search ran, so once a chain reaches N hops
+    the forward credit-correction pass (_correct_open_anchor_chain) walks it in
+    money order and re-fits each hop's cargo against the real running budget. A
+    chain is returned only if every hop re-fits; finalists are ranked by their
+    *corrected* score.
+
+    Per-station coalescing trims each layer: among chains arriving at the same
+    emerged open station only the highest-scoring survives, before the
+    frontier-width score trim. Expansion from a station depends only on that
+    station, so a lower-scoring chain to it is dominated.
     """
 
+    # The fixed endpoint (the seed) is the one the user supplied; its trade role
+    # is the opposite of open_role. open_role="source" anchors on --to as the
+    # destination; open_role="destination" anchors on --from as the source.
+    if open_role == "source":
+        anchor_text = request.to_text
+        anchor_option = "--to"
+        anchor_role = "destination"
+    else:
+        anchor_text = request.from_text
+        anchor_option = "--from"
+        anchor_role = "source"
+
     resolution_started = time.perf_counter()
-    destination_endpoint = resolver.resolve_endpoint(
+    anchor_endpoint = resolver.resolve_endpoint(
         session,
-        str(request.to_text),
-        option_name="--to",
+        str(anchor_text),
+        option_name=anchor_option,
     )
     resolution_ms = _elapsed_ms(resolution_started)
 
     station_filter_started = time.perf_counter()
-    destination_stations = _stations_from_endpoint(
+    anchor_stations = _stations_from_endpoint(
         session,
-        destination_endpoint,
+        anchor_endpoint,
         request,
-        role="destination",
+        role=anchor_role,
     )
     station_filter_ms = _elapsed_ms(station_filter_started)
 
@@ -1410,8 +1465,7 @@ def _plan_open_origin_multi_hop(
         int(request.capacity_units or 0) * _OPTIMISTIC_PRICE_PER_TON
     )
 
-    # Seed: Y's eligible destination stations at hop_index 0, no cargo — the
-    # backward mirror of the forward origin seed.
+    # Seed: the fixed endpoint's eligible stations at hop_index 0, no cargo.
     frontier: list[_FrontierNode] = [
         _FrontierNode(
             station=station,
@@ -1426,7 +1480,7 @@ def _plan_open_origin_multi_hop(
             hop_raw_profit=0,
             hop_candidates=None,
         )
-        for station in destination_stations
+        for station in anchor_stations
     ]
 
     reachable_memo: dict = {}
@@ -1437,14 +1491,15 @@ def _plan_open_origin_multi_hop(
     expansions_examined = 0
     layer_stats: list[run_result.LayerStats] = []
     expansion_stats = run_result.ExpansionStats()
-    # Open-origin has no fixed terminal at the open (origin) end, so the
-    # fixed-terminal final-hop accounting does not apply.
+    # The open end has no fixed terminal, so the fixed-terminal final-hop
+    # accounting does not apply in either direction.
     final_hop_stats: run_result.FinalHopStats | None = None
 
     try:
-        # Backward intermediate layers 1..N-1: terminal_hop=False requires each
-        # chosen source to also have onward demand, so the next hop back can
-        # sell into it — a one-sided station cannot hold an intermediate slot.
+        # Intermediate layers 1..N-1: terminal_hop=False requires each emerged
+        # open station to stay viable for the next hop (onward demand for an
+        # open source, onward supply for an open destination), so a one-sided
+        # station cannot hold an intermediate slot.
         for hop_layer in range(1, request.hops):
             layer_started = time.perf_counter()
             layer_frontier_in = len(frontier)
@@ -1454,10 +1509,11 @@ def _plan_open_origin_multi_hop(
             for node in frontier:
                 expansions_examined += 1
                 layer_expansion_calls += 1
-                children = best_open_ended_trades_into(
+                children = best_open_ended_hop_candidates(
                     session,
                     node.station,
                     request,
+                    open_role=open_role,
                     optimistic_credits=optimistic_credits,
                     top_k=_MULTIHOP_EXPANSION_WIDTH,
                     terminal_hop=False,
@@ -1466,7 +1522,7 @@ def _plan_open_origin_multi_hop(
                     expansion_stats=expansion_stats,
                 )
                 for trade in children:
-                    next_frontier.append(_make_backward_child(node, trade))
+                    next_frontier.append(_make_open_child(node, trade))
                     candidate_trade_count += 1
                     layer_children_generated += 1
             layer_elapsed_ms = _elapsed_ms(layer_started)
@@ -1483,11 +1539,11 @@ def _plan_open_origin_multi_hop(
                         elapsed_ms=layer_elapsed_ms,
                     )
                 )
-                # No source extended the chain this layer. The current frontier
-                # already holds completed shorter chains ending at Y; return the
-                # best one that survives credit correction as a partial route.
-                partial = _best_open_origin_partial(
-                    frontier, request, base_trade_budget
+                # No station extended the chain this layer. The current frontier
+                # already holds completed shorter chains; return the best one
+                # that survives credit correction as a partial route.
+                partial = _best_open_anchor_partial(
+                    frontier, request, base_trade_budget, open_role
                 )
                 if partial is not None:
                     route, completed_hops = partial
@@ -1519,7 +1575,7 @@ def _plan_open_origin_multi_hop(
                 )
 
             # Per-station coalescing: keep the best optimistic chain per emerged
-            # source station, then trim to the frontier width by score.
+            # open station, then trim to the frontier width by score.
             best_by_station: dict[int, _FrontierNode] = {}
             for node in next_frontier:
                 station_id = node.station.station_id
@@ -1548,24 +1604,25 @@ def _plan_open_origin_multi_hop(
                 )
             )
 
-        # Final backward layer (hop N): find the origin sources. terminal_hop=
-        # True — the origin is a pure source and needs no onward-demand check.
-        # Unlike the forward open-terminal final hop, this hands correction
-        # several origin candidates per node, not one: the forward credit-
-        # correction pass can reject a chain whose best optimistic origin is
-        # unaffordable under the real budget, and a lower-ranked but affordable
-        # origin from the same node should still be allowed to win. Widening is
-        # cheap — best_open_ended_trades_into already cargo-scores every grouped
-        # pair before the top_k trim, so this adds only jump-path lookups and
-        # correction attempts, not expansion cargo calls.
+        # Final layer (hop N): reach the open endpoint. terminal_hop=True — the
+        # route end needs no onward-viability check. Unlike the forward
+        # fixed-terminal final hop, this hands correction several candidates per
+        # node, not one: credit-correction can reject a chain whose best
+        # optimistic endpoint is unaffordable under the real budget, and a
+        # lower-ranked but affordable one from the same node should still be
+        # allowed to win. Widening is cheap — best_open_ended_hop_candidates
+        # already cargo-scores every grouped pair before the top_k trim, so it
+        # adds only jump-path lookups and correction attempts, not expansion
+        # cargo calls.
         final_hop_started = time.perf_counter()
         finalist_nodes: list[_FrontierNode] = []
         for node in frontier:
             expansions_examined += 1
-            children = best_open_ended_trades_into(
+            children = best_open_ended_hop_candidates(
                 session,
                 node.station,
                 request,
+                open_role=open_role,
                 optimistic_credits=optimistic_credits,
                 top_k=_MULTIHOP_EXPANSION_WIDTH,
                 terminal_hop=True,
@@ -1574,7 +1631,7 @@ def _plan_open_origin_multi_hop(
                 expansion_stats=expansion_stats,
             )
             for trade in children:
-                finalist_nodes.append(_make_backward_child(node, trade))
+                finalist_nodes.append(_make_open_child(node, trade))
                 candidate_trade_count += 1
         final_hop_elapsed_ms = _elapsed_ms(final_hop_started)
         market_query_ms += final_hop_elapsed_ms
@@ -1611,8 +1668,8 @@ def _plan_open_origin_multi_hop(
             if correction_stats.finalists_attempted >= _OPEN_ORIGIN_CORRECTION_WIDTH:
                 break
             correction_stats.finalists_attempted += 1
-            corrected = _correct_open_origin_chain(
-                node, request, base_trade_budget
+            corrected = _correct_open_anchor_chain(
+                node, request, base_trade_budget, open_role
             )
             if corrected is None:
                 continue
@@ -1627,8 +1684,8 @@ def _plan_open_origin_multi_hop(
         if best_route is None:
             # No finalist completed N hops under the real budget. Fall back to
             # the best completed shorter chain that survives correction.
-            partial = _best_open_origin_partial(
-                frontier, request, base_trade_budget
+            partial = _best_open_anchor_partial(
+                frontier, request, base_trade_budget, open_role
             )
             _finalise_correction_stats(
                 correction_stats, correction_started,
@@ -1690,19 +1747,19 @@ def _plan_open_origin_multi_hop(
     )
 
 
-def _make_backward_child(
+def _make_open_child(
     parent: _FrontierNode,
     trade: _HopCandidate,
 ) -> _FrontierNode:
-    """Extend a backward chain by one hop toward the origin.
+    """Extend an open-anchor chain by one hop toward the open endpoint.
 
-    ``trade`` comes from best_open_ended_trades_into: trade.destination_station
-    is the chosen source, and the trade carries the hop source -> parent.station
-    (optimistic cargo, the source -> destination jump path, and the per-pair
-    candidates for re-fitting). The child node stands at the chosen source; its
-    parent is the node we expanded. Credits are not propagated here — backward
-    expansion is credit-optimistic and the real budget is applied by the forward
-    credit-correction pass.
+    ``trade`` comes from best_open_ended_hop_candidates:
+    trade.destination_station is the chosen open-side station, and the trade
+    carries the hop in source -> destination flight order (optimistic cargo, the
+    jump path, and the per-pair candidates for re-fitting). The child node
+    stands at the chosen open station; its parent is the node we expanded.
+    Credits are not propagated here — expansion is credit-optimistic and the
+    real budget is applied by the forward credit-correction pass.
     """
 
     new_profit = parent.accumulated_raw_profit + trade.raw_profit
@@ -1743,24 +1800,34 @@ def _reverse_jump_path(path: run_result.JumpPath) -> run_result.JumpPath:
     )
 
 
-def _correct_open_origin_chain(
+def _correct_open_anchor_chain(
     node: _FrontierNode,
     request: RunRequest,
     base_trade_budget: int,
+    open_role: str,
 ) -> run_result.PlannedRoute | None:
-    """Re-fit a backward chain forward against the real running budget.
+    """Re-fit an open-anchor chain forward against the real running budget.
 
-    The node's parent chain already runs origin-first: walking parents from the
-    node yields [origin/partial start, ..., Y], because each backward child's
-    parent is the node nearer Y. Each non-seed node carries the hop that departs
-    it toward its parent (its hop_candidates and source -> destination jump
-    path).
+    Money flows origin -> destination whichever way the search ran, so the
+    chain is first put in money order, then each hop is re-fitted against the
+    running budget (the base trade budget plus the margin-haircut of profit so
+    far). open_role decides the orientation:
 
-    Cargo is re-fitted per hop with the real budget — the base trade budget plus
-    the margin-haircut of accumulated profit so far — so the returned route's
-    cargo, profit, and credit balance are truthful. If any hop cannot be
-    afforded (optimise_cargo raises NoProfitableTrades), the whole chain is
-    rejected and None returned, so a chain is returned only if every hop re-fits.
+      open_role="source"       the seed is the fixed destination and the
+                               finalist is the emerged origin, so the parent
+                               walk already runs origin -> ... -> destination.
+                               Each non-seed node carries the hop departing it
+                               toward its parent, so node[i] owns hop i.
+      open_role="destination"  the seed is the fixed origin and the finalist is
+                               the emerged destination, so the parent walk runs
+                               destination -> ... -> origin and is reversed.
+                               Each non-seed node carries the hop that arrived
+                               from its parent, so after reversing node[i + 1]
+                               owns hop i.
+
+    If any hop cannot be afforded (optimise_cargo raises NoProfitableTrades) the
+    whole chain is rejected and None returned, so a chain is returned only if
+    every hop re-fits.
     """
 
     nodes: list[_FrontierNode] = []
@@ -1769,27 +1836,36 @@ def _correct_open_origin_chain(
         nodes.append(current)
         current = current.parent
     if len(nodes) < 2:
-        # Just the seed (Y) — no completed hop to render.
+        # Just the seed — no completed hop to render.
         return None
+
+    # Put the chain in money order (origin first) and pick which node owns each
+    # hop's candidates / jump path.
+    if open_role == "source":
+        chain = nodes
+        hop_owner_offset = 0
+    else:
+        chain = list(reversed(nodes))
+        hop_owner_offset = 1
 
     budget = base_trade_budget
     accumulated_profit = 0
     accumulated_score = 0.0
     hops_built: list[run_result.PlannedHop] = []
-    for index in range(len(nodes) - 1):
-        source_node = nodes[index]
-        destination_node = nodes[index + 1]
+    for index in range(len(chain) - 1):
+        source_node = chain[index]
+        destination_node = chain[index + 1]
+        hop_node = chain[index + hop_owner_offset]
         if (
-            source_node.hop_candidates is None
-            or source_node.hop_jump_path is None
+            hop_node.hop_candidates is None
+            or hop_node.hop_jump_path is None
         ):
-            # Defensive: every non-seed backward node is built from a real
-            # trade, so both are populated. A gap would be a build bug, not a
-            # user failure.
+            # Defensive: every non-seed node is built from a real trade, so both
+            # are populated. A gap would be a build bug, not a user failure.
             return None
         try:
             cargo = optimise_cargo(
-                source_node.hop_candidates,
+                hop_node.hop_candidates,
                 capacity_units=int(request.capacity_units or 0),
                 available_credits=budget,
                 cargo_limit_per_item=request.cargo_limit_per_item,
@@ -1808,7 +1884,7 @@ def _correct_open_origin_chain(
                 cargo=cargo,
                 raw_profit=cargo.total_profit,
                 practical_score=practical_score,
-                jump_path=source_node.hop_jump_path,
+                jump_path=hop_node.hop_jump_path,
             )
         )
         accumulated_profit += cargo.total_profit
@@ -1817,7 +1893,7 @@ def _correct_open_origin_chain(
             (1.0 - request.margin) * accumulated_profit
         )
 
-    stations = tuple(chain_node.station for chain_node in nodes)
+    stations = tuple(chain_node.station for chain_node in chain)
     starting_credits = int(request.starting_credits or 0)
     return run_result.PlannedRoute(
         stations=stations,
@@ -1829,19 +1905,20 @@ def _correct_open_origin_chain(
     )
 
 
-def _best_open_origin_partial(
+def _best_open_anchor_partial(
     frontier: list[_FrontierNode],
     request: RunRequest,
     base_trade_budget: int,
+    open_role: str,
 ) -> tuple[run_result.PlannedRoute, int] | None:
     """Return the best completed shorter chain that survives credit correction.
 
-    The backward mirror of _best_partial_node, with the forward credit-
+    The open-anchor mirror of _best_partial_node, with the forward credit-
     correction pass applied. Credit correction can reorder chains — a lower
     optimistic chain may re-fit better than a higher one — so every completed
     frontier node (hop_index > 0) is corrected and the one with the highest
-    *corrected* practical score is returned with its hop count, matching how
-    the finalist path chooses its winner. None if no completed node survives.
+    *corrected* practical score is returned with its hop count, matching how the
+    finalist path chooses its winner. None if no completed node survives.
     """
 
     best_route: run_result.PlannedRoute | None = None
@@ -1849,7 +1926,9 @@ def _best_open_origin_partial(
     for node in frontier:
         if node.hop_index <= 0:
             continue
-        route = _correct_open_origin_chain(node, request, base_trade_budget)
+        route = _correct_open_anchor_chain(
+            node, request, base_trade_budget, open_role
+        )
         if route is None:
             continue
         if (
