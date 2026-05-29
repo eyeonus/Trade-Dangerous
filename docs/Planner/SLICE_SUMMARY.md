@@ -23,6 +23,15 @@ comparison. `selectNeeds()` returns `Needs.RESOLVER` for the new path and
 `Needs.RESOLVER` and so avoiding the legacy full-database preload — not from
 lazy imports.
 
+Within that package, route planning is split by shape (see Slice 12):
+`run_route.py` is the dispatch surface (`plan_route`, `_plan_single_hop`);
+`route_onehop.py` holds the single-hop planners (fixed / open-ended /
+unanchored); `route_anchored.py` the fully-anchored multi-hop planner
+(`--from X --to Y`); `route_single_anchor.py` the part-anchored multi-hop
+planner (one open end); and `route_common.py` the frontier/beam machinery and
+generic helpers shared by more than one planner. Dependency direction is
+one-way: `route_common` -> planners -> dispatch.
+
 ---
 
 ## Slice 1 — First Safe Slice (complete)
@@ -813,6 +822,62 @@ unanchored multi-hop (`--hops N`, both endpoints omitted) — the next shape sli
 all route modifiers and search/display controls still gated.
 
 Full record: `docs/Planner/eleventh_slice_completion_report.md`.
+
+---
+
+## Slice 12 — Planner Module Split and Cruft Sweep (complete)
+
+A pure structural rationalisation, now the planner shapes have settled. No
+behaviour change and no new option: the route planning that lived in one
+~2,300-line `run_route.py` is split into one module per shape, and dead code
+accumulated across earlier work is removed. This completes the
+planner-orchestration module split deferred at Slice 11.
+
+**Supported shapes:** unchanged — every Slice 1-11 shape.
+
+**Module layout:**
+
+```text
+run_route.py            dispatch only (plan_route, _plan_single_hop)
+route_onehop.py         fixed / open-ended / unanchored single-hop
+route_anchored.py       fully-anchored multi-hop (--from X --to Y)
+route_single_anchor.py  part-anchored multi-hop (one open end)
+route_common.py         frontier/beam machinery + generic helpers shared
+                        by more than one planner
+```
+
+`run_route.py`'s only public import (`plan_route`, used by `run_cmd.py`) is
+unchanged. Dependency direction is one-way — `route_common` -> planners ->
+dispatch — with no import cycles. The three trade-candidate primitives turned
+out to be single-planner (each queries the gateway independently), so they stay
+with their planner and `route_common` carries no candidate-generation code.
+
+**Cruft removed** (each unreferenced across the repository): the orphaned
+`with_render_timing` helper; the superseded bare-station resolver path
+(`StationReference`, `parse_station_reference`, `resolve_station`,
+`_resolve_station_reference`, `_resolve_exact_station_global`), replaced by
+`resolve_endpoint`; `ReachabilityImplementationMissing` (multi-jump is
+implemented, so its guard and "not implemented yet" docstring were dead); the
+unused `MarketQuote` DTO (superseded by `TradeCandidate`); and the unused
+`PlannerCancelled` exception. Stale internal labels in comments ("(P2)", "per
+probe P1", "prior slices used", "Piece A's bubble cache") were reworded to state
+the reasoning, not the development step that produced them. The user-facing "not
+supported for this planner slice" wording was left as-is — it is removed when the
+deferred options it guards are implemented, so there was nothing to carry
+forward, and leaving it kept the slice at zero output change.
+
+`score.py` (the protected ls-penalty curve) and `failures.py` (the canonical
+exceptions module) were kept as their own modules — small but coherent, and
+clearer named than folded into a shared helpers file.
+
+**Verified:** the move is byte-exact at the code level — an AST parity check
+confirmed every top-level symbol survives exactly once with identical code
+(`ast.unparse`-normalised); the package imports; flake8 is clean. The run-short
+Colonia benchmark and a 3-hop Sol -> Lave run produced valid routes on the live
+data.
+
+Commit `f676cfaf`. Full record:
+`docs/Planner/twelfth_slice_completion_report.md`.
 
 ---
 

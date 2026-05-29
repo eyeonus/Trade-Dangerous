@@ -127,6 +127,14 @@ Each completed slice has an implementation plan (what needs to be done) and a co
 | [eleventh_slice_implementation_plan.md](eleventh_slice_implementation_plan.md) | Design plan for Slice 11: generalising the open-origin engine to serve both open shapes via `open_role`, the three-way multi-hop dispatch, the direction-aware correction-pass orientation, and trimming `_plan_multi_hop` to fixed-terminal only. |
 | [eleventh_slice_completion_report.md](eleventh_slice_completion_report.md) | Proof of completion: root cause of the forward-open hang (real-budget branch-and-bound during expansion), the unify/wire/trim commits, and before/after verification — `--to` and `--from --to` byte-identical, the `--from` hang fixed (30min+ to ~3m10). |
 
+### Slice 12 — Planner Module Split and Cruft Sweep (Complete)
+**Pure structural rationalisation: `run_route.py` split into one module per planner shape, plus removal of dead code accumulated across earlier work. No behaviour change.**
+
+| Document | Content |
+|----------|---------|
+| [twelfth_slice_implementation_plan.md](twelfth_slice_implementation_plan.md) | Design plan for Slice 12: the five-module target layout (dispatch / one-hop / fully-anchored / part-anchored / shared common), the used-by-many-vs-used-by-one allocation rule, the dead-code inventory, and the no-behaviour-change verification approach. |
+| [twelfth_slice_completion_report.md](twelfth_slice_completion_report.md) | Proof of completion: the split executed via a deterministic AST-extract workflow, dead code removed, and verification — import, flake8, and AST parity (every symbol present once with identical code), plus live-data spot-checks. |
+
 ---
 
 ## Reference and Technical Notes
