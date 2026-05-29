@@ -756,6 +756,66 @@ Full record: `docs/Planner/tenth_slice_completion_report.md`.
 
 ---
 
+## Slice 11 — Unified Single-Anchor Open Multi-Hop (complete)
+
+The two single-anchor open multi-hop shapes — open-destination
+(`--from X --hops N`, `--to` omitted) and open-origin (`--to Y --hops N`,
+`--from` omitted) — now run on one direction-keyed engine. This fixes the
+open-destination shape, which was claimed as supported from Slice 8 but did not
+finish at realistic depth.
+
+**Supported shapes:** unchanged — every Slice 1-10 shape. No new option.
+
+**Root cause of the hang:** open-destination ran on the known-origin planner,
+which fits cargo against the real running budget at every candidate during
+expansion. With no envelope (one endpoint open) the candidate set per hop is
+large, and at a binding credits-to-capacity ratio nearly every fit ran
+branch-and-bound. The open-origin search (Slice 10) avoids this by fitting
+credit-optimistically (fast path) and reconciling the real budget once, in a
+forward credit-correction pass. The known-origin planner had only been validated
+in its fixed-terminal form, which the destination envelope keeps small.
+
+**Delivered:**
+
+- The Slice 10 backward engine is generalised into one engine keyed on
+  `open_role`, serving both open shapes: `best_open_ended_trades_into` ->
+  `best_open_ended_hop_candidates`, `_plan_open_origin_multi_hop` ->
+  `_plan_open_anchor_multi_hop`, plus the child builder, correction pass, and
+  partial helper. The open-source (`--to`) path is rewired through it unchanged.
+- The `hops > 1` branch of `plan_route` dispatches three ways, mirroring the
+  one-hop dispatcher: `--from --to` -> fixed-terminal (`_plan_multi_hop`,
+  unchanged); `--from` -> `open_role="destination"`; `--to` ->
+  `open_role="source"`; both omitted -> rejected in validation.
+- Both open shapes expand credit-optimistically (fast-path cargo) with the
+  bounded forward credit-correction pass. The correction chain orientation is
+  direction-aware: money flows origin -> destination either way, so the
+  open-destination chain is reversed to money order, with each hop owned by the
+  destination node.
+- `_plan_multi_hop` is trimmed to fixed-terminal only — its now-unreachable
+  open-terminal branches removed (net -46 lines).
+- Change is confined to `run_route.py`; the `open_role` plumbing and the
+  validation gate were already in place from Slice 10.
+
+**Verified:** `--to` (open-source) byte-identical before/after the unification —
+identical route and identical search counts, only timings differing. `--from`
+(open-destination) hang fixed: a 2-hop / 2-jump case went from ~3m37 (5,337
+branch-and-bound fits) to ~18s (expansion 100% fast-path) with a better route
+(the wider correction-aware final layer); the original 3-hop / 3-jump filtered
+run went from not completing in 30+ minutes to ~3m10. `--from --to`
+(fixed-terminal) byte-identical before/after the trim. Routes valid and
+affordable from a 1M-credit start (the correction pass binds cargo to the real
+budget).
+
+**Deferred (not cut):** the shared expansion-cost floor (narrow candidate rows
+before cargo fitting — helps both open shapes); the planner-orchestration module
+split (move each planner to its own module, a pure structural move); fully
+unanchored multi-hop (`--hops N`, both endpoints omitted) — the next shape slice;
+all route modifiers and search/display controls still gated.
+
+Full record: `docs/Planner/eleventh_slice_completion_report.md`.
+
+---
+
 ## Project Notes
 
 ### Data scale

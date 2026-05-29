@@ -119,6 +119,14 @@ Each completed slice has an implementation plan (what needs to be done) and a co
 | [tenth_slice_implementation_plan.md](tenth_slice_implementation_plan.md) | Design plan for Slice 10: backward beam search from the fixed destination, the `best_open_ended_trades_into` primitive, the generalised `terminal_hop` onward-viability EXISTS, per-station coalescing trim, and credit-optimistic expansion plus a forward credit-correction pass. |
 | [tenth_slice_completion_report.md](tenth_slice_completion_report.md) | Proof of completion: the backward open-origin search, the cargo bound admissibility fix proven exact, the bounded correction (exact early-stop plus a tunable cap), and four verification runs at low credits showing the wall-clock inversion removed and correction reduced to milliseconds. |
 
+### Slice 11 — Unified Single-Anchor Open Multi-Hop (Complete)
+**Both single-anchor open multi-hop shapes (`--from X` and `--to Y`) run on one direction-keyed engine; fixes the open-destination hang by giving it the open-origin search's credit-optimistic expansion.**
+
+| Document | Content |
+|----------|---------|
+| [eleventh_slice_implementation_plan.md](eleventh_slice_implementation_plan.md) | Design plan for Slice 11: generalising the open-origin engine to serve both open shapes via `open_role`, the three-way multi-hop dispatch, the direction-aware correction-pass orientation, and trimming `_plan_multi_hop` to fixed-terminal only. |
+| [eleventh_slice_completion_report.md](eleventh_slice_completion_report.md) | Proof of completion: root cause of the forward-open hang (real-budget branch-and-bound during expansion), the unify/wire/trim commits, and before/after verification — `--to` and `--from --to` byte-identical, the `--from` hang fixed (30min+ to ~3m10). |
+
 ---
 
 ## Reference and Technical Notes
