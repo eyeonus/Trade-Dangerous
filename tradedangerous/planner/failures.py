@@ -108,16 +108,8 @@ class NoReachableRoute(PlannerFailure):
     """No route satisfies the requested reachability constraints."""
 
 
-class ReachabilityImplementationMissing(NoReachableRoute):
-    """The requested reachability mode has no permitted implementation yet."""
-
-
 class NoProfitableTrades(PlannerFailure):
     """No profitable trades satisfy the request constraints."""
-
-
-class PlannerCancelled(PlannerFailure):
-    """The planner was cancelled before completion."""
 
 
 class PlannerInternalError(PlannerFailure):

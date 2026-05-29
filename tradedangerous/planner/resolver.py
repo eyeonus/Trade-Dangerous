@@ -17,17 +17,8 @@ from .failures import (
     UnknownPlace,
     UnknownStation,
     UnknownSystem,
-    UnsupportedRunShape,
 )
 from .run_result import ResolvedStation, ResolvedSystem
-
-
-@dataclass(frozen=True, slots=True)
-class StationReference:
-    """Parsed station reference from command text."""
-
-    system_name: str | None
-    station_name: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,23 +45,6 @@ class ResolvedEndpoint:
     @property
     def is_system(self) -> bool:
         return self.station is None and self.system is not None
-
-
-def parse_station_reference(text: str, *, option_name: str) -> StationReference:
-    """Parse supported station reference forms."""
-
-    reference = parse_endpoint_reference(text, option_name=option_name)
-    if not reference.station_name:
-        raise UnsupportedRunShape(
-            f"{option_name} must identify a station, not only a system.",
-            option_name=option_name,
-            entity_name=text,
-        )
-
-    return StationReference(
-        system_name=reference.system_name,
-        station_name=reference.station_name,
-    )
 
 
 def parse_endpoint_reference(text: str, *, option_name: str) -> EndpointReference:
@@ -118,28 +92,6 @@ def _system_to_resolved(system: System) -> ResolvedSystem:
         y=float(system.pos_y),
         z=float(system.pos_z),
     )
-
-
-def resolve_station(
-    session: Session,
-    text: str,
-    *,
-    option_name: str,
-) -> ResolvedStation:
-    """Resolve a station reference to a single station.
-
-    Scoped references resolve the system first and then search stations within
-    that system only. They never fall back to global station matching.
-    """
-
-    reference = parse_station_reference(text, option_name=option_name)
-    station = _resolve_station_reference(
-        session,
-        reference,
-        option_name=option_name,
-        original_text=text,
-    )
-    return _resolved_station_from_model(station, _system_to_resolved(station.system))
 
 
 def resolve_endpoint(
@@ -265,35 +217,6 @@ def _find_exact_stations_global(session: Session, name: str) -> list[Station]:
     return list(session.scalars(stmt))
 
 
-def _resolve_station_reference(
-    session: Session,
-    reference: StationReference,
-    *,
-    option_name: str,
-    original_text: str,
-) -> Station:
-    if reference.system_name:
-        system = _resolve_exact_system(
-            session,
-            reference.system_name,
-            option_name=option_name,
-        )
-        return _resolve_exact_station_in_system(
-            session,
-            reference.station_name,
-            system_id=system.system_id,
-            option_name=option_name,
-            original_text=original_text,
-        )
-
-    return _resolve_exact_station_global(
-        session,
-        reference.station_name,
-        option_name=option_name,
-        original_text=original_text,
-    )
-
-
 def _resolve_exact_system(
     session: Session,
     name: str,
@@ -339,39 +262,6 @@ def _resolve_exact_station_in_system(
         .where(Station.system_id == system_id)
         .where(func.upper(Station.name) == name.upper())
         .order_by(Station.station_id)
-    )
-    matches = list(session.scalars(stmt))
-
-    if not matches:
-        raise UnknownStation(
-            f"Unknown station in {option_name}: {original_text}",
-            option_name=option_name,
-            entity_name=original_text,
-        )
-
-    if len(matches) > 1:
-        raise AmbiguousStation(
-            f"Ambiguous station in {option_name}: {original_text}",
-            option_name=option_name,
-            entity_name=original_text,
-            details={"matches": [station.dbname() for station in matches]},
-        )
-
-    return matches[0]
-
-
-def _resolve_exact_station_global(
-    session: Session,
-    name: str,
-    *,
-    option_name: str,
-    original_text: str,
-) -> Station:
-    stmt = (
-        select(Station)
-        .options(joinedload(Station.system))
-        .where(func.upper(Station.name) == name.upper())
-        .order_by(Station.system_id, Station.station_id)
     )
     matches = list(session.scalars(stmt))
 

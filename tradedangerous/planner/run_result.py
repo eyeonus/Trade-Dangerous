@@ -39,21 +39,6 @@ class ResolvedStation:
 
 
 @dataclass(frozen=True, slots=True)
-class MarketQuote:
-    station_id: int
-    item_id: int
-    item_name: str
-    buy_price: int
-    sell_price: int
-    supply_units: int
-    demand_units: int
-    supply_level: int
-    demand_level: int
-    modified: datetime | None
-    age_days: float | None
-
-
-@dataclass(frozen=True, slots=True)
 class TradeCandidate:
     item_id: int
     item_name: str

@@ -1066,11 +1066,10 @@ def fetch_unanchored_trade_candidates(
     descending. The reductions keep the candidate set in SQL; only the
     bounded slice per surviving commodity crosses into Python.
 
-    The reach map that prior slices used (all ordered pairs in --ly-per
-    range) is gone: at multi-jump in dense space it grows to hundreds of
-    millions of rows. The direct-distance prefilter plus on-demand reach
-    via Piece A's bubble cache replaces it without ever materialising a
-    multi-jump pair set.
+    The earlier reach map (all ordered pairs in --ly-per range) is gone: at
+    multi-jump in dense space it grows to hundreds of millions of rows. The
+    direct-distance prefilter plus on-demand reach via the reachability
+    bubble cache replaces it without ever materialising a multi-jump pair set.
     """
 
     available_credits = int(request.starting_credits or 0) - request.insurance_reserve
