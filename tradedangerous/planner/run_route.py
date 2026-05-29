@@ -449,12 +449,11 @@ def best_open_ended_trades_from(
 ) -> list[_HopCandidate]:
     """Return the top-K best forward trades from a single source station.
 
-    Multi-hop frontier expansion calls this once per frontier node with the
-    node's source station, its post-margin credit budget, and the request's
-    reachable-set memo. Single-hop callers use a per-source-station view
-    when they need K=1 forward picks at terminal_hop=True; the existing
-    open-ended single-hop entry point still runs the batched fixed-side
-    query and is unchanged.
+    Fixed-terminal multi-hop expansion calls this once per frontier node with
+    the node's source station, its post-margin credit budget, the request's
+    reachable-set memo, and the destination envelope. It is the real-budget
+    forward primitive — distinct from the optimistic
+    best_open_ended_hop_candidates the single-anchor open engine uses.
 
     The helper:
     1. Asks the data gateway for profitable destinations reachable from
@@ -869,31 +868,32 @@ def _plan_multi_hop(
     validation_ms: float,
     bubble_cache: dict[int, object],
 ) -> run_result.RunResult:
-    """Plan an N-hop route from a named --from origin (N >= 2).
+    """Plan an N-hop route between a named --from origin and --to destination.
+
+    The fixed-terminal multi-hop planner: both endpoints are supplied, so the
+    search grows forward from the origin and must end at one of Y's eligible
+    stations. (Open-ended multi-hop — one endpoint omitted — runs on the
+    single-anchor engine instead; see plan_route's dispatch.)
 
     Beam frontier search: each hop layer keeps a bounded set of best-scoring
     partial routes; each surviving partial expands into the next layer via
-    best_open_ended_trades_from, the combined layer is rescored, and the
-    layer is trimmed back to _MULTIHOP_FRONTIER_WIDTH. The final hop runs
-    at top_k=1 per node with terminal_hop=True; the highest-scoring
-    finalist wins, and the route is reconstructed by walking the winner's
-    parent chain back to the origin.
+    best_open_ended_trades_from, the combined layer is rescored, and the layer
+    is trimmed back to _MULTIHOP_FRONTIER_WIDTH with at most one node per
+    destination system (so near-duplicate clusters do not crowd the beam).
 
-    With --to set the search must end at one of Y's eligible stations. To
-    keep the frontier pointed at Y rather than wandering, each intermediate
-    layer's candidate fetch is restricted in SQL to destination systems
-    within ``remaining_hops * --jumps-per * --ly-per`` of Y — out-of-envelope
-    systems never leave the database into Python. The final hop with --to
-    set then runs a per-frontier-node fixed-pair evaluation against Y's
-    stations; the graph reach check still gates which destinations are
-    actually reachable, the envelope is only a necessary feasibility
-    filter.
+    To keep the frontier pointed at Y rather than wandering, each intermediate
+    layer's candidate fetch is restricted in SQL to destination systems within
+    ``remaining_hops * --jumps-per * --ly-per`` of Y — out-of-envelope systems
+    never leave the database into Python. The final hop runs a per-frontier-node
+    fixed-pair evaluation against Y's stations; the graph reach check still
+    gates which destinations are actually reachable, the envelope is only a
+    necessary feasibility filter.
 
     Credits propagate hop-to-hop. available_credits at hop K+1 is
     ``base_trade_budget + floor((1 - margin) * accumulated_raw_profit)`` —
-    integer-only, so cargo fitting never sees a float. The renderer reports
-    raw accumulated profit and the final raw credits; margin only changes
-    what the planner is willing to *spend* on a later hop's buy.
+    integer-only, so cargo fitting never sees a float. The renderer reports raw
+    accumulated profit and the final raw credits; margin only changes what the
+    planner is willing to *spend* on a later hop's buy.
     """
 
     resolution_started = time.perf_counter()
@@ -902,13 +902,11 @@ def _plan_multi_hop(
         str(request.from_text),
         option_name="--from",
     )
-    destination_endpoint = None
-    if request.to_text is not None:
-        destination_endpoint = resolver.resolve_endpoint(
-            session,
-            str(request.to_text),
-            option_name="--to",
-        )
+    destination_endpoint = resolver.resolve_endpoint(
+        session,
+        str(request.to_text),
+        option_name="--to",
+    )
     resolution_ms = _elapsed_ms(resolution_started)
 
     station_filter_started = time.perf_counter()
@@ -918,19 +916,16 @@ def _plan_multi_hop(
         request,
         role="source",
     )
-    destination_stations: tuple[run_result.ResolvedStation, ...] = ()
-    to_system_xyz: tuple[float, float, float] | None = None
-    if destination_endpoint is not None:
-        destination_stations = _stations_from_endpoint(
-            session,
-            destination_endpoint,
-            request,
-            role="destination",
-        )
-        # Every --to station shares the same system, so any of them gives
-        # the envelope anchor coordinates.
-        anchor_station = destination_stations[0]
-        to_system_xyz = (anchor_station.x, anchor_station.y, anchor_station.z)
+    destination_stations = _stations_from_endpoint(
+        session,
+        destination_endpoint,
+        request,
+        role="destination",
+    )
+    # Every --to station shares the same system, so any of them gives the
+    # envelope anchor coordinates.
+    anchor_station = destination_stations[0]
+    to_system_xyz = (anchor_station.x, anchor_station.y, anchor_station.z)
     station_filter_ms = _elapsed_ms(station_filter_started)
 
     base_trade_budget = (
@@ -965,31 +960,25 @@ def _plan_multi_hop(
     expansions_examined = 0
     layer_stats: list[run_result.LayerStats] = []
     expansion_stats = run_result.ExpansionStats()
-    final_hop_stats: run_result.FinalHopStats | None = (
-        run_result.FinalHopStats() if to_system_xyz is not None else None
-    )
+    final_hop_stats = run_result.FinalHopStats()
 
     try:
         # Intermediate hops 1..N-1: terminal_hop=False keeps demand-only
         # destinations off the frontier so they cannot occupy a node that
         # must be a viable onward source.
         for hop_layer in range(1, request.hops):
-            # For fixed --to the destinations of this layer's expansion must
-            # land within remaining_hops * jumps_per * ly_per of --to so that
-            # the remaining hops can plausibly close on it. We pass the
-            # envelope into the candidate fetch so out-of-envelope systems
-            # never make it into Python at all — the demand-side reachable
-            # subquery is narrowed against the temp table's pos columns.
-            envelope_xyz: tuple[float, float, float] | None = None
-            envelope_ly: float | None = None
-            if to_system_xyz is not None:
-                remaining_hops = request.hops - hop_layer
-                envelope_xyz = to_system_xyz
-                envelope_ly = float(
-                    remaining_hops
-                    * int(request.max_jumps_per_hop or 0)
-                    * float(request.max_ly_per_jump or 0.0)
-                )
+            # The destinations of this layer's expansion must land within
+            # remaining_hops * jumps_per * ly_per of --to so the remaining hops
+            # can plausibly close on it. The envelope is pushed into the
+            # candidate fetch so out-of-envelope systems never reach Python —
+            # the demand-side reachable subquery is narrowed against the temp
+            # table's pos columns.
+            remaining_hops = request.hops - hop_layer
+            envelope_ly = float(
+                remaining_hops
+                * int(request.max_jumps_per_hop or 0)
+                * float(request.max_ly_per_jump or 0.0)
+            )
 
             layer_started = time.perf_counter()
             layer_frontier_in = len(frontier)
@@ -1008,7 +997,7 @@ def _plan_multi_hop(
                     terminal_hop=False,
                     bubble_cache=bubble_cache,
                     reachable_memo=reachable_memo,
-                    destination_envelope_xyz=envelope_xyz,
+                    destination_envelope_xyz=to_system_xyz,
                     destination_envelope_ly=envelope_ly,
                     expansion_stats=expansion_stats,
                 )
@@ -1072,31 +1061,26 @@ def _plan_multi_hop(
                     "route length."
                 )
 
+            # Keep at most one node per destination system after the score
+            # sort. Without this, frontier slots get spent on near-duplicates —
+            # several stations in the same destination system, all with similar
+            # per-hop profit — crowding out strategically valuable but
+            # lower-scoring alternatives at other systems.
             next_frontier.sort(
                 key=lambda candidate: candidate.accumulated_practical_score,
                 reverse=True,
             )
-            if to_system_xyz is not None:
-                # Fixed-terminal: keep at most one node per destination system
-                # in the trim. Without this, frontier slots get spent on
-                # near-duplicates — several stations in the same destination
-                # system, all with similar per-hop profit — crowding out
-                # strategically valuable but lower-scoring alternatives at
-                # other systems. Dedup runs after the score sort so each
-                # system is represented by its best-scoring node.
-                seen_systems: set[int] = set()
-                deduped: list[_FrontierNode] = []
-                for node in next_frontier:
-                    system_id = node.station.system_id
-                    if system_id in seen_systems:
-                        continue
-                    seen_systems.add(system_id)
-                    deduped.append(node)
-                    if len(deduped) >= _MULTIHOP_FRONTIER_WIDTH:
-                        break
-                frontier = deduped
-            else:
-                frontier = next_frontier[:_MULTIHOP_FRONTIER_WIDTH]
+            seen_systems: set[int] = set()
+            deduped: list[_FrontierNode] = []
+            for node in next_frontier:
+                system_id = node.station.system_id
+                if system_id in seen_systems:
+                    continue
+                seen_systems.add(system_id)
+                deduped.append(node)
+                if len(deduped) >= _MULTIHOP_FRONTIER_WIDTH:
+                    break
+            frontier = deduped
             frontier_widths.append(len(frontier))
             layer_stats.append(
                 run_result.LayerStats(
@@ -1109,52 +1093,30 @@ def _plan_multi_hop(
                 )
             )
 
-        # Final hop: terminal_hop=True allows demand-only destinations. With
-        # --to set, each surviving frontier node is matched against Y's
-        # stations as a fixed-pair plan; without --to, one open-ended pick
-        # per node is enough.
+        # Final hop: each surviving frontier node is matched against Y's
+        # stations as a fixed-pair plan. The destination is the fixed --to, so
+        # there is no onward-viability check to apply.
         final_hop_started = time.perf_counter()
         finalists: list[_FrontierNode] = []
-        if to_system_xyz is not None:
-            for node in frontier:
-                expansions_examined += 1
-                trade = best_fixed_pair_trade_from(
-                    session,
-                    node.station,
-                    destination_stations,
-                    request,
-                    available_credits=node.available_credits,
-                    bubble_cache=bubble_cache,
-                    final_hop_stats=final_hop_stats,
+        for node in frontier:
+            expansions_examined += 1
+            trade = best_fixed_pair_trade_from(
+                session,
+                node.station,
+                destination_stations,
+                request,
+                available_credits=node.available_credits,
+                bubble_cache=bubble_cache,
+                final_hop_stats=final_hop_stats,
+            )
+            if trade is not None:
+                finalists.append(
+                    _make_child_node(node, trade, request, base_trade_budget)
                 )
-                if trade is not None:
-                    finalists.append(
-                        _make_child_node(node, trade, request, base_trade_budget)
-                    )
-                    candidate_trade_count += 1
-        else:
-            for node in frontier:
-                expansions_examined += 1
-                children = best_open_ended_trades_from(
-                    session,
-                    node.station,
-                    request,
-                    available_credits=node.available_credits,
-                    top_k=1,
-                    terminal_hop=True,
-                    bubble_cache=bubble_cache,
-                    reachable_memo=reachable_memo,
-                    expansion_stats=expansion_stats,
-                )
-                for trade in children:
-                    finalists.append(
-                        _make_child_node(node, trade, request, base_trade_budget)
-                    )
-                    candidate_trade_count += 1
+                candidate_trade_count += 1
         final_hop_elapsed_ms = _elapsed_ms(final_hop_started)
         market_query_ms += final_hop_elapsed_ms
-        if final_hop_stats is not None:
-            final_hop_stats.elapsed_ms = final_hop_elapsed_ms
+        final_hop_stats.elapsed_ms = final_hop_elapsed_ms
 
         if not finalists:
             # The final-hop collapse is the canonical partial-route case:
@@ -1167,10 +1129,7 @@ def _plan_multi_hop(
             partial = _best_partial_node(frontier)
             if partial is not None:
                 reason = "no_viable_trade"
-                if (
-                    final_hop_stats is not None
-                    and final_hop_stats.nodes_with_reachable_destination == 0
-                ):
+                if final_hop_stats.nodes_with_reachable_destination == 0:
                     reason = "no_reachable_route"
                 route = _reconstruct_route(partial, request)
                 warning = run_result.PartialRouteWarning(
@@ -1195,14 +1154,9 @@ def _plan_multi_hop(
                     final_hop_stats=final_hop_stats,
                     warning=warning,
                 )
-            if to_system_xyz is not None:
-                raise failures.NoReachableRoute(
-                    "No frontier station could complete the route to the "
-                    "requested destination with the current jump settings."
-                )
-            raise failures.NoProfitableTrades(
-                "No viable continuation was found for the requested "
-                "route length."
+            raise failures.NoReachableRoute(
+                "No frontier station could complete the route to the "
+                "requested destination with the current jump settings."
             )
 
         winner = max(
