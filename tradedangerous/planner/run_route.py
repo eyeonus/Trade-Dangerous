@@ -156,12 +156,17 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
             session, request, started, validation_ms, bubble_cache
         )
     # Multi-hop endpoint dispatch, mirroring the single-hop dispatcher above.
-    # A named --from grows the route forward from the origin; with only --to
-    # set the planner chooses the origin and grows the route backward from the
-    # destination. Both endpoints omitted is rejected in validation.
-    if request.from_text:
+    # Both endpoints set keeps the fixed-terminal planner (envelope, real
+    # budget); one endpoint set runs the single-anchor open engine keyed on
+    # which side the planner chooses; both omitted is rejected in validation.
+    if request.from_text and request.to_text:
         return _plan_multi_hop(
             session, request, started, validation_ms, bubble_cache
+        )
+    if request.from_text:
+        return _plan_open_anchor_multi_hop(
+            session, request, started, validation_ms, bubble_cache,
+            open_role="destination",
         )
     return _plan_open_anchor_multi_hop(
         session, request, started, validation_ms, bubble_cache,
