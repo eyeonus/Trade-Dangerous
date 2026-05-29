@@ -2,6 +2,40 @@
 
 <!-- version list -->
 
+## v12.22.5 (2026-05-29)
+
+### Bug Fixes
+
+- Change default min to 2
+  ([`29147f0`](https://github.com/eyeonus/Trade-Dangerous/commit/29147f04d677675fb464ef778b531a5d41be7351))
+
+Lots of stations that don't buy have a demand of 1, and similar with supply of 1, so by default
+  stations have to have a minimum supply/demand of at least 2 to be considered a selling/buying
+  station respectively.
+
+This prevents the situation where a CMDR loads up on Hydrogen and lands in a station that produces
+  Hydrogen, for example.
+
+### Chores
+
+- **deps**: Bump idna from 3.11 to 3.15
+  ([#314](https://github.com/eyeonus/Trade-Dangerous/pull/314),
+  [`a5f3e5e`](https://github.com/eyeonus/Trade-Dangerous/commit/a5f3e5e4e4ef5b8285713f20f3124a6c35c138c5))
+
+Bumps [idna](https://github.com/kjd/idna) from 3.11 to 3.15. - [Release
+  notes](https://github.com/kjd/idna/releases) -
+  [Changelog](https://github.com/kjd/idna/blob/master/HISTORY.md) -
+  [Commits](https://github.com/kjd/idna/compare/v3.11...v3.15)
+
+--- updated-dependencies: - dependency-name: idna dependency-version: '3.15'
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+
 ## v12.22.4 (2026-05-14)
 
 ### Bug Fixes
