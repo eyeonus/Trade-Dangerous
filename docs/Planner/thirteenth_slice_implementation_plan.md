@@ -103,16 +103,49 @@ the existing fetch cannot supply a diverse enough seed.
 The seed frontier is the distinct **source** stations of
 `fetch_unanchored_trade_candidates`, materialised as `ResolvedStation` DTOs
 (via `fetch_stations_by_id`, exactly as `_plan_unanchored` already does), built
-into `_FrontierNode`s at `hop_index = 0` with zeroed accumulators — the same
-seed-node shape the single-anchor engine uses. The seed is then score-trimmed
-to the beam width so the first expansion layer starts bounded.
+into `_FrontierNode`s at `hop_index = 0`. As in the single-anchor engine the
+**route** accumulators are zeroed (`accumulated_raw_profit = 0`,
+`accumulated_practical_score = 0.0`) — a route genuinely has no profit before its
+first hop, and the forward credit-correction pass re-derives everything from the
+real budget regardless.
 
-The open question is **seed diversity**. Seeding from the best one-hop origins
-is a heuristic: the best start for an N-hop route is not always the best
-first-hop origin. This is within the spec's "comparable practical value, not
-exact optimum" standard, and consistent with how the whole unanchored family
-already works — but only if the seed is wide and diverse enough to contain good
-multi-hop starts.
+**Trimming the seed needs its own ranking key, held outside the node.** This is
+the one place the unanchored seed differs from the single-anchor seed, and it
+must be explicit or the widening lever is half-built. The single-anchor engine
+zeroes its seed scores *and never trims the seed* — it keeps every eligible
+anchor station, because that set is already small (one system's stations). The
+unanchored seed is different: it stands in for a ranked galaxy-wide candidate
+set, and a widened fetch can return more sources than the beam width. If the
+trim sorted on the zeroed `accumulated_practical_score`, it would be sorting on
+all-equal `0.0` — an arbitrary cut that could discard exactly the good origins
+the widening was meant to surface.
+
+So: when grouping the unanchored candidates by source station, retain a **seed
+rank** taken from that source's best candidate, and use it — not the route
+score — for the pre-frontier trim and the optional source-system diversity pass.
+The seed rank is a *selection key only*; it never becomes route profit (the node
+still starts at zero). Ranking key, in preference order:
+
+1. The best candidate's estimated practical first-hop value (its cargo-fitted
+   profit under the destination ls-penalty), if cheaply computable from data the
+   fetch already returns.
+2. The best candidate's realisable-profit expression — profit-per-unit × a safe
+   feasible quantity — which is essentially what the unanchored fetch already
+   ranks on internally.
+3. As an explicit fallback, the order the fetch already returns candidates in
+   (it is ranked `realisable_profit DESC`), so "first N distinct sources" is a
+   defensible, documented cut rather than an accidental one.
+
+The probe (below) decides which is cheapest to compute from the returned rows;
+option 2 or 3 is almost certainly enough, since the fetch's own ordering already
+encodes origin quality.
+
+The open question this leaves is **seed diversity**, not seed ranking. Seeding
+from the best one-hop origins is a heuristic: the best start for an N-hop route
+is not always the best first-hop origin. This is within the spec's "comparable
+practical value, not exact optimum" standard, and consistent with how the whole
+unanchored family already works — but only if the seed is wide and diverse
+enough to contain good multi-hop starts.
 
 ### Pre-code probe (gates the seed design)
 
@@ -137,7 +170,7 @@ so a seed at the full beam width of 50 almost certainly needs the widening
 lever):
 
 - **If the <= 50 default trades already yield a healthy, well-spread set of
-  distinct sources:** seed as-is, score-trimmed to the beam width. Unlikely
+  distinct sources:** seed as-is, seed-rank-trimmed to the beam width. Unlikely
   given the cap, but the cheapest outcome if it holds.
 - **Primary lever — widen the fetch for the seed call.** Raise the unanchored
   fetch's candidate cap *for the seed call only* (a parameter on
@@ -145,9 +178,10 @@ lever):
   unchanged so the one-hop path is byte-identical), trading a larger candidate
   set for more, more diverse origins. The probe sizes the widened value.
 - **Complementary lever — source-system diversity on the seed trim.** Keep at
-  most one seed station per system before the score trim, echoing the Slice 8
+  most one seed station per system before the seed-rank trim, echoing the Slice 8
   destination-system diversity refinement, so a widened set does not collapse
-  back onto a few carrier-heavy systems.
+  back onto a few carrier-heavy systems. Diversity uses the same seed rank to
+  choose which station represents each system.
 - **Last resort, separate decision (not assumed here):** a dedicated top-K
   supply-station seed query. Only if widening plus system diversity still cannot
   supply a diverse enough seed — and weighed against the cost of a second
@@ -180,7 +214,7 @@ Two candidate approaches, presented for the reviewer to weigh:
   `route_single_anchor.py` becomes the thin "resolve anchor → build seed → call
   engine" front. Verify single-anchor output byte-identical (the engine move is
   the regression guard).
-- *Step B (behavioural):* add `route_unanchored_multi.py` with
+- *Step B (behavioural):* add `route_unanchored.py` with
   `_plan_unanchored_multi_hop` (fetch unanchored → seed → call the engine,
   `open_role="destination"`), wire dispatch, relax validation, handle the
   prompt.
@@ -198,6 +232,23 @@ would tidy it (as Slice 12 itself was a later tidy).
 Recommendation: **Approach 1**, because it is what the Slice 12 layout was
 built for and the engine move is cheaply verifiable. Flagging Approach 2 as the
 lower-churn fallback if the reviewer prefers to keep this slice's diff small.
+
+**Resolved: Approach 1.** The review endorsed it as the right default — it
+preserves the Slice 12 layering and lets the engine move be verified separately,
+byte-identical, before any new behaviour lands. Step 2 of the sequencing is that
+move; step 3 adds the new planner on top of the relocated engine.
+
+## Module name
+
+The new planner is `route_unanchored.py`. The multi-hop family is organised by
+anchor count — two anchors (`route_anchored`), one anchor
+(`route_single_anchor`), zero anchors (`route_unanchored`) — so the name
+completes that two/one/zero trichotomy and the multi-hop dispatch reads
+symmetrically. No risk of confusion with the one-hop unanchored search: that
+search lives inside `route_onehop.py` (the single-hop module) and has no module
+of its own, so the bare name `route_unanchored` is unambiguous as the multi-hop
+planner. No "_multi" suffix — it would be redundant word-salad given where the
+one-hop version actually sits.
 
 ## Dispatch
 
@@ -246,11 +297,15 @@ The prompt is **already hops-agnostic.** It gates on `_is_unanchored_request`
 (`run_cmd.py:1359-1362` — `not request.from_text and not request.to_text`), with
 the affirmative/non-affirmative/non-TTY handling at `run_cmd.py:1459-1501`. So
 once the two both-omitted gates above relax, both-omitted multi-hop flows through
-this prompt automatically — no new gate is needed. Only the wording needs a pass:
-the current copy is calibrated for one-hop unanchored, and multi-hop unanchored
-is heavier still (seed scan plus N layers of expansion). Validation already runs
-before the prompt, so an invalid multi-hop request still fails fast rather than
-after a confirmation.
+this prompt automatically — no new gate is needed. Only the wording needs a pass.
+Two reasons: the current copy is calibrated for one-hop unanchored, and
+multi-hop unanchored is heavier still (seed scan plus N layers of expansion); and
+the current text describes finding "one best trade", which is actively inaccurate
+for `--hops N`. The reworded prompt should describe a "best route" / "multi-hop
+route" and key its language off `request.hops` so it reads correctly for both the
+one-hop and multi-hop unanchored shapes. Validation already runs before the
+prompt, so an invalid multi-hop request still fails fast rather than after a
+confirmation.
 
 ## Diagnostics
 
@@ -280,7 +335,7 @@ review between them per the project workflow.
    expansion engine callable with a pre-built seed frontier (and, if Approach 1,
    relocate it to `route_common.py`). Verify single-anchor `--from` and `--to`
    multi-hop come out byte-identical (regression guard).
-3. **New planner.** `route_unanchored_multi.py`: fetch unanchored candidates →
+3. **New planner.** `route_unanchored.py`: fetch unanchored candidates →
    build and trim the seed frontier → call the engine forward.
 4. **Dispatch + validation.** Add the both-omitted multi-hop arm to
    `plan_route`; relax the validation rejection.
@@ -317,7 +372,7 @@ useful; route validity is primary, not parity.
 ## Files expected to change
 
 ```text
-tradedangerous/planner/route_unanchored_multi.py   # new planner
+tradedangerous/planner/route_unanchored.py         # new planner
 tradedangerous/planner/route_common.py             # engine relocation (Approach 1)
 tradedangerous/planner/route_single_anchor.py      # reduced to thin front (Approach 1)
 tradedangerous/planner/run_route.py                # both-omitted multi-hop dispatch arm
@@ -326,7 +381,9 @@ tradedangerous/commands/run_cmd.py                 # prompt covers multi-hop; re
 ```
 
 `cargo.py`, `score.py`, `reachability.py`, `render_text.py`, `run_request.py`,
-`run_result.py` (unless the seed counters need threading), `resolver.py`, and
+`run_result.py` (the `PlannerDiagnostics` unanchored-counter fields already
+exist, so threading them touches `route_common.py` and its callers, not the
+DTO), `resolver.py`, and
 `data_gateway.py` (unless the seed probe requires a widening parameter on the
 unanchored fetch) are expected to be untouched.
 
