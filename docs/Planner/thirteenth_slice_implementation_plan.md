@@ -81,8 +81,9 @@ Keeping the galaxy scan in the **one** existing function matters: it is the
 clean-room single source of truth for "what trades exist galaxy-wide," and the
 costly cost-model remediation already lives there. A second bespoke "best origin
 stations" galaxy query would duplicate that surface and risk re-introducing the
-same SQLite cost-model failures. Avoid it unless the seed probe (below) proves
-the existing fetch cannot supply a diverse enough seed.
+same SQLite cost-model failures. The seed probe (result below) confirms the
+existing fetch supplies an ample, diverse seed, so that second query is not
+needed.
 
 ## Scope
 
@@ -111,84 +112,87 @@ real budget regardless.
 
 **Trimming the seed needs its own ranking key, held outside the node.** This is
 the one place the unanchored seed differs from the single-anchor seed, and it
-must be explicit or the widening lever is half-built. The single-anchor engine
+must be explicit. The single-anchor engine
 zeroes its seed scores *and never trims the seed* — it keeps every eligible
 anchor station, because that set is already small (one system's stations). The
 unanchored seed is different: it stands in for a ranked galaxy-wide candidate
-set, and a widened fetch can return more sources than the beam width. If the
-trim sorted on the zeroed `accumulated_practical_score`, it would be sorting on
-all-equal `0.0` — an arbitrary cut that could discard exactly the good origins
-the widening was meant to surface.
+set, and the default fetch returns far more sources than the beam width (the
+probe below measured 394 distinct sources against a width of 50). If the trim
+sorted on the zeroed `accumulated_practical_score`, it would be sorting on
+all-equal `0.0` — an arbitrary cut that would discard most of those origins at
+random.
 
 So: when grouping the unanchored candidates by source station, retain a **seed
 rank** taken from that source's best candidate, and use it — not the route
-score — for the pre-frontier trim and the optional source-system diversity pass.
-The seed rank is a *selection key only*; it never becomes route profit (the node
-still starts at zero). Ranking key, in preference order:
+score — for the pre-frontier trim. The seed rank is a *selection key only*; it
+never becomes route profit (the node still starts at zero).
 
-1. The best candidate's estimated practical first-hop value (its cargo-fitted
-   profit under the destination ls-penalty), if cheaply computable from data the
-   fetch already returns.
-2. The best candidate's realisable-profit expression — profit-per-unit × a safe
-   feasible quantity — which is essentially what the unanchored fetch already
-   ranks on internally.
-3. As an explicit fallback, the order the fetch already returns candidates in
-   (it is ranked `realisable_profit DESC`), so "first N distinct sources" is a
-   defensible, documented cut rather than an accidental one.
+**Resolved ranking key: a realisable-profit proxy per source.** For each source
+station, take its best candidate and score it `profit_per_unit ×
+min(capacity_or_item_limit, source_supply_units,
+effective_destination_demand_units)`, where `capacity_or_item_limit` is
+`capacity`, narrowed to `min(capacity, cargo_limit_per_item)` when `--limit`
+(`cargo_limit_per_item`) is set — the same realisable-profit idea the unanchored
+fetch already ranks on internally (`_realisable_profit_expression`,
+`data_gateway.py:1483`, which caps realisable tonnage by capacity and by
+`--limit` when set), recomputed Python-side from fields the returned
+`TradeCandidate` already carries.
+No extra query, no `optimise_cargo` for ranking, no gateway change; the forward
+correction pass re-costs everything for real regardless. The cheaper "just use
+the fetch's returned order" is rejected: under `--jumps-per >= 1` the fetch
+streams rows **grouped by commodity**, not globally profit-ranked, so "first N
+distinct sources" would be biased toward the first commodities walked rather
+than the best origins.
 
-The probe (below) decides which is cheapest to compute from the returned rows;
-option 2 or 3 is almost certainly enough, since the fetch's own ordering already
-encodes origin quality.
+Seeding from the best one-hop origins is a heuristic: the best start for an
+N-hop route is not always the best first-hop origin. This is within the spec's
+"comparable practical value, not exact optimum" standard, and consistent with
+how the whole unanchored family already works — and the probe below confirms the
+seed is wide and diverse enough to contain good multi-hop starts (394 distinct
+sources across 391 systems at the default cap).
 
-The open question this leaves is **seed diversity**, not seed ranking. Seeding
-from the best one-hop origins is a heuristic: the best start for an N-hop route
-is not always the best first-hop origin. This is within the spec's "comparable
-practical value, not exact optimum" standard, and consistent with how the whole
-unanchored family already works — but only if the seed is wide and diverse
-enough to contain good multi-hop starts.
+### Seed probe — result (gate cleared)
 
-### Pre-code probe (gates the seed design)
+The premise this probe was built to test — that the seed is *narrow by
+construction* — proved **wrong**, and the result simplifies the seed design
+rather than complicating it.
 
-The natural seed is **narrow by construction.** `fetch_unanchored_trade_candidates`
-is capped at `_UNANCHORED_MATCH_LIMIT = 50` trades total (`data_gateway.py:1019`,
-applied as the SQL `LIMIT` and the Python-stream cap) — it is built to find the
-single best *one-hop* trade, not to enumerate origins. The distinct **source**
-stations among those <= 50 trades will be fewer still, and the carrier-dominance
-note (winners clustering on a handful of carrier stations) suggests they may
-cluster hard. So the seed-widening lever is **likely required**, not a fallback.
-The probe settles whether and by how much.
+The cap was misread. `_UNANCHORED_MATCH_LIMIT = 50` (`data_gateway.py:1019`) is a
+**per-commodity** cap, not a total one — it bounds how many top pairs each
+commodity contributes (the SQL `LIMIT` on the same-system path at line 1571, the
+accept cap in the on-demand reach stream at line 1709). About 25 commodities
+survive the profit-bound walk, each saturating its cap, so the default fetch
+returns roughly `50 × 25 ≈ 1250` trades, not <= 50.
 
-Run the unanchored candidate fetch under the reference realistic filters
-(`--age 3 --fc N --planetary N --pad-size L --jumps-per 3 --ly-per 30`,
-matching the Slice 9 unanchored baseline) and measure:
+Measured under the reference realistic filters (`--age 3 --fc N --planetary N
+--pad-size L --jumps-per 3 --ly-per 30`, 720 t hold, 50 M cr):
 
-- the number of **distinct source station ids** in the returned candidates;
-- the number of **distinct source systems** they fall in.
+| per-commodity cap | trades | distinct sources | distinct systems |
+|---|---|---|---|
+| 50 (default) | 1250 | **394** | **391** |
+| 200 | 5000 | 1307 | 1286 |
+| 500 | — | — | OOM-killed |
 
-Interpretation and remediation ladder (the default fetch returns <= 50 trades,
-so a seed at the full beam width of 50 almost certainly needs the widening
-lever):
+So at the **default cap** the seed is already 394 source stations across 391
+systems — nearly 8× the beam width of 50, and almost one station per system.
 
-- **If the <= 50 default trades already yield a healthy, well-spread set of
-  distinct sources:** seed as-is, seed-rank-trimmed to the beam width. Unlikely
-  given the cap, but the cheapest outcome if it holds.
-- **Primary lever — widen the fetch for the seed call.** Raise the unanchored
-  fetch's candidate cap *for the seed call only* (a parameter on
-  `fetch_unanchored_trade_candidates`, default `_UNANCHORED_MATCH_LIMIT`
-  unchanged so the one-hop path is byte-identical), trading a larger candidate
-  set for more, more diverse origins. The probe sizes the widened value.
-- **Complementary lever — source-system diversity on the seed trim.** Keep at
-  most one seed station per system before the seed-rank trim, echoing the Slice 8
-  destination-system diversity refinement, so a widened set does not collapse
-  back onto a few carrier-heavy systems. Diversity uses the same seed rank to
-  choose which station represents each system.
-- **Last resort, separate decision (not assumed here):** a dedicated top-K
-  supply-station seed query. Only if widening plus system diversity still cannot
-  supply a diverse enough seed — and weighed against the cost of a second
-  galaxy-wide query surface.
+**Resolved seed design (the cheapest rung):** seed as-is from the default fetch,
+seed-rank-trimmed to the beam width. The trim genuinely binds (394 -> 50), which
+is exactly why the explicit seed rank above is needed.
 
-The probe result is recorded inline in this plan before code begins, the same
-way Slices 5 and 6 gated their structural choices on probe evidence.
+**Struck from the plan as not needed:**
+
+- *Widening lever* — the default already over-supplies the seed, so there is no
+  reason to raise the cap for the seed call, and `fetch_unanchored_trade_candidates`
+  is left untouched. The cap-500 probe was OOM-killed; this does not affect the
+  Slice 13 baseline, because the baseline uses the default cap-50 path, which
+  completed cleanly and already produced a healthy seed. Any future widening
+  should be treated as a separate, measured decision, not part of this slice.
+- *Source-system diversity rung* — with 391 systems behind 394 sources the seed
+  is already ~one-per-system; under `--fc N` there is no source-side carrier
+  clustering to correct.
+- *Dedicated top-K seed query* — never reached; the existing fetch supplies an
+  ample, diverse seed.
 
 ## Engine placement (decision for review)
 
@@ -330,7 +334,9 @@ Each numbered step imports and runs after it; one logical step at a time, with
 review between them per the project workflow.
 
 1. **Seed probe.** Measure distinct seed sources/systems from the unanchored
-   fetch; record the result here; settle the seed design.
+   fetch; record the result here; settle the seed design. **Done** — see the
+   "Seed probe — result" section: the seed is wide (394 sources / 391 systems at
+   the default cap), so it is seeded as-is and seed-rank-trimmed; no widening.
 2. **Engine generalisation (structural).** Per the chosen approach, make the
    expansion engine callable with a pre-built seed frontier (and, if Approach 1,
    relocate it to `route_common.py`). Verify single-anchor `--from` and `--to`
@@ -383,9 +389,8 @@ tradedangerous/commands/run_cmd.py                 # prompt covers multi-hop; re
 `cargo.py`, `score.py`, `reachability.py`, `render_text.py`, `run_request.py`,
 `run_result.py` (the `PlannerDiagnostics` unanchored-counter fields already
 exist, so threading them touches `route_common.py` and its callers, not the
-DTO), `resolver.py`, and
-`data_gateway.py` (unless the seed probe requires a widening parameter on the
-unanchored fetch) are expected to be untouched.
+DTO), `resolver.py`, and `data_gateway.py` (the seed probe confirmed no widening
+parameter is needed) are expected to be untouched.
 
 ## Source facts confirmed for this plan
 
@@ -398,17 +403,18 @@ design above rests on them, not on assumption:
    (`run_cmd.py:1359-1362`) keys only on the absence of both endpoints; the
    prompt at `run_cmd.py:1459-1501` therefore covers multi-hop once the gates
    relax. Wording reword only.
-3. **Unanchored fetch is capped at 50 trades.** `_UNANCHORED_MATCH_LIMIT = 50`
-   (`data_gateway.py:1019`), applied as the SQL `LIMIT` (line 1571) and the
-   Python-stream cap (line 1709). Drives the seed-width probe and the widening
-   lever above.
+3. **Unanchored fetch cap is per-commodity, not total.**
+   `_UNANCHORED_MATCH_LIMIT = 50` (`data_gateway.py:1019`) bounds pairs *per
+   commodity*, applied as the SQL `LIMIT` (line 1571) and the Python-stream
+   accept cap (line 1709). The default fetch therefore returns ~1250 trades
+   across 394 distinct sources, not <= 50 — see the seed probe result.
 4. **`_multihop_result` does not carry the unanchored counters** — they must be
    threaded (see Diagnostics).
 
-The one item that still genuinely needs a runtime measurement before code is the
-**seed probe** (how many distinct sources/systems the fetch yields, and the
-widened cap needed) — it is a measurement, not a source read, and is step 1 of
-the sequencing.
+The one item that needed a runtime measurement before code — the **seed probe**
+(how many distinct sources/systems the fetch yields) — is done; its result is
+recorded in the "Seed probe — result" section above, and it settled the seed
+design (seed as-is, seed-rank-trimmed, no widening).
 
 ## Noted, not done
 
@@ -418,6 +424,6 @@ the sequencing.
   unanchored too. A rename/reword is a tidy opportunity, left out of scope to
   keep the diff minimal; raise if wanted alongside the engine move.
 - **Seed-quality monitoring.** If the heuristic seed proves to miss good
-  multi-hop starts in practice, the remediation ladder above (system diversity,
-  widened fetch) is the lever — not a candidate-query rewrite. Recorded so the
-  option is not lost.
+  multi-hop starts in practice, the levers struck above (source-system
+  diversity, a wider per-commodity fetch cap) remain available as a fallback —
+  not a candidate-query rewrite. Recorded so the option is not lost.
