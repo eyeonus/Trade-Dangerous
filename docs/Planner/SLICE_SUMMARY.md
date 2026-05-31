@@ -23,13 +23,16 @@ comparison. `selectNeeds()` returns `Needs.RESOLVER` for the new path and
 `Needs.RESOLVER` and so avoiding the legacy full-database preload — not from
 lazy imports.
 
-Within that package, route planning is split by shape (see Slice 12):
+Within that package, route planning is split by shape:
 `run_route.py` is the dispatch surface (`plan_route`, `_plan_single_hop`);
 `route_onehop.py` holds the single-hop planners (fixed / open-ended /
 unanchored); `route_anchored.py` the fully-anchored multi-hop planner
-(`--from X --to Y`); `route_single_anchor.py` the part-anchored multi-hop
-planner (one open end); and `route_common.py` the frontier/beam machinery and
-generic helpers shared by more than one planner. Dependency direction is
+(`--from X --to Y`); `route_single_anchor.py` the part-anchored multi-hop front
+(one open end); `route_unanchored.py` the fully-unanchored multi-hop planner
+(both omitted); and `route_common.py` the frontier/beam machinery, the shared
+open-anchor expansion engine, and generic helpers. The open-anchor engine in
+`route_common` is driven by both `route_single_anchor` (seeded from one resolved
+endpoint) and `route_unanchored` (seeded galaxy-wide). Dependency direction is
 one-way: `route_common` -> planners -> dispatch.
 
 ---
@@ -878,6 +881,73 @@ data.
 
 Commit `f676cfaf`. Full record:
 `docs/Planner/twelfth_slice_completion_report.md`.
+
+---
+
+## Slice 13 — Fully-Unanchored Multi-Hop (complete)
+
+Multi-hop with **both endpoints omitted** — the planner selects the origin, the
+destination, and every station in between. The last basic route shape; the shape
+grid is now complete.
+
+**Supported shape:**
+
+```text
+trade run --hops N        (--from omitted, --to omitted, N >= 2)
+```
+
+alongside every Slice 1-12 shape. No new option.
+
+**The approach:** composition, not a new search. The unanchored one-hop
+candidate fetch supplies the galaxy seed; its **source** stations seed the proven
+forward open-anchor engine, which grows the route (`open_role="destination"`)
+with the credit-optimistic expansion and the forward credit-correction pass.
+
+**Delivered:**
+
+- The open-anchor expansion engine moved from `route_single_anchor.py` into
+  `route_common.py` (`_plan_open_anchor_route` plus its per-node primitive,
+  correction pass, partial helper, and constants), generalised to accept a
+  pre-built seed frontier so both the single-anchor and unanchored planners drive
+  it. `route_single_anchor.py` is reduced to a thin front. The move is verbatim
+  apart from the new `seed_frontier` parameter (proven byte-identical — source
+  comparison plus a no-`--age` behavioural regression on `--from`/`--to`
+  multi-hop, identical routes and search counts).
+- `route_unanchored.py` (`_plan_unanchored_multi_hop`): fetch the unanchored
+  candidates, rank each distinct source by a realisable-profit proxy
+  (`profit_per_unit × min(capacity-or-limit, supply, effective demand)`,
+  mirroring `_realisable_profit_expression`), trim to the beam width of 50 on
+  that rank with a station-id tiebreak for determinism, seed zeroed hop-0 nodes,
+  and call the engine forward. The trim is essential — the engine expands every
+  seed node, and the default fetch yields hundreds of sources.
+- `plan_route` gains an explicit both-omitted multi-hop dispatch arm; the two
+  both-omitted multi-hop rejections (planner validation and the command-layer
+  guard) are removed now the shape is supported.
+- The existing both-omitted confirmation prompt already gates the shape (it keys
+  on the absent endpoints, not the hop count). Its wording was reworded to
+  plainer, player-facing language reading correctly for both one-hop and
+  multi-hop unanchored, and the non-TTY abort message brought into the same
+  voice.
+
+**Verified:** the new shape returns valid two-hop routes, both ends
+planner-chosen, filtered and unfiltered, at 50M and 1M credits (the correction
+pass binds at the tight budget), and with `--limit 50` (every buy line at or
+below the cap, several pinned at exactly 50 t). One-hop shapes (fixed, open,
+unanchored) and the run-short Colonia benchmark unchanged; the reworded prompt
+reads correctly for one-hop unanchored too. Decline path ("Search cancelled.")
+clean.
+
+**Performance:** the heaviest shape by nature — galaxy seed scan plus multi-hop
+expansion, roughly 80 s to 5.3 min across the tested sets, the seed scan dominant
+(reported as the diagnostics station-filter time). Gated by the confirmation
+prompt.
+
+**Deferred (not cut):** all route modifiers and search/display controls still
+gated in validation; the shared expansion-cost floor; the stale
+`_OPEN_ORIGIN_CORRECTION_WIDTH` naming (it serves all open shapes now).
+
+Commits `1c99def0`, `7775bcb3`, `0663f488`. Full record:
+`docs/Planner/thirteenth_slice_completion_report.md`.
 
 ---
 

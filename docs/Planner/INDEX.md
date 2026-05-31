@@ -135,6 +135,14 @@ Each completed slice has an implementation plan (what needs to be done) and a co
 | [twelfth_slice_implementation_plan.md](twelfth_slice_implementation_plan.md) | Design plan for Slice 12: the five-module target layout (dispatch / one-hop / fully-anchored / part-anchored / shared common), the used-by-many-vs-used-by-one allocation rule, the dead-code inventory, and the no-behaviour-change verification approach. |
 | [twelfth_slice_completion_report.md](twelfth_slice_completion_report.md) | Proof of completion: the split executed via a deterministic AST-extract workflow, dead code removed, and verification — import, flake8, and AST parity (every symbol present once with identical code), plus live-data spot-checks. |
 
+### Slice 13 — Fully-Unanchored Multi-Hop (Complete)
+**Multi-hop with both endpoints omitted; the planner selects the origin, the destination, and every station in between — the last basic route shape.**
+
+| Document | Content |
+|----------|---------|
+| [thirteenth_slice_implementation_plan.md](thirteenth_slice_implementation_plan.md) | Design plan for Slice 13: composing the unanchored one-hop candidate fetch with the proven forward open-anchor engine, the seed-rank trim, the engine relocation to `route_common`, the dispatch and validation changes, and the prompt rework. |
+| [thirteenth_slice_completion_report.md](thirteenth_slice_completion_report.md) | Proof of completion: the engine move proven byte-identical, `route_unanchored` seeding the engine galaxy-wide, valid routes across filtered / unfiltered / tight-credit / `--limit` runs, existing shapes and benchmark unchanged, prompt reword verified. |
+
 ---
 
 ## Reference and Technical Notes
