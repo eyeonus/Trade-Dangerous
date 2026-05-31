@@ -16,6 +16,7 @@ from .route_onehop import (
     _plan_unanchored,
 )
 from .route_single_anchor import _plan_open_anchor_multi_hop
+from .route_unanchored import _plan_unanchored_multi_hop
 from .run_request import RunRequest
 from .validation import validate_run_request
 
@@ -52,7 +53,8 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
     # Multi-hop endpoint dispatch, mirroring the single-hop dispatcher above.
     # Both endpoints set keeps the fixed-terminal planner (envelope, real
     # budget); one endpoint set runs the single-anchor open engine keyed on
-    # which side the planner chooses; both omitted is rejected in validation.
+    # which side the planner chooses; both omitted seeds that same open engine
+    # from a galaxy-wide set of origins.
     if request.from_text and request.to_text:
         return _plan_multi_hop(
             session, request, started, validation_ms, bubble_cache
@@ -62,9 +64,13 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
             session, request, started, validation_ms, bubble_cache,
             open_role="destination",
         )
-    return _plan_open_anchor_multi_hop(
-        session, request, started, validation_ms, bubble_cache,
-        open_role="source",
+    if request.to_text:
+        return _plan_open_anchor_multi_hop(
+            session, request, started, validation_ms, bubble_cache,
+            open_role="source",
+        )
+    return _plan_unanchored_multi_hop(
+        session, request, started, validation_ms, bubble_cache
     )
 
 
