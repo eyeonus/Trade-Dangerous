@@ -1460,29 +1460,28 @@ def run(results, cmdenv, tdb):
                 if not sys.stdin.isatty():
                     return _abort_unanchored_run(
                         results,
-                        "trade run with neither --from nor --to runs a slow "
-                        "galaxy-wide search\n"
-                        "and needs interactive confirmation.\n"
-                        "Re-run in an interactive terminal, or narrow the "
-                        "search by naming\n"
-                        "--from <system> and/or --to <system>.",
+                        "Without --from or --to, Trade Dangerous searches the "
+                        "whole galaxy\n"
+                        "for the best trades, which could take several "
+                        "minutes.\n"
+                        "It needs you to confirm first, but there's no "
+                        "interactive terminal here.\n"
+                        "Re-run in a terminal, or name a starting system with "
+                        "--from and/or a\n"
+                        "destination with --to.",
                     )
                 print(
-                    "Searching with neither --from nor --to scans the entire "
-                    "galaxy for one\n"
-                    "best trade. This is dramatically slower than naming "
-                    "either endpoint,\n"
-                    "and the run can take anywhere from minutes to "
-                    "substantially longer\n"
-                    "depending on the data and filters in play.\n"
+                    "Without --from or --to, Trade Dangerous will search the "
+                    "whole galaxy\n"
+                    "for the best trades. This can be much slower than "
+                    "naming either endpoint,\n"
+                    "and could take several minutes.\n"
                     "\n"
-                    "Strongly recommended before continuing:\n"
+                    "To speed up the search:\n"
                     "  - Name a starting system with --from, a destination "
                     "with --to, or both.\n"
-                    "  - Apply filters to cut the candidate set: --age "
-                    "<days>, --pad-size,\n"
-                    "    --planetary, --fc N.\n"
-                    "Either narrows the search substantially.",
+                    "  - Use filters such as --age <days>, --pad-size, "
+                    "--planetary, --fc N.",
                     flush=True,
                 )
                 if input("Continue? [y/N] ").strip().lower() not in ("y", "yes"):
