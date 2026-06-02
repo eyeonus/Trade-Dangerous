@@ -14,7 +14,6 @@ from .exceptions import (
 
 from tradedangerous import TradeEnv
 from tradedangerous.db import orm_models as orm
-from tradedangerous.tradeexcept import AmbiguityError
 
 
 if typing.TYPE_CHECKING:
@@ -26,16 +25,12 @@ if typing.TYPE_CHECKING:
 class Needs(Flag):
     """Backend capability requirements for a command.
 
-    Commands declare their backend needs via a module-level ``needs`` attribute.
-    Modules without an explicit declaration fall back to a non-preloaded
-    legacy handle (LEGACY_HANDLE).
+    Commands declare their backend needs via a module-level ``needs``
+    attribute. Every command must declare one; a module with no declaration
+    is treated as incomplete and fails during command setup.
     """
-    NOTHING       = 0        # no backend required (e.g. deprecated no-ops)
-    RESOLVER      = auto()   # TradeORM resolver only
-    # TradeDB(load=False): a transitional shim for commands that need TradeDB
-    # infrastructure (paths/engine) but not the full in-memory load, or are in
-    # transit toward RESOLVER. Not a permanent migration target.
-    LEGACY_HANDLE = auto()
+    NOTHING  = 0        # no backend required (e.g. deprecated no-ops)
+    RESOLVER = auto()   # TradeORM resolver only
 
 
 class ResultRow:
@@ -84,17 +79,17 @@ class CommandEnv(TradeEnv):
             self.commandNeeds = needs_selector(self)
         else:
             _module_needs = getattr(cmdModule, 'needs', None)
-            if _module_needs is not None:
-                self.commandNeeds = _module_needs
-            else:
-                # Full in-memory preload is retired, so a module with no
-                # explicit declaration falls back to a non-preloaded legacy
-                # handle. Commands that needed the preloaded galaxy (nav) are
-                # knowingly broken until checkpoint L.
-                self.commandNeeds = Needs.LEGACY_HANDLE
-        self.needs_resolver  = bool(self.commandNeeds & Needs.RESOLVER)
-        self.needs_legacy_db = bool(self.commandNeeds & Needs.LEGACY_HANDLE)
-        self.wantsTradeDB = self.needs_legacy_db  # backward-compat alias
+            if _module_needs is None:
+                # Every command must declare its backend needs explicitly. A
+                # module with no declaration is an incomplete command, not a
+                # legacy one, so fail loudly rather than hand it a backend.
+                cmd_name = getattr(cmdModule, 'name', cmdModule)
+                raise CommandLineError(
+                    f"Command '{cmd_name}' does not declare its backend "
+                    "needs (set needs = Needs.RESOLVER or Needs.NOTHING)."
+                )
+            self.commandNeeds = _module_needs
+        self.needs_resolver = bool(self.commandNeeds & Needs.RESOLVER)
         self.usesTradeData = getattr(cmdModule, 'usesTradeData', False)
     
     def preflight(self) -> None:
@@ -134,14 +129,10 @@ class CommandEnv(TradeEnv):
             'skipResolverPrechecks',
             False,
         )
-        if self.needs_resolver and not self.needs_legacy_db:
-            if not skip_resolver_prechecks:
-                self.checkFromToNearORM()
-                self.checkAvoidsORM()
-                self.checkViasORM()
-        elif self.needs_legacy_db:
-            self.checkAvoids()
-            self.checkVias()
+        if self.needs_resolver and not skip_resolver_prechecks:
+            self.checkFromToNearORM()
+            self.checkAvoidsORM()
+            self.checkViasORM()
         
         self.checkPlanetary()
         self.checkFleet()
@@ -242,65 +233,6 @@ class CommandEnv(TradeEnv):
                     "Unknown system/station: {}".format(via)
                 )
 
-    def checkAvoids(self) -> None:
-        """
-            Process a list of avoidances.
-        """
-        
-        avoidItems = self.avoidItems = []
-        avoidPlaces = self.avoidPlaces = []
-        avoidances = self.avoid
-        if not self.avoid:
-            return
-        avoidances = self.avoid
-        
-        tdb = self.tdb
-        
-        # You can use --avoid to specify an item, system or station.
-        # and you can group them together with commas or list them
-        # individually.
-        for avoid in ','.join(avoidances).split(','):
-            # Is it an item?
-            item, place = None, None
-            try:
-                item = tdb.lookupItem(avoid)
-                avoidItems.append(item)
-                if tdb.normalizedStr(item.name()) == tdb.normalizedStr(avoid):
-                    continue
-            except LookupError:
-                pass
-            # Or is it a place?
-            try:
-                place = tdb.lookupPlace(avoid)
-                avoidPlaces.append(place)
-                if tdb.normalizedStr(place.name()) == tdb.normalizedStr(avoid):
-                    continue
-                continue
-            except LookupError:
-                pass
-            
-            # If it was none of the above, whine about it
-            if not (item or place):
-                raise CommandLineError("Unknown item/system/station: {}".format(avoid))
-            
-            # But if it matched more than once, whine about ambiguity
-            if item and place:
-                raise AmbiguityError('Avoidance', avoid, [ item, place.text() ])
-        
-        self.DEBUG0("Avoiding items {}, places {}",
-                    [ item.name() for item in avoidItems ],
-                    [ place.name() for place in avoidPlaces ],
-        )
-    
-    def checkVias(self) -> None:
-        """ Process a list of station names and build them into a list of waypoints. """
-        viaPlaceNames = getattr(self, 'via', None)
-        viaPlaces = self.viaPlaces = []
-        # accept [ "a", "b,c", "d" ] by joining everything and then splitting it.
-        if viaPlaceNames:
-            for via in ",".join(viaPlaceNames).split(","):
-                viaPlaces.append(self.tdb.lookupPlace(via))
-    
     def checkPadSize(self) -> None:
         padSize = getattr(self, 'padSize', None)
         if not padSize:

@@ -38,7 +38,6 @@ import traceback
 from .commands import exceptions
 from .plugins import PluginException
 from . import commands
-from . import tradedb
 from . import tradeexcept
 from .tradeorm import TradeORM
 
@@ -121,13 +120,6 @@ def trade(argv):
             with cmdenv.time_block("TradeORM.__init__", level=0):
                 torm = TradeORM(tdenv=cmdenv, require_db=not allow_missing)
             tdb = torm
-
-        # Phase B2: legacy TradeDB — only for commands that need it.
-        if cmdenv.needs_legacy_db:
-            with cmdenv.time_block("TradeDB.__init__", level=0):
-                # Full in-memory preload is retired; the legacy handle is
-                # always built without it (load=False).
-                tdb = tradedb.TradeDB(cmdenv, load=False)
 
         if cmdenv.usesTradeData and tdb is not None:
             tsc = tdb.tradingStationCount
