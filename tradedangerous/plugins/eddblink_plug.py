@@ -120,13 +120,13 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.commoditiesPath = Path("Item.csv")
         self.shipPath = Path("Ship.csv")
         self.urlShipyard = "https://raw.githubusercontent.com/EDCD/FDevIDs/master/shipyard.csv"
-        self.FDevShipyardPath = self.tdb.dataPath / Path("FDevShipyard.csv")
+        self.FDevShipyardPath = self.tdb.data_dir / Path("FDevShipyard.csv")
         self.shipVendorPath = Path("ShipVendor.csv")
         self.stationsPath = Path("Station.csv")
         self.sysPath = Path("System.csv")
         self.upgradesPath = Path("Upgrade.csv")
         self.urlOutfitting = "https://raw.githubusercontent.com/EDCD/FDevIDs/master/outfitting.csv"
-        self.FDevOutfittingPath = self.tdb.dataPath / Path("FDevOutfitting.csv")
+        self.FDevOutfittingPath = self.tdb.data_dir / Path("FDevOutfitting.csv")
         self.upgradeVendorPath = Path("UpgradeVendor.csv")
         self.listingsPath = Path("listings.csv")
         self.liveListingsPath = Path("listings-live.csv")
@@ -170,10 +170,10 @@ class ImportPlugin(plugins.ImportPluginBase):
 
     def _eddblink_state_path(self) -> Path:
         """
-        Single sidecar state file stored in TD_DATA (tdb.dataPath).
+        Single sidecar state file stored in TD_DATA (tdb.data_dir).
         This is the authoritative record of "downloaded from server" identity.
         """
-        return (self.tdb.dataPath / "eddblink_state.json").resolve()
+        return (self.tdb.data_dir / "eddblink_state.json").resolve()
 
     def _load_eddblink_state(self) -> dict:
         state_path = self._eddblink_state_path()
@@ -219,7 +219,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         rebuild_cmd = "trade import -P eddblink -O clean,skipvend"
 
         try:
-            with self.tdb.Session() as session:
+            with self.tdb.session_maker() as session:
                 row = session.execute(
                     select(SA.Category.category_id, SA.Category.name)
                     .where(SA.Category.category_id == 1)
@@ -259,7 +259,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         (e.g. template-copied files) and will be downloaded.
         """
         if path not in (self.liveListingsPath, self.listingsPath):
-            localPath = Path(self.tdb.dataPath, path)
+            localPath = Path(self.tdb.data_dir, path)
         else:
             localPath = Path(self.dataPath, path)
 
@@ -365,7 +365,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         self.tdenv.NOTE("Purging Systems with no stations: Start time = {}", self.now())
         
-        with self.tdb.Session.begin() as session:
+        with self.tdb.session_maker.begin() as session:
             subq = select(SA.Station.system_id).where(SA.Station.system_id == SA.System.system_id)
             stmt = delete(SA.System).where(~exists(subq))
             session.execute(stmt)
@@ -396,7 +396,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         )
         
         # Prefetch item/station IDs for early filtering
-        with self.tdb.Session() as session:
+        with self.tdb.session_maker() as session:
             item_lookup = _make_item_id_lookup(self.tdenv, session)
             station_lookup = _make_station_id_lookup(self.tdenv, session)
         
@@ -404,7 +404,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         with pbar.Progress(total, 40, label="Processing", style=pbar.LongRunningCountBar) as prog, \
                listings_path.open("r", encoding="utf-8", errors="ignore") as fh, \
-               self.tdb.Session() as session:
+               self.tdb.session_maker() as session:
             
             token = begin_bulk_mode(session, profile="eddblink", phase="incremental")
             try:
@@ -562,13 +562,13 @@ class ImportPlugin(plugins.ImportPluginBase):
             # years of old data, do it a piece at a time. It gives the progress bar
             # some movement.
             expirations = [360, 330, 300, 270, 240, 210, 180, 150, 120, 90, 60, 30, 21, 14, 7]
-            with pbar.Progress(len(expirations) + 1, 40, 1, label="Expiring", style=pbar.LongRunningCountBar) as prog, self.tdb.Session.begin() as session:
+            with pbar.Progress(len(expirations) + 1, 40, 1, label="Expiring", style=pbar.LongRunningCountBar) as prog, self.tdb.session_maker.begin() as session:
                 for expiration in expirations:
                     session.execute(text(f"DELETE FROM StationItem WHERE modified < datetime('now', '-{expiration} days')"))
                     prog.increment(1)
         
         if self.getOption("optimize"):
-            with pbar.Progress(0, 40, label="Optimizing", style=pbar.ElapsedBar) as prog, self.tdb.Session.begin() as session:
+            with pbar.Progress(0, 40, label="Optimizing", style=pbar.ElapsedBar) as prog, self.tdb.session_maker.begin() as session:
                 if self.tdb.engine.dialect.name == "sqlite":
                     session.execute(text("VACUUM"))
         
@@ -581,7 +581,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         if not table_jobs:
             return
 
-        with self.tdb.Session() as session:
+        with self.tdb.session_maker() as session:
             with pbar.Progress(
                 max_value=len(table_jobs) + 1,
                 prefix="Upserting",
@@ -682,13 +682,13 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         Refactored DB flow:
           - No dialect-specific logic in the plugin.
-          - Preflight uses TradeDB.reloadCache() (which centralizes sanity via lifecycle.ensure_fresh_db).
+          - Preflight uses lifecycle.verify_db() (report-only sanity via lifecycle.ensure_fresh_db).
           - For '--clean' → do a single full rebuild.
           - Otherwise, if static CSVs changed → upsert-refresh only those tables (no drop/recreate).
           - Listings import unchanged.
         """
         self.tdenv.ignoreUnknown = True
-        self.tdb.dataPath.mkdir(parents=True, exist_ok=True)
+        self.tdb.data_dir.mkdir(parents=True, exist_ok=True)
 
         # Enable 'listings' by default unless other explicit options are present
         default = True
@@ -711,7 +711,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 "Upgrade", "UpgradeVendor",
                 "FDevShipyard", "FDevOutfitting",
             ]:
-                f = self.tdb.dataPath / f"{name}.csv"
+                f = self.tdb.data_dir / f"{name}.csv"
                 try:
                     os.remove(str(f))
                 except FileNotFoundError:
@@ -725,7 +725,7 @@ class ImportPlugin(plugins.ImportPluginBase):
 
             # Remove .prices (DEPRECATED)
             try:
-                os.remove(str(self.tdb.dataPath / "TradeDangerous.prices"))
+                os.remove(str(self.tdb.data_dir / "TradeDangerous.prices"))
             except FileNotFoundError:
                 pass
 
@@ -836,8 +836,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self.tdb.close()
                 lifecycle.reset_db(
                     self.tdb.engine,
-                    db_path=self.tdb.dbPath,
-                    sql_path=self.tdb.sqlPath,
+                    db_path=self.tdb.db_path,
+                    sql_path=self.tdb.sql_path,
                 )
             else:
                 # Verify the database is present and structurally sane (report
@@ -847,36 +847,36 @@ class ImportPlugin(plugins.ImportPluginBase):
 
             if self.tdb.engine.dialect.name == "sqlite":
                 # kfsone: see https://sqlite.org/pragma.html#pragma_optimize
-                self.tdb.Session().execute(text("PRAGMA optimize=0x10002"))
+                self.tdb.session_maker().execute(text("PRAGMA optimize=0x10002"))
 
             # Upsert-refresh tables in dependency order.
             jobs: list[tuple[str, Path]] = []
 
             if system_changed:
-                jobs.append(("System", (self.tdb.dataPath / self.sysPath).resolve()))
+                jobs.append(("System", (self.tdb.data_dir / self.sysPath).resolve()))
 
             if station_changed:
-                jobs.append(("Station", (self.tdb.dataPath / self.stationsPath).resolve()))
+                jobs.append(("Station", (self.tdb.data_dir / self.stationsPath).resolve()))
 
             if category_changed or item_changed:
-                jobs.append(("Category", (self.tdb.dataPath / self.categoriesPath).resolve()))
-                jobs.append(("Item", (self.tdb.dataPath / self.commoditiesPath).resolve()))
+                jobs.append(("Category", (self.tdb.data_dir / self.categoriesPath).resolve()))
+                jobs.append(("Item", (self.tdb.data_dir / self.commoditiesPath).resolve()))
 
             if ship_changed:
-                jobs.append(("Ship", (self.tdb.dataPath / self.shipPath).resolve()))
+                jobs.append(("Ship", (self.tdb.data_dir / self.shipPath).resolve()))
             if fdev_shipyard_changed:
                 jobs.append(("FDevShipyard", self.FDevShipyardPath.resolve()))
 
             if upgrade_changed:
-                jobs.append(("Upgrade", (self.tdb.dataPath / self.upgradesPath).resolve()))
+                jobs.append(("Upgrade", (self.tdb.data_dir / self.upgradesPath).resolve()))
             if fdev_outfitting_changed:
                 jobs.append(("FDevOutfitting", self.FDevOutfittingPath.resolve()))
 
             if shipvend_changed:
-                jobs.append(("ShipVendor", (self.tdb.dataPath / self.shipVendorPath).resolve()))
+                jobs.append(("ShipVendor", (self.tdb.data_dir / self.shipVendorPath).resolve()))
 
             if upvend_changed:
-                jobs.append(("UpgradeVendor", (self.tdb.dataPath / self.upgradeVendorPath).resolve()))
+                jobs.append(("UpgradeVendor", (self.tdb.data_dir / self.upgradeVendorPath).resolve()))
 
             self._refresh_dump_tables(jobs)
             self.tdb.close()
@@ -892,7 +892,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self.importListings(self.liveListingsPath)
 
         if self.tdb.engine.dialect.name == "sqlite":
-            with self.tdb.Session.begin() as session:
+            with self.tdb.session_maker.begin() as session:
                 if self.getOption("optimize"):
                     with bench("Vacuum and optimize", self.tdenv):
                         session.execute(text("VACUUM"))

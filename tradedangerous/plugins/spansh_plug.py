@@ -53,7 +53,7 @@ if typing.TYPE_CHECKING:
     from collections.abc import Generator, Iterable, Mapping
     from typing import Any, Optional
     from tradedangerous import TradeEnv
-    from tradedangerous.tradedb import TradeDB
+    from tradedangerous.tradeorm import TradeORM
 
 
 DEFAULT_URL = "https://downloads.spansh.co.uk/galaxy_stations.json"
@@ -106,7 +106,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         "rares": "https://raw.githubusercontent.com/EDCD/FDevIDs/master/rare_commodity.csv",
     }
 
-    tdb: TradeDB
+    tdb: TradeORM
     tdenv: TradeEnv
     session: Session | None  # this means you have to check it's been set, though
     batch_size: int | None
@@ -1358,8 +1358,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         Create a DB session and apply per-connection bulk settings.
         """
-        if hasattr(self.tdb, "Session") and callable(self.tdb.Session):
-            sess = self.tdb.Session()
+        if hasattr(self.tdb, "session_maker") and callable(self.tdb.session_maker):
+            sess = self.tdb.session_maker()
         elif hasattr(db_utils, "get_session"):
             sess = db_utils.get_session(self.tdb.engine)
         else:

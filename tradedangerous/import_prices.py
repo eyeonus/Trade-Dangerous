@@ -737,13 +737,13 @@ def importDataFromFile(tdb, tdenv, path, pricesFh=None, reset=False):
     
     if reset:
         tdenv.DEBUG0("Resetting price data")
-        with tdb.Session.begin() as session:
+        with tdb.session_maker.begin() as session:
             session.query(SA.StationItem).delete()
     
     tdenv.DEBUG0(f"Importing data from {path}")
     processPricesFile(
         tdenv,
-        session=tdb.Session(),
+        session=tdb.session_maker(),
         pricesPath=path,
         pricesFh=pricesFh,
     )

@@ -22,6 +22,7 @@ from tradedangerous.db.lifecycle import verify_db
 
 from .exceptions import CommandLineError
 from .parsing import ParseArgument, MutuallyExclusiveGroup
+from .commandenv import Needs
 
 try:
     import tkinter as tk
@@ -32,7 +33,7 @@ except ImportError:
 
 if typing.TYPE_CHECKING:
     from tradedangerous import TradeEnv
-    from tradedangerous.tradedb import TradeDB
+    from tradedangerous.tradeorm import TradeORM
 
 
 ######################################################################
@@ -50,7 +51,10 @@ epilog = (
     "(https://elite.tromador.com/).\n"
     "See \"trade import -P eddblink -O help\" for more help."
 )
-wantsTradeDB = False
+needs = Needs.RESOLVER
+# import populates the database via plugins (spansh/eddblink) or a legacy
+# .prices file and can run on a fresh install, so it tolerates a missing DB.
+allowMissingDB = True
 arguments = [
 ]
 switches = [
@@ -124,7 +128,7 @@ switches = [
 # Perform query and populate result set
 
 
-def run(results, cmdenv: TradeEnv, tdb: TradeDB):
+def run(results, cmdenv: TradeEnv, tdb: TradeORM):
     """
     Dispatch import work:
       • If a plugin (-P) is specified: load it and run it (no deprecation banner).

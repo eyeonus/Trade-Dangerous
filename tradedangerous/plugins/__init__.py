@@ -6,7 +6,7 @@ import typing
 
 if typing.TYPE_CHECKING:
     from tradedangerous import TradeEnv
-    from tradedangerous.tradedb import TradeDB
+    from tradedangerous.tradeorm import TradeORM
 
 
 __all__ = [
@@ -38,11 +38,11 @@ class PluginBase:
             # your implementation here
     """
     
-    def __init__(self, tdb: TradeDB, tdenv: TradeEnv) -> None:
+    def __init__(self, tdb: TradeORM, tdenv: TradeEnv) -> None:
         """
         Parameters:
             tdb
-                Instance of TradeDB
+                Instance of TradeORM
             tdenv
                 Instance of TradeEnv
         """
@@ -183,11 +183,11 @@ class ImportPluginBase(PluginBase):
     
     defaultImportFile = "import.prices"
     
-    def __init__(self, tdb: TradeDB, tdenv: TradeEnv) -> None:
+    def __init__(self, tdb: TradeORM, tdenv: TradeEnv) -> None:
         """
         Parameters:
             tdb
-                Instance of TradeDB
+                Instance of TradeORM
             tdenv
                 Instance of TradeEnv
         """
@@ -216,8 +216,8 @@ class ImportPluginBase(PluginBase):
         """
         Plugin Must Implement:
         
-        Called after import has rebuilt the cache, loaded the DB data
-        into it's TradeDB instance, done any downloads and checked for
+        Called after import has rebuilt the cache, loaded the data
+        into the database, done any downloads and checked for
         the presence of cmdenv.filename, but before it has tried to
         import the .prices data.
         
