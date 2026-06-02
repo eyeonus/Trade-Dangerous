@@ -1,4 +1,4 @@
-from .commandenv import ResultRow
+from .commandenv import Needs, ResultRow
 from .parsing import (
     AvoidPlacesArgument, FleetCarrierArgument, MutuallyExclusiveGroup,
     NoPlanetSwitch, SettlementArgument, PadSizeArgument, ParseArgument,
@@ -6,8 +6,8 @@ from .parsing import (
 )
 
 from tradedangerous import TradeException
+from .exceptions import CommandLineError
 from . import display_labels
-from tradedangerous.tradedb import Station, System
 from tradedangerous.formatting import RowFormat, ColumnFormat
 
 
@@ -17,7 +17,7 @@ from tradedangerous.formatting import RowFormat, ColumnFormat
 help='Calculate a route between two systems.'
 name='nav'
 epilog=None
-wantsTradeDB=True
+needs = Needs.NOTHING
 arguments = [
     ParseArgument('starting', help='System to start from', type=str),
     ParseArgument('ending', help='System to end at', type=str),
@@ -59,6 +59,18 @@ switches = [
 
 class NoRouteError(TradeException):
     """ Exception denoting specifically a route could not be found. """
+
+
+def validateRunArgumentsFast(cmdenv):
+    # trade nav is parked during the v13 refactor. It depended on the legacy
+    # in-memory galaxy (TradeDB.getRoute) and the legacy System/Station objects,
+    # which have been retired, so it is failed early and cleanly here. The
+    # run()/render() bodies below are dormant until nav is rebuilt at
+    # checkpoint L.
+    raise CommandLineError(
+        "trade nav is deferred during the v13 refactor and will be "
+        "revisited at checkpoint L."
+    )
 
 
 ######################################################################

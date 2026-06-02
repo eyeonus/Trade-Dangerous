@@ -23,7 +23,7 @@ from .exceptions import CommandLineError
 name='olddata'
 help='Show oldest data in database.'
 epilog=None
-needs = Needs.LEGACY_HANDLE
+needs = Needs.NOTHING
 arguments = [
 ]
 switches = [
@@ -70,14 +70,14 @@ switches = [
 
 
 def validateRunArgumentsFast(cmdenv):
-    if cmdenv.route and not cmdenv.near:
-        raise CommandLineError("--route requires --near")
-
-
-def preload(tdb):
-    tdb.reloadCache()
-    tdb._loadSystems()
-    tdb._loadStationShell()
+    # trade olddata is parked during the v13 refactor: it relied on the legacy
+    # handle (reloadCache and the in-memory station shell), which has been
+    # retired. Fail early and cleanly; it will be revisited at checkpoint L.
+    # The run()/render() bodies below are dormant until then.
+    raise CommandLineError(
+        "trade olddata is deferred during the v13 refactor and will be "
+        "revisited at checkpoint L."
+    )
 
 
 ######################################################################
