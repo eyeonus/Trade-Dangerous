@@ -122,9 +122,7 @@ def trade(argv):
         # Phase B2: legacy TradeDB — only for commands that need it.
         if cmdenv.needs_legacy_db:
             with cmdenv.time_block("TradeDB.__init__", level=0):
-                # Full in-memory preload is retired; the legacy handle is
-                # always built without it (load=False).
-                tdb = tradedb.TradeDB(cmdenv, load=False)
+                tdb = tradedb.TradeDB(cmdenv, load=cmdenv.needs_full_load)
 
         if cmdenv.usesTradeData and tdb is not None:
             tsc = tdb.tradingStationCount

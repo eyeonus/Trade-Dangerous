@@ -7,7 +7,7 @@ from .parsing import ParseArgument  # import specific helpers as needed
 from tradedangerous.formatting import RowFormat
 
 if typing.TYPE_CHECKING:
-    from tradedangerous import TradeDB, TradeORM, CommandEnv, CommandResults
+    from tradedangerous import TradeORM, CommandEnv, CommandResults
 
 
 ######################################################################
@@ -36,7 +36,7 @@ switches = (
 def run(
         results: CommandResults,
         cmdenv: CommandEnv,
-        tdb: TradeDB | TradeORM | None,     # choose one
+        tdb: TradeORM | None,     # choose one
     ) -> CommandResults | bool | None:      # choose one
     """
     Implement code that validates arguments, collects and prepares
@@ -58,7 +58,7 @@ def run(
     return results
 
 
-def render(results: CommandResults, cmdenv: CommandEnv, tdb: TradeDB | TradeORM | None):
+def render(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM | None):
     """
     If run() returns a truthy value, the trade.py code will then
     call the corresponding render() function.

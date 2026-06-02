@@ -37,7 +37,7 @@ import ijson  # Used for main stream
 import urllib.request
 
 # Framework modules
-from tradedangerous import plugins, cache, csvexport  # provided by project
+from tradedangerous import plugins, csvexport  # provided by project
 
 # DB helpers (dialect specifics live here)
 from tradedangerous.db import utils as db_utils
@@ -52,7 +52,8 @@ from tradedangerous.db.station_types import (
 if typing.TYPE_CHECKING:
     from collections.abc import Generator, Iterable, Mapping
     from typing import Any, Optional
-    from tradedangerous import TradeDB, TradeEnv
+    from tradedangerous import TradeEnv
+    from tradedangerous.tradedb import TradeDB
 
 
 DEFAULT_URL = "https://downloads.spansh.co.uk/galaxy_stations.json"
@@ -80,7 +81,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         "url": "Remote URL to galaxy_stations.json (default if neither url nor file is given)",
         "file": "Local path to galaxy_stations.json; use '-' to read from stdin",
         "maxage": "Skip service sections older than <days> (float), evaluated per service",
-        "pricesonly": "Skip import/exports; regenerate TradeDangerous.prices only (for testing).",
         "force_baseline": "If set, overwrite service blocks to Spansh baseline (from_live=0) and delete any extras.",
         "skip_stationitems": "Skip exporting StationItem.csv (large). Env: TD_SKIP_STATIONITEM_EXPORT=1",
         "progress_compact": "Use shorter one-line import status (or set env TD_PROGRESS_COMPACT=1).",
@@ -1017,16 +1017,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         Returns False to keep default flow suppressed.
         """
         started = time.time()
-        
-        if self.getOption("pricesonly"):
-            try:
-                self._print("Regenerating TradeDangerous.prices …")
-                cache.regeneratePricesFile(self.tdb, self.tdenv)
-                self._print("Prices file generated.")
-            except Exception as e:
-                self._error(f"Prices regeneration failed: {e!r}")
-                return False
-            return False
         
         # -------- Bootstrap DB (no cache rebuild here) --------
         try:

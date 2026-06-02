@@ -17,7 +17,8 @@ import re
 import sys
 import typing
 
-from tradedangerous import cache, plugins, transfers
+from tradedangerous import import_prices, plugins, transfers
+from tradedangerous.db.lifecycle import verify_db
 
 from .exceptions import CommandLineError
 from .parsing import ParseArgument, MutuallyExclusiveGroup
@@ -30,7 +31,8 @@ except ImportError:
     hasTkInter = False
 
 if typing.TYPE_CHECKING:
-    from tradedangerous import TradeDB, TradeEnv
+    from tradedangerous import TradeEnv
+    from tradedangerous.tradedb import TradeDB
 
 
 ######################################################################
@@ -163,9 +165,9 @@ def run(results, cmdenv: TradeEnv, tdb: TradeDB):
             "===================================================================\n"
         )
     
-    # Refresh/close any cached handles before file ops. The old pickle
-    # persistence layer is gone, so there is no persisted snapshot to remove.
-    tdb.reloadCache()
+    # Verify the database is present and sane before file ops (report only).
+    # The old pickle persistence layer is gone; there is no snapshot to remove.
+    verify_db(tdb.engine, Path(cmdenv.dataDir), cmdenv)
     tdb.close()
     
     # Treat a bare http(s) string in 'filename' as a URL
@@ -214,11 +216,10 @@ def run(results, cmdenv: TradeEnv, tdb: TradeDB):
         # Plugins returning True above chose to hand control back.
         # finish() may return False to suppress default regeneration.
         if not plugin.finish():
-            cache.regeneratePricesFile()
             return False
     
     # Legacy .prices import
-    cache.importDataFromFile(
+    import_prices.importDataFromFile(
         tdb,
         cmdenv,
         filePath,

@@ -18,8 +18,6 @@ while taking into account the profits you make along the route
 The price data in TradeDangerous is either manually entered or crowd-sourced
 from a website such as [Tromador's Trading Dangerously](http://elite.ripz.org "Tromador's Trading Dangerously"), often using a plugin such as the included eddblink.
 """
-from .tradecalc import TradeCalc
-from .tradedb import TradeDB
 from .tradeenv import TradeEnv
 from .tradeexcept import SimpleAbort, TradeException
 from .tradeorm import TradeORM
@@ -28,15 +26,13 @@ from .version import __version__
 from .commands.commandenv import CommandEnv, CommandResults
 
 # Export this as top-level symbnols so they can be imported with e.g.
-#  import tradedangerous.TradeDB
+#  import tradedangerous.TradeORM
 # rather than forcing everyone to go thru the exacting modules for these.
 __all__ = [
     '__version__',
     'CommandEnv',
     'CommandResults',
     'SimpleAbort',
-    'TradeCalc',
-    'TradeDB',
     'TradeEnv',
     'TradeException',
     'TradeORM',

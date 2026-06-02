@@ -5,7 +5,8 @@ import typing
 
 
 if typing.TYPE_CHECKING:
-    from tradedangerous import TradeDB, TradeEnv
+    from tradedangerous import TradeEnv
+    from tradedangerous.tradedb import TradeDB
 
 
 __all__ = [

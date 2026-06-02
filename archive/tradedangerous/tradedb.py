@@ -68,7 +68,7 @@ import typing
 
 from .tradeenv import TradeEnv
 from .tradeexcept import TradeException, AmbiguityError, SystemNotStationError
-from . import fs
+from . import cache, fs
 
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import NoResultFound
@@ -108,7 +108,7 @@ locale.setlocale(locale.LC_ALL, '')
 
 if typing.TYPE_CHECKING:
     from collections.abc import Generator
-    from typing import Any
+    from typing import Any, Optional
 
 
 ######################################################################
@@ -551,6 +551,10 @@ class TradeDB:
     )
     
     # Translation matrixes for attributes -> common presentation
+    marketStates = planetStates = fleetStates = settlementStates = {'?': '?', 'Y': 'Yes', 'N': 'No'}
+    marketStatesExt = planetStatesExt = fleetStatesExt = settlementStatesExt = {'?': 'Unk', 'Y': 'Yes', 'N': 'No'}
+    padSizes = {'?': '?', 'S': 'Sml', 'M': 'Med', 'L': 'Lrg'}
+    padSizesExt = {'?': 'Unk', 'S': 'Sml', 'M': 'Med', 'L': 'Lrg'}
     
     def __init__(
             self,
@@ -730,6 +734,8 @@ class TradeDB:
                 self.tdenv.DEBUG0("reloadCache: ensure_fresh_db → {}", action)
         except Exception as e:
             self.tdenv.WARN("reloadCache: ensure_fresh_db failed: {}", e)
+            self.tdenv.DEBUG0("reloadCache: Falling back to buildCache()")
+            cache.buildCache(self, self.tdenv)
     
     ############################################################
     # Star system data.

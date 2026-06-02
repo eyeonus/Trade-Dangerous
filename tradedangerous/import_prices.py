@@ -8,45 +8,36 @@
 # this software so long as you include this copyright notice.
 # I guarantee there is at least one bug neither of us knew about.
 # --------------------------------------------------------------------
-# TradeDangerous :: Modules :: Cache loader
+# TradeDangerous :: Modules :: .prices file import
 #
-#  TD works primarily from an SQLite3 database, but the data in that
-#  is sourced from text files.
-#   data/TradeDangerous.sql contains the less volatile data - systems,
-#   ships, etc
-#   data/TradeDangerous.prices contains a description of the price
-#   database that is intended to be easily editable and commitable to
-#   a source repository. -- DEPRECATED [eyeonus]
+#  Reads TradeDangerous ".prices" files into the database. This is the legacy
+#  hand-editable price format; the spansh and eddblink importers are preferred,
+#  but the ".prices" pathway is retained. Split out of the former cache.py
+#  during the TradeDB retirement; CSV table import and the database rebuild now
+#  live in tradedangerous/db/import_csv.py.
 #
 
 from __future__ import annotations
 
 from pathlib import Path
-import csv
-import os
 import re
 import typing
 
-from functools import partial as partial_fn
 from sqlalchemy import func, tuple_
 from sqlalchemy.orm import Session
 from tradedangerous.db import orm_models as SA
-from tradedangerous.db import lifecycle
-from tradedangerous.db.utils import parse_ts
 
-from .fs import file_line_count
-from .tradeexcept import TradeException
+from .tradeexcept import (
+    TradeException, SupplyError, MultipleStationEntriesError, InvalidLineError,
+    UnknownSystemError, UnknownStationError, UnknownItemError, MultipleItemEntriesError,
+)
 from . import corrections, utils
-
-from tradedangerous.misc.progress import Progress, CountingBar
 
 
 # For mypy/pylint type checking
 if typing.TYPE_CHECKING:
-    from collections.abc import Callable
-    from typing import Any, Optional, TextIO
-    
-    from .tradedb import TradeDB
+    from typing import Optional, TextIO
+
     from .tradeenv import TradeEnv
 
 
@@ -116,123 +107,26 @@ $
 # Exception classes
 
 
-class BuildCacheBaseException(TradeException):
-    """
-    Baseclass for BuildCache exceptions
-    Attributes:
-        fileName    Name of file being processedStations
-        lineNo      Line the error occurred on
-        error       Description of the error
-    """
-    
-    def __init__(self, fromFile: Path, lineNo: int, error: str | None = None) -> None:
-        self.fileName = fromFile.name
-        self.lineNo = lineNo
-        self.category = "ERROR"
-        self.error = error or "UNKNOWN ERROR"
-    
-    def __str__(self) -> str:
-        return f'{self.fileName}:{self.lineNo} {self.category} {self.error}'
 
 
-class UnknownSystemError(BuildCacheBaseException):
-    """
-    Raised when the file contains an unknown star name.
-    """
-    
-    def __init__(self, fromFile: Path, lineNo: int, key: str) -> None:
-        super().__init__(fromFile, lineNo, f'Unrecognized SYSTEM: "{key}"')
 
 
-class UnknownStationError(BuildCacheBaseException):
-    """
-    Raised when the file contains an unknown star/station name.
-    """
-    
-    def __init__(self, fromFile: Path, lineNo: int, key: str) -> None:
-        super().__init__(fromFile, lineNo, f'Unrecognized STAR/Station: "{key}"')
 
 
-class UnknownItemError(BuildCacheBaseException):
-    """
-    Raised in the case of an item name that we don't know.
-    Attributes:
-        itemName   Key we tried to look up.
-    """
-    
-    def __init__(self, fromFile: Path, lineNo: int, itemName: str) -> None:
-        super().__init__(fromFile, lineNo, f'Unrecognized item name: "{itemName}"')
 
 
-class DuplicateKeyError(BuildCacheBaseException):
-    """
-        Raised when an item is being redefined.
-    """
-    
-    def __init__(self, fromFile: Path, lineNo: int, keyType: str, keyValue: str, prevLineNo: int) -> None:
-        super().__init__(fromFile, lineNo,
-                         f'Second occurrance of {keyType} "{keyValue}", previous entry at line {prevLineNo}.')
 
 
-class DeletedKeyError(BuildCacheBaseException):
-    """
-    Raised when a key value in a .csv file is marked as DELETED in the
-    corrections file.
-    """
-    
-    def __init__(self, fromFile: Path, lineNo: int, keyType: str, keyValue: str) -> None:
-        super().__init__(
-            fromFile, lineNo,
-            f'{keyType} "{keyValue}" is marked as DELETED and should not be used.'
-        )
 
 
-class DeprecatedKeyError(BuildCacheBaseException):
-    """
-    Raised when a key value in a .csv file has a correction; the old
-    name should not appear in the .csv file.
-    """
-    
-    def __init__(self, fromFile: Path, lineNo: int, keyType: str, keyValue: str, newValue: str) -> None:
-        super().__init__(
-            fromFile, lineNo,
-            f'{keyType} "{keyValue}" is deprecated and should be replaced with "{newValue}".'
-        )
 
 
-class MultipleStationEntriesError(DuplicateKeyError):
-    """ Raised when a station appears multiple times in the same file. """
-    
-    def __init__(self, fromFile: Path, lineNo: int, facility: str, prevLineNo: int) -> None:
-        super().__init__(fromFile, lineNo, 'station', facility, prevLineNo)
 
 
-class MultipleItemEntriesError(DuplicateKeyError):
-    """ Raised when one item appears multiple times in the same station. """
-    
-    def __init__(self, fromFile: Path, lineNo: int, item: str, prevLineNo: int) -> None:
-        super().__init__(fromFile, lineNo, 'item', item, prevLineNo)
 
 
-class InvalidLineError(BuildCacheBaseException):
-    """
-    Raised when an invalid line is read.
-    Attributes:
-        problem     The problem that occurred
-        text        Offending text
-    """
-    
-    def __init__(self, fromFile: Path, lineNo: int, problem: str, text: str) -> None:
-        super().__init__(fromFile, lineNo, f'{problem},\ngot: "{text.strip()}".')
 
 
-class SupplyError(BuildCacheBaseException):
-    """
-    Raised when a supply field is incorrectly formatted.
-    """
-    
-    def __init__(self, fromFile: Path, lineNo: int, category: str, problem: str, value: Any) -> None:
-        super().__init__(fromFile, lineNo, f'Invalid {category} supply value: {problem}. Got: {value}')
 
 
 ######################################################################
@@ -797,408 +691,18 @@ def processPricesFile(
 ######################################################################
 
 
-def depCheck(importPath, lineNo, depType, key, correctKey):
-    if correctKey == key:
-        return
-    if correctKey == corrections.DELETED:
-        raise DeletedKeyError(importPath, lineNo, depType, key)
-    raise DeprecatedKeyError(importPath, lineNo, depType, key, correctKey)
 
 
 # --- main importer ---
-def processImportFile(
-    tdenv,
-    session,
-    importPath,
-    tableName,
-    *,
-    line_callback: Optional[Callable] = None,
-    call_args: Optional[dict] = None,
-):
-    """
-    Import a CSV file into the given table.
-    
-    Applies header parsing, uniqueness checks, foreign key lookups,
-    in-row deprecation correction (warnings only at -vv via DEBUG1), and upserts via SQLAlchemy ORM.
-    Commits in batches for large datasets.
-    """
-    
-    tdenv.DEBUG0("Processing import file '{}' for table '{}'", str(importPath), tableName)
-    
-    call_args = call_args or {}
-    if line_callback:
-        line_callback = partial_fn(line_callback, **call_args)
-    
-    # --- batch size config from environment or fallback ---
-    env_batch = os.environ.get("TD_LISTINGS_BATCH")
-    if env_batch:
-        try:
-            max_transaction_items = int(env_batch)
-        except ValueError:
-            tdenv.WARN("Invalid TD_LISTINGS_BATCH value %r, falling back to defaults.", env_batch)
-            max_transaction_items = None
-    else:
-        max_transaction_items = None
-    
-    if max_transaction_items is None:
-        if session.bind.dialect.name in ("mysql", "mariadb"):
-            max_transaction_items = 50 * 1024
-        else:
-            max_transaction_items = 250 * 1024
-    
-    transaction_items = 0  # track how many rows inserted before committing
-    
-    with importPath.open("r", encoding="utf-8") as importFile:
-        csvin = csv.reader(importFile, delimiter=",", quotechar="'", doublequote=True)
-        
-        # Read header row
-        columnDefs = next(csvin)
-        columnCount = len(columnDefs)
-        
-        # --- Process headers: extract column names, track indices ---
-        activeColumns: list[str] = []   # Final columns we'll use (after "unq:" stripping)
-        kept_indices: list[int] = []    # Indices into CSV rows we keep (aligned to activeColumns)
-        uniqueIndexes: list[int] = []   # Indexes (into activeColumns) of unique keys
-        uniquePfx = "unq:"
-        uniqueLen = len(uniquePfx)
-        
-        # map of header (without "unq:") -> original CSV index, for correction by name
-        header_index: dict[str, int] = {}
-        
-        for cIndex, cName in enumerate(columnDefs):
-            colName, _, _ = cName.partition("@")  # column name, @, source key
-            baseName = colName[uniqueLen:] if colName.startswith(uniquePfx) else colName
-            header_index[baseName] = cIndex
-            
-            # Handle unique constraint tracking
-            if colName.startswith(uniquePfx):
-                uniqueIndexes.append(len(activeColumns))
-                colName = baseName
-            
-            activeColumns.append(colName)
-            kept_indices.append(cIndex)
-        
-        importCount = 0
-        uniqueIndex: dict[str, int] = {}
-        
-        # helpers for correction + visibility-gated warning
-        DELETED = corrections.DELETED
-        
-        def _warn(line_no: int, msg: str) -> None:
-            # Gate deprecation chatter to -vv (DEBUG1)
-            tdenv.DEBUG1("{}:{} WARNING {}", importPath, line_no, msg)
-        
-        def _apply_row_corrections(table_name: str, row: list[str], line_no: int) -> bool:
-            """
-            Returns True if the row should be skipped (deleted in tolerant mode), False otherwise.
-            Mutates 'row' in place with corrected values.
-            """
-            if table_name == "System":
-                idx = header_index.get("name")
-                if idx is not None:
-                    orig = row[idx]
-                    corr = corrections.correctSystem(orig)
-                    if corr is DELETED:
-                        if tdenv.ignoreUnknown:
-                            _warn(line_no, f'System "{orig}" is marked as DELETED and should not be used.')
-                            return True
-                        raise DeletedKeyError(importPath, line_no, "System", orig)
-                    if corr != orig:
-                        _warn(line_no, f'System "{orig}" is deprecated and should be replaced with "{corr}".')
-                        row[idx] = corr
-            
-            elif table_name == "Station":
-                s_idx = header_index.get("system")
-                n_idx = header_index.get("name")
-                if s_idx is not None and n_idx is not None:
-                    s_orig = row[s_idx]
-                    s_corr = corrections.correctSystem(s_orig)
-                    if s_corr is DELETED:
-                        if tdenv.ignoreUnknown:
-                            _warn(line_no, f'System "{s_orig}" is marked as DELETED and should not be used.')
-                            return True
-                        raise DeletedKeyError(importPath, line_no, "System", s_orig)
-                    if s_corr != s_orig:
-                        _warn(line_no, f'System "{s_orig}" is deprecated and should be replaced with "{s_corr}".')
-                        row[s_idx] = s_corr
-                    n_orig = row[n_idx]
-                    n_corr = corrections.correctStation(s_corr, n_orig)
-                    if n_corr is DELETED:
-                        if tdenv.ignoreUnknown:
-                            _warn(line_no, f'Station "{n_orig}" is marked as DELETED and should not be used.')
-                            return True
-                        raise DeletedKeyError(importPath, line_no, "Station", n_orig)
-                    if n_corr != n_orig:
-                        _warn(line_no, f'Station "{n_orig}" is deprecated and should be replaced with "{n_corr}".')
-                        row[n_idx] = n_corr
-            
-            elif table_name == "Category":
-                idx = header_index.get("name")
-                if idx is not None:
-                    orig = row[idx]
-                    corr = corrections.correctCategory(orig)
-                    if corr is DELETED:
-                        if tdenv.ignoreUnknown:
-                            _warn(line_no, f'Category "{orig}" is marked as DELETED and should not be used.')
-                            return True
-                        raise DeletedKeyError(importPath, line_no, "Category", orig)
-                    if corr != orig:
-                        _warn(line_no, f'Category "{orig}" is deprecated and should be replaced with "{corr}".')
-                        row[idx] = corr
-            
-            elif table_name == "Item":
-                cat_idx = header_index.get("category")
-                name_idx = header_index.get("name")
-                if cat_idx is not None:
-                    c_orig = row[cat_idx]
-                    c_corr = corrections.correctCategory(c_orig)
-                    if c_corr is DELETED:
-                        if tdenv.ignoreUnknown:
-                            _warn(line_no, f'Category "{c_orig}" is marked as DELETED and should not be used.')
-                            return True
-                        raise DeletedKeyError(importPath, line_no, "Category", c_orig)
-                    if c_corr != c_orig:
-                        _warn(line_no, f'Category "{c_orig}" is deprecated and should be replaced with "{c_corr}".')
-                        row[cat_idx] = c_corr
-                if name_idx is not None:
-                    i_orig = row[name_idx]
-                    i_corr = corrections.correctItem(i_orig)
-                    if i_corr is DELETED:
-                        if tdenv.ignoreUnknown:
-                            _warn(line_no, f'Item "{i_orig}" is marked as DELETED and should not be used.')
-                            return True
-                        raise DeletedKeyError(importPath, line_no, "Item", i_orig)
-                    if i_corr != i_orig:
-                        _warn(line_no, f'Item "{i_orig}" is deprecated and should be replaced with "{i_corr}".')
-                        row[name_idx] = i_corr
-            
-            return False  # do not skip
-        
-        # --- Read data lines ---
-        for linein in csvin:
-            if line_callback:
-                line_callback()
-            if not linein:
-                continue
-            
-            lineNo = csvin.line_num
-            
-            if len(linein) != columnCount:
-                tdenv.NOTE("Wrong number of columns ({}:{}): {}", importPath, lineNo, ", ".join(linein))
-                continue
-            
-            tdenv.DEBUG1("       Values: {}", ", ".join(linein))
-            
-            # --- Apply corrections BEFORE uniqueness; may skip if deleted in tolerant mode
-            try:
-                if _apply_row_corrections(tableName, linein, lineNo):
-                    continue
-            except DeletedKeyError:
-                if not tdenv.ignoreUnknown:
-                    raise  # strict, fail hard. resume the original fault with it's trace in-tact
-                # tolerant: already warned in _apply_row_corrections; skip row
-                continue
-            
-            # Extract and clean values to use (from corrected line)
-            activeValues = [linein[i] for i in kept_indices]
-            
-            # --- Uniqueness check (after correction) ---
-            try:
-                if uniqueIndexes:
-                    keyValues = [str(activeValues[i]).upper() for i in uniqueIndexes]
-                    key = ":!:".join(keyValues)
-                    prevLineNo = uniqueIndex.get(key, 0)
-                    if prevLineNo:
-                        key_disp = "/".join(keyValues)
-                        if tdenv.ignoreUnknown:
-                            e = DuplicateKeyError(importPath, lineNo, "entry", key_disp, prevLineNo)
-                            e.category = "WARNING"
-                            tdenv.NOTE("{}", e)
-                            continue
-                        raise DuplicateKeyError(importPath, lineNo, "entry", key_disp, prevLineNo)
-                    uniqueIndex[key] = lineNo
-            except Exception as e:
-                # Keep processing the file, don’t tear down the loop
-                tdenv.WARN(
-                    "*** INTERNAL ERROR: {err}\n"
-                    "CSV File: {file}:{line}\n"
-                    "Table: {table}\n"
-                    "Params: {params}\n".format(
-                        err=str(e),
-                        file=str(importPath),
-                        line=lineNo,
-                        table=tableName,
-                        params=linein,
-                    )
-                )
-                session.rollback()
-                continue
-            
-            try:
-                rowdict = dict(zip(activeColumns, activeValues))
-                
-                # --- Type coercion for common types ---
-                for key, val in list(rowdict.items()):
-                    if val in ("", None):
-                        rowdict[key] = None
-                        continue
-                    if key.endswith("_id") or key.endswith("ID") or key in ("cost", "max_allocation"):
-                        try:
-                            rowdict[key] = int(val)
-                        except ValueError:
-                            rowdict[key] = None
-                    elif key in ("pos_x", "pos_y", "pos_z", "ls_from_star"):
-                        try:
-                            rowdict[key] = float(val)
-                        except ValueError:
-                            rowdict[key] = None
-                    elif "time" in key or key == "modified":
-                        parsed = parse_ts(val)
-                        if parsed:
-                            rowdict[key] = parsed
-                        else:
-                            tdenv.WARN(
-                                "Unparsable datetime in {} line {} col {}: {}",
-                                importPath,
-                                lineNo,
-                                key,
-                                val,
-                            )
-                            rowdict[key] = None
-                
-                # Special handling for SQL reserved word `class`
-                if tableName == "Upgrade" and "class" in rowdict:
-                    rowdict["class_"] = rowdict.pop("class")
-                if tableName == "FDevOutfitting" and "class" in rowdict:
-                    rowdict["class_"] = rowdict.pop("class")
-                # ORM insert/merge
-                Model = getattr(SA, tableName)
-                obj = Model(**rowdict)
-                session.merge(obj)
-                importCount += 1
-                
-                # Batch commit
-                if max_transaction_items:
-                    transaction_items += 1
-                    if transaction_items >= max_transaction_items:
-                        session.commit()
-                        session.begin()
-                        transaction_items = 0
-            
-            except Exception as e:
-                # Log all import errors — but keep going
-                tdenv.WARN(
-                    "*** INTERNAL ERROR: {err}\n"
-                    "CSV File: {file}:{line}\n"
-                    "Table: {table}\n"
-                    "Params: {params}\n".format(
-                        err=str(e),
-                        file=str(importPath),
-                        line=lineNo,
-                        table=tableName,
-                        params=rowdict if "rowdict" in locals() else linein,
-                    )
-                )
-                session.rollback()
-        
-        # Final commit after file done
-        session.commit()
-        tdenv.DEBUG0("{count} {table}s imported", count=importCount, table=tableName)
 
 
 
 
-def buildCache(tdb: TradeDB, tdenv: TradeEnv):
-    """
-    Rebuilds the database from source files.
-    
-    TD's data is either "stable" - information that rarely changes like Ship
-    details, star systems etc - and "volatile" - pricing information, etc.
-    
-    The stable data starts out in data/TradeDangerous.sql while other data
-    is stored in custom-formatted text files, e.g. ./TradeDangerous.prices.
-    
-    We load both sets of data into a database, after which we can
-    avoid the text-processing overhead by simply checking if the text files
-    are newer than the database.
-    """
-    
-    tdenv.NOTE(
-        "(Re)building database: this may take a few moments.",
-        stderr=True,
-    )
-    
-    dbPath, engine = tdb.dbPath, tdb.engine
-    
-    # --- Step 1: reset schema BEFORE opening a session/transaction ---
-    # Single unified call; no dialect branching here.
-    lifecycle.reset_db(engine, db_path=dbPath)
-    
-    # --- Step 2: open a new session for rebuild work ---
-    with tdb.Session() as session:
-        # Import standard tables on a plain session with progress
-        with Progress(
-            max_value=len(tdb.importTables) + 1,
-            prefix="Importing",
-            width=25,
-            style=CountingBar,
-        ) as prog:
-            for importName, importTable in tdb.importTables:
-                import_path = Path(importName)
-                import_lines = file_line_count(import_path, missing_ok=True)
-                with prog.sub_task(
-                    max_value=import_lines, description=importTable
-                ) as child:
-                    prog.increment(value=1)
-                    call_args = {"task": child, "advance": 1}
-                    try:
-                        processImportFile(
-                            tdenv,
-                            session,
-                            import_path,
-                            importTable,
-                            line_callback=prog.update_task,
-                            call_args=call_args,
-                        )
-                        # safety commit after each file
-                        session.commit()
-                    except FileNotFoundError:
-                        tdenv.DEBUG0(
-                            "WARNING: processImportFile found no {} file", importName
-                        )
-                    except StopIteration:
-                        tdenv.NOTE(
-                            "{} exists but is empty. "
-                            "Remove it or add the column definition line.",
-                            importName,
-                        )
-            prog.increment(1)
-            
-            with prog.sub_task(description="Save DB"):
-                session.commit()
-        
-        # # --- Step 3: parse the prices file (still plain session) ---
-        # if pricesPath.exists():
-        #     with Progress(max_value=None, width=25, prefix="Processing prices file"):
-        #         processPricesFile(tdenv, session, pricesPath)
-        # else:
-        #     tdenv.NOTE(
-        #         f'Missing "{pricesPath}" file - no price data.',
-        #         stderr=True,
-        #     )
-    
-    tdb.close()
-    tdenv.NOTE(
-        "Database build completed.",
-        stderr=True,
-    )
 
 
 ######################################################################
 
 
-def regeneratePricesFile(tdb: TradeDB, tdenv: TradeEnv) -> None:
-    return
     # """
     # Regenerate the .prices file from the current DB contents.
     # Uses the ORM session rather than raw sqlite.
@@ -1243,7 +747,3 @@ def importDataFromFile(tdb, tdenv, path, pricesFh=None, reset=False):
         pricesPath=path,
         pricesFh=pricesFh,
     )
-    
-    # # If everything worked, regenerate the canonical prices file if this wasn’t the main one
-    # if path != tdb.pricesPath:
-    #     regeneratePricesFile(tdb, tdenv)

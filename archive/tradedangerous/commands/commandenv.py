@@ -14,28 +14,31 @@ from .exceptions import (
 
 from tradedangerous import TradeEnv
 from tradedangerous.db import orm_models as orm
-from tradedangerous.tradeexcept import AmbiguityError
+from tradedangerous.tradedb import AmbiguityError, Station
 
 
 if typing.TYPE_CHECKING:
     from argparse import Namespace
     from typing import Any, ModuleType
     
-    from tradedangerous import TradeORM
+    from tradedangerous import TradeDB, TradeORM
 
 class Needs(Flag):
     """Backend capability requirements for a command.
 
     Commands declare their backend needs via a module-level ``needs`` attribute.
-    Modules without an explicit declaration fall back to a non-preloaded
-    legacy handle (LEGACY_HANDLE).
+    Modules without an explicit declaration fall back to the legacy
+    ``wantsTradeDB`` boolean for backward compatibility:
+      wantsTradeDB=True  (or absent) -> FULL_LEGACY
+      wantsTradeDB=False             -> LEGACY_HANDLE
     """
     NOTHING       = 0        # no backend required (e.g. deprecated no-ops)
     RESOLVER      = auto()   # TradeORM resolver only
-    # TradeDB(load=False): a transitional shim for commands that need TradeDB
-    # infrastructure (paths/engine) but not the full in-memory load, or are in
-    # transit toward RESOLVER. Not a permanent migration target.
-    LEGACY_HANDLE = auto()
+    LEGACY_HANDLE = auto()   # TradeDB(load=False): transitional shim only — for commands that
+                             # need TradeDB infrastructure (paths/engine) but not the full
+                             # in-memory load, and for commands in transit toward RESOLVER.
+                             # Not a permanent migration target.
+    FULL_LEGACY   = auto()   # TradeDB(load=True): full in-memory preload
 
 
 class ResultRow:
@@ -56,7 +59,7 @@ class CommandResults:
         self.summary = ResultRow()
         self.rows = []
     
-    def render(self, cmdenv: 'CommandEnv' = None, tdb: TradeORM | None = None) -> None:
+    def render(self, cmdenv: 'CommandEnv' = None, tdb: TradeDB | TradeORM | None = None) -> None:
         cmdenv = cmdenv or self.cmdenv
         tdb = tdb or cmdenv.tdb
         cmdenv._cmd.render(self, cmdenv, tdb)  # type: ignore
@@ -87,13 +90,11 @@ class CommandEnv(TradeEnv):
             if _module_needs is not None:
                 self.commandNeeds = _module_needs
             else:
-                # Full in-memory preload is retired, so a module with no
-                # explicit declaration falls back to a non-preloaded legacy
-                # handle. Commands that needed the preloaded galaxy (nav) are
-                # knowingly broken until checkpoint L.
-                self.commandNeeds = Needs.LEGACY_HANDLE
+                _wants = getattr(cmdModule, 'wantsTradeDB', True)
+                self.commandNeeds = Needs.FULL_LEGACY if _wants else Needs.LEGACY_HANDLE
         self.needs_resolver  = bool(self.commandNeeds & Needs.RESOLVER)
-        self.needs_legacy_db = bool(self.commandNeeds & Needs.LEGACY_HANDLE)
+        self.needs_legacy_db = bool(self.commandNeeds & (Needs.LEGACY_HANDLE | Needs.FULL_LEGACY))
+        self.needs_full_load = bool(self.commandNeeds & Needs.FULL_LEGACY)
         self.wantsTradeDB = self.needs_legacy_db  # backward-compat alias
         self.usesTradeData = getattr(cmdModule, 'usesTradeData', False)
     
@@ -113,7 +114,7 @@ class CommandEnv(TradeEnv):
         if fast_validator:
             fast_validator(self)
     
-    def run(self, tdb: TradeORM) -> CommandResults | bool | None:
+    def run(self, tdb: TradeDB | TradeORM) -> CommandResults | bool | None:
         """ Try and execute the business logic of the command. Query commands
             will return a result set for us to render, whereas operational
             commands will likely do their own rendering as they work. """
@@ -140,6 +141,7 @@ class CommandEnv(TradeEnv):
                 self.checkAvoidsORM()
                 self.checkViasORM()
         elif self.needs_legacy_db:
+            self.checkFromToNear()
             self.checkAvoids()
             self.checkVias()
         
@@ -166,6 +168,67 @@ class CommandEnv(TradeEnv):
         from tradedangerous.mfd import X52ProMFD  # noqa
         self.mfd = X52ProMFD()
     
+    def checkFromToNear(self) -> None:
+        if not self.needs_legacy_db:
+            return
+        
+        def check(label, fieldName, wantStation):
+            key = getattr(self, fieldName, None)
+            if not key:
+                return None
+            
+            try:
+                place = self.tdb.lookupPlace(key)
+            except LookupError:
+                raise CommandLineError(
+                        "Unrecognized {}: {}"
+                            .format(label, key))
+            if not wantStation:
+                if isinstance(place, Station):
+                    return place.system
+                return place
+            
+            if isinstance(place, Station):
+                return place
+            
+            # it's a system, we want a station
+            if not place.stations:
+                raise CommandLineError(
+                        "Station name required for {}: "
+                        "{} is a SYSTEM but has no stations.".format(
+                            label, key
+                        ))
+            if len(place.stations) > 1:
+                raise AmbiguityError(
+                    label,
+                    key,
+                    place.stations,
+                    key=lambda st: (
+                        f"{st.text()} — "
+                        f"({st.system.posX:.1f}, {st.system.posY:.1f}, {st.system.posZ:.1f})"
+                    ),
+                )
+            
+            return place.stations[0]
+        
+        def lookupPlace(label, fieldName):
+            key = getattr(self, fieldName, None)
+            if not key:
+                return None
+            
+            try:
+                return self.tdb.lookupPlace(key)
+            except LookupError:
+                raise CommandLineError(
+                        "Unrecognized {}: {}"
+                            .format(label, key))
+        
+        self.startStation = check('origin station', 'origin', True)
+        self.stopStation = check('destination station', 'dest', True)
+        self.origPlace = lookupPlace('origin', 'starting')
+        self.destPlace = lookupPlace('destination', 'ending')
+        self.nearSystem = check('system', 'near', False)
+
     def checkFromToNearORM(self) -> None:
         def _resolve_place(label, fieldName):
             key = getattr(self, fieldName, None)
@@ -362,7 +425,7 @@ class CommandEnv(TradeEnv):
                     "settlements are planetary stations."
                 )
     
-def update_database_schema(tdb: TradeORM) -> None:
+def update_database_schema(tdb: TradeDB | TradeORM) -> None:
     """ Check if there are database changes to be made, and if so, execute them. """
     # TODO: This should really be a function of the DB itself and not something
     # the caller has to ask the database to do for it.

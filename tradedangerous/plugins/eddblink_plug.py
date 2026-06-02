@@ -19,7 +19,7 @@ import typing
 from sqlalchemy import delete, select, exists, text
 
 from tradedangerous import plugins, transfers, TradeException
-from tradedangerous import cache as td_cache
+from tradedangerous.db import import_csv as td_cache
 from tradedangerous.db import orm_models as SA, lifecycle
 from tradedangerous.db.utils import (
     begin_bulk_mode, end_bulk_mode,
@@ -840,9 +840,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                     sql_path=self.tdb.sqlPath,
                 )
             else:
-                # Ensure schema exists and is sane (may rebuild on first run).
+                # Verify the database is present and structurally sane (report
+                # only; rebuilding is the buildcache command's job).
                 self.tdb.close()
-                self.tdb.reloadCache()
+                lifecycle.verify_db(self.tdb.engine, Path(self.tdenv.dataDir), self.tdenv)
 
             if self.tdb.engine.dialect.name == "sqlite":
                 # kfsone: see https://sqlite.org/pragma.html#pragma_optimize

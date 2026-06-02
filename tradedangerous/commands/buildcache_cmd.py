@@ -1,13 +1,19 @@
 from __future__ import annotations
+from pathlib import Path
 import typing
 
 from .exceptions import CommandLineError
 from .parsing import ParseArgument
 
-from tradedangerous.db.lifecycle import ensure_fresh_db
+from tradedangerous.db import get_session_factory
+from tradedangerous.db.lifecycle import reset_db
+from tradedangerous.db.import_csv import processImportFile
+from tradedangerous.fs import file_line_count
+from tradedangerous.misc.progress import Progress, CountingBar
 
 if typing.TYPE_CHECKING:
-    from tradedangerous import CommandEnv, CommandResults, TradeDB
+    from tradedangerous import CommandEnv, CommandResults
+    from tradedangerous.tradedb import TradeDB
 
 
 ######################################################################
@@ -54,6 +60,88 @@ switches = [
 ######################################################################
 # Helpers
 
+# The standard TD tables and their CSV files, in dependency order (System
+# before Station, etc.). A destructive rebuild loads these from the CSV data
+# directory; this list was previously TradeDB.defaultTables.
+_STANDARD_TABLES = (
+    ("System.csv", "System"),
+    ("Station.csv", "Station"),
+    ("Ship.csv", "Ship"),
+    ("ShipVendor.csv", "ShipVendor"),
+    ("Upgrade.csv", "Upgrade"),
+    ("UpgradeVendor.csv", "UpgradeVendor"),
+    ("Category.csv", "Category"),
+    ("Item.csv", "Item"),
+    ("StationItem.csv", "StationItem"),
+    ("FDevShipyard.csv", "FDevShipyard"),
+    ("FDevOutfitting.csv", "FDevOutfitting"),
+)
+
+
+def _rebuild_database(engine, data_dir, tdenv) -> None:
+    """
+    Destructive rebuild of the database from the standard CSV source files.
+
+    Resets the schema (SQLite from TradeDangerous.sql; MariaDB via ORM metadata)
+    then upserts the standard tables from the CSV data directory. Engine-centric:
+    it owns its rebuild session and needs no legacy db handle. The ".prices"
+    pathway is separate (import_prices.py) and is not part of a rebuild.
+
+    This is the whole of buildcache's data-load behaviour, kept here so the
+    command's future can be decided in one place.
+    """
+    tdenv.NOTE("(Re)building database: this may take a few moments.", stderr=True)
+
+    # Resolve the on-disk path for the schema reset (SQLite only; MariaDB ignores it).
+    if engine.dialect.name == "sqlite" and engine.url.database:
+        db_path = Path(engine.url.database)
+    else:
+        db_path = Path(data_dir) / "TradeDangerous.db"
+
+    # Step 1: reset the schema before opening a session.
+    reset_db(engine, db_path=db_path)
+
+    # Step 2: load the standard tables on a fresh session.
+    csv_dir = Path(tdenv.csvDir)
+    session_factory = get_session_factory(engine)
+    with session_factory() as session:
+        with Progress(
+            max_value=len(_STANDARD_TABLES) + 1,
+            prefix="Importing",
+            width=25,
+            style=CountingBar,
+        ) as prog:
+            for fname, table in _STANDARD_TABLES:
+                import_path = csv_dir / fname
+                import_lines = file_line_count(import_path, missing_ok=True)
+                with prog.sub_task(max_value=import_lines, description=table) as child:
+                    prog.increment(value=1)
+                    call_args = {"task": child, "advance": 1}
+                    try:
+                        processImportFile(
+                            tdenv,
+                            session,
+                            import_path,
+                            table,
+                            line_callback=prog.update_task,
+                            call_args=call_args,
+                        )
+                        session.commit()
+                    except FileNotFoundError:
+                        tdenv.DEBUG0("WARNING: processImportFile found no {} file", import_path)
+                    except StopIteration:
+                        tdenv.NOTE(
+                            "{} exists but is empty. "
+                            "Remove it or add the column definition line.",
+                            import_path,
+                        )
+            prog.increment(1)
+            with prog.sub_task(description="Save DB"):
+                session.commit()
+
+    tdenv.NOTE("Database build completed.", stderr=True)
+
+
 ######################################################################
 # Perform query and populate result set
 
@@ -82,21 +170,12 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeDB) -> bool:
             "Either remove the file first or use the '-f/--force' option."
         )
     
-    # Ensure the SQL source exists (buildCache ultimately relies on this path).
+    # Ensure the SQL source exists (the rebuild relies on it).
     if not tdb.sqlPath.exists():
         raise CommandLineError(f"SQL File does not exist: {tdb.sqlFilename}")
     
-    # Force a rebuild through the lifecycle helper (works for both backends).
-    ensure_fresh_db(
-        backend=tdb.engine.dialect.name if getattr(tdb, "engine", None) else "sqlite",
-        engine=getattr(tdb, "engine", None),
-        data_dir=tdb.dataPath,
-        metadata=None,
-        mode="force",
-        tdb=tdb,
-        tdenv=cmdenv,
-        rebuild=True,
-    )
+    # Force a destructive rebuild from the local CSV source files.
+    _rebuild_database(tdb.engine, tdb.dataPath, cmdenv)
     
     # We've done everything, there is no work for the caller to do.
     return False

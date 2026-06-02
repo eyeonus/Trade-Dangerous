@@ -17,7 +17,7 @@ import os
 import re
 import typing
 
-from . import TradeEnv
+from . import TradeEnv, fs
 from .tradeexcept import AmbiguityError, TradeException, MissingDB, SystemNotStationError
 from .db import (
     orm_models as orm,          # type: ignore  # so we can access models easily
@@ -64,6 +64,16 @@ class TradeORM:
         self.data_dir = Path(tdenv.dataDir)
         db_path = tdenv.dbFilename or (self.data_dir / TradeORM.DEFAULT_DB)
         self.db_path = Path(db_path)
+        self.sql_path = self.data_dir / (tdenv.sqlFilename or "TradeDangerous.sql")
+
+        # Seed/template files: copy from templates/ into the data + csv dirs only
+        # when missing or newer (never overwrite on a pip upgrade). Carried over
+        # from the retired TradeDB so a fresh install still gets its Category
+        # seed and the schema.
+        self.template_path = Path(tdenv.templateDir).resolve()
+        self.csv_path = fs.ensurefolder(tdenv.csvDir)
+        fs.copy_if_missing(self.template_path / "Category.csv", self.csv_path / "Category.csv")
+        fs.copy_if_newer(self.template_path / "TradeDangerous.sql", self.data_dir / "TradeDangerous.sql")
 
         default_config = self.data_dir / TradeORM.DB_CONFIG_FILE
         db_config = os.environ.get(TradeORM.DB_CONFIG_VAR, default_config)
@@ -91,7 +101,8 @@ class TradeORM:
         #
         # However: we also want them to be able to create transactions, etc
         # so we also make the session-factory available.
-        self.session = get_session_factory(self.engine)()
+        self.session_maker = get_session_factory(self.engine)
+        self.session = self.session_maker()
 
     def commit(self):
         """ Commit the current transaction state. """
