@@ -115,8 +115,11 @@ def trade(argv):
         torm = None
         tdb = None
         if cmdenv.needs_resolver:
+            # Build/bootstrap commands (buildcache) create the DB themselves, so
+            # they set allowMissingDB to construct the handle without a db file.
+            allow_missing = getattr(cmdenv._cmd, "allowMissingDB", False)
             with cmdenv.time_block("TradeORM.__init__", level=0):
-                torm = TradeORM(tdenv=cmdenv)
+                torm = TradeORM(tdenv=cmdenv, require_db=not allow_missing)
             tdb = torm
 
         # Phase B2: legacy TradeDB — only for commands that need it.

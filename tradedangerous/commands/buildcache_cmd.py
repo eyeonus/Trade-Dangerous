@@ -4,6 +4,7 @@ import typing
 
 from .exceptions import CommandLineError
 from .parsing import ParseArgument
+from .commandenv import Needs
 
 from tradedangerous.db import get_session_factory
 from tradedangerous.db.lifecycle import reset_db
@@ -13,7 +14,7 @@ from tradedangerous.misc.progress import Progress, CountingBar
 
 if typing.TYPE_CHECKING:
     from tradedangerous import CommandEnv, CommandResults
-    from tradedangerous.tradedb import TradeDB
+    from tradedangerous.tradeorm import TradeORM
 
 
 ######################################################################
@@ -29,7 +30,10 @@ epilog = (
         'any data in the .db that is not reflected in the '
         'source files will be lost.'
 )
-wantsTradeDB = False  # Cause we're about to frak with it.
+needs = Needs.RESOLVER
+# buildcache builds the database from the CSV sources, creating the .db file
+# if it does not exist, so its handle is constructed tolerant of a missing DB.
+allowMissingDB = True
 arguments = [
 ]
 switches = [
@@ -146,7 +150,7 @@ def _rebuild_database(engine, data_dir, tdenv) -> None:
 # Perform query and populate result set
 
 
-def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeDB) -> bool:
+def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> bool:
     """
     BRUTE-FORCE rebuild of the cache/database.
     
@@ -164,18 +168,18 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeDB) -> bool:
           "Proceeding with a forced rebuild via db.lifecycle.ensure_fresh_db().")
     
     # Honor legacy safety: require --force to overwrite an existing DB file.
-    if not cmdenv.force and tdb.dbPath.exists():
+    if not cmdenv.force and tdb.db_path.exists():
         raise CommandLineError(
-            f"SQLite3 database '{tdb.dbFilename}' already exists.\n"
+            f"SQLite3 database '{tdb.db_path}' already exists.\n"
             "Either remove the file first or use the '-f/--force' option."
         )
-    
+
     # Ensure the SQL source exists (the rebuild relies on it).
-    if not tdb.sqlPath.exists():
-        raise CommandLineError(f"SQL File does not exist: {tdb.sqlFilename}")
-    
+    if not tdb.sql_path.exists():
+        raise CommandLineError(f"SQL File does not exist: {tdb.sql_path}")
+
     # Force a destructive rebuild from the local CSV source files.
-    _rebuild_database(tdb.engine, tdb.dataPath, cmdenv)
+    _rebuild_database(tdb.engine, tdb.data_dir, cmdenv)
     
     # We've done everything, there is no work for the caller to do.
     return False

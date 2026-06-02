@@ -56,7 +56,11 @@ class TradeORM:
     session_maker: sessionmaker[Session]
     session: Session
 
-    def __init__(self, *, tdenv: TradeEnv | None = None, debug: int | None = None):
+    def __init__(self, *, tdenv: TradeEnv | None = None, debug: int | None = None,
+                 require_db: bool = True):
+        # require_db: normal query commands fail fast on a missing SQLite file.
+        # Build/bootstrap commands (buildcache) create the file themselves, so
+        # they construct the handle with require_db=False to tolerate its absence.
         tdenv = tdenv or TradeEnv(debug=debug or 0)
         self.tdenv = tdenv
 
@@ -90,7 +94,7 @@ class TradeORM:
             if sqlite_path:
                 self.db_path = Path(sqlite_path)
             tdenv.DEBUG0("db_path = {}", self.db_path)
-            if not self.db_path.exists():
+            if require_db and not self.db_path.exists():
                 raise MissingDB(self.db_path)
         else:
             tdenv.DEBUG0("db_path check skipped for backend {}", backend)
