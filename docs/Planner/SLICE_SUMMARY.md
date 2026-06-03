@@ -951,6 +951,48 @@ Commits `1c99def0`, `7775bcb3`, `0663f488`. Full record:
 
 ---
 
+## Slice 14 — Complete Checkpoint K: retire the legacy route/preload architecture (complete)
+
+Closes **Checkpoint K** of the main refactor. K began as "reduce `TradeCalc`
+setup cost"; the K4 review and Slices 1–13 established that the clean-room planner
+should replace the legacy route/calculator architecture wholesale rather than
+narrow it. Slice 14 is the retirement: the legacy `trade run` path, the
+`TradeCalc` calculator, the full-galaxy preload model, and the `TradeDB` handle
+are all gone from live code, and `trade run` is served entirely by the planner
+querying the database directly. Breaking development-fork slice; `nav` and
+`olddata` are intentionally parked for checkpoint L.
+
+**Delivered:**
+
+- **14A** — `trade run` planner-only: `--old` removed, the legacy
+  `TradeCalc` / `Route` branch and its render support deleted, `tradecalc.py`
+  archived. `cache.py` split into `import_prices.py` (the `.prices` pathway),
+  `db/import_csv.py` (the CSV upsert worker), and the `BuildCache*` exception
+  family moved to `tradeexcept.py`.
+- **14B** — the full-galaxy preload model retired as a live command path; `nav`
+  and `olddata` parked at `Needs.NOTHING` with a fail-early validator deferring
+  each to checkpoint L, bodies dormant.
+- **14C** — `TradeORM` became the single DB handle (`sql_path`, `session_maker`,
+  template bootstrap, a `require_db` opt-out for build/bootstrap commands).
+  `buildcache`, `import`, and the eddblink / spansh plugins run on it. The legacy
+  backend lane removed: the `Needs` enum is `NOTHING` + `RESOLVER` only, and a
+  command that declares no backend now fails loudly. `tradedb.py` removed from
+  live code and archived pristine, alongside a pristine `cache.py` snapshot.
+- **14D** — planner cleanup: the `_OPEN_SHAPE_CORRECTION_WIDTH` rename, the
+  "within range" failure-message rewording, shared-engine docstring fixes, a
+  `trade run`-specific `--pad-size` threshold parser, the display-label tables
+  folded into `formatting.py`, `TEMPLATE.py` on the `needs =` contract, and a
+  stale-"TradeDB"-comment sweep.
+
+**Deferred (not cut):** the `nav` / `olddata` rebuild (checkpoint L); a full
+end-to-end spansh testbed import as runtime confirmation of the migrated plugin.
+
+Commits `39828ab2`, `d5ab4370`, `03eca1c1`, `3cdf70f1`, `83ee24b2`, `75ba5f3c`,
+`39a3ba80`, `f6958820`. Full record:
+`docs/Planner/fourteenth_slice_completion_report.md`.
+
+---
+
 ## Project Notes
 
 ### Data scale
@@ -1109,11 +1151,13 @@ price is far above the cap, so the row is filtered before it can win. The
 default was sized against the live data so no legitimate non-carrier row
 (highest observed just over 1M cr/t) is lost — see the Slice 9 entry.
 
-A default cap on `--max-gain-per-ton` remains a separate idea under
-discussion between Tromador and eyeonus. It is a different axis — it caps
+A default cap on `--max-gain-per-ton` (`--mgpt`) remains a separate,
+unimplemented idea. It is a different axis from `--max-price` — it caps
 per-ton *profit* (sell minus buy), not absolute price — so it would catch
 an artificial margin built from two otherwise in-range prices that
-`--max-price` passes. Out of scope here; logged so the option isn't
+`--max-price` passes. Its earlier framing as "under discussion with eyeonus"
+is stale: that discussion produced Slice 9's `--max-price`. `--mgpt` itself is
+simply a deferred, unimplemented trade filter; logged so the option isn't
 forgotten.
 
 Performance side-effect — the noise was not only an output-cleanliness
@@ -1304,36 +1348,8 @@ question to resolve when the option lands.
 
 Noted-for-later items — not bugs, no urgency, worth doing when convenient.
 
-### `--pad-size` CLI parser message mismatch
-
-The shared `--pad-size` CLI parser (`PadSizeArgument.PadSizeParser` in
-`commands/parsing.py`) still validates and describes the older combination
-model: it accepts any string of `S`/`M`/`L`/`?` characters, and its error
-message and help text cite `SML?`-style combinations. `trade run` now treats
-`--pad-size` as a single ship-fit threshold, and its planner-side validation
-rejects `?` and multi-letter input separately.
-
-Effect: an invalid `--pad-size` for `trade run` can fail at either layer with a
-different message. A non-pad character such as `XL` is rejected by the parser
-with the outdated combination wording; `?` or a valid-letter combination passes
-the parser and is rejected by the planner with the correct "one of S, M, or L"
-message. Rejection is always clean — no traceback — only the messaging is
-inconsistent.
-
-Not a simple message swap: `PadSizeArgument` is shared with `sell`, `buy`,
-`local`, `nav`, and `olddata`, which still use the combination model. A fix
-means either a `trade run`-specific pad parser and message, or accepting the
-mismatch.
-
-### `StationHasNoUsablePriceData` subclass wording
-
-The planner-side raise messages for `SourceHasNoSellingData` and
-`DestinationHasNoBuyingData` (in `planner/run_onehop.py`) still use internal
-phrasing — "No reachable source station had usable selling data." and
-similar. These are now surfaced through `PlannerResultError` without the
-generic data-failure footer, so the wording is the only remaining issue;
-"reachable" leaks an internal concept into a user-facing line. A small
-follow-up could reword these to match the friendlier "no usable market
-data for the chosen \<place\>" style used by the rest of the planner
-failure messages. Out of scope for the failure-message cleanup that
-introduced `PlannerResultError`.
+Both previously-listed candidates — the `--pad-size` CLI parser message
+mismatch and the `StationHasNoUsablePriceData` "reachable" wording — were
+resolved in Slice 14's planner cleanup (the `trade run`-specific `--pad-size`
+threshold parser, and the "within range" failure-message rewording). None
+outstanding.

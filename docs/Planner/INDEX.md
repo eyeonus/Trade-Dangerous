@@ -143,6 +143,15 @@ Each completed slice has an implementation plan (what needs to be done) and a co
 | [thirteenth_slice_implementation_plan.md](thirteenth_slice_implementation_plan.md) | Design plan for Slice 13: composing the unanchored one-hop candidate fetch with the proven forward open-anchor engine, the seed-rank trim, the engine relocation to `route_common`, the dispatch and validation changes, and the prompt rework. |
 | [thirteenth_slice_completion_report.md](thirteenth_slice_completion_report.md) | Proof of completion: the engine move proven byte-identical, `route_unanchored` seeding the engine galaxy-wide, valid routes across filtered / unfiltered / tight-credit / `--limit` runs, existing shapes and benchmark unchanged, prompt reword verified. |
 
+### Slice 14 — Complete Checkpoint K: Retire the Legacy Route/Preload Architecture (Complete)
+**Legacy `trade run`, `TradeCalc`, the full-galaxy preload model, and `TradeDB` retired; `trade run` is planner-only. Closes the main refactor's Checkpoint K.**
+
+| Document | Content |
+|----------|---------|
+| [fourteenth_slice_implementation_plan.md](fourteenth_slice_implementation_plan.md) | Design plan for Slice 14: the 14A–D structure (retire legacy `trade run`, kill full-preload, decide buildcache/lifecycle, planner cleanup), the `tradedb.py` / `buildcache` policies, and the breaking-fork validation posture. |
+| [slice_14_succession_handover.md](slice_14_succession_handover.md) | Mid-14C succession handover: the cache-split and single-TradeORM-handle strategy, the definitive tradedb-kill consumer map and kill sequence, and the outstanding loose ends. |
+| [fourteenth_slice_completion_report.md](fourteenth_slice_completion_report.md) | Proof of completion: the eight commits, what each part (14A–D) delivered, archive completeness, and the verification posture. |
+
 ---
 
 ## Reference and Technical Notes

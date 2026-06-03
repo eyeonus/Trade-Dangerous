@@ -28,14 +28,14 @@ These are fixed for the whole program:
 - SQLite remains the primary performance truth for end users.
 - MariaDB support must continue to work, but must not distort the design for the SQLite majority.
 - No big-bang rewrite.
-- Do not remove `TradeDB` until replacement seams are proven.
+- Do not remove `TradeDB` until replacement seams are proven. *(Done for `trade run`: the planner replacement is proven and `TradeDB` is retired — Checkpoint K.)*
 
 ## 3. Locked design decisions
 
 These are adopted unless later evidence forces review:
 
 - Use the Option 1 ORM migration strategy.
-- Shrink `TradeDB` into a compatibility shim instead of deleting it up front.
+- Shrink `TradeDB` into a compatibility shim instead of deleting it up front. *(Outcome: for `trade run` the model was replaced wholesale, not shimmed; `TradeDB` is now retired — Checkpoint K.)*
 - Ship one narrow first schema batch for additive read-performance indexes.
 - Remove `Added` completely.
 - Remove `RareItem` completely.
@@ -121,6 +121,12 @@ Goal: turn monolithic preload into selective compatibility loading.
 
 ### Checkpoint K — Reduce `TradeCalc` setup cost
 Goal: make `run` materially faster by narrowing preload and reshape work.
+
+**Complete (realised by replacement, not narrowing).** The K4 review concluded
+the preload-first `TradeCalc` / `TradeDB` model should be replaced; the clean-room
+planner rewrite (Slices 1–14, `docs/Planner/`) did so. `trade run` is planner-only
+and `tradecalc.py` / `tradedb.py` are retired. See `docs/REFACTOR_PROGRESS.md`
+Checkpoint K and `docs/Planner/fourteenth_slice_completion_report.md`.
 
 ### Checkpoint L — Migrate `olddata`, `nav`, `rares`
 Goal: finish the main command migration set.

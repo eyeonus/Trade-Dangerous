@@ -58,6 +58,14 @@ Meaning:
 This project is not “make a new engine”.
 It is “systematically remove preload-heavy legacy obligations while keeping the product working”.
 
+> **Status (2026-06): Checkpoint K complete.** `trade run` was the
+> preload-heaviest obligation. The K4 review concluded the preload-first
+> `TradeDB` / `TradeCalc` model should be replaced rather than narrowed, and the
+> clean-room planner rewrite (Slices 1–14, `docs/Planner/`) did so. `trade run`
+> is now planner-only, and `tradecalc.py` / `tradedb.py` are retired to
+> `archive/`. The "do not delete `TradeDB` up front" rule (§16) was honoured —
+> the deletion came at the end, once the replacement was proven.
+
 ---
 
 ## 4. Schema decisions already locked
@@ -270,6 +278,10 @@ Goal:
 ### K — Reduce `TradeCalc` setup cost
 Goal:
 - narrow preload/reshape work before touching route maths
+
+**Complete — by replacement, not narrowing.** The clean-room planner rewrite
+(`docs/Planner/`) eliminated the preload-first model for `trade run`; see
+`docs/REFACTOR_PROGRESS.md` Checkpoint K and the Slice 14 completion report.
 
 ### L — Migrate `olddata`, `nav`, `rares`
 Goal:

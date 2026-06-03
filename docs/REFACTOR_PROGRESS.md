@@ -49,23 +49,23 @@ Do not tick a task unless:
 ## 1. Current snapshot
 
 ### Current active checkpoint
-- Status: `[-]`
-- Checkpoint: `K — Reduce TradeCalc setup cost`
-- Subtask: `K4 active — candidate consumption strategy (Phase B complete; design question open)`
+- Status: `[x]`
+- Checkpoint: `K — Reduce TradeCalc setup cost (complete — realised by the clean-room planner rewrite, not by incremental narrowing)`
+- Subtask: `K closed. K4 answered its own question: the preload-first model was replaced, not tuned. Next up is L (nav/olddata), not yet started.`
 - Owner: `Tromador`
 - Started: `2026-05-03`
-- Goal: `Decide whether the preload-first TradeCalc/TradeDB route model should survive before doing further K3-style preload optimisation.`
+- Goal: `Decide whether the preload-first TradeCalc/TradeDB route model should survive — answered: no. The clean-room planner rewrite (Slices 1–14, docs/Planner/) replaced it; trade run is planner-only, and tradecalc.py / tradedb.py are retired to archive/.`
 
 ### Current blocker
-- Status: `[!]`
-- Blocker: `Further K3 preload/cache optimisation is intentionally paused pending K4.`
-- Impact: `K3A capability preload filtering is landed and pragmatically validated, but further cache tuning may optimise an architecture that K4 decides to replace or demote.`
-- Needed to unblock: `Answer the open K4 design question: how should the route engine consume SQL-generated candidate edges without materialising millions of low-value candidates into Python? Then record the architecture decision.`
+- Status: `[ ]`
+- Blocker: `None. The K4 question is answered — the preload-first model was replaced by the clean-room planner — so the paused K3/K5/K6/K7 preload tuning is moot, not blocked.`
+- Impact: `n/a`
+- Needed to unblock: `n/a`
 
 ### Last updated
-- Date: `2026-05-10`
+- Date: `2026-06-03`
 - By: `Tromador + assistant`
-- Session summary: `K4 Phase A and Phase B complete. SQL provider (k4_proto/provider.py) confirmed as a semantic match for the legacy stationsSelling/stationsBuying/getTrades raw edge seam. PRICE_AND_UNITS mode matches legacy exactly at both test fixtures (Achenar/Dawes Hub: 29,628 edges; Shinrarta Dezhra/Jameson Memorial: 1,702,258 edges). PRICE_ONLY is a superset by zero-unit rows and is diagnostic only. Parity materialisation timing (~36s for 1.7M edges) is a parity-test workload signal, not a runtime viability verdict. Open design question: candidate consumption strategy for route expansion. Phase B conclusion recorded in docs/K4_PHASE_B_CONCLUSION.md.`
+- Session summary: `Checkpoint K closed by the clean-room planner rewrite. trade run is planner-only; the full-galaxy preload model is gone; tradecalc.py / tradedb.py are retired to archive/. Slice 14 landed across eight commits (39828ab2 -> f6958820), the last being the 14D planner cleanup. Full record in docs/Planner/ (SLICE_SUMMARY.md, fourteenth_slice_completion_report.md).`
 
 ### Last known good rollback point
 - Commit: `ee777adc`
@@ -87,6 +87,7 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 - [x] Checkpoint E is rebuild/reset only; no migration/backfill or old-schema assistance is planned
 - [x] `trade rares` is retired; remaining useful rare lookup moves into `trade buy` filtering
 - [x] `Festive Gifts` is excluded from canonical rare handling
+- [x] The preload-first `trade run` model is retired; `trade run` is served by the clean-room planner querying the database directly (Checkpoint K)
 
 ---
 
@@ -102,7 +103,7 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 - [x] H — Migrate `local`
 - [x] I — Migrate `market`, `buy`, `sell`
 - [x] J — Split `TradeDB` by capability
-- [ ] K — Reduce `TradeCalc` setup cost
+- [x] K — Reduce `TradeCalc` setup cost (realised by the clean-room planner rewrite)
 - [ ] L — Migrate `olddata`, `nav`, `rares`
 - [ ] M — GUI session reuse and cache discipline
 - [ ] N — Legacy prune wave 2 and closeout
@@ -494,23 +495,23 @@ Reduce `TradeCalc.__init__()` setup overhead before touching route maths.
 - [x] K3. Wire station restriction narrowing properly
   - Status note: `K3A capability preload filtering landed and was pragmatically validated. station_id IN (SELECT station_id FROM Station WHERE ...) subquery added to TradeCalc.__init__() query_prep. Filters pushed: padSize (max_pad_size), noPlanet/planetary (planetary), fleet (type_id via FLEET_CARRIER_TYPE_IDS registry), settlement (type_id via SETTLEMENT_TYPE_IDS registry), blackMarket (blackmarket), maxLs (ls_from_star). Registry constants used throughout; no raw magic numbers. Explicit anchor stations (origPlace/destPlace/viaSet) UNIONed into the subquery so checkStationSuitability() retains correct error provenance. Parser normalisation bug fixed: all four station filter parsers now store val.upper() at parse time. --stl alias added for --settlement. Further K3 preload/cache optimisation is paused pending K4.`
   - Evidence: `2f72d32b; 5bebc304; 4a81a218; 432 tests passing; live validation on 2026-05-08`
-- [-] K4. First-principles trade run architecture review
-  - Status note: `Phase A (SQL provider self-check) and Phase B (raw edge parity) complete. PRICE_AND_UNITS mode confirmed as the canonical legacy-compatible edge eligibility rule. PRICE_ONLY is diagnostic/overinclusive. Parity materialisation timing is not a runtime viability verdict. Age/timestamp parity deferred. Open design question: how to consume SQL-generated candidate edges without materialising millions of low-value candidates into Python.`
+- [x] K4. First-principles trade run architecture review
+  - Status note: `Phase A (SQL provider self-check) and Phase B (raw edge parity) confirmed PRICE_AND_UNITS as the legacy-compatible edge eligibility rule. The open design question -- how to consume SQL candidate edges without materialising millions into Python -- was answered by building a clean-room planner that queries the database directly per run, with no full-galaxy preload. Decision: replace the preload-first TradeCalc/TradeDB model, do not narrow it. The planner rewrite (Slices 1-14, docs/Planner/) delivered the replacement; trade run is planner-only and tradecalc.py / tradedb.py are retired. This closes Checkpoint K and supersedes K5/K6/K7.`
   - Evidence: `docs/K4_PHASE_B_CONCLUSION.md; k4_proto/provider.py; k4_proto/selfcheck.py; k4_proto/parity.py; fixtures Achenar/Dawes Hub (29,628 edges exact match) and Shinrarta Dezhra/Jameson Memorial (1,702,258 edges exact match)`
 - [~] K5. Push more filtering into SQL
-  - Status note: `Deferred. Do not continue K3-style preload optimisation until K4 decides whether the preload-first model remains the right architecture.`
+  - Status note: `Superseded. K4 replaced the preload-first model; the new planner pushes filtering into SQL by design, so there is no legacy preload left to optimise here.`
   - Evidence: `K4 planning decision 2026-05-08`
 - [~] K6. Evaluate SQL-side timestamp handling
-  - Status note: `Deferred pending K4. parse_ts() remains untouched; SQL-side age work should not proceed until the route data-provider decision is known.`
+  - Status note: `Superseded. This concerned the legacy preload/parse_ts() route path, which is retired with the rest of the preload-first model; the planner does its own SQL-side age handling.`
   - Evidence: `K4 planning decision 2026-05-08`
 - [~] K7. Re-benchmark `run`
-  - Status note: `Deferred until K4 produces an architecture decision or prototype path worth benchmarking.`
+  - Status note: `Superseded. The legacy run path this would benchmark is retired; the new planner's per-shape timings are recorded across the Slice 1-14 completion reports in docs/Planner/.`
   - Evidence: `K4 planning decision 2026-05-08`
 
 ### Notes
-- K3A is accepted as tactical containment, not as the final answer to trade run performance.
-- K4 exists because TradeCalc is still materialising a large Python-side market cache and then performing database-like filtering/joining over that cache during normal single-query CLI execution.
-- Further preload/cache polishing is paused to avoid optimising an architecture that K4 may replace or demote.
+- K3A was tactical containment, not the final answer to trade run performance — and K4 superseded it.
+- K4 existed because TradeCalc materialised a large Python-side market cache and then performed database-like filtering/joining over that cache during normal single-query CLI execution. The clean-room planner removes that model entirely: it queries the database directly per run.
+- Checkpoint K is complete, realised by the planner rewrite (Slices 1–14). The legacy route path, TradeCalc, the full-galaxy preload, and TradeDB are retired. Full record: `docs/Planner/` (`SLICE_SUMMARY.md`, `fourteenth_slice_completion_report.md`).
 
 ---
 
