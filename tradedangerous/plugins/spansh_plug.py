@@ -399,6 +399,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         with open(commodity_csv, "r", encoding="utf-8", newline="") as fh:
             reader = csv.DictReader(fh)
             fieldnames = reader.fieldnames or []
+
             def _find_col(*aliases: str) -> Optional[str]:
                 canon = {}
                 for header in fieldnames:
@@ -463,23 +464,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 update_cols=("name", "category_id", "fdev_id", "ui_order"),
             )
         else:
-            for row in item_rows:
-                exists = session.execute(
-                    select(t_item.c.item_id).where(t_item.c.item_id == row["item_id"])
-                ).first()
-                if exists is None:
-                    session.execute(insert(t_item).values(**row))
-                else:
-                    session.execute(
-                        update(t_item)
-                        .where(t_item.c.item_id == row["item_id"])
-                        .values(
-                            name=row["name"],
-                            category_id=row["category_id"],
-                            fdev_id=row["fdev_id"],
-                            ui_order=row["ui_order"],
-                        )
-                    )
+            raise RuntimeError(f"Unsupported dialect for {t_item.name} upsert: {session.get_bind().dialect.name}")
         return len(item_rows)
     
     # ---------- EDCD: FDev tables (direct load) ----------
@@ -556,15 +541,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             db_utils.mysql_upsert_simple(session, table, rows=rows, key_cols=key_cols, update_cols=upd_cols)
             return len(rows)
         
-        # Generic backend (read-then-insert/update)
-        for r in rows:
-            cond = and_(*[getattr(table.c, k) == r[k] for k in key_cols])
-            ext = session.execute(select(*[getattr(table.c, k) for k in key_cols]).where(cond)).first()
-            if ext is None:
-                session.execute(insert(table).values(**r))
-            elif upd_cols:
-                session.execute(update(table).where(cond).values(**{k: r[k] for k in upd_cols}))
-        return len(rows)
+        raise RuntimeError(f"Unsupported dialect for {table.name} upsert: {session.get_bind().dialect.name}")
     
     def _edcd_import_fdev_catalogs(self, session: Session, tables: dict[str, Table], *, outfitting_csv: Path, shipyard_csv: Path) -> tuple[int, int]:
         u = self._edcd_import_table_direct(session, tables["FDevOutfitting"], outfitting_csv)
@@ -720,15 +697,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     update_cols=update_cols,
                 )
             else:
-                for r in master_rows:
-                    cond = bool(getattr(t_master.c, key_name) == r[key_name])
-                    exists = self.session.execute(select(getattr(t_master.c, key_name)).where(cond)).first()
-                    if exists is None:
-                        self.session.execute(insert(t_master).values(**r))
-                    else:
-                        upd = {k: v for k, v in r.items() if k != key_name}
-                        if upd:
-                            self.session.execute(update(t_master).where(cond).values(**upd))
+                raise RuntimeError(f"Unsupported dialect for {t_master.name} upsert: {self.session.get_bind().dialect.name}")
         
         # 2) Link rows with timestamp guard for vendor tables.
         wrote = 0
@@ -765,15 +734,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     update_cols=(),
                 )
             else:
-                for r in vendor_rows:
-                    cond = and_(getattr(t_vendor.c, id_col) == r[id_col], t_vendor.c.station_id == station_id)
-                    cur = self.session.execute(select(t_vendor.c.modified).where(cond)).first()
-                    if cur is None:
-                        self.session.execute(insert(t_vendor).values(**r))
-                    else:
-                        mod = cur[0]
-                        if (mod is None) or (ts_eff > mod):
-                            self.session.execute(update(t_vendor).where(cond).values(modified=ts_eff))
+                raise RuntimeError(f"Unsupported dialect for {t_vendor.name} upsert: {self.session.get_bind().dialect.name}")
         
         return wrote, delc
     
@@ -869,21 +830,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     update_cols=("name", "category_id", "fdev_id", "ui_order"),
                 )
             else:
-                for r in item_rows:
-                    exists = self.session.execute(
-                        select(t_item.c.item_id).where(t_item.c.item_id == r["item_id"])
-                    ).first()
-                    if exists is None:
-                        self.session.execute(insert(t_item).values(**r))
-                    else:
-                        self.session.execute(
-                            update(t_item).where(t_item.c.item_id == r["item_id"]).values(
-                                name=r["name"],
-                                category_id=r["category_id"],
-                                fdev_id=r["fdev_id"],
-                                ui_order=r["ui_order"],
-                            )
-                        )
+                raise RuntimeError(f"Unsupported dialect for {t_item.name} upsert: {self.session.get_bind().dialect.name}")
         # 2) Compute effective inserts/updates for StationItem (pre-check modified), then upsert
         wrote = 0
         if link_rows:
@@ -927,26 +874,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     ),
                 )
             else:
-                for r in link_rows:
-                    row = self.session.execute(
-                        select(t_si.c.modified).where(and_(
-                            t_si.c.station_id == r["station_id"],
-                            t_si.c.item_id == r["item_id"],
-                        ))
-                    ).first()
-                    if row is None:
-                        self.session.execute(insert(t_si).values(**r))
-                    else:
-                        dbm = row[0]
-                        if dbm is None or r["modified"] > dbm:
-                            self.session.execute(
-                                update(t_si)
-                                .where(and_(
-                                    t_si.c.station_id == r["station_id"],
-                                    t_si.c.item_id == r["item_id"],
-                                ))
-                                .values(**r)
-                            )
+                raise RuntimeError(f"Unsupported dialect for {t_si.name} upsert: {self.session.get_bind().dialect.name}")
 
         # 3) Delete baseline rows missing from JSON, not newer than ts_sp
         delc = 0
@@ -1149,7 +1077,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self._warn(str(ce))
                 self._safe_close_session()
                 return False
-            except Exception as e:
+            except Exception:
                 self._error(f"Import failed: {traceback.format_exc()}")
                 self._safe_close_session()
                 return False
@@ -1611,21 +1539,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                     update_cols=("name", "category_id", "fdev_id", "ui_order"),
                                 )
                             else:
-                                for r in item_rows:
-                                    exists = self.session.execute(
-                                        select(t_item.c.item_id).where(t_item.c.item_id == int(r["item_id"]))
-                                    ).first()
-                                    if exists is None:
-                                        self.session.execute(insert(t_item).values(**r))
-                                    else:
-                                        self.session.execute(
-                                            update(t_item).where(t_item.c.item_id == r["item_id"]).values(
-                                                name=r["name"],
-                                                category_id=r["category_id"],
-                                                fdev_id=r["fdev_id"],
-                                                ui_order=r["ui_order"],
-                                            )
-                                        )
+                                raise RuntimeError(f"Unsupported dialect for {t_item.name} upsert: {self.session.get_bind().dialect.name}")
                         
                         # Commit Item work so Item row locks are released before station lock acquisition.
                         try:
@@ -1846,52 +1760,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             )
             return
         
-        # Generic fallback
-        existing = self.session.execute(
-            select(t_system.c.modified).where(t_system.c.system_id == system_id)
-        ).first()
-        
-        if existing is None:
-            self.session.execute(insert(t_system).values(**row))
-        else:
-            db_modified = existing[0]
-            values = {"name": name, "pos_x": x, "pos_y": y, "pos_z": z}
-            if db_modified is None or modified > db_modified:
-                values["modified"] = modified
-            self.session.execute(
-                update(t_system)
-                .where(t_system.c.system_id == system_id)
-                .values(**values)
-            )
-        
-        # Generic fallback
-        sel_cols = [t_system.c.modified]
-        if has_added_col:
-            sel_cols.append(t_system.c.added)
-        existing = self.session.execute(
-            select(*sel_cols).where(t_system.c.system_id == system_id)
-        ).first()
-        
-        if existing is None:
-            self.session.execute(insert(t_system).values(**row))
-        else:
-            db_modified = existing[0]
-            values = {"name": name, "pos_x": x, "pos_y": y, "pos_z": z}
-            if db_modified is None or modified > db_modified:
-                values["modified"] = modified
-            self.session.execute(
-                update(t_system)
-                .where(t_system.c.system_id == system_id)
-                .values(**values)
-            )
-            if has_added_col:
-                db_added = existing[1] if len(existing) > 1 else None
-                if db_added is None:
-                    self.session.execute(
-                        update(t_system)
-                        .where((t_system.c.system_id == system_id) & (t_system.c.added.is_(None)))
-                        .values(added=20)
-                    )
+        raise RuntimeError(f"Unsupported dialect for System upsert: {self.session.get_bind().dialect.name}")
     
     def _upsert_station(
         self, t_station: Table, station_id: int, system_id: int, name: str,
@@ -1962,58 +1831,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             )
             return
         
-        # Generic fallback
-        row = self.session.execute(
-            select(t_station.c.system_id, t_station.c.modified)
-            .where(t_station.c.station_id == station_id)
-        ).first()
-        
-        if row is None:
-            self.session.execute(
-                insert(t_station).values(
-                    station_id=station_id,
-                    system_id=system_id,
-                    name=name,
-                    ls_from_star=ls_from_star,
-                    max_pad_size=max_pad,
-                    type_id=type_id,
-                    planetary=planetary,
-                    market=sflags["market"],
-                    blackmarket=sflags["blackmarket"],
-                    shipyard=sflags["shipyard"],
-                    outfitting=sflags["outfitting"],
-                    rearm=sflags["rearm"],
-                    refuel=sflags["refuel"],
-                    repair=sflags["repair"],
-                    modified=modified,
-                )
-            )
-        else:
-            db_system_id, db_modified = row
-            values = {
-                "name": name,
-                "ls_from_star": ls_from_star,
-                "max_pad_size": max_pad,
-                "type_id": type_id,
-                "planetary": planetary,
-                "market": sflags["market"],
-                "blackmarket": sflags["blackmarket"],
-                "shipyard": sflags["shipyard"],
-                "outfitting": sflags["outfitting"],
-                "rearm": sflags["rearm"],
-                "refuel": sflags["refuel"],
-                "repair": sflags["repair"],
-            }
-            if db_system_id != system_id:
-                values["system_id"] = system_id
-            if db_modified is None or modified > db_modified:
-                values["modified"] = modified
-            
-            self.session.execute(
-                update(t_station)
-                .where(t_station.c.station_id == station_id)
-                .values(**values)
-            )
+        raise RuntimeError(f"Unsupported dialect for Station upsert: {self.session.get_bind().dialect.name}")
     
     def _upsert_outfitting(self, tables: dict[str, Table], station_id: int, modules: list[dict[str, Any]], ts: datetime) -> int:
         t_up, t_vendor = tables["Upgrade"], tables["UpgradeVendor"]
@@ -2039,16 +1857,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 db_utils.mysql_upsert_simple(self.session, t_up, rows=up_rows, key_cols=("upgrade_id",),
                                              update_cols=("name", "class", "rating", "ship"))
             else:
-                for r in up_rows:
-                    exists = self.session.execute(select(t_up.c.upgrade_id).where(t_up.c.upgrade_id == r["upgrade_id"])).first()
-                    if exists is None:
-                        self.session.execute(insert(t_up).values(**r))
-                    else:
-                        self.session.execute(
-                            update(t_up).where(t_up.c.upgrade_id == r["upgrade_id"]).values(
-                                name=r["name"], **{"class": r["class"]}, rating=r["rating"], ship=r["ship"]
-                            )
-                        )
+                raise RuntimeError(f"Unsupported dialect for Upgrade upsert: {self.session.get_bind().dialect.name}")
         
         wrote = 0
         if vendor_rows:
@@ -2061,22 +1870,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                                key_cols=("upgrade_id", "station_id"), modified_col="modified", update_cols=())
                 wrote = len(vendor_rows)
             else:
-                for r in vendor_rows:
-                    ven = self.session.execute(
-                        select(t_vendor.c.modified).where(and_(t_vendor.c.upgrade_id == r["upgrade_id"], t_vendor.c.station_id == r["station_id"]))
-                    ).first()
-                    if ven is None:
-                        self.session.execute(insert(t_vendor).values(**r))
-                        wrote += 1
-                    else:
-                        dbm = ven[0]
-                        if dbm is None or r["modified"] > dbm:
-                            self.session.execute(
-                                update(t_vendor)
-                                .where(and_(t_vendor.c.upgrade_id == r["upgrade_id"], t_vendor.c.station_id == r["station_id"]))
-                                .values(modified=r["modified"])
-                            )
-                            wrote += 1
+                raise RuntimeError(f"Unsupported dialect for UpgradeVendor upsert: {self.session.get_bind().dialect.name}")
         return wrote
     
     def _upsert_market(
@@ -2130,21 +1924,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 db_utils.mysql_upsert_simple(self.session, t_item, rows=item_rows, key_cols=("item_id",),
                                              update_cols=("name", "category_id", "fdev_id", "ui_order"))
             else:
-                for r in item_rows:
-                    exists = self.session.execute(
-                        select(t_item.c.item_id, t_item.c.name, t_item.c.category_id).where(t_item.c.item_id == r["item_id"])
-                    ).first()
-                    if exists is None:
-                        self.session.execute(insert(t_item).values(**r))
-                        wrote_items += 1
-                    else:
-                        _, db_name, db_cat = exists
-                        if (db_name != r["name"]) or (db_cat != r["category_id"]):
-                            self.session.execute(
-                                update(t_item).where(t_item.c.item_id == r["item_id"]).values(
-                                    name=r["name"], category_id=r["category_id"]
-                                )
-                            )
+                raise RuntimeError(f"Unsupported dialect for Item upsert: {self.session.get_bind().dialect.name}")
         wrote_links = 0
         if link_rows:
             if db_utils.is_sqlite(self.session):
@@ -2160,22 +1940,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                                             "supply_price", "supply_units", "supply_level"))
                 wrote_links = len(link_rows)
             else:
-                for r in link_rows:
-                    si = self.session.execute(
-                        select(t_si.c.modified).where(and_(t_si.c.station_id == r["station_id"], t_si.c.item_id == r["item_id"]))
-                    ).first()
-                    if si is None:
-                        self.session.execute(insert(t_si).values(**r))
-                        wrote_links += 1
-                    else:
-                        dbm = si[0]
-                        if dbm is None or r["modified"] > dbm:
-                            self.session.execute(
-                                update(t_si)
-                                .where(and_(t_si.c.station_id == r["station_id"], t_si.c.item_id == r["item_id"]))
-                                .values(**r)
-                            )
-                            wrote_links += 1
+                raise RuntimeError(f"Unsupported dialect for StationItem upsert: {self.session.get_bind().dialect.name}")
 
         return (wrote_items, wrote_links)
     

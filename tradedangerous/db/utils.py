@@ -159,7 +159,7 @@ def get_upsert_fn(
 # spansh helpers (db specific upserts)
 # -----------------------------------------------------------------------------
 
-# --- Dialect checks (unchanged) ---
+# --- Dialect checks ---
 def is_sqlite(session: Session) -> bool:
     try:
         return session.get_bind().dialect.name.lower() == "sqlite"
