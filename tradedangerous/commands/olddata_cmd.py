@@ -10,7 +10,7 @@ from .parsing import (
 )
 
 from tradedangerous import TradeException
-from . import display_labels
+from tradedangerous import formatting
 from tradedangerous.db.utils import age_in_days
 from tradedangerous.formatting import RowFormat, ColumnFormat
 
@@ -264,16 +264,16 @@ def render(results, cmdenv, tdb):
                         key=lambda row: row.station.distFromStar())
         ).append(
                 ColumnFormat("Pad", '>', '3',
-                        key=lambda row: display_labels.padSizes[row.station.maxPadSize])
+                        key=lambda row: formatting.padSizes[row.station.maxPadSize])
         ).append(
                 ColumnFormat("Plt", '>', '3',
-                        key=lambda row: display_labels.planetStates[row.station.planetary])
+                        key=lambda row: formatting.planetStates[row.station.planetary])
         ).append(
                 ColumnFormat("Flc", '>', '3',
-                        key=lambda row: display_labels.fleetStates[row.station.fleet])
+                        key=lambda row: formatting.fleetStates[row.station.fleet])
         ).append(
                 ColumnFormat("Stl", '>', '3',
-                        key=lambda row: display_labels.settlementStates[row.station.settlement])
+                        key=lambda row: formatting.settlementStates[row.station.settlement])
         )
     
     if not cmdenv.quiet:

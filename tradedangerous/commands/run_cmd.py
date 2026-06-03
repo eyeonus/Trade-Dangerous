@@ -5,7 +5,7 @@ from .commandenv import Needs
 from .exceptions import CommandLineError, PlannerResultError
 from .parsing import (
     BlackMarketSwitch, FleetCarrierArgument, MutuallyExclusiveGroup,
-    NoPlanetSwitch, SettlementArgument, PadSizeArgument, ParseArgument,
+    NoPlanetSwitch, SettlementArgument, ParseArgument,
     PlanetaryArgument,
 )
 
@@ -49,6 +49,28 @@ arguments = [
             type = "credits",
         ),
 ]
+
+
+def _run_pad_size_threshold(value):
+    """Parse trade run's --pad-size as a single ship-fit threshold.
+
+    Unlike the shared multi-size pad filter, run takes one threshold letter —
+    S, M or L — the smallest pad the ship can use; a station qualifies when its
+    largest pad is at least that size. '?', empty input, or a combination like
+    'SML' is rejected here at parse time so the planner only ever sees a valid
+    threshold. (S and M still admit stations whose pad size is unrecorded; L
+    does not — that inclusion is the filter's job, not the parser's.)
+    """
+    text = str(value).strip().upper()
+    if text not in ("S", "M", "L"):
+        raise CommandLineError(
+            f"Invalid --pad-size '{value}': trade run takes a single "
+            "pad-size threshold, one of 'S' (small), 'M' (medium) or 'L' "
+            "(large). A station qualifies when its largest pad is at least "
+            "that size."
+        )
+    return text
+
 
 switches = [
     ParseArgument('--from', '-f',
@@ -157,7 +179,15 @@ switches = [
         type = float,
         dest = 'maxAge',
     ),
-    PadSizeArgument(),
+    ParseArgument('--pad-size', '-p',
+        help = (
+            'Restrict to stations whose largest landing pad is at least '
+            'this size: S, M or L. Omit for no pad restriction.'
+        ),
+        metavar = 'S|M|L',
+        dest = 'padSize',
+        type = _run_pad_size_threshold,
+    ),
     MutuallyExclusiveGroup(
         NoPlanetSwitch(),
         PlanetaryArgument(),

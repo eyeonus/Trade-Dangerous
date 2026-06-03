@@ -94,8 +94,8 @@ class CommandEnv(TradeEnv):
     
     def preflight(self) -> None:
         """
-        Phase A: quick validation that must be able to short-circuit before any
-        heavy TradeDB(load=True) path is invoked.
+        Phase A: quick validation that must be able to short-circuit before the
+        TradeORM database handle is built.
         
         Commands may optionally implement validateRunArgumentsFast(cmdenv).
         """

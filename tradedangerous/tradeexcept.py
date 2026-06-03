@@ -76,7 +76,7 @@ class AmbiguityError(TradeException):
         
         # ------------------------------------------------------------------
         # Special-case: system name collisions where we passed in
-        # (index, System) pairs from TradeDB.lookupSystem.
+        # (index, System) pairs from the system lookup.
         # ------------------------------------------------------------------
         if (
             self.lookupType == "System"

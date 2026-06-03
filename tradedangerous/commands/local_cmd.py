@@ -11,7 +11,7 @@ from .parsing import (
     PlanetaryArgument, FleetCarrierArgument, SettlementArgument, BlackMarketSwitch,
     ShipyardSwitch, OutfittingSwitch, RearmSwitch, RefuelSwitch, RepairSwitch,
 )
-from . import display_labels
+from tradedangerous import formatting
 from tradedangerous.db import orm_models as orm
 from tradedangerous.db.station_types import (
     fleet_carrier_state, settlement_state,
@@ -316,37 +316,37 @@ def render(results, cmdenv, tdb):
                         key=lambda row: row.age)
         ).append(
                 ColumnFormat("Mkt", '>', '3',
-                    key=lambda row: display_labels.marketStates[row.station.market])
+                    key=lambda row: formatting.marketStates[row.station.market])
         ).append(
                 ColumnFormat("BMk", '>', '3',
-                    key=lambda row: display_labels.marketStates[row.station.blackmarket])
+                    key=lambda row: formatting.marketStates[row.station.blackmarket])
         ).append(
                 ColumnFormat("Shp", '>', '3',
-                    key=lambda row: display_labels.marketStates[row.station.shipyard])
+                    key=lambda row: formatting.marketStates[row.station.shipyard])
         ).append(
                 ColumnFormat("Out", '>', '3',
-                    key=lambda row: display_labels.marketStates[row.station.outfitting])
+                    key=lambda row: formatting.marketStates[row.station.outfitting])
         ).append(
                 ColumnFormat("Arm", '>', '3',
-                    key=lambda row: display_labels.marketStates[row.station.rearm])
+                    key=lambda row: formatting.marketStates[row.station.rearm])
         ).append(
                 ColumnFormat("Ref", '>', '3',
-                    key=lambda row: display_labels.marketStates[row.station.refuel])
+                    key=lambda row: formatting.marketStates[row.station.refuel])
         ).append(
                 ColumnFormat("Rep", '>', '3',
-                    key=lambda row: display_labels.marketStates[row.station.repair])
+                    key=lambda row: formatting.marketStates[row.station.repair])
         ).append(
                 ColumnFormat("Pad", '>', '3',
-                    key=lambda row: display_labels.padSizes[row.station.max_pad_size])
+                    key=lambda row: formatting.padSizes[row.station.max_pad_size])
         ).append(
                 ColumnFormat("Plt", '>', '3',
-                    key=lambda row: display_labels.planetStates[row.station.planetary])
+                    key=lambda row: formatting.planetStates[row.station.planetary])
         ).append(
                 ColumnFormat("Flc", '>', '3',
-                    key=lambda row: display_labels.fleetStates[_fleet_state(row.station)])
+                    key=lambda row: formatting.fleetStates[_fleet_state(row.station)])
         ).append(
                 ColumnFormat("Stl", '>', '3',
-                    key=lambda row: display_labels.settlementStates[_settlement_state(row.station)])
+                    key=lambda row: formatting.settlementStates[_settlement_state(row.station)])
         )
         if cmdenv.detail > 1:
             stnRowFmt.append(

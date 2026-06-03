@@ -28,7 +28,7 @@
 # please consult the file "README.md".
 #
 # DEVELOPERS: If you are a programmer who wants TD to do something
-# cool, please see the TradeDB and TradeCalc modules. TD is designed
+# cool, please see the tradeorm and planner modules. TD is designed
 # to empower other programmers to do cool stuff.
 from __future__ import annotations
 import os
@@ -105,7 +105,7 @@ def trade(argv):
     )
     
     try:
-        # Phase A: preflight/fast validation (must run before any heavy TradeDB load)
+        # Phase A: preflight/fast validation (must run before the TradeORM handle is built)
         with cmdenv.time_block("preflight", level=0):
             if (preflight := getattr(cmdenv, "preflight", None)) and callable(preflight):
                 preflight()

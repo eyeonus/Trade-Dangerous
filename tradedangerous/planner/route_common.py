@@ -25,11 +25,12 @@ class _FrontierNode:
     origin and emit a full route. available_credits is the post-margin
     budget for the next hop's buy.
 
-    The open-origin (backward) search reuses this struct but grows the chain
-    from the destination toward the origin. There available_credits is unused
-    (backward expansion is credit-optimistic; the real budget is applied by the
-    forward credit-correction pass), and hop_candidates is populated so that
-    pass can re-fit each hop.
+    The open-anchor search reuses this struct for both open shapes. There
+    available_credits is unused (open-anchor expansion is credit-optimistic;
+    the real budget is applied by the forward credit-correction pass), and
+    hop_candidates is populated so that pass can re-fit each hop. The
+    open-origin shape additionally grows the chain backward, from the
+    destination toward the origin.
     """
 
     station: run_result.ResolvedStation
@@ -42,7 +43,7 @@ class _FrontierNode:
     hop_jump_path: run_result.JumpPath | None
     hop_practical_score: float
     hop_raw_profit: int
-    # Open-origin (backward) expansion only: the per-pair TradeCandidate tuple
+    # Open-anchor expansion only: the per-pair TradeCandidate tuple
     # for the hop that arrived at this node, kept so the forward credit-
     # correction pass can re-fit cargo against the real running budget. None on
     # the forward path.
@@ -58,11 +59,12 @@ class _HopCandidate:
     rows. The frontier loop turns each into a child node by attaching the
     parent and accumulating profit/score and the post-hop credit budget.
 
-    Open-origin (backward) expansion reuses this struct via
-    best_open_ended_hop_candidates. There destination_station carries the
+    Open-anchor expansion reuses this struct via
+    best_open_ended_hop_candidates for both open shapes; hop_candidates is
+    populated so the forward credit-correction pass can re-fit cargo against
+    the real budget. In the open-origin shape destination_station carries the
     chosen *source* — the station the route reaches when the chain is walked
-    backward from a node — and hop_candidates is populated so the forward
-    credit-correction pass can re-fit cargo against the real budget.
+    backward from a node.
     """
 
     destination_station: run_result.ResolvedStation
@@ -70,7 +72,7 @@ class _HopCandidate:
     jump_path: run_result.JumpPath
     practical_score: float
     raw_profit: int
-    # Open-origin (backward) expansion only: the per-pair TradeCandidate tuple
+    # Open-anchor expansion only: the per-pair TradeCandidate tuple
     # the optimistic cargo was fitted from, kept so the credit-correction pass
     # can re-fit against the real running budget. None on the forward path,
     # which fits cargo against the correct budget at expansion time.
@@ -577,7 +579,7 @@ def _plan_open_anchor_route(
             # Correction budget: cap how many finalists are re-fitted. When
             # credits bind the early-stop rarely fires, so this bound is what
             # keeps correction under control.
-            if correction_stats.finalists_attempted >= _OPEN_ORIGIN_CORRECTION_WIDTH:
+            if correction_stats.finalists_attempted >= _OPEN_SHAPE_CORRECTION_WIDTH:
                 break
             correction_stats.finalists_attempted += 1
             corrected = _correct_open_anchor_chain(
@@ -1059,10 +1061,10 @@ def _finalise_correction_stats(
     stats.elapsed_ms = _elapsed_ms(started)
 
 
-# Open-origin (backward) expansion ranks chains on an upper-bound,
+# Open-ended expansion ranks chains on an upper-bound,
 # credit-optimistic profit; the real running budget is applied later by the
 # forward credit-correction pass. To make the optimistic cargo fit ignore
-# affordability, each backward fetch/optimise is handed a per-ton budget far
+# affordability, each open-side fetch/optimise is handed a per-ton budget far
 # above any real or carrier-inflated buy price, scaled by capacity so the
 # credit cap never binds. 1 billion cr/ton is an unreachable ceiling — the
 # dearest buy price observed in the live data is around 60M cr/ton.
@@ -1070,10 +1072,10 @@ _OPTIMISTIC_PRICE_PER_TON = 1_000_000_000
 
 
 # How many candidate routes the planner fully costs out before picking the
-# winner, when only a destination is given (no --from).
+# winner, when one endpoint is left open (no --from, or no --to).
 #
-# In that mode the planner searches backwards from the destination and can end
-# up with thousands of complete candidate routes (the code calls them
+# In an open run the planner searches outward from the fixed endpoint and can
+# end up with thousands of complete candidate routes (the code calls them
 # "finalists"). To choose between them it has to re-do each route's cargo, hop
 # by hop, against your *real* running money — during the search it pretends
 # money is unlimited so the search itself stays fast. That re-costing is the
@@ -1086,4 +1088,4 @@ _OPTIMISTIC_PRICE_PER_TON = 1_000_000_000
 # early-stop just below also quits sooner, for free, whenever it can prove the
 # remaining routes can't win; this cap is what keeps things bounded in the case
 # where money is tight and that shortcut can't help.
-_OPEN_ORIGIN_CORRECTION_WIDTH = 200
+_OPEN_SHAPE_CORRECTION_WIDTH = 200

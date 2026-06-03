@@ -1,7 +1,7 @@
 from __future__ import annotations
 import typing
 
-from .commandenv import ResultRow
+from .commandenv import Needs, ResultRow
 from .parsing import ParseArgument  # import specific helpers as needed
 
 from tradedangerous.formatting import RowFormat
@@ -17,8 +17,9 @@ help = 'Describe your command briefly here for the top-level --help.'
 name = 'TEMPLATE'       # name of your .py file excluding the _cmd
 epilog = None           # text to print at the bottom of --help
 
-# Whether this command needs a TradeDB instance
-wantsTradeDB = True
+# Backend this command needs: Needs.RESOLVER for the TradeORM database handle
+# (most commands), or Needs.NOTHING for a command that touches no database.
+needs = Needs.RESOLVER
 usesTradeData = False
 
 # Parser wiring (keep tuples for consistency with loader)

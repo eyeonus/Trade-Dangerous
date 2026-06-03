@@ -110,12 +110,12 @@ def exportTableToFile(tdb_or_session, tdenv, tableName, csvPath=None):
     
     Compatible with either:
       * a SQLAlchemy Session
-      * a TradeDB wrapper exposing .engine
+      * a TradeORM handle exposing .engine
     """
     
     # --- Resolve a SQLAlchemy session ---
     if hasattr(tdb_or_session, "engine"):
-        # Likely a TradeDB instance
+        # Likely a TradeORM instance
         engine = tdb_or_session.engine
         session = Session(engine)
     elif hasattr(tdb_or_session, "get_bind"):

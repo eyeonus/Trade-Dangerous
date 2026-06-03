@@ -279,7 +279,7 @@ def _plan_unanchored(
     )
     if not candidates:
         raise failures.NoProfitableTrades(
-            "No profitable trades were found anywhere in reachable range."
+            "No profitable trades were found anywhere within range."
         )
 
     # Both sides are planner-selected, so both stations are materialised here
@@ -458,21 +458,21 @@ def _best_pair_plan(
         )
     if not saw_reachable_pair:
         raise failures.NoReachableRoute(
-            "No reachable station pair was found for the selected endpoints."
+            "No station pair within range was found for the chosen endpoints."
         )
     if not saw_source_selling_data:
         raise failures.SourceHasNoSellingData(
-            "No reachable source station had usable selling data.",
+            "No source station within range had usable selling data.",
             option_name="--from",
         )
     if not saw_destination_buying_data:
         raise failures.DestinationHasNoBuyingData(
-            "No reachable destination station had usable buying data.",
+            "No destination station within range had usable buying data.",
             option_name="--to",
         )
     if not saw_profitable_pair:
         raise failures.NoProfitableTrades(
-            "No profitable trades were found across reachable station pairs."
+            "No profitable trades were found across station pairs in range."
         )
     raise failures.NoProfitableTrades(
         "No viable cargo plan was available."
@@ -548,15 +548,15 @@ def _raise_empty_open_search(
         if open_role == "source":
             raise failures.NoProfitableTrades(
                 "No profitable trades were found to the destination from any "
-                "reachable station."
+                "station within range."
             )
         raise failures.NoProfitableTrades(
             "No profitable trades were found from the origin to any "
-            "reachable station."
+            "station within range."
         )
     anchored_noun = "destination" if open_role == "source" else "origin"
     raise failures.NoReachableRoute(
-        "No reachable station was found within range of the "
+        "No station was found within range of the "
         f"{anchored_noun} system."
     )
 

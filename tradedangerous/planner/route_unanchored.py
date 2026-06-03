@@ -27,8 +27,8 @@ def _plan_unanchored_multi_hop(
 ) -> run_result.RunResult:
     """Plan an N-hop route with neither endpoint named — the planner picks all.
 
-    This is the open-destination multi-hop search (the --from X shape) seeded
-    from galaxy-wide origins instead of one named system. The unanchored
+    This is the fully-unanchored multi-hop search — neither --from nor --to
+    given — seeded from galaxy-wide origins instead of one named system. The unanchored
     one-hop candidate fetch already does the expensive, narrowed galaxy scan
     and returns a bounded, ranked set of (source, destination) trades; the
     source stations of those trades are good places to start a route. Seed the
@@ -50,7 +50,7 @@ def _plan_unanchored_multi_hop(
     )
     if not candidates:
         raise failures.NoProfitableTrades(
-            "No profitable trades were found anywhere in reachable range."
+            "No profitable trades were found anywhere within range."
         )
 
     # Rank each source by the best realisable-profit proxy among its

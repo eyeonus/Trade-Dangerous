@@ -10,7 +10,7 @@ from tradedangerous.db.station_types import (
 )
 from tradedangerous.db.utils import age_in_days
 from tradedangerous.formatting import RowFormat, max_len
-from . import display_labels
+from tradedangerous import formatting
 
 from .commandenv import Needs, ResultRow
 from .exceptions import CommandLineError, NoDataError
@@ -331,15 +331,15 @@ def render(results, cmdenv, tdb):
     stnRowFmt.addColumn('StnLs', '>', 10,
             key=lambda row: _dist_from_star(row.station))
     stnRowFmt.addColumn('B/mkt', '>', 4,
-            key=lambda row: display_labels.marketStates[row.station.blackmarket])
+            key=lambda row: formatting.marketStates[row.station.blackmarket])
     stnRowFmt.addColumn("Pad", '>', '3',
-            key=lambda row: display_labels.padSizes[row.station.max_pad_size])
+            key=lambda row: formatting.padSizes[row.station.max_pad_size])
     stnRowFmt.addColumn("Plt", '>', '3',
-            key=lambda row: display_labels.planetStates[row.station.planetary])
+            key=lambda row: formatting.planetStates[row.station.planetary])
     stnRowFmt.addColumn("Flc", '>', '3',
-            key=lambda row: display_labels.fleetStates[_fleet_state(row.station)])
+            key=lambda row: formatting.fleetStates[_fleet_state(row.station)])
     stnRowFmt.addColumn("Stl", '>', '3',
-            key=lambda row: display_labels.settlementStates[_settlement_state(row.station)])
+            key=lambda row: formatting.settlementStates[_settlement_state(row.station)])
 
     if not cmdenv.quiet:
         heading, underline = stnRowFmt.heading()
