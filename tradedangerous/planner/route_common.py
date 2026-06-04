@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from . import data_gateway, failures, resolver, run_result
 from .cargo import cargo_counters, optimise_cargo
-from .reachability import plan_jump_path
+from .reachability import plan_jump_path, reachable_systems_from
 from .run_request import RunRequest
 from .score import score_with_destination_penalty
 
@@ -715,6 +715,20 @@ def best_open_ended_hop_candidates(
 
     anchor_system = _system_from_station(anchor_station)
 
+    # Compute the reachable-systems set in memory from the cKDTree bubble and
+    # hand it to the candidate fetch to bulk-insert, instead of the per-anchor
+    # SQL spatial BFS. --jumps-per 0 (same-system) needs no reachable set, so
+    # the fetch falls back to its same-system path when none is supplied.
+    precomputed_reachable = None
+    if (request.max_jumps_per_hop or 0) >= 1:
+        precomputed_reachable = reachable_systems_from(
+            session,
+            anchor_system,
+            max_jumps_per_hop=int(request.max_jumps_per_hop),
+            max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
+            bubble_cache=bubble_cache,
+        )
+
     candidates = data_gateway.fetch_open_ended_trade_candidates(
         session,
         (anchor_station.station_id,),
@@ -725,6 +739,7 @@ def best_open_ended_hop_candidates(
         terminal_hop=terminal_hop,
         reachable_memo=reachable_memo,
         expansion_stats=expansion_stats,
+        precomputed_reachable_systems=precomputed_reachable,
     )
     if expansion_stats is not None:
         expansion_stats.candidate_rows += len(candidates)

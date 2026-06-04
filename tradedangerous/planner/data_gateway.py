@@ -231,6 +231,7 @@ def _reachable_station_query(
     destination_envelope_xyz: tuple[float, float, float] | None = None,
     destination_envelope_ly: float | None = None,
     expansion_stats: ExpansionStats | None = None,
+    precomputed_systems: tuple[ResolvedSystem, ...] | None = None,
 ) -> Iterator[Select]:
     """Yield a SELECT of station ids reachable from the anchor within --jumps-per.
 
@@ -337,13 +338,20 @@ def _reachable_station_query(
         temp.drop(connection, checkfirst=True)
         temp.create(connection)
         try:
-            _populate_reachable_systems(
-                connection,
-                temp,
-                anchor_system,
-                float(request.max_ly_per_jump or 0.0),
-                int(request.max_jumps_per_hop),
-            )
+            if precomputed_systems is not None:
+                # Reachable set computed in memory from the cKDTree bubble
+                # (reachability.reachable_systems_from); bulk-insert it instead
+                # of running the layered SQL spatial BFS. Identical set, far
+                # cheaper per anchor.
+                _bulk_insert_reachable_systems(connection, temp, precomputed_systems)
+            else:
+                _populate_reachable_systems(
+                    connection,
+                    temp,
+                    anchor_system,
+                    float(request.max_ly_per_jump or 0.0),
+                    int(request.max_jumps_per_hop),
+                )
         except Exception:
             temp.drop(connection, checkfirst=True)
             raise
@@ -409,6 +417,38 @@ def release_reachable_memo(session: Session, memo: dict) -> None:
             # torn down, so a drop failure here cannot help recovery.
             pass
     memo.clear()
+
+
+def _bulk_insert_reachable_systems(
+    connection,
+    temp: Table,
+    systems: tuple[ResolvedSystem, ...],
+) -> None:
+    """Bulk-insert a precomputed reachable system set into the temp table.
+
+    The set is computed in memory from the cKDTree bubble (see
+    reachability.reachable_systems_from) instead of the layered SQL spatial
+    BFS, which is far cheaper per anchor. pos columns are carried so the
+    destination-envelope filter still runs against the temp directly; depth is
+    unused once the table is built, so a constant 0 is fine. The bubble's
+    reachable set is already de-duplicated, so the primary key never collides.
+    """
+
+    if not systems:
+        return
+    connection.execute(
+        temp.insert(),
+        [
+            {
+                "system_id": int(s.system_id),
+                "pos_x": s.x,
+                "pos_y": s.y,
+                "pos_z": s.z,
+                "depth": 0,
+            }
+            for s in systems
+        ],
+    )
 
 
 def _populate_reachable_systems(
@@ -698,6 +738,7 @@ def fetch_open_ended_trade_candidates(
     destination_envelope_xyz: tuple[float, float, float] | None = None,
     destination_envelope_ly: float | None = None,
     expansion_stats: ExpansionStats | None = None,
+    precomputed_reachable_systems: tuple[ResolvedSystem, ...] | None = None,
 ) -> tuple[TradeCandidate, ...]:
     """Fetch profitable trades between a fixed endpoint and reachable stations.
 
@@ -756,6 +797,7 @@ def fetch_open_ended_trade_candidates(
         destination_envelope_xyz=destination_envelope_xyz,
         destination_envelope_ly=destination_envelope_ly,
         expansion_stats=expansion_stats,
+        precomputed_systems=precomputed_reachable_systems,
     ) as reachable_query:
         # open_role names the endpoint the planner selects; the spatially-
         # reached set fills that side's query and the fixed endpoint fills the

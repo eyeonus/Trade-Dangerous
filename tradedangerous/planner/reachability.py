@@ -279,6 +279,75 @@ def _bfs_jump_path(
     return None
 
 
+def _bfs_collect_reachable(
+    bubble: _LocalBubble,
+    source_idx: int,
+    max_jumps: int,
+) -> set[int]:
+    """Return every bubble index reachable from source_idx within max_jumps hops.
+
+    Breadth-first over the same adjacency _bfs_jump_path walks, but it gathers
+    every system reached up to the depth cap instead of stopping at one target.
+    The source index is included (the depth-0 anchor, matching the SQL build).
+    The bubble is sized to hold every path of the requested depth, so this is
+    the complete reachable set under the jump limits.
+    """
+
+    seen = {source_idx}
+    frontier = [source_idx]
+    adjacency = bubble.adjacency
+    for _depth in range(max_jumps):
+        if not frontier:
+            break
+        next_frontier: list[int] = []
+        for idx in frontier:
+            for n in adjacency[idx]:
+                if n not in seen:
+                    seen.add(n)
+                    next_frontier.append(n)
+        frontier = next_frontier
+    return seen
+
+
+def reachable_systems_from(
+    session: Session,
+    anchor: ResolvedSystem,
+    *,
+    max_jumps_per_hop: int,
+    max_ly_per_jump: float,
+    bubble_cache: dict[int, _LocalBubble],
+) -> tuple[ResolvedSystem, ...]:
+    """Return every system reachable from anchor within max_jumps_per_hop.
+
+    Computes the reachable set in memory from the cKDTree bubble — far cheaper
+    per anchor than the layered SQL spatial BFS it replaces — reusing the
+    per-request bubble cache shared with plan_jump_path. The returned systems
+    carry coordinates, so the caller can bulk-insert them (id + pos) into the
+    reachable-systems temp table and keep the candidate query composing as a
+    subquery exactly as before.
+
+    Callers handle --jumps-per 0 (same-system) themselves; this assumes
+    max_jumps_per_hop >= 1.
+    """
+
+    bubble_radius = max_jumps_per_hop * max_ly_per_jump
+    bubble = bubble_cache.get(anchor.system_id)
+    if bubble is None:
+        bubble = _load_local_bubble(
+            session, anchor, bubble_radius, max_ly_per_jump
+        )
+        bubble_cache[anchor.system_id] = bubble
+
+    anchor_idx = bubble.id_to_index.get(anchor.system_id)
+    if anchor_idx is None:
+        # Data gap: anchor missing from its own bubble. Fall back to the anchor
+        # alone so the caller still has a non-empty reachable set.
+        return (anchor,)
+    reached = _bfs_collect_reachable(bubble, anchor_idx, max_jumps_per_hop)
+    systems = bubble.systems
+    return tuple(systems[index] for index in reached)
+
+
 def is_system_pair_reachable(
     session: Session,
     source_system_id: int,
