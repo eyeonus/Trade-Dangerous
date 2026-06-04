@@ -406,7 +406,7 @@ def mysql_set_bulk_session(session: Session) -> None:
 
 
 # -----------------------------------------------------------------------------
-# Query planner statistics
+# Query planner helpers
 # -----------------------------------------------------------------------------
 
 def analyze_temp_table(session: Session, table: Table) -> None:
@@ -434,6 +434,32 @@ def analyze_temp_table(session: Session, table: Table) -> None:
 
     if is_sqlite(session):
         session.execute(text(f"ANALYZE {table.name}"))
+
+
+def force_order_join(session: Session) -> str:
+    """Return the join keyword that pins left-to-right join order for this backend.
+
+    A cost-based optimiser is normally free to choose which side of a join it
+    drives from, and usually that is what we want. Occasionally it is provably
+    wrong: a query that should scan a small, already-filtered table and probe a
+    large one by primary key, where the optimiser instead scans the large table
+    and seeks the small one once per row. The two backends spell "do not reorder
+    this join" differently:
+
+      SQLite         CROSS JOIN    -- documented to suppress the join-reordering
+                                      optimisation; the left table stays outer.
+      MySQL/MariaDB  STRAIGHT_JOIN -- forces left-to-right. Their CROSS JOIN is a
+                                      plain inner join and is still reordered.
+
+    Interpolate the result between the two table names in a text() FROM clause;
+    the value is a fixed keyword, never user input. See
+    tradedangerous/planner/data_gateway.py::_unanchored_item_bounds for the
+    galaxy-wide aggregate that needs it.
+    """
+
+    if is_mysql(session):
+        return "STRAIGHT_JOIN"
+    return "CROSS JOIN"
 
 
 # -----------------------------------------------------------------------------

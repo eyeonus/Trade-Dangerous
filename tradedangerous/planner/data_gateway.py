@@ -16,6 +16,7 @@ from sqlalchemy import (
     Select,
     Table,
     and_,
+    bindparam,
     case,
     cast,
     func,
@@ -26,7 +27,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Session, aliased
 
 from tradedangerous.db.orm_models import Category, Item, Station, StationItem, System
-from tradedangerous.db.utils import analyze_temp_table
+from tradedangerous.db.utils import analyze_temp_table, force_order_join
 from tradedangerous.db.station_types import (
     DISPLAY_NAMES,
     FLEET_CARRIER_TYPE_IDS,
@@ -1126,7 +1127,9 @@ def fetch_unanchored_trade_candidates(
     pairs_accepted = 0
     cap_hits = 0
     try:
-        item_bounds, item_names = _unanchored_item_bounds(session, request)
+        item_bounds, item_names = _unanchored_item_bounds(
+            session, request, available_credits, cutoff
+        )
 
         candidates: list[TradeCandidate] = []
         best_total_profit = 0
@@ -1248,49 +1251,160 @@ def _temp_has_rows(session: Session, temp_table: Table) -> bool:
     ).first() is not None
 
 
+def _bounds_aggregate(
+    session: Session,
+    qualifying_name: str,
+    join_kw: str,
+    *,
+    aggregate: str,
+    price_column: str,
+    units_column: str,
+    units_floor: int,
+    price_ceiling: int | None,
+    min_units: int | None,
+    cutoff: datetime | None,
+    max_price: int,
+) -> dict[int, int]:
+    """Aggregate one per-item price bound over the qualifying stations.
+
+    Drives from the qualifying-station temp (``join_kw`` pins that order on
+    either backend) and probes StationItem by primary key, so it reads only the
+    qualifying stations' market rows rather than scanning the whole market
+    table. ``aggregate`` is MIN for the cheapest supply, MAX for the dearest
+    demand. Returns ``{item_id: bounding price}``.
+
+    The per-row predicates mirror what the per-commodity reductions apply, so
+    the bound stays admissible (see _unanchored_item_bounds). They are
+    StationItem columns only -- the station-attribute filters are already baked
+    into the qualifying temp.
+    """
+
+    clauses = [
+        "si.station_id = q.station_id",
+        f"si.{price_column} > 0",
+        f"si.{units_column} >= :units_floor",
+    ]
+    params: dict[str, object] = {"units_floor": units_floor}
+    if price_ceiling is not None:
+        clauses.append(f"si.{price_column} <= :ceiling")
+        params["ceiling"] = price_ceiling
+    if min_units is not None:
+        clauses.append(f"si.{units_column} >= :min_units")
+        params["min_units"] = min_units
+    if max_price and max_price > 0:
+        clauses.append(f"si.{price_column} <= :max_price")
+        params["max_price"] = max_price
+    typed_binds = []
+    if cutoff is not None:
+        clauses.append("si.modified >= :cutoff")
+        params["cutoff"] = cutoff
+        # Bind through the column's own type so the datetime renders the way the
+        # ORM stores it, whatever the backend.
+        typed_binds.append(
+            bindparam("cutoff", type_=StationItem.__table__.c.modified.type)
+        )
+
+    statement = text(
+        f"SELECT si.item_id AS item_id, "
+        f"{aggregate}(si.{price_column}) AS bound "
+        f"FROM {qualifying_name} q {join_kw} {StationItem.__table__.name} si "
+        f"WHERE {' AND '.join(clauses)} "
+        f"GROUP BY si.item_id"
+    )
+    if typed_binds:
+        statement = statement.bindparams(*typed_binds)
+    return {
+        int(item_id): int(bound)
+        for item_id, bound in session.execute(statement, params)
+    }
+
+
 def _unanchored_item_bounds(
     session: Session,
     request: RunRequest,
+    available_credits: int,
+    cutoff: datetime | None,
 ) -> tuple[list[tuple[int, int]], dict[int, str]]:
     """Return per-commodity profit-per-unit bounds, highest first, with names.
 
-    The bound is the galaxy-wide dearest demand price minus the cheapest
-    supply price for the commodity, ignoring reachability and the station and
-    affordability filters. That makes it a true upper bound on any reachable
-    trade's profit-per-unit, which is what the walk's cutoff requires; the
-    per-commodity reductions apply the precise filters. The loose form keeps
-    this a pair of covering-index aggregates over the partial supply/demand
-    indexes.
+    The bound is the dearest demand price minus the cheapest supply price for
+    the commodity. It still ignores reachability — the pairing between a supply
+    system and a demand system — so it stays a true upper bound on any
+    reachable trade's profit-per-unit, which is what the walk's cutoff requires.
 
-    --max-price tightens the bound when active: rows above the cap cannot
-    produce candidates downstream, so excluding them from the min/max
-    aggregates is still admissible (the result remains an upper bound on
-    achievable profit-per-unit) while letting the walk's early-cutoff fire
-    sooner on clean data.
+    It applies the same per-row filters the per-commodity reductions apply:
+    stock present and affordable on the supply side, a meaningful buyer on the
+    demand side, the station-attribute filters (pad size, planetary, fleet
+    carrier, ...), the age cutoff, and --max-price. Every one only ever removes
+    rows, which can only push a bound down, so the result stays an upper bound
+    on achievable profit-per-unit. Matching the reductions matters: a bound
+    blind to these filters stays sky-high on stations the real walk has
+    excluded — a fleet carrier's wild price, say — so the early-cutoff never
+    fires and the walk grinds through commodities that cannot win.
+
+    The station-attribute filters live on Station, not on the market rows, so
+    they are applied once: Station is reduced to the qualifying station ids in a
+    temp table, and the two price aggregates read only those stations' market
+    rows. The aggregate is forced to drive from that small temp
+    (force_order_join); left to itself the optimiser scans all ~11M market rows
+    and seeks the station per row, instead of scanning the ~14% of stations that
+    qualify and seeking their market rows — measured ~60x slower.
+
+    The demand floor here is the uniform _MIN_MEANINGFUL_DEMAND; the reductions
+    raise it to 4 for bulk-sale-tax-sensitive items, but using the looser floor
+    keeps this one grouped query and a looser floor is still admissible.
     """
 
-    supply_filters = [StationItem.supply_price > 0]
-    demand_filters = [StationItem.demand_price > 0]
-    if request.max_price > 0:
-        supply_filters.append(StationItem.supply_price <= request.max_price)
-        demand_filters.append(StationItem.demand_price <= request.max_price)
-
-    min_supply = {
-        int(item_id): int(price)
-        for item_id, price in session.execute(
-            select(StationItem.item_id, func.min(StationItem.supply_price))
-            .where(and_(*supply_filters))
-            .group_by(StationItem.item_id)
+    connection = session.connection()
+    qualifying = Table(
+        "td_unanchored_qual",
+        MetaData(),
+        Column("station_id", BigInteger),
+        prefixes=["TEMPORARY"],
+    )
+    qualifying.drop(connection, checkfirst=True)
+    qualifying.create(connection)
+    try:
+        # The station-attribute filters stay defined once, in
+        # _station_attribute_predicates; here they reduce Station to the
+        # qualifying station ids that both bounds aggregates drive from.
+        session.execute(
+            qualifying.insert().from_select(
+                ["station_id"],
+                select(Station.station_id).where(
+                    and_(*_station_attribute_predicates(request))
+                ),
+            )
         )
-    }
-    max_demand = {
-        int(item_id): int(price)
-        for item_id, price in session.execute(
-            select(StationItem.item_id, func.max(StationItem.demand_price))
-            .where(and_(*demand_filters))
-            .group_by(StationItem.item_id)
+        join_kw = force_order_join(session)
+        min_supply = _bounds_aggregate(
+            session,
+            qualifying.name,
+            join_kw,
+            aggregate="MIN",
+            price_column="supply_price",
+            units_column="supply_units",
+            units_floor=1,
+            price_ceiling=available_credits,
+            min_units=request.min_supply,
+            cutoff=cutoff,
+            max_price=request.max_price,
         )
-    }
+        max_demand = _bounds_aggregate(
+            session,
+            qualifying.name,
+            join_kw,
+            aggregate="MAX",
+            price_column="demand_price",
+            units_column="demand_units",
+            units_floor=_MIN_MEANINGFUL_DEMAND,
+            price_ceiling=None,
+            min_units=request.min_demand,
+            cutoff=cutoff,
+            max_price=request.max_price,
+        )
+    finally:
+        qualifying.drop(connection, checkfirst=True)
     bounds: list[tuple[int, int]] = []
     for item_id, supply_price in min_supply.items():
         demand_price = max_demand.get(item_id)
