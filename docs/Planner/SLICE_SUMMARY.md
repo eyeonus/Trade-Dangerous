@@ -993,6 +993,51 @@ Commits `39828ab2`, `d5ab4370`, `03eca1c1`, `3cdf70f1`, `83ee24b2`, `75ba5f3c`,
 
 ---
 
+## Slice 15 — Listener catch-up, plugin guardrails, and unanchored bounds (complete)
+
+A combined cleanup slice: three independent pieces in or beside "import land".
+15A is in the separate EDDN listener repo; 15B and 15C are in Trade-Dangerous.
+
+**Delivered:**
+
+- **15A** (listener repo) — the listener still imported the `cache` and `tradedb`
+  modules Slice 14 retired, breaking its packaged-branch startup.
+  `tradedb.TradeDB(load=False)` → `TradeORM()` at the three construction sites
+  (server `run_update` and `bootstrap_runtime`, client); the dead `cache` /
+  `tradedb` imports dropped. The `bootstrap_runtime` site is load-bearing — it
+  stages `Category.csv`, the root of the FK chain — and `TradeORM()` preserves
+  that seeding. Validated live ingesting EDDN on MariaDB; handed to Tromador to
+  commit in that repo.
+- **15B** — the spansh plugin's thirteen hand-rolled "generic backend" upsert /
+  fast-sync fallbacks removed (no engine exists for a third dialect; every other
+  dialect op already raises on the unknown), each replaced with an "Unsupported
+  dialect" `RuntimeError`. A dead `added`-column reference and two flake8 hits
+  cleared. ≈ −251 lines in `spansh_plug.py`.
+- **15C** — the galaxy-wide per-commodity price bounds that gate the unanchored
+  search (`_unanchored_item_bounds`) made filter-aware and station-driven. The
+  bound ignored the station-attribute filters, so a filtered run lowered the best
+  concrete profit while the bound stayed sky-high on excluded stations — the
+  early-cutoff never fired and more filters made the search *slower*. The bound
+  now applies the reductions' per-row filters (still an upper bound, so the cutoff
+  cannot skip a winner). That filter-aware bound joined every market row to
+  Station (~11.2M rows scanned, a Station seek per row, ~86% of stations failing
+  the filter); reduce Station to a qualifying-ids temp first and force the
+  optimiser to drive from it via a new dialect-aware `force_order_join` helper
+  (`CROSS JOIN` on SQLite, `STRAIGHT_JOIN` on MariaDB). Diagnosed by py-spy
+  (SQL-bound, not the Python cross-product) and `EXPLAIN`; supply bound 43.9s →
+  ~0.75s. Filtered two-hop run ~7m45 → ~4m04 (filter-aware) → ~2m15
+  (station-driven); route proven byte-identical via a bounds symmetric-difference
+  check.
+
+**Deferred (not cut):** the 15A listener commit (Tromador, in that repo); the
+client path and a full spansh import assumed-working pending a run. The plan
+doc's status / 15B-scope line wants a refresh.
+
+Commits `53812f29` (15B), `b13ac661` (15C); docs `9efe4ff3`, `6657d3be`. Full
+record: `docs/Planner/fifteenth_slice_completion_report.md`.
+
+---
+
 ## Project Notes
 
 ### Data scale

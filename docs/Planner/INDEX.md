@@ -152,6 +152,14 @@ Each completed slice has an implementation plan (what needs to be done) and a co
 | [slice_14_succession_handover.md](slice_14_succession_handover.md) | Mid-14C succession handover: the cache-split and single-TradeORM-handle strategy, the definitive tradedb-kill consumer map and kill sequence, and the outstanding loose ends. |
 | [fourteenth_slice_completion_report.md](fourteenth_slice_completion_report.md) | Proof of completion: the eight commits, what each part (14A–D) delivered, archive completeness, and the verification posture. |
 
+### Slice 15 — Listener Catch-Up, Plugin Guardrails, and Unanchored Bounds (Complete)
+**EDDN listener brought forward to the post-Slice-14 TradeORM surface; spansh generic-dialect fallbacks replaced with explicit guardrails; the unanchored price bounds made filter-aware and station-driven (filtered run ~7m45 → ~2m15, route unchanged).**
+
+| Document | Content |
+|----------|---------|
+| [fifteenth_slice_implementation_plan.md](fifteenth_slice_implementation_plan.md) | Design plan for Slice 15: the 15A–C structure — listener catch-up in the separate repo, the spansh generic-fallback purge, and the unanchored early-cutoff tightening. |
+| [fifteenth_slice_completion_report.md](fifteenth_slice_completion_report.md) | Proof of completion: the listener TradeORM swap and the Category.csv-seeding keystone, the thirteen-fallback guardrail purge, and the filter-aware + station-driven bounds with the py-spy/EXPLAIN diagnosis and the 43.9s → ~0.75s bounds timing. |
+
 ---
 
 ## Reference and Technical Notes
