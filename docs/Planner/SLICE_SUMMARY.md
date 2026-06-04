@@ -1,12 +1,15 @@
 # trade run Planner Rewrite — Slice Summary
 
-Condensed record of the `trade run` planner-rewrite slices. This document is the
-required startup digest: read it instead of the per-slice implementation plans
-and completion reports, to save session context. It is appended to as each
-slice completes.
+> **Frozen at Slice 15.** This is the slice-by-slice history, kept as deep
+> reference. It is no longer a startup read and is no longer appended to.
+> Current state lives in `BASELINE.md` (what works, the binding rules, what is
+> owed) and `SPEC_STATUS.md` (the option-by-option spec coverage map). New
+> slices update those two in place and add a completion report — they do not
+> add to this file.
 
-The full per-slice plans and completion reports remain in `docs/Planner/` for
-reference when detail is genuinely needed.
+Slice-by-slice record of the `trade run` planner rewrite, Slices 1–15. The full
+per-slice plans and completion reports remain in `docs/Planner/` for when the
+detail behind an entry is genuinely needed.
 
 ---
 

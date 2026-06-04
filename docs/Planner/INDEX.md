@@ -8,29 +8,34 @@ Quick reference guide to the docs/Planner/ directory for agents and developers.
 
 **Read these first before proposing or implementing anything in this side mission.**
 
-### [trade_run_black_box_spec.md](trade_run_black_box_spec.md)
-Clean-room behavioural specification for the route planner. Defines:
-- What the command must do (without saying how it does it)
-- User-facing option contract (all supported CLI flags)
-- Failure categories and error messages
-- Station/commodity/route eligibility rules
-- Cargo fitting and financial constraints
-- Jump reachability and the ls-penalty curve
-- Benchmark corpus for testing route quality/speed
-- Source quarantine rules (prohibits reading `tradecalc.py` and `tradedb.py`)
+### [BASELINE.md](BASELINE.md)
+The condensed current-state digest — the primary startup read. Contains:
+- Architecture boundary (CLI → RunRequest → planner → RunResult → renderer) and the module map
+- What works now (the route-shape grid and cross-cutting behaviour)
+- The rules that still bind future work (query discipline, filter semantics, market-data facts, settled decisions)
+- What is still owed, and where to read deeper
 
-**Purpose:** The authoritative contract. Use this to understand what features must be preserved.
+**Purpose:** Start here. It replaces reading the full slice history at startup.
+
+### [SPEC_STATUS.md](SPEC_STATUS.md)
+The coverage map of the behavioural spec. For every option and section it records:
+- `[done]` — built to spec
+- `[varied]` — built, deliberately different (with the reason)
+- `[todo]` — in the spec, still gated or inert
+
+It also closes out the spec's five "open decisions for supervisor".
+
+**Purpose:** See at a glance what is implemented, varied, or outstanding — then open only the spec section it points to, instead of re-reading the whole contract.
+
+### [trade_run_black_box_spec.md](trade_run_black_box_spec.md)
+The authoritative behavioural contract — the "Bible". An AI extraction from the legacy path, audited long-form by the dev team. Defines what the command must do (without saying how), the option contract, failure categories, eligibility rules, cargo/financial constraints, jump reachability, the ls-penalty curve, the benchmark corpus, and the source-quarantine rules.
+
+**Purpose:** The contract of record. Not a full re-read each session — reach for it through `SPEC_STATUS.md` when you need a section's detail.
 
 ### [SLICE_SUMMARY.md](SLICE_SUMMARY.md)
-Condensed digest of the planner-rewrite project. Contains:
-- Architecture boundary (CLI → RunRequest → planner → RunResult → renderer)
-- Summary of all completed slices
-- Data scale notes and query patterns
-- Filter semantics reference (Y/N/? state filters, pad-size thresholds)
-- Deferred decisions awaiting next slice
-- Cleanup candidates (low-priority technical debt)
+Frozen slice-by-slice history (Slices 1–15). Architecture boundary, a summary of every completed slice, data-scale notes, filter semantics, and the deferred decisions as they stood.
 
-**Purpose:** This is the required startup read instead of per-slice plans. Start here.
+**Purpose:** Deep reference, not a startup read. No longer appended to — new slices update `BASELINE.md` and `SPEC_STATUS.md` instead.
 
 ---
 
@@ -193,10 +198,10 @@ SQL helper that surfaces Metals/Minerals trade pairs suitable for verifying the 
 
 ## Next Steps
 
-- **Starting a new session?** Read `SLICE_SUMMARY.md` and the current slice's implementation plan.
-- **Implementing a feature?** Check `SLICE_SUMMARY.md` for deferred decisions and cleanup candidates.
+- **Starting a new session?** Read `BASELINE.md`, `SPEC_STATUS.md`, and the current slice's implementation plan.
+- **Implementing a feature?** Check `SPEC_STATUS.md` for what is built / varied / outstanding, and `BASELINE.md` for deferred decisions.
 - **Debugging filter logic?** See `tuples.md`.
-- **Understanding the spec contract?** Consult `trade_run_black_box_spec.md`.
+- **Understanding the spec contract?** Consult `trade_run_black_box_spec.md` — via `SPEC_STATUS.md` to find the section.
 - **Verifying a route?** Reference the benchmark corpus in the spec.
 
 ---

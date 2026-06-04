@@ -1,0 +1,216 @@
+# trade run Planner — Baseline
+
+The required startup read. It says **what the planner does now**, **what rules
+still bind future work**, and **what is still owed**. It deliberately does not
+retell how each slice was built — that history lives in `SLICE_SUMMARY.md` and
+the per-slice plans / completion reports, kept on disk as deep reference.
+
+The companion file `SPEC_STATUS.md` is the option-by-option coverage map of the
+black-box spec; read it (not the whole 33 KB spec) to see what is implemented,
+what was deliberately varied, and what is still to do.
+
+---
+
+## Where we are
+
+The clean-room rewrite of `trade run` has reached a working baseline. Every
+basic route shape is served by the new planner, the legacy route/preload
+architecture is retired, and the EDDN listener has been brought forward to the
+current database surface. What remains is the route-modifier and
+search/display option surface — see "What's still owed".
+
+---
+
+## Architecture boundary
+
+```text
+CLI parser -> RunRequest -> planner -> RunResult -> renderer
+```
+
+New planning logic begins past the neutral `RunRequest` DTO; everything the
+planner returns is a `RunResult`. No legacy objects cross either boundary, and
+the planner queries the database directly — it never pre-loads the galaxy into
+memory (the legacy behaviour this rewrite exists to remove).
+
+The planner package is `tradedangerous/planner/`. Route planning is split by
+shape:
+
+| Module | Responsibility |
+|--------|----------------|
+| `run_route.py` | Dispatch only (`plan_route`, `_plan_single_hop`). |
+| `route_onehop.py` | Single-hop planners — fixed / open-ended / unanchored. |
+| `route_anchored.py` | Fully-anchored multi-hop (`--from X --to Y`). |
+| `route_single_anchor.py` | Part-anchored multi-hop front (one open end). |
+| `route_unanchored.py` | Fully-unanchored multi-hop (both endpoints omitted). |
+| `route_common.py` | Frontier/beam machinery, the shared open-anchor expansion engine, generic helpers. |
+
+Supporting modules: `data_gateway.py` (all SQL/candidate queries),
+`cargo.py` (the cargo optimiser), `reachability.py` (jump paths),
+`resolver.py` (name resolution), `render_text.py` (renderer),
+`run_request.py` (request DTO + parsing/normalisation),
+`run_result.py` (result DTO), `score.py` (the protected ls-penalty curve),
+`validation.py`, `failures.py` (typed exceptions).
+
+Dependency direction is one-way: `route_common` -> planners -> dispatch.
+
+---
+
+## What works now
+
+### Route shapes — the grid is complete
+
+| Hops | `--from` & `--to` fixed | `--from` only | `--to` only | both omitted |
+|------|------|------|------|------|
+| **one-hop** | fixed pair | open destination | open origin | unanchored galaxy |
+| **multi-hop** | fixed-terminal | open destination | open origin | fully unanchored |
+
+- Endpoints may be a **station** or a **system**; a system endpoint expands to
+  its eligible stations and the planner picks the best pair.
+- **Multi-jump per hop** (`--jumps-per >= 2`) works for every shape. Same-system
+  movement is supercruise, not a jump.
+- The two galaxy-wide shapes (one-hop and multi-hop, both endpoints omitted)
+  are gated behind an interactive confirmation prompt — they are slow by nature.
+
+### Cross-cutting behaviour
+
+- **Cargo optimiser** — bounded branch-and-bound, multi-commodity; the bound is
+  admissible (proven exact against a brute-force harness). Destination demand is
+  a hard quantity cap, not just an eligibility threshold.
+- **Bulk-sale-tax cap** — Metals/Minerals destination quantity capped at
+  `floor(demand * 0.25)` to avoid the in-game bulk-sale price penalty.
+- **`--max-price`** — absolute commodity-price cap (default 1,500,000 cr/t),
+  clipping carrier-fiction rows. `--max-price 0` disables it.
+- **`--ls-penalty`** — the protected travel-time curve (defined in the spec,
+  implemented in `score.py`). Untouched.
+- **Route output** — expanded plain-text per-hop and cumulative figures for
+  manual audit; partial-route warnings; the bulk-tax cap note.
+- **`--jumps-per` keyed default** — omitted `--jumps-per` defaults to 2 when
+  `--ly-per <= 12.5`, otherwise 1.
+
+### Legacy retired
+
+`trade run` is planner-only. The legacy `trade run --old` path, `TradeCalc`, the
+full-galaxy preload model, and `TradeDB` are gone from live code (archived).
+`TradeORM` is the single DB handle. The EDDN listener was repointed off the
+retired `tradedb`/`cache` modules onto `TradeORM`.
+
+---
+
+## Rules that still bind future work
+
+### Query discipline
+
+The live dataset is large (~800K stations, ~19M `StationItem` rows). Spatial
+constraints narrow the candidate set in SQL **before** joining to market data;
+filtering, joins, and set membership stay in SQL; never materialise an id column
+into a Python list to hand back as a large `IN (...)`. The full rules are in the
+project `CLAUDE.md` ("Query work belongs in the database", "Query shape —
+spatial constraints first") — this is the single most important constraint for
+the filtering work coming next.
+
+### Filter semantics — a settled contract
+
+`--black-market`, `--fleet-carrier`, `--settlement`, `--planetary` are
+accepted-state **sets**, normalised in `run_request.py`
+(`_normalise_state_filter`). Match test:
+`(station_state or "?").upper() in requested_states`.
+
+```text
+Y    known yes        N    known no         ?    unknown
+Y?   yes or unknown   N?   no or unknown    YN   yes or no, excludes unknown
+YN?  every state — equivalent to no filter (normalised away)
+```
+
+`--pad-size` is a single **ship-fit threshold** — `S`/`M`/`L` meaning "the ship
+needs at least this pad". A station qualifies when its largest pad is at least
+the requested size:
+
+```text
+L    large-max stations only
+M    medium- or large-max, plus unknown-pad
+S    every station, including unknown-pad
+```
+
+`?`, multi-letter values, and anything not `S`/`M`/`L` are rejected. An
+unknown-pad station is admitted unless `--pad-size L` is set. Full reasoning in
+`tuples.md`.
+
+### Market-data facts
+
+- **No default age limit.** With no `--age`, every row is used whatever its age
+  — deliberate (supports the `olddata` relight playstyle). `--age` is the user's
+  opt-in lever.
+- **Markets have two independent sides.** A station may legitimately supply only
+  (origin only) or demand only (destination only); mid-route stations must do
+  both. The planner handles one-sided stations; legacy did not.
+- **`_MIN_MEANINGFUL_DEMAND = 2`** (`data_gateway.py`). A stocked commodity
+  reports its dormant buy side as 0 or 1, so a destination market counts only
+  when `demand_units >= 2`.
+- **`demand_level` / `supply_level` are hardcoded `-1`** by `spansh_plug.py` —
+  no information; do not use them as a signal.
+- **Carrier dominance.** Unanchored winners are overwhelmingly fleet-carrier
+  trades (owner-set prices carry the extreme-margin tail). This is a correct
+  reading of the data, not planner bias; execution risk is the user's to manage
+  via `--age` / `--fleet-carrier` / `--supply` / `--demand`, and the
+  `--max-price` default clips the extreme-price fiction.
+
+### Settled decisions — do not re-litigate
+
+- **No separate "cannot afford cargo" diagnosis.** Affordability failure is
+  folded into the "No profitable trade" family deliberately — proving the
+  distinction is expensive and rarely matters. Do not add an affordability-only
+  probe unless a cheap signal falls out of the main path.
+- **Bulk-sale-tax cap is conservative on purpose** — full price on a safe
+  quantity, no discounted-price modelling, until the post-25% curve is better
+  understood.
+- The `--ls-penalty` curve is **protected behaviour** — change only on an
+  explicit contract change.
+
+---
+
+## What's still owed
+
+The authoritative, option-by-option status lives in **`SPEC_STATUS.md`**. In
+short, the route shapes are done; what remains is the modifier and display
+surface — `--via`, `--avoid`, `--towards`, `--loop`, `--unique`, `--shorten`,
+`--loop-interval`, `--start-jumps`/`--end-jumps`, and the search/display
+controls (`--routes > 1`, `--max-routes`, `--prune-*`, `--checklist`,
+`--x52-pro`). Four options (`--show-jumps`, `--summary`, `--progress`,
+`--empty-ly`) parse without error but currently do nothing — see `SPEC_STATUS.md`.
+
+Agreed-but-unscheduled decisions and noted-for-later items:
+
+- **`--sco` flag** — declares an SCO drive; clamps `--ls-penalty` to 0. UX
+  signalling (flag / ship profile / journal) to resolve when it lands.
+- **`--bulk-tax-mode safe|ignore|estimate`** — deferred; current safe default
+  is right until the post-25% discount curve is modelled.
+- **`--max-gain-per-ton` default** — the filter works; giving it a sane default
+  cap (a different axis from `--max-price`) is an unscheduled idea.
+- **Unanchored candidate-query restructure** — investigated and **parked**
+  (per-system extrema discarding multi-commodity pairs; `--ls-penalty` applied
+  after the bounded SQL slice). 144 axis-uplift checks surfaced zero
+  higher-scoring winners; mechanisms hold but current data/scorer don't make
+  them change a winner. Re-evaluation triggers recorded in
+  `fifth_slice_restructure_implementation_plan.md`.
+- **Shared expansion-cost floor** — narrow candidate rows before cargo fitting;
+  helps the open multi-hop shapes. Performance only.
+- **`nav` / `olddata` rebuild** — parked for the main refactor's checkpoint L.
+- **Listener loose ends** — the 15A change is committed in the listener repo;
+  the client path and a full spansh import are assumed-working pending a real
+  run.
+- **MariaDB end-to-end** — the multi-jump, unanchored, and bulk-tax paths use
+  dialect-portable patterns but were verified on SQLite.
+
+---
+
+## Reference map
+
+| Need | Read |
+|------|------|
+| Option-by-option implementation status | `SPEC_STATUS.md` |
+| The behavioural contract (the "Bible") | `trade_run_black_box_spec.md` |
+| Full slice-by-slice history | `SLICE_SUMMARY.md` |
+| Per-slice plans and completion reports | `INDEX.md` |
+| Filter semantics, in depth | `tuples.md` |
+| Data-scale and query posture | `notes.txt`, project `CLAUDE.md` |
+| Parked unanchored restructure | `fifth_slice_restructure_implementation_plan.md` |
