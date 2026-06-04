@@ -2,7 +2,11 @@
 
 ## Status
 
-Draft, for review by Tromador. Not yet implemented.
+Complete. 15B and 15C are committed to Trade-Dangerous (`53812f29`, `b13ac661`)
+on `release/v1`; 15A is committed and pushed in the listener repo. Delivered
+scope and verification are recorded in `fifteenth_slice_completion_report.md` —
+note that 15B grew from the planned lint pass into removing the spansh plugin's
+generic-dialect fallbacks in favour of explicit "Unsupported dialect" guardrails.
 
 ## What Slice 15 is
 
