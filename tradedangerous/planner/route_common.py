@@ -166,6 +166,75 @@ def _best_partial_node(frontier: list[_FrontierNode]) -> _FrontierNode | None:
     )
 
 
+def _distance_sq_to_target(
+    station: run_result.ResolvedStation,
+    target: run_result.ResolvedSystem,
+) -> float:
+    """Squared straight-line distance from a station's system to the target."""
+
+    dx = station.x - target.x
+    dy = station.y - target.y
+    dz = station.z - target.z
+    return dx * dx + dy * dy + dz * dz
+
+
+def _node_progress_rank(node: _FrontierNode, request: RunRequest) -> tuple:
+    """Ranking key for a frontier node / chain; higher sorts as better.
+
+    Without --towards: rank by accumulated practical score (profit) — today's
+    behaviour, returned as a one-tuple so every sort and comparison stays
+    identical. With --towards the rule is progress-first: the chain whose latest
+    station is closest to the target wins; among equally close chains the
+    shorter one wins (do not meander to chase profit); profit only breaks the
+    remaining tie.
+    """
+
+    target = request.towards_target
+    if target is None:
+        return (node.accumulated_practical_score,)
+    return (
+        -_distance_sq_to_target(node.station, target),
+        -node.hop_index,
+        node.accumulated_practical_score,
+    )
+
+
+def _route_progress_rank(
+    route: run_result.PlannedRoute, request: RunRequest
+) -> tuple:
+    """Ranking key for a completed/corrected route, matching _node_progress_rank.
+
+    The route's last station is the endpoint it reached, so --towards ranks
+    routes by how close that endpoint is to the target, then by fewer hops, then
+    by practical score. An arrival (distance zero, fewest hops) therefore wins.
+    """
+
+    target = request.towards_target
+    if target is None:
+        return (route.total_practical_score,)
+    return (
+        -_distance_sq_to_target(route.stations[-1], target),
+        -len(route.hops),
+        route.total_practical_score,
+    )
+
+
+def _candidate_progress_rank(scored_item: tuple, request: RunRequest) -> tuple:
+    """Ranking key for one node's per-hop candidates (open station + score).
+
+    A single node's candidates are all one hop away, so depth is equal across
+    them; --towards ranks by the open station's closeness to the target, profit
+    breaking ties. Without --towards, profit alone — today's behaviour.
+    """
+
+    practical_score = scored_item[0]
+    open_station = scored_item[1]
+    target = request.towards_target
+    if target is None:
+        return (practical_score,)
+    return (-_distance_sq_to_target(open_station, target), practical_score)
+
+
 def _make_child_node(
     parent: _FrontierNode,
     trade: _HopCandidate,
@@ -498,6 +567,13 @@ def _plan_open_anchor_route(
 
     reachable_memo: dict = {}
 
+    # --towards: chains that reach the target system are captured here as
+    # finished routes. An arrived chain has no closer next hop, so the beam
+    # would otherwise discard it; collecting it lets it compete in the final
+    # selection, where it wins as the most progress possible.
+    towards_target = request.towards_target
+    arrivals: list[_FrontierNode] = []
+
     market_query_ms = 0.0
     candidate_trade_count = 0
     frontier_widths: list[int] = []
@@ -535,9 +611,19 @@ def _plan_open_anchor_route(
                     expansion_stats=expansion_stats,
                 )
                 for trade in children:
-                    next_frontier.append(_make_open_child(node, trade))
+                    child = _make_open_child(node, trade)
                     candidate_trade_count += 1
                     layer_children_generated += 1
+                    if (
+                        towards_target is not None
+                        and child.station.system_id == towards_target.system_id
+                    ):
+                        # Arrived: keep it as a finished candidate, but do not
+                        # give a dead-end node a frontier slot — it can extend
+                        # no further, nothing being closer than the target.
+                        arrivals.append(child)
+                        continue
+                    next_frontier.append(child)
             layer_elapsed_ms = _elapsed_ms(layer_started)
             market_query_ms += layer_elapsed_ms
 
@@ -601,7 +687,7 @@ def _plan_open_anchor_route(
                     best_by_station[station_id] = node
             coalesced = sorted(
                 best_by_station.values(),
-                key=lambda candidate: candidate.accumulated_practical_score,
+                key=lambda candidate: _node_progress_rank(candidate, request),
                 reverse=True,
             )
             frontier = coalesced[:_MULTIHOP_FRONTIER_WIDTH]
@@ -646,6 +732,11 @@ def _plan_open_anchor_route(
             for trade in children:
                 finalist_nodes.append(_make_open_child(node, trade))
                 candidate_trade_count += 1
+        # --towards: chains that reached the target before the final layer are
+        # finished routes too. Fold them in so the winner selection ranks them
+        # against the full-length finalists; an arrival outranks any route that
+        # only got close.
+        finalist_nodes.extend(arrivals)
         final_hop_elapsed_ms = _elapsed_ms(final_hop_started)
         market_query_ms += final_hop_elapsed_ms
 
@@ -661,7 +752,7 @@ def _plan_open_anchor_route(
         correction_fast_before, correction_bb_before = cargo_counters()
         best_route: run_result.PlannedRoute | None = None
         finalist_nodes.sort(
-            key=lambda candidate: candidate.accumulated_practical_score,
+            key=lambda candidate: _node_progress_rank(candidate, request),
             reverse=True,
         )
         for node in finalist_nodes:
@@ -671,8 +762,8 @@ def _plan_open_anchor_route(
             # Fires when credits do not bind (corrected ~= optimistic).
             if (
                 best_route is not None
-                and node.accumulated_practical_score
-                <= best_route.total_practical_score
+                and _node_progress_rank(node, request)
+                <= _route_progress_rank(best_route, request)
             ):
                 break
             # Correction budget: cap how many finalists are re-fitted. When
@@ -689,8 +780,8 @@ def _plan_open_anchor_route(
             correction_stats.finalists_corrected += 1
             if (
                 best_route is None
-                or corrected.total_practical_score
-                > best_route.total_practical_score
+                or _route_progress_rank(corrected, request)
+                > _route_progress_rank(best_route, request)
             ):
                 best_route = corrected
 
@@ -909,7 +1000,10 @@ def best_open_ended_hop_candidates(
         )
         scored.append((practical_score, open_station, cargo, pair_candidates))
 
-    scored.sort(key=lambda item: item[0], reverse=True)
+    scored.sort(
+        key=lambda item: _candidate_progress_rank(item, request),
+        reverse=True,
+    )
 
     hop_candidates: list[_HopCandidate] = []
     for practical_score, open_station, cargo, pair_candidates in scored:
@@ -1146,7 +1240,8 @@ def _best_open_anchor_partial(
             continue
         if (
             best_route is None
-            or route.total_practical_score > best_route.total_practical_score
+            or _route_progress_rank(route, request)
+            > _route_progress_rank(best_route, request)
         ):
             best_route = route
             best_hops = node.hop_index

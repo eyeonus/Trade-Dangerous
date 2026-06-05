@@ -39,7 +39,6 @@ def validate_run_request(request: RunRequest) -> None:
 
     unsupported = (
         ("--direct", request.direct),
-        ("--towards", request.towards_text is not None),
         ("--loop", request.loop),
         ("--via", bool(request.via)),
         ("--avoid", bool(request.avoid)),

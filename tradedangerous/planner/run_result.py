@@ -137,6 +137,10 @@ class PlannedRoute:
     # when the matching positioning option was not used.
     start_positioning: JumpPath | None = None
     end_positioning: JumpPath | None = None
+    # --towards: set to the hop count when the route reaches the target system,
+    # so the renderer can report "arrived after N hops". None when the route did
+    # not arrive (got as close as it could) or --towards was not used.
+    arrival_hops: int | None = None
 
 
 @dataclass(slots=True)

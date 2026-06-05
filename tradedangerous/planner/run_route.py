@@ -7,7 +7,7 @@ import time
 
 from sqlalchemy.orm import Session
 
-from . import resolver, run_result
+from . import failures, resolver, run_result
 from .cargo import reset_cargo_counters
 from .reachability import plan_jump_path
 from .route_anchored import _plan_multi_hop
@@ -43,6 +43,12 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
     validate_run_request(request)
     validation_ms = _elapsed_ms(validation_started)
 
+    # Resolve --towards once into canonical request state. The open-destination
+    # engines then apply the per-hop progress constraint in one shared place
+    # (the candidate fetch), instead of each re-resolving or re-deciding it.
+    if request.towards_text:
+        request = _resolve_towards_target(session, request)
+
     # Zero the cargo path counters so the diagnostics reflect only this run.
     reset_cargo_counters()
 
@@ -52,39 +58,120 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
     # a fixed origin pays for the bubble once, not once per destination.
     bubble_cache: dict[int, object] = {}
 
-    if request.hops == 1:
-        result = _plan_single_hop(
-            session, request, started, validation_ms, bubble_cache
-        )
-    # Multi-hop endpoint dispatch, mirroring the single-hop dispatcher above.
-    # Both endpoints set keeps the fixed-terminal planner (envelope, real
-    # budget); one endpoint set runs the single-anchor open engine keyed on
-    # which side the planner chooses; both omitted seeds that same open engine
-    # from a galaxy-wide set of origins.
-    elif request.from_text and request.to_text:
-        result = _plan_multi_hop(
-            session, request, started, validation_ms, bubble_cache
-        )
-    elif request.from_text:
-        result = _plan_open_anchor_multi_hop(
-            session, request, started, validation_ms, bubble_cache,
-            open_role="destination",
-        )
-    elif request.to_text:
-        result = _plan_open_anchor_multi_hop(
-            session, request, started, validation_ms, bubble_cache,
-            open_role="source",
-        )
-    else:
-        result = _plan_unanchored_multi_hop(
-            session, request, started, validation_ms, bubble_cache
-        )
+    try:
+        if request.hops == 1:
+            result = _plan_single_hop(
+                session, request, started, validation_ms, bubble_cache
+            )
+        # Multi-hop endpoint dispatch, mirroring the single-hop dispatcher
+        # above. Both endpoints set keeps the fixed-terminal planner (envelope,
+        # real budget); one endpoint set runs the single-anchor open engine
+        # keyed on which side the planner chooses; both omitted seeds that same
+        # open engine from a galaxy-wide set of origins.
+        elif request.from_text and request.to_text:
+            result = _plan_multi_hop(
+                session, request, started, validation_ms, bubble_cache
+            )
+        elif request.from_text:
+            result = _plan_open_anchor_multi_hop(
+                session, request, started, validation_ms, bubble_cache,
+                open_role="destination",
+            )
+        elif request.to_text:
+            result = _plan_open_anchor_multi_hop(
+                session, request, started, validation_ms, bubble_cache,
+                open_role="source",
+            )
+        else:
+            result = _plan_unanchored_multi_hop(
+                session, request, started, validation_ms, bubble_cache
+            )
+    except (failures.NoProfitableTrades, failures.NoReachableRoute) as exc:
+        # --towards: every candidate the search saw was already filtered to
+        # forward progress, so an empty result means no profitable trade moved
+        # the route closer to the target. Re-raise in the towards failure
+        # family, naming the target. Non-towards runs re-raise unchanged.
+        # Partial routes (some progressing hops, then no continuation) are
+        # returned by the engines rather than raised, so they are unaffected.
+        target = request.towards_target
+        if target is not None:
+            raise failures.NoTowardsProgress(
+                "No profitable trade made forward progress toward "
+                f"{target.name} within the supplied constraints.",
+                option_name="--towards",
+                entity_name=target.name,
+            ) from exc
+        raise
+
+    # --towards: flag any route that reached the target system, so the renderer
+    # can report the arrival and how many hops it took.
+    if request.towards_target is not None:
+        result = _annotate_towards_arrival(request, result)
 
     # Surface the empty repositioning legs once the trade route is chosen, so
     # every anchored shape shows them without each engine owning the logic.
     if request.start_jumps or request.end_jumps:
         result = _attach_positioning_legs(session, request, result)
     return result
+
+
+def _resolve_towards_target(
+    session: Session,
+    request: RunRequest,
+) -> RunRequest:
+    """Resolve --towards to a target system and carry it on the request.
+
+    --towards names a system the route must keep moving toward. Resolution
+    needs a database session, so it happens here at dispatch rather than during
+    request parsing. A station name collapses to its parent system, because the
+    progress metric is system-to-system distance. The resolved target is stored
+    as canonical request state for the open-destination fetch to consume.
+    """
+
+    endpoint = resolver.resolve_endpoint(
+        session, request.towards_text, option_name="--towards",
+    )
+    target = _positioning_anchor_system(endpoint)
+    if target is None:
+        # resolve_endpoint populates a station or a system or raises, so a None
+        # target is an internal contract breach rather than user error. Fail
+        # loudly instead of silently dropping the progress constraint.
+        raise failures.UnknownPlace(
+            f"--towards could not resolve to a system: {request.towards_text}",
+            option_name="--towards",
+            entity_name=request.towards_text,
+        )
+    return dataclasses.replace(request, towards_target=target)
+
+
+def _annotate_towards_arrival(
+    request: RunRequest,
+    result: run_result.RunResult,
+) -> run_result.RunResult:
+    """Flag any route that reached the --towards target with its hop count.
+
+    Checked here, once, after the winning route exists, so neither route engine
+    owns the arrival check. A route has arrived when its last station sits in the
+    target system; arrival_hops records how many trade hops it took, which the
+    renderer turns into "arrived after N hops".
+    """
+
+    target = request.towards_target
+    if target is None:
+        return result
+    new_routes = []
+    changed = False
+    for route in result.routes:
+        if route.stations and route.stations[-1].system_id == target.system_id:
+            new_routes.append(
+                dataclasses.replace(route, arrival_hops=len(route.hops))
+            )
+            changed = True
+        else:
+            new_routes.append(route)
+    if not changed:
+        return result
+    return dataclasses.replace(result, routes=tuple(new_routes))
 
 
 def _plan_single_hop(

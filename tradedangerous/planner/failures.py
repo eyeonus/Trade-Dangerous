@@ -108,6 +108,14 @@ class NoReachableRoute(PlannerFailure):
     """No route satisfies the requested reachability constraints."""
 
 
+class NoTowardsProgress(NoReachableRoute):
+    """No route makes the forward progress toward the target --towards requires.
+
+    A subclass of NoReachableRoute so any handler catching the no-route family
+    catches this too; the distinct type lets callers name the --towards target.
+    """
+
+
 class NoProfitableTrades(PlannerFailure):
     """No profitable trades satisfy the request constraints."""
 

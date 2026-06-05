@@ -87,6 +87,15 @@ def _render_route(route: PlannedRoute) -> list[str]:
             f"  Practical score: {route.total_practical_score:,.0f}"
         )
 
+    # --towards: the route reached the target system. Report the arrival and the
+    # hop count, since the route may have stopped before using every --hops.
+    if route.arrival_hops is not None:
+        hop_word = "hop" if route.arrival_hops == 1 else "hops"
+        lines.append(
+            f"  Arrived at {route.stations[-1].system_name} after "
+            f"{route.arrival_hops} {hop_word}"
+        )
+
     if route.start_positioning is not None:
         lines.append(
             _render_positioning(

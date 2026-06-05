@@ -14,6 +14,7 @@ from .run_request import RunRequest
 from .score import score_with_destination_penalty
 
 from .route_common import (
+    _distance_sq_to_target,
     _elapsed_ms,
     _group_pairs,
     _stations_from_endpoint,
@@ -223,7 +224,7 @@ def _best_open_ended_plan(
             cargo=cargo,
             practical_score=practical_score,
         )
-        if _pair_is_better(pair, best_pair):
+        if _pair_is_better(pair, best_pair, request):
             best_pair = pair
 
     if best_pair is None:
@@ -324,7 +325,7 @@ def _plan_unanchored(
             cargo=cargo,
             practical_score=practical_score,
         )
-        if _pair_is_better(pair, best_pair):
+        if _pair_is_better(pair, best_pair, request):
             best_pair = pair
 
     if best_pair is None:
@@ -446,7 +447,7 @@ def _best_pair_plan(
                 cargo=cargo,
                 practical_score=practical_score,
             )
-            if _pair_is_better(pair, best_pair):
+            if _pair_is_better(pair, best_pair, request):
                 best_pair = pair
     if best_pair is not None:
         return (
@@ -479,9 +480,21 @@ def _best_pair_plan(
     )
 
 
-def _pair_is_better(pair: _PairPlan, best_pair: _PairPlan | None) -> bool:
+def _pair_is_better(
+    pair: _PairPlan,
+    best_pair: _PairPlan | None,
+    request: RunRequest,
+) -> bool:
     if best_pair is None:
         return True
+    target = request.towards_target
+    if target is not None:
+        # --towards: progress-first. The pair whose destination is closest to
+        # the target wins; practical score and profit only break the tie.
+        pair_dist = _distance_sq_to_target(pair.destination_station, target)
+        best_dist = _distance_sq_to_target(best_pair.destination_station, target)
+        if pair_dist != best_dist:
+            return pair_dist < best_dist
     if pair.practical_score != best_pair.practical_score:
         return pair.practical_score > best_pair.practical_score
     if pair.cargo.total_profit != best_pair.cargo.total_profit:

@@ -21,6 +21,7 @@ from sqlalchemy import (
     cast,
     func,
     literal,
+    or_,
     select,
     text,
 )
@@ -329,6 +330,12 @@ def _reachable_station_query(
     destinations that cannot plausibly close on --to in the remaining hops,
     before they ever leave SQL into Python.
 
+    When ``request.towards_target`` is set (the --towards open-destination
+    shapes only), the reachable set is instead restricted to systems strictly
+    closer to that target than the anchor, applying the spec's per-hop progress
+    rule in SQL. It is mutually exclusive with the destination envelope:
+    --towards forbids --to, and the envelope is a fixed-terminal device.
+
     Callers compose the yielded SELECT via ``.in_(...)`` so the reachable set
     stays in SQL — handing a large id list to a later query as a literal
     ``IN (...)`` would flip SQLite off the StationItem primary key onto a
@@ -349,6 +356,16 @@ def _reachable_station_query(
                 # Anchor outside envelope — no reachable stations qualify.
                 yield select(Station.station_id).where(literal(False))
                 return
+        # --towards: a same-system hop keeps the route at the anchor system, so
+        # it makes no forward progress toward the target. It qualifies only when
+        # the anchor already is the target (the spec's "unless the hop reaches
+        # the target system" clause); otherwise nothing here can progress.
+        if (
+            request.towards_target is not None
+            and anchor_system.system_id != request.towards_target.system_id
+        ):
+            yield select(Station.station_id).where(literal(False))
+            return
         in_range_systems = select(System.system_id).where(
             System.system_id == anchor_system.system_id
         )
@@ -452,6 +469,38 @@ def _reachable_station_query(
                     temp.c.pos_y.between(to_y - env, to_y + env),
                     temp.c.pos_z.between(to_z - env, to_z + env),
                     dx * dx + dy * dy + dz * dz <= envelope_sq,
+                )
+            )
+        elif request.towards_target is not None:
+            # --towards: restrict the reachable destination set to systems that
+            # sit strictly closer to the target than the anchor — the anchor is
+            # this hop's previous trade position, so this is the per-hop
+            # forward-progress rule. The sphere is centred on the target with
+            # radius = the anchor's own distance to the target; strict "<"
+            # rejects a hop that lands no closer. The OR arm admits the target
+            # system itself (the "unless the hop reaches the target system"
+            # clause), which also covers the radius-0 case where the anchor
+            # already is the target. Bounding box first, then squared distance,
+            # mirroring the envelope path and running against the temp's own
+            # pos columns with no extra System join.
+            target = request.towards_target
+            adx = anchor_system.x - target.x
+            ady = anchor_system.y - target.y
+            adz = anchor_system.z - target.z
+            anchor_dist_sq = adx * adx + ady * ady + adz * adz
+            radius = anchor_dist_sq ** 0.5
+            dx = temp.c.pos_x - target.x
+            dy = temp.c.pos_y - target.y
+            dz = temp.c.pos_z - target.z
+            system_id_source = select(temp.c.system_id).where(
+                or_(
+                    and_(
+                        temp.c.pos_x.between(target.x - radius, target.x + radius),
+                        temp.c.pos_y.between(target.y - radius, target.y + radius),
+                        temp.c.pos_z.between(target.z - radius, target.z + radius),
+                        dx * dx + dy * dy + dz * dz < anchor_dist_sq,
+                    ),
+                    temp.c.system_id == target.system_id,
                 )
             )
         else:

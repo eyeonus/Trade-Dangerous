@@ -14,6 +14,7 @@ from tradedangerous.planner.failures import (
     InvalidRunRequest,
     NoProfitableTrades,
     NoReachableRoute,
+    NoTowardsProgress,
     PlannerFailure,
     StationHasNoUsablePriceData,
     UnknownPlace,
@@ -350,7 +351,19 @@ def validateRunArgumentsFast(cmdenv):
     # --towards requires --from
     if cmdenv.goalSystem and not getattr(cmdenv, "starting", None):
         raise CommandLineError("--towards requires --from")
-    
+
+    # --towards and --to are mutually exclusive. --to fixes the final
+    # destination; --towards only steers each hop nearer a system without
+    # committing to arrive there. Naming the same place makes one redundant;
+    # naming different places makes them contradict. Either way, ask the user
+    # which they meant rather than guessing.
+    if cmdenv.goalSystem and getattr(cmdenv, "ending", None):
+        raise CommandLineError(
+            "--towards and --to can't be used together: --to fixes the "
+            "destination, --towards only heads that way without committing "
+            "to arrive. Specify one or the other."
+        )
+
     # --start-jumps requires --from
     if cmdenv.startJumps and not getattr(cmdenv, "starting", None):
         raise CommandLineError("--start-jumps requires --from")
@@ -388,7 +401,6 @@ def validateRunArgumentsFast(cmdenv):
     
     unsupported = (
         ("--direct", getattr(cmdenv, "direct", False)),
-        ("--towards", getattr(cmdenv, "goalSystem", None) is not None),
         ("--loop", getattr(cmdenv, "loop", False)),
         ("--via", bool(getattr(cmdenv, "via", None))),
         ("--avoid", bool(getattr(cmdenv, "avoid", None))),
@@ -459,6 +471,19 @@ def _planner_result_message(exc, request) -> str:
 
     if isinstance(exc, StationHasNoUsablePriceData):
         return exc.message
+
+    if isinstance(exc, NoTowardsProgress):
+        # --towards: the search found no profitable trade that moved the route
+        # closer to the target. The failure already names the target; add the
+        # levers that let a progressing trade through. Checked before the
+        # NoReachableRoute branch below because that one only fires with --to,
+        # which --towards forbids.
+        return (
+            f"{exc.message}\n"
+            f"\n"
+            f"Try increasing --hops or --jumps-per, widening --ly-per, or "
+            f"relaxing filters so a trade toward the target can be found."
+        )
 
     from_named = bool(request.from_text)
     to_named = bool(request.to_text)

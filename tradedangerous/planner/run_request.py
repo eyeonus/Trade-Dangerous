@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .run_result import ResolvedSystem
 
 
 # Default cap on absolute commodity prices for trade run. Preserves observed
@@ -49,6 +53,11 @@ class RunRequest:
     end_jumps: int = 0
     empty_ly_per: float | None = None
     towards_text: str | None = None
+    # Resolved --towards target system (id + coordinates). Filled once at
+    # dispatch from towards_text; stays None for every shape that does not use
+    # --towards. Carried as canonical state so the open-destination fetch can
+    # apply the per-hop progress constraint in one shared place.
+    towards_target: ResolvedSystem | None = None
     loop: bool = False
     via: tuple[str, ...] = ()
     avoid: tuple[str, ...] = ()
