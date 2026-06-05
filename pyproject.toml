@@ -45,7 +45,7 @@ dependencies = [
     "importlib-metadata>=1",
     "nicegui>=3.12.0,<3.13",
     "pywebview",
-    "pythonnet==3.1.0rc1; platform_system == 'Windows' and python_version >= '3.14' and python_version < '3.15'",
+    "pythonnet>=3.1.0; platform_system == 'Windows'",
     "orjson>=3.11.5",
     "requests",
     "rich==13.7.1",
