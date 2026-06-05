@@ -139,6 +139,14 @@ Do unify the contract.
   endpoint; eligible origins (or destinations) expand from its system within N
   empty jumps. `--empty-ly` sets the unladen fan-out range, falling back to
   `--ly-per`. The empty repositioning flight is shown in the route output.
+- **`--towards`** — steers an open-destination route toward a target system
+  without forcing arrival (requires `--from`; mutually exclusive with `--to`).
+  Each hop must land strictly closer to the target, ranked progress-first:
+  closest wins, then fewer hops, profit only breaking ties — so it heads
+  directly at the target and does not meander to chase profit. A hop reaching
+  the target ends the route ("arrived after N hops"); if the hops run out first
+  it gets as close as it can. The "MAY optimise profit" in the spec is read as
+  the optional permission it is, subordinate to the "MUST move closer" rule.
 
 ### Legacy retired
 
@@ -224,9 +232,10 @@ unknown-pad station is admitted unless `--pad-size L` is set. Full reasoning in
 ## What's still owed
 
 The authoritative, option-by-option status lives in **`SPEC_STATUS.md`**. In
-short, the route shapes and empty-jump positioning are done; what remains is the
-modifier and display surface — `--via`, `--avoid`, `--towards`, `--loop`,
-`--unique`, `--shorten`, `--loop-interval`, and the search/display controls
+short, the route shapes, empty-jump positioning, and `--towards` are done; what
+remains is the rest of the modifier and display surface — `--via`, `--avoid`,
+`--loop`, `--unique`, `--shorten`, `--loop-interval`, and the search/display
+controls
 (`--routes > 1`, `--max-routes`, `--prune-*`, `--checklist`, `--x52-pro`). Three
 options (`--show-jumps`, `--summary`, `--progress`) parse without error but
 currently do nothing — see `SPEC_STATUS.md`.

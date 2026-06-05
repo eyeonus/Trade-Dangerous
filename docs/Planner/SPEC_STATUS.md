@@ -42,7 +42,7 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 | `--from` | `[done]` | Station or system; may be omitted (open origin). |
 | `--to` | `[done]` | Station or system; may be omitted (open destination). |
 | `--hops` | `[done]` | 1–25; an excessive count is rejected. |
-| `--towards` | `[todo]` | Gated. |
+| `--towards` | `[done]` | Steers toward a target system; progress-first ranking, arrives and stops early. Requires `--from`; rejects `--to`. See Variations. |
 | `--loop` | `[todo]` | Gated. |
 | `--via` | `[todo]` | Gated. |
 | `--avoid` | `[todo]` | Gated. |
@@ -127,9 +127,9 @@ separate semantics for the same option.
 | Credits, insurance, margin | `[done]` | |
 | Reachability | `[done]` | `--ly-per`, `--jumps-per`, same-system supercruise. `--direct` is `[todo]`. |
 | Route generation | `[done]` | |
-| Route ranking | `[done]` | Practical value with ls-penalty; `--to` honoured. The other shaping options (`--towards`/`--loop`/`--shorten`/`--via`/`--unique`) are gated. |
+| Route ranking | `[done]` | Practical value with ls-penalty; `--to` honoured; `--towards` ranks progress-first (closest, then fewer hops, profit only breaking ties). The other shaping options (`--loop`/`--shorten`/`--via`/`--unique`) are gated. |
 | ls-penalty | `[done]` | Protected curve. |
-| towards mode | `[todo]` | |
+| towards mode | `[done]` | Progress-first per-hop ranking; arrives and stops early; mutually exclusive with `--to`. See Variations. |
 | loop routes | `[todo]` | |
 | shorten routes | `[todo]` | |
 | unique and loop interval | `[todo]` | |
@@ -174,6 +174,15 @@ Each of these is a chosen difference, not a gap. Do not revert without raising i
 5. **`--jumps-per` keyed default.** The spec mandates no default. Omitted
    `--jumps-per` defaults to 2 when `--ly-per ≤ 12.5` (short-range ships reach
    too little on one jump), else 1.
+
+6. **`--towards` excludes `--to`.** Spec §Early validation lists `--towards`
+   without `--from` as a failure but is silent on `--towards` with `--to`. The
+   two contradict — `--to` fixes the destination, `--towards` only steers toward
+   one — so we reject the combination with a "specify one or the other" error
+   rather than guess intent. The progress ranking itself (closest first, then
+   fewer hops, profit only a tie-breaker) reads the spec's "MAY optimise profit
+   among forward-progress candidates" as the optional permission it is, not a
+   licence to override the "MUST move closer" requirement.
 
 ---
 

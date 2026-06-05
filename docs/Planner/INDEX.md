@@ -173,6 +173,14 @@ Each completed slice has an implementation plan (what needs to be done) and a co
 | [sixteenth_slice_implementation_plan.md](sixteenth_slice_implementation_plan.md) | Design plan for Slice 16: the role-keyed `_stations_from_endpoint` seam, reuse of `reachable_systems_from` and the temp-table station fetch, the anchor-as-positioning-point semantics, the empty-`--ly` fallback, and the private positioning bubble-cache. |
 | [sixteenth_slice_completion_report.md](sixteenth_slice_completion_report.md) | Proof of completion: the four-step build, the new `fetch_eligible_stations_in_reachable_systems` helper, architecture compliance, the bubble-cache isolation answer to the audit, and live-data spot-checks showing the endpoint expands off the anchor while guardrails and `--empty-ly` behave. |
 
+### Slice 17 — Progress-Toward-a-Target Routing (`--towards`) (Complete)
+**`--towards SYSTEM` steers an open-destination route toward a target without forcing arrival (requires `--from`, excludes `--to`). Each hop must land strictly closer, ranked progress-first (closest, then fewer hops, profit only a tie-breaker); a hop reaching the target ends the route ("arrived after N hops").**
+
+| Document | Content |
+|----------|---------|
+| [seventeenth_slice_implementation_plan.md](seventeenth_slice_implementation_plan.md) | Design plan for Slice 17, with the mid-slice correction recorded: the MUST (strict-progress filter at the shared open-destination fetch) vs the MAY (progress-first ranking, profit an optional tie-breaker) read from the spec's RFC 2119 keywords; the legacy goal-scoring review that confirmed the reading; arrival and early stop as emergent properties; the `--towards`/`--to` exclusion. |
+| [seventeenth_slice_completion_report.md](seventeenth_slice_completion_report.md) | Proof of completion: the five-step build, the shared progress-rank helper applied at every selection point (non-towards paths byte-identical), arrival capture in the open-anchor engine, arrival reporting, and the Sol → Lave spot-check arriving in 2 of 3 hops. |
+
 ---
 
 ## Reference and Technical Notes
