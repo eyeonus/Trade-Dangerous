@@ -515,14 +515,18 @@ Reduce `TradeCalc.__init__()` setup overhead before touching route maths.
 
 ---
 
-## Checkpoint L — Migrate `olddata`, `nav`, `rares`
+## Checkpoint L — Migrate remaining legacy command surfaces
 
 ### Goal
-Finish the main command migration set.
+Finish the main command migration set without turning command migration into a generic command-framework rewrite.
 
 ### Acceptance criteria
 - `olddata` and `nav` no longer depend on full preload
 - any remaining rare lookup behaviour uses the post-E `buy` path rather than a dedicated `rares` command
+- `trade direct` exists as the preferred successor to `trade trade`
+- `trade trade` remains available as a compatibility alias unless an explicit removal decision is recorded
+- `trade direct` is implemented as a direct market comparison command, not as `trade run`, not as `trade run --direct`, and not as a planner mode
+- zero-valued range arguments remain valid explicit user input where the command supports them
 - remaining monolithic `TradeDB.load()` callers are few and justified
 
 ### Tasks
@@ -535,12 +539,21 @@ Finish the main command migration set.
 - [ ] L3. Complete post-E rare lookup cutover on `buy`
   - Status note:
   - Evidence:
-- [ ] L4. Re-evaluate remaining full `TradeDB.load()` callers
+- [ ] L4. Refactor `trade trade` into `trade direct`
+  - Status note:
+  - Evidence:
+- [ ] L5. Audit `--ly` / `--max-link-ly` zero-value fallback semantics
+  - Status note:
+  - Evidence:
+- [ ] L6. Re-evaluate remaining full `TradeDB.load()` callers
   - Status note:
   - Evidence:
 
 ### Notes
 - `trade rares` is retired under the locked Checkpoint E design.
+- `trade direct` is `trade trade` v2: a direct market comparison command for known endpoints. (https://github.com/eyeonus/Trade-Dangerous/issues/241)
+- `trade direct` must not be used as a reason to merge, replace, or delay `trade run --direct`.
+- `--ly 0` and equivalent zero-range inputs are explicit user intent, not absence. Audit truthiness fallbacks such as `cmdenv.maxLy or cmdenv.maxLinkLy` and use explicit `is not None` fallback semantics where affected. (https://github.com/eyeonus/Trade-Dangerous/issues/267)
 
 ---
 

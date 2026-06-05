@@ -104,6 +104,10 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 | `--max-price` | `[varied]` | **Added** — not in the spec. Absolute price cap (default 1,500,000 cr/t). See Variations. |
 | `--ls-penalty` | `[done]` | The protected curve (spec §ls-penalty), implemented in `score.py`. |
 
+Implementation note: option status records the shared behavioural meaning. Route
+engines may apply that meaning differently for performance, but must not own
+separate semantics for the same option.
+
 ---
 
 ## Behavioural sections
@@ -197,14 +201,24 @@ The spec closes with five decisions left to the supervisor. Current resolution:
 
 ---
 
-## Parses-but-inert options (a trap)
+## Options that parse but do not act yet
 
-These four are accepted by the parser — so they do **not** error — but nothing
-honours them yet. A worker must not assume they work because they run clean:
+Accepted by the parser — so they do **not** error — but nothing honours them yet.
+Listed so a worker does not assume they work just because they run clean.
+
+Three are output-display options carried over from the legacy path. Whether the
+new planner reuses any of them is an open question for a later output / look-and-
+feel pass; none is on the radar now, while output styling is not a priority.
 
 ```text
---show-jumps    carried on the request, never read (jump path shows anyway)
---summary       carried on the request, never read
---progress      carried on the request, never read
---empty-ly      parsed as emptyLyPer, not even mapped onto the request
+--show-jumps    output display: the jump path already shows in expanded output,
+                so the flag toggles nothing today
+--summary       output display: a legacy summary mode, not honoured yet
+--progress      output display: a legacy progress mode, not honoured yet
 ```
+
+`--empty-ly` is the odd one out — an input, not a display option. It supplies the
+unladen range to `--start-jumps` / `--end-jumps`, falling back to `--ly-per` when
+absent. It parses as `emptyLyPer` and is not yet mapped onto the request; Slice 16
+wires it, after which it leaves this list. It is meaningful only alongside
+start/end-jumps and is a deliberate no-op on its own.
