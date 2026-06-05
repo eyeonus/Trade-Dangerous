@@ -165,6 +165,14 @@ Each completed slice has an implementation plan (what needs to be done) and a co
 | [fifteenth_slice_implementation_plan.md](fifteenth_slice_implementation_plan.md) | Design plan for Slice 15: the 15A–C structure — listener catch-up in the separate repo, the spansh generic-fallback purge, and the unanchored early-cutoff tightening. |
 | [fifteenth_slice_completion_report.md](fifteenth_slice_completion_report.md) | Proof of completion: the listener TradeORM swap and the Category.csv-seeding keystone, the thirteen-fallback guardrail purge, and the filter-aware + station-driven bounds with the py-spy/EXPLAIN diagnosis and the 43.9s → ~0.75s bounds timing. |
 
+### Slice 16 — Empty-Jump Endpoint Positioning (Complete)
+**`--start-jumps` / `--end-jumps` treat a named `--from` / `--to` as a positioning anchor; eligible trade endpoints expand from the anchor's system within N empty jumps. `--empty-ly` sets the unladen fan-out range (falls back to `--ly-per`).**
+
+| Document | Content |
+|----------|---------|
+| [sixteenth_slice_implementation_plan.md](sixteenth_slice_implementation_plan.md) | Design plan for Slice 16: the role-keyed `_stations_from_endpoint` seam, reuse of `reachable_systems_from` and the temp-table station fetch, the anchor-as-positioning-point semantics, the empty-`--ly` fallback, and the private positioning bubble-cache. |
+| [sixteenth_slice_completion_report.md](sixteenth_slice_completion_report.md) | Proof of completion: the four-step build, the new `fetch_eligible_stations_in_reachable_systems` helper, architecture compliance, the bubble-cache isolation answer to the audit, and live-data spot-checks showing the endpoint expands off the anchor while guardrails and `--empty-ly` behave. |
+
 ---
 
 ## Reference and Technical Notes

@@ -57,9 +57,9 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 |--------|--------|------|
 | `--ly-per` | `[done]` | Required (unless `--direct`, which is gated). |
 | `--jumps-per` | `[done]` | Any non-negative int. Keyed default: omitted → 2 if `--ly-per ≤ 12.5`, else 1. |
-| `--start-jumps` | `[todo]` | Gated (non-zero). |
-| `--end-jumps` | `[todo]` | Gated (non-zero). |
-| `--empty-ly` | `[todo]` | Parses but inert — only feeds the gated `--start-jumps`/`--end-jumps`; not mapped onto the request. |
+| `--start-jumps` | `[done]` | Empty positioning jumps before the first trade hop; expands eligible origins from the `--from` anchor's system. Requires `--from`. |
+| `--end-jumps` | `[done]` | Mirror after the last hop; expands eligible destinations from the `--to` anchor's system. Requires `--to`. |
+| `--empty-ly` | `[done]` | Unladen fan-out range for `--start-jumps`/`--end-jumps`; falls back to `--ly-per` when absent. Inert on its own (deliberate no-op). |
 | `--show-jumps` | `[todo]` | Parses but inert — the jump path shows in expanded output regardless of the flag. |
 
 ### Station filters
@@ -116,8 +116,8 @@ separate semantics for the same option.
 |--------------|--------|------|
 | Early validation | `[done]` | Static checks before planning. Some listed early-failure pairs (e.g. `--loop` with `--unique`) are moot while those options are gated. |
 | Name and place resolution | `[done]` | Scoped system/station forms; unknown / ambiguous / system / station distinguished. |
-| Origin selection | `[done]` | Station / system / omitted. `--start-jumps` expansion is `[todo]`. |
-| Destination selection | `[done]` | Station / system / omitted. `--end-jumps` expansion is `[todo]`. |
+| Origin selection | `[done]` | Station / system / omitted; `--start-jumps` expands origins from the anchor's empty-jump neighbourhood. |
+| Destination selection | `[done]` | Station / system / omitted; `--end-jumps` expands destinations from the anchor's empty-jump neighbourhood. |
 | Avoid semantics | `[todo]` | `--avoid` gated. |
 | Via semantics | `[todo]` | `--via` gated. |
 | Station eligibility | `[done]` | All implemented filters applied SQL-side. |
@@ -216,9 +216,3 @@ feel pass; none is on the radar now, while output styling is not a priority.
 --summary       output display: a legacy summary mode, not honoured yet
 --progress      output display: a legacy progress mode, not honoured yet
 ```
-
-`--empty-ly` is the odd one out — an input, not a display option. It supplies the
-unladen range to `--start-jumps` / `--end-jumps`, falling back to `--ly-per` when
-absent. It parses as `emptyLyPer` and is not yet mapped onto the request; Slice 16
-wires it, after which it leaves this list. It is meaningful only alongside
-start/end-jumps and is a deliberate no-op on its own.

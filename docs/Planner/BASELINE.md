@@ -134,6 +134,11 @@ Do unify the contract.
   manual audit; partial-route warnings; the bulk-tax cap note.
 - **`--jumps-per` keyed default** — omitted `--jumps-per` defaults to 2 when
   `--ly-per <= 12.5`, otherwise 1.
+- **Empty-jump positioning** (`--start-jumps` / `--end-jumps`) — a named
+  `--from` / `--to` is treated as a positioning anchor, not a forced trade
+  endpoint; eligible origins (or destinations) expand from its system within N
+  empty jumps. `--empty-ly` sets the unladen fan-out range, falling back to
+  `--ly-per`. The empty repositioning flight is shown in the route output.
 
 ### Legacy retired
 
@@ -219,12 +224,12 @@ unknown-pad station is admitted unless `--pad-size L` is set. Full reasoning in
 ## What's still owed
 
 The authoritative, option-by-option status lives in **`SPEC_STATUS.md`**. In
-short, the route shapes are done; what remains is the modifier and display
-surface — `--via`, `--avoid`, `--towards`, `--loop`, `--unique`, `--shorten`,
-`--loop-interval`, `--start-jumps`/`--end-jumps`, and the search/display
-controls (`--routes > 1`, `--max-routes`, `--prune-*`, `--checklist`,
-`--x52-pro`). Four options (`--show-jumps`, `--summary`, `--progress`,
-`--empty-ly`) parse without error but currently do nothing — see `SPEC_STATUS.md`.
+short, the route shapes and empty-jump positioning are done; what remains is the
+modifier and display surface — `--via`, `--avoid`, `--towards`, `--loop`,
+`--unique`, `--shorten`, `--loop-interval`, and the search/display controls
+(`--routes > 1`, `--max-routes`, `--prune-*`, `--checklist`, `--x52-pro`). Three
+options (`--show-jumps`, `--summary`, `--progress`) parse without error but
+currently do nothing — see `SPEC_STATUS.md`.
 
 Agreed-but-unscheduled decisions and noted-for-later items:
 
