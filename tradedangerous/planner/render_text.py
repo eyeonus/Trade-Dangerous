@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .run_result import (
+    JumpPath,
     PartialRouteWarning,
     PlannedHop,
     PlannedRoute,
@@ -86,6 +87,13 @@ def _render_route(route: PlannedRoute) -> list[str]:
             f"  Practical score: {route.total_practical_score:,.0f}"
         )
 
+    if route.start_positioning is not None:
+        lines.append(
+            _render_positioning(
+                "Empty jumps to start", route.start_positioning
+            )
+        )
+
     cumulative_profit = 0
     for hop_index, hop in enumerate(route.hops, start=1):
         lines.append("")
@@ -99,7 +107,33 @@ def _render_route(route: PlannedRoute) -> list[str]:
         )
         cumulative_profit += hop.raw_profit
 
+    if route.end_positioning is not None:
+        lines.append("")
+        lines.append(
+            _render_positioning("Empty jumps from end", route.end_positioning)
+        )
+
     return lines
+
+
+def _render_positioning(label: str, leg: JumpPath) -> str:
+    """Render one empty repositioning leg (--start-jumps / --end-jumps).
+
+    A single readable line in the same shape as a hop's Travel line. Same-system
+    means the chosen trade station shares the anchor's system, so no empty jump
+    is flown; an unreachable leg is reported softly rather than dropped.
+    """
+
+    if leg.is_same_system:
+        system = leg.systems[0].name if leg.systems else ""
+        return f"  {label}: same system ({system}), no positioning jump"
+    if not leg.is_reachable:
+        return f"  {label}: no empty path found within range"
+    path = " -> ".join(system.name for system in leg.systems)
+    return (
+        f"  {label}: {leg.jumps:n} jump(s), "
+        f"{leg.distance_ly:.2f} ly: {path}"
+    )
 
 
 def _render_hop(

@@ -131,6 +131,12 @@ class PlannedRoute:
     total_practical_score: float
     starting_credits: int
     ending_credits: int
+    # Empty repositioning legs for --start-jumps / --end-jumps. The inbound leg
+    # is the unladen flight from the --from anchor to the first trade station;
+    # the outbound leg is from the last trade station to the --to anchor. None
+    # when the matching positioning option was not used.
+    start_positioning: JumpPath | None = None
+    end_positioning: JumpPath | None = None
 
 
 @dataclass(slots=True)

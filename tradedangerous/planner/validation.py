@@ -57,8 +57,6 @@ def validate_run_request(request: RunRequest) -> None:
             )
 
     unsupported_non_zero = (
-        ("--start-jumps", request.start_jumps),
-        ("--end-jumps", request.end_jumps),
         ("--max-routes", request.max_routes),
         ("--prune-score", request.prune_score),
     )

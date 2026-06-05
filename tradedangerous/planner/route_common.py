@@ -267,7 +267,23 @@ def _stations_from_endpoint(
     Fixed station endpoints still use the same station-level validation path.
     System endpoints are bounded to stations in that one resolved system; this
     is not broad route expansion or fuzzy endpoint matching.
+
+    With --start-jumps (source) or --end-jumps (destination) set, the endpoint
+    is instead treated as a positioning anchor and expanded into the eligible
+    stations within that many empty jumps — see _positioning_stations.
     """
+
+    positioning_jumps = (
+        request.start_jumps if role == "source" else request.end_jumps
+    )
+    if positioning_jumps > 0:
+        return _positioning_stations(
+            session,
+            endpoint,
+            request,
+            role=role,
+            positioning_jumps=positioning_jumps,
+        )
 
     if endpoint.station is not None:
         data_gateway.validate_station_filters(endpoint.station, request, role=role)
@@ -299,6 +315,89 @@ def _stations_from_endpoint(
         option_name=endpoint.option_name,
         entity_name=endpoint.original_text,
     )
+
+
+def _positioning_stations(
+    session: Session,
+    endpoint: resolver.ResolvedEndpoint,
+    request: RunRequest,
+    *,
+    role: str,
+    positioning_jumps: int,
+) -> tuple[run_result.ResolvedStation, ...]:
+    """Expand a positioning anchor into eligible stations within N empty jumps.
+
+    --start-jumps / --end-jumps treat the named --from / --to as a physical
+    anchor, not a forced trade endpoint. The eligible trade stations are those
+    reachable within ``positioning_jumps`` empty jumps of the anchor's parent
+    system. The anchor station itself is never validated here — it is a
+    positioning point, so it appears in the result only if the expansion fetch
+    independently admits it.
+    """
+
+    anchor_system = _positioning_anchor_system(endpoint)
+    if anchor_system is None:
+        raise failures.UnknownPlace(
+            f"{endpoint.option_name} could not be resolved.",
+            option_name=endpoint.option_name,
+            entity_name=endpoint.original_text,
+        )
+
+    # Empty jumps carry no cargo, so they use the unladen range: --empty-ly if
+    # supplied, else --ly-per. This is a different reach from the per-hop laden
+    # --ly-per — it sizes the positioning net, not a trade hop.
+    empty_ly = request.empty_ly_per or request.max_ly_per_jump
+
+    # The positioning bubble's radius (positioning_jumps * empty_ly) differs
+    # from the per-hop bubble for the same anchor, and reachable_systems_from
+    # keys its cache on system_id alone. A private cache keeps the wrong-radius
+    # bubble out of the per-hop cache shared across the rest of the plan.
+    positioning_bubble_cache: dict = {}
+    reachable = reachable_systems_from(
+        session,
+        anchor_system,
+        max_jumps_per_hop=positioning_jumps,
+        max_ly_per_jump=float(empty_ly or 0.0),
+        bubble_cache=positioning_bubble_cache,
+    )
+
+    stations = data_gateway.fetch_eligible_stations_in_reachable_systems(
+        session,
+        reachable,
+        request,
+        role=role,
+    )
+    if stations:
+        return stations
+
+    failure_type = (
+        failures.SourceStationIneligible
+        if role == "source"
+        else failures.DestinationStationIneligible
+    )
+    reach_noun = "origin" if role == "source" else "destination"
+    raise failure_type(
+        f"No eligible {reach_noun} station was found within "
+        f"{positioning_jumps} empty jump(s) of {endpoint.original_text}.",
+        option_name=endpoint.option_name,
+        entity_name=endpoint.original_text,
+    )
+
+
+def _positioning_anchor_system(
+    endpoint: resolver.ResolvedEndpoint,
+) -> run_result.ResolvedSystem | None:
+    """Return the anchor system for an endpoint used as a positioning point.
+
+    A station anchor positions on its parent system; a system anchor positions
+    on itself. Unlike the fixed-endpoint path, a positioning anchor is never
+    station-filter validated, so this returns None for an unresolved endpoint
+    and lets the caller raise rather than assuming one side is populated.
+    """
+
+    if endpoint.station is not None:
+        return _system_from_station(endpoint.station)
+    return endpoint.system
 
 
 def _system_from_station(

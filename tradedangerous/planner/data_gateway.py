@@ -175,6 +175,78 @@ def fetch_eligible_stations_in_system(
     )
 
 
+def fetch_eligible_stations_in_reachable_systems(
+    session: Session,
+    systems: tuple[ResolvedSystem, ...],
+    request: RunRequest,
+    *,
+    role: str,
+) -> tuple[ResolvedStation, ...]:
+    """Fetch eligible stations across a precomputed reachable-system set.
+
+    The empty-jump positioning fan-out (--start-jumps / --end-jumps) hands in
+    the systems within N empty jumps of an anchor, already computed in memory
+    from the cKDTree bubble. The set is bulk-inserted into a temp table and the
+    membership test stays a SQL subquery, never a large IN (...) literal that
+    would flip SQLite off the station index. Station-attribute filters apply
+    exactly as for single-system expansion; market quotes are still checked
+    later per station pair.
+
+    The precomputed systems already carry coordinates, so each station's
+    ResolvedSystem comes from the in-memory set rather than a second System
+    join.
+    """
+
+    if not systems:
+        return ()
+
+    systems_by_id = {int(system.system_id): system for system in systems}
+    connection = session.connection()
+    metadata = MetaData()
+    # Mirror the System pos column type so the bulk insert needs no implicit
+    # cast on either backend. depth is unused here (no layered BFS) but the
+    # shared bulk-insert helper writes it, so the column must exist.
+    pos_type = System.__table__.c.pos_x.type
+    temp = Table(
+        "td_positioning_systems",
+        metadata,
+        Column("system_id", BigInteger, primary_key=True),
+        Column("pos_x", pos_type),
+        Column("pos_y", pos_type),
+        Column("pos_z", pos_type),
+        Column("depth", Integer),
+        prefixes=["TEMPORARY"],
+    )
+    # Drop any leftover from a previous interrupted call before recreating.
+    temp.drop(connection, checkfirst=True)
+    temp.create(connection)
+    try:
+        _bulk_insert_reachable_systems(connection, temp, systems)
+        stmt = (
+            select(Station)
+            .where(
+                and_(
+                    Station.system_id.in_(select(temp.c.system_id)),
+                    *_station_attribute_predicates(request),
+                )
+            )
+            .order_by(Station.station_id)
+        )
+        stations = []
+        for station in session.scalars(stmt):
+            resolved_system = systems_by_id.get(int(station.system_id))
+            if resolved_system is None:
+                # Station whose system left the precomputed set — defensive
+                # skip rather than a KeyError, mirroring fetch_stations_by_id.
+                continue
+            stations.append(
+                _resolved_station_from_model(station, resolved_system)
+            )
+        return tuple(stations)
+    finally:
+        temp.drop(connection, checkfirst=True)
+
+
 def _station_attribute_predicates(request: RunRequest):
     """Return SQL predicates for station-attribute filters.
 

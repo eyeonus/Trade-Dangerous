@@ -405,8 +405,6 @@ def validateRunArgumentsFast(cmdenv):
             )
     
     unsupported_non_zero = (
-        ("--start-jumps", getattr(cmdenv, "startJumps", 0)),
-        ("--end-jumps", getattr(cmdenv, "endJumps", 0)),
         ("--max-routes", getattr(cmdenv, "maxRoutes", 0)),
         ("--prune-score", getattr(cmdenv, "pruneScores", 0)),
     )

@@ -47,6 +47,7 @@ class RunRequest:
     direct: bool = False
     start_jumps: int = 0
     end_jumps: int = 0
+    empty_ly_per: float | None = None
     towards_text: str | None = None
     loop: bool = False
     via: tuple[str, ...] = ()
@@ -109,6 +110,7 @@ def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
         direct=getattr(cmdenv, "direct", False),
         start_jumps=getattr(cmdenv, "startJumps", 0) or 0,
         end_jumps=getattr(cmdenv, "endJumps", 0) or 0,
+        empty_ly_per=getattr(cmdenv, "emptyLyPer", None),
         towards_text=getattr(cmdenv, "goalSystem", None),
         loop=getattr(cmdenv, "loop", False),
         via=tuple(getattr(cmdenv, "via", None) or ()),

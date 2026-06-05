@@ -2,14 +2,20 @@
 
 from __future__ import annotations
 
+import dataclasses
 import time
 
 from sqlalchemy.orm import Session
 
-from . import run_result
+from . import resolver, run_result
 from .cargo import reset_cargo_counters
+from .reachability import plan_jump_path
 from .route_anchored import _plan_multi_hop
-from .route_common import _elapsed_ms
+from .route_common import (
+    _elapsed_ms,
+    _positioning_anchor_system,
+    _system_from_station,
+)
 from .route_onehop import (
     _best_open_ended_plan,
     _plan_fixed_endpoints,
@@ -47,7 +53,7 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
     bubble_cache: dict[int, object] = {}
 
     if request.hops == 1:
-        return _plan_single_hop(
+        result = _plan_single_hop(
             session, request, started, validation_ms, bubble_cache
         )
     # Multi-hop endpoint dispatch, mirroring the single-hop dispatcher above.
@@ -55,23 +61,30 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
     # budget); one endpoint set runs the single-anchor open engine keyed on
     # which side the planner chooses; both omitted seeds that same open engine
     # from a galaxy-wide set of origins.
-    if request.from_text and request.to_text:
-        return _plan_multi_hop(
+    elif request.from_text and request.to_text:
+        result = _plan_multi_hop(
             session, request, started, validation_ms, bubble_cache
         )
-    if request.from_text:
-        return _plan_open_anchor_multi_hop(
+    elif request.from_text:
+        result = _plan_open_anchor_multi_hop(
             session, request, started, validation_ms, bubble_cache,
             open_role="destination",
         )
-    if request.to_text:
-        return _plan_open_anchor_multi_hop(
+    elif request.to_text:
+        result = _plan_open_anchor_multi_hop(
             session, request, started, validation_ms, bubble_cache,
             open_role="source",
         )
-    return _plan_unanchored_multi_hop(
-        session, request, started, validation_ms, bubble_cache
-    )
+    else:
+        result = _plan_unanchored_multi_hop(
+            session, request, started, validation_ms, bubble_cache
+        )
+
+    # Surface the empty repositioning legs once the trade route is chosen, so
+    # every anchored shape shows them without each engine owning the logic.
+    if request.start_jumps or request.end_jumps:
+        result = _attach_positioning_legs(session, request, result)
+    return result
 
 
 def _plan_single_hop(
@@ -107,3 +120,71 @@ def _plan_single_hop(
     return _plan_unanchored(
         session, request, started, validation_ms, bubble_cache
     )
+
+
+def _attach_positioning_legs(
+    session: Session,
+    request: RunRequest,
+    result: run_result.RunResult,
+) -> run_result.RunResult:
+    """Attach the empty repositioning legs for --start-jumps / --end-jumps.
+
+    The trade route is already chosen; this surfaces the unladen flight the
+    commander actually flies between the named anchor and the route's trading
+    endpoints — anchor -> first station for --start-jumps, last station ->
+    anchor for --end-jumps. Computed once here so no route engine grows its own
+    positioning-leg logic.
+
+    Empty jumps use the unladen range (--empty-ly, else --ly-per) and the
+    positioning count, which differ from the per-hop bubble. A private cache
+    keeps those positioning-radius bubbles out of the per-hop cache shared
+    across the search.
+    """
+
+    empty_ly = float(request.empty_ly_per or request.max_ly_per_jump or 0.0)
+    leg_cache: dict[int, object] = {}
+
+    start_anchor = None
+    if request.start_jumps and request.from_text:
+        start_endpoint = resolver.resolve_endpoint(
+            session, request.from_text, option_name="--from",
+        )
+        start_anchor = _positioning_anchor_system(start_endpoint)
+
+    end_anchor = None
+    if request.end_jumps and request.to_text:
+        end_endpoint = resolver.resolve_endpoint(
+            session, request.to_text, option_name="--to",
+        )
+        end_anchor = _positioning_anchor_system(end_endpoint)
+
+    new_routes = []
+    for route in result.routes:
+        start_leg = None
+        end_leg = None
+        if start_anchor is not None and route.stations:
+            start_leg = plan_jump_path(
+                start_anchor,
+                _system_from_station(route.stations[0]),
+                max_jumps_per_hop=request.start_jumps,
+                max_ly_per_jump=empty_ly,
+                session=session,
+                bubble_cache=leg_cache,
+            )
+        if end_anchor is not None and route.stations:
+            end_leg = plan_jump_path(
+                _system_from_station(route.stations[-1]),
+                end_anchor,
+                max_jumps_per_hop=request.end_jumps,
+                max_ly_per_jump=empty_ly,
+                session=session,
+                bubble_cache=leg_cache,
+            )
+        new_routes.append(
+            dataclasses.replace(
+                route,
+                start_positioning=start_leg,
+                end_positioning=end_leg,
+            )
+        )
+    return dataclasses.replace(result, routes=tuple(new_routes))
