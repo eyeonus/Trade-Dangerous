@@ -283,9 +283,12 @@ Goal:
 (`docs/Planner/`) eliminated the preload-first model for `trade run`; see
 `docs/REFACTOR_PROGRESS.md` Checkpoint K and the Slice 14 completion report.
 
-### L — Migrate `olddata`, `nav`, `rares`
+### L — Migrate remaining legacy command surfaces
 Goal:
 - finish the main command migration set
+- migrate `olddata` and `nav`
+- complete the post-E rare lookup cutover
+- refactor `trade trade` into `trade direct` as a direct market comparison command
 
 ### M — GUI session reuse and cache discipline
 Goal:
@@ -314,7 +317,7 @@ If only one stream is active, use this order:
 9. I — `market`, `buy`, `sell`
 10. J — `TradeDB` capability splitting
 11. K — `TradeCalc` narrowing
-12. L — `olddata`, `nav`, `rares`
+12. L — remaining legacy command surfaces
 13. M — GUI session reuse
 14. N — closeout/prune wave 2
 

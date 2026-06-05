@@ -55,6 +55,54 @@ Dependency direction is one-way: `route_common` -> planners -> dispatch.
 
 ---
 
+## Planner Architecture Rule — Shared Semantics, Specialised Engines
+
+The planner intentionally uses specialised route engines. Do not collapse them
+into a generic route engine for architectural neatness.
+
+The engines may differ in search strategy, SQL shape, pruning, frontier
+management, temporary-table use, and other performance-critical mechanics.
+
+However, route engines must not independently define the meaning of user
+options.
+
+For every new `trade run` option:
+
+- The option's meaning must be resolved once into canonical request state.
+- Engine modules may consume that canonical state in engine-specific ways.
+- Engine modules must not each grow their own semantic implementation of the
+  same option.
+- Avoid creating parallel helpers such as:
+  - `route_onehop._avoid()`
+  - `route_anchored._avoid()`
+  - `route_single_anchor._avoid()`
+  - `route_unanchored._avoid()`
+
+If engine-specific handling is needed for performance, name and structure it as
+an adapter to the shared meaning, not as a new interpretation of the option.
+
+Correct pattern:
+
+```text
+shared option meaning
+    -> canonical RunRequest / constraint state
+        -> engine-specific query/search application
+```
+
+Incorrect pattern:
+
+```text
+each route engine parses, resolves, or decides the meaning of the option itself
+```
+
+Short rule:
+
+```text
+Do not unify the engines.
+Do unify the contract.
+```
+---
+
 ## What works now
 
 ### Route shapes — the grid is complete
@@ -182,8 +230,12 @@ Agreed-but-unscheduled decisions and noted-for-later items:
 
 - **`--sco` flag** — declares an SCO drive; clamps `--ls-penalty` to 0. UX
   signalling (flag / ship profile / journal) to resolve when it lands.
-- **`--bulk-tax-mode safe|ignore|estimate`** — deferred; current safe default
-  is right until the post-25% discount curve is modelled.
+- **`--bulk-tax-mode`** — decided. If ever built, the switch does one thing:
+  turn the cap **off** (fill to full demand at headline price) as an escape
+  hatch from the safe default. The third "estimate" mode — model the post-25%
+  sliding-scale discount — is dropped: that curve is community speculation, not
+  documented behaviour, so there is nothing sound to model. Moot for now;
+  revisit only if the curve is ever properly documented.
 - **`--max-gain-per-ton` default** — the filter works; giving it a sane default
   cap (a different axis from `--max-price`) is an unscheduled idea.
 - **Unanchored candidate-query restructure** — investigated and **parked**
