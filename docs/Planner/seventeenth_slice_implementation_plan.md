@@ -2,8 +2,20 @@
 
 ## Status
 
-Planned, not yet implemented. This document is the agreed design; code proceeds
-one step at a time with review between steps, per the project workflow.
+Partly implemented, with a mid-slice design correction recorded here. The gate,
+validation, target resolution, the strict-progress filter, and the failure type
+are written (steps 1–3 below). The first build ranked the surviving candidates by
+profit, which made the route meander toward the target instead of heading at it.
+
+That was a misreading of the spec's requirement keywords (RFC 2119 / BCP 14):
+"each hop **MUST** move closer" is an absolute requirement; "a route **MAY**
+optimise profit among forward-progress candidates" is genuinely optional and
+cannot override the MUST. Progress is therefore the ranking; profit is only a
+discretionary tie-breaker among already-compliant hops. The corrected design is
+below, and the remaining code work is the ranking rework (step 4).
+
+The legacy `--towards` behaviour was reviewed once, with Tromador's explicit
+authorisation for this named purpose, to settle the reading — see "Ranking".
 
 ## What Slice 17 is
 
@@ -13,10 +25,12 @@ chooses the destination, but every trade hop must make real geographic progress
 toward the named target — no meandering, no profitable detour that moves away.
 
 It is **not** `--to`. `--to` fixes the final station and the route must arrive.
-`--towards` only steers: each hop lands nearer the target than the last, and if
-the hop count runs out before the target is reached, that is fine — you end up
-closer, not necessarily there. With enough hops and jumps you may arrive; the
-option does not promise it.
+`--towards` heads **directly** at the target, trading as it goes: each hop lands
+nearer the target than the last, and the planner takes the most direct progress
+it can, not the most profitable detour. When a hop can reach the target it does,
+and the route stops there — "arrived after N hops". If the hop count runs out
+first, that is fine: you end up as close as the route could get, not necessarily
+there. With enough hops and jumps you arrive; the option does not promise it.
 
 ## Semantics — the contract
 
@@ -24,16 +38,28 @@ Drawn from `trade_run_black_box_spec.md`: option contract (line 171), early
 validation (line 229), route ranking (line 492), the **towards mode** section
 (lines 556–564), and the failure list (line 682).
 
-- **Intent.** Trade while moving toward a target system, rather than wandering.
-- **The hard rule.** Each selected trade hop must land **strictly closer** to
+Read with the spec's requirement keywords (RFC 2119 / BCP 14) — the wording is
+deliberate and the keywords are load-bearing.
+
+- **Intent.** Trade while moving toward a target system, **not** meander.
+- **MUST — progress.** Each selected trade hop **MUST** land strictly closer to
   the target system than the previous trade position was — *unless* the hop
-  reaches the target system itself.
-- **Hard constraint, not a tie-breaker.** Among hops that make progress, the
-  normal practical-value scoring (profit, ls-penalty) still picks the winner.
-  But a hop that moves away from the target, or leaves the route no closer, may
-  **never** be chosen even when it is more profitable. The protected
-  `--ls-penalty` curve is untouched — we filter the candidate set, we do not
-  reweight it.
+  reaches the target system itself. **MUST NOT** choose a hop that moves away or
+  leaves the route no closer. Absolute; no discretion.
+- **MAY — profit.** A route **MAY** optimise profit among the forward-progress
+  candidates. This is genuinely optional and subordinate: it may pick between
+  hops that already comply, but it can never soften the MUST or pull the route
+  off the most direct progress. So **progress is the ranking; profit is only a
+  tie-breaker** among already-compliant hops. (The first build inverted this —
+  profit chose the winner, so the route meandered.)
+- **ls-penalty untouched.** The protected `--ls-penalty` curve does not change.
+  Under `--towards` it simply is not the primary ranking key — progress is; the
+  practical-value score (profit/ls-penalty) serves only as the tie-breaker.
+- **Arrival and early stop fall out of the rule.** Because ranking always takes
+  the most direct progress, the route reaches the target as soon as a profitable
+  hop can. Once there, nothing is strictly closer, so no hop can satisfy the
+  MUST — the route ends. Arrival and the early stop are not separate features;
+  they emerge from progress-first ranking plus the strict filter.
 - **Requires `--from`.** The origin is always anchored, so `--towards` never
   touches the open-origin or fully-unanchored shapes. (Spec line 229; the check
   already exists at `run_cmd.py:351`.)
@@ -72,13 +98,17 @@ route_onehop._best_open_ended_plan        -> data_gateway.fetch_open_ended_trade
 route_common.best_open_ended_hop_candidates -> data_gateway.fetch_open_ended_trade_candidates
 ```
 
-`fetch_open_ended_trade_candidates` is the single seam. The one-hop path calls
-it once; the multi-hop forward engine calls it at **every** expansion node, with
-that node's landed station as the anchor (= the previous trade position). So a
-progress predicate added there serves every towards shape and every hop at once,
-with no per-engine change.
+`fetch_open_ended_trade_candidates` is the single seam for the **filter** (the
+MUST). The one-hop path calls it once; the multi-hop forward engine calls it at
+**every** expansion node, with that node's landed station as the anchor (= the
+previous trade position). So the progress filter added there serves every towards
+shape and every hop at once. The **ranking** (the MAY) plugs in separately, at
+the candidate-selection points the engines already own — see Mechanism → "The
+MAY".
 
-## Mechanism — reuse, not new invention
+## Mechanism
+
+### The MUST — the progress filter (built)
 
 The constraint is a sphere: the next system must sit inside the sphere centred
 on the target whose radius is the anchor's current distance-to-target. That is
@@ -104,6 +134,48 @@ the target system" clause: a hop that lands in the target system is always
 admissible, including the degenerate case where the anchor already sits in the
 target system (distance 0, where strict `<` could not otherwise pass).
 
+### The MAY — ranking the survivors (the correction)
+
+The filter decides which hops are *allowed*; ranking decides which allowed hop
+*wins*. This is where the first build was wrong: it ranked the survivors by
+practical value (profit), so the route took the most profitable closer-system
+each hop and drifted toward the target instead of heading at it.
+
+Corrected: among the progress candidates, rank by **how much closer to the
+target** the hop lands — the candidate nearest the target wins. Profit is the
+discretionary tie-breaker only, used among candidates that are equally good on
+progress. The route therefore heads directly at the target; it never trades
+its way off the most-direct line.
+
+Two consequences that need no extra machinery:
+
+- **Arrival.** The nearest-to-target candidate is, when reachable with a
+  profitable trade, the target itself — so the route lands on the target as soon
+  as it can.
+- **Early stop.** After arrival nothing is strictly closer, so the next hop has
+  no admissible candidate and the route ends naturally at fewer than `--hops`.
+
+Where it applies (the selection points, keyed on the canonical target — one
+shared meaning, not a per-engine reimplementation):
+
+- one-hop: the candidate pick in `route_onehop._best_open_ended_plan`.
+- multi-hop: the per-node top-K keep in
+  `route_common.best_open_ended_hop_candidates` and the chain selection in
+  `_plan_open_anchor_route`. The beam keeps the K *closest* progressing options
+  (not just the single closest), so a direct-but-dead-end first choice does not
+  strand the route — the onward-viability check already guards intermediate
+  hops.
+
+**Legacy reference.** Reviewed once, with Tromador's explicit authorisation for
+this named purpose, to confirm the reading. The archived goal scoring
+(`archive/tradedangerous/tradecalc.py:1255–1267`) makes distance-reduction to the
+goal the dominant term and adds profit-per-ton divided by 25 — "Biggest reward
+for shortening distance to goal … Gain per unit pays a small part". That is one
+way to exercise the MAY; it confirms progress-first, profit-secondary, but its
+exact constants are not binding. The rework uses a clean progress-first ordering
+(closest wins, profit breaks ties) rather than copying the legacy weights, and
+does not touch the protected ls-penalty curve.
+
 ### Target resolution
 
 `--towards SYSTEM` resolves to a target system (id + coordinates) **once**, at
@@ -120,63 +192,78 @@ Checked against the planner's shared-semantics / specialised-engines rule
 (BASELINE). This slice complies by construction:
 
 - The meaning of `--towards` is resolved once into canonical request state (the
-  target system id + coordinates) and applied in exactly **one** shared place —
-  the `fetch_open_ended_trade_candidates` seam.
-- The route engines (`route_onehop`, `route_common`'s forward expansion) do
-  **not** each grow their own towards handling. They pass the canonical target
-  through to the one fetch and consume its narrowed result; they differ only in
-  how they then search.
-- No parallel `route_*._towards()` helpers. The progress predicate is built by
-  one shared helper at the single fetch point.
+  target system id + coordinates). Both halves consume that one canonical value:
+  the **MUST** filter at the `fetch_open_ended_trade_candidates` seam, and the
+  **MAY** ranking at the candidate-selection points the engines already own.
+- The route engines do **not** each grow their own towards *semantics*. The
+  distance-to-target progress comparison comes from one shared helper; an engine
+  applies it where it already selects (one-hop pick, multi-hop keep/chain), but
+  it does not re-decide what "closer" or "progress" means.
+- No parallel `route_*._towards()` helpers; no copied progress logic. One filter
+  predicate builder, one progress/ranking comparison, both keyed on the
+  canonical target.
 
 Do not unify the engines; do unify the contract — this slice unifies the
-contract at the fetch seam and leaves each engine's search strategy untouched.
+contract (the filter and the progress ordering) and leaves each engine's
+search *strategy* its own.
 
 ## Steps
 
-One logical step at a time, review between each.
+One logical step at a time, review between each. Steps 1–3 are written; step 4
+is the remaining code work (the ranking correction); step 5 is docs.
 
-1. **Gate + validation.** Drop `--towards` from the "unsupported" lists in the
-   parser (`run_cmd.py`) and in `validation.py`. Keep the existing
+1. **Gate + validation.** *[built]* Drop `--towards` from the "unsupported"
+   lists in the parser (`run_cmd.py`) and in `validation.py`. Keep the existing
    `--towards` requires `--from` check. Add the `--towards` + `--to` rejection
-   ("specify one or the other") alongside it. After this step `--towards`
-   parses and validates but is not yet honoured — a safe inert state between
-   steps, not a ship point.
-2. **Resolve the target + the progress predicate.** Resolve `--towards` to a
-   target system (coordinates) at dispatch and carry it as canonical request
-   state into the open-destination engines. Add the strict-progress predicate
-   to `fetch_open_ended_trade_candidates`, built by one shared helper, active
-   only when a target is set. With no target the query is byte-for-byte as
-   today.
-3. **Failure path.** When the open search yields no route under the progress
-   constraint, raise the "no route satisfying towards progress" failure naming
-   the target. If the engine can cheaply tell "profitable trades exist but none
-   progress" from "no profitable trade at all", say which; otherwise fold them
-   with a message that still names the target — the same posture as the settled
-   "no separate affordability diagnosis" decision.
-4. **Documentation** (after code accepted): `SPEC_STATUS.md`, `BASELINE.md`,
+   ("specify one or the other") alongside it.
+2. **Resolve the target + the progress filter.** *[built]* Resolve `--towards`
+   to a target system (coordinates) at dispatch and carry it as canonical
+   request state into the open-destination engines. Add the strict-progress
+   filter to `fetch_open_ended_trade_candidates`, built by one shared helper,
+   active only when a target is set. With no target the query is byte-for-byte
+   as today. This is the **MUST**.
+3. **Failure path.** *[built]* When the open search yields no route under the
+   progress constraint, raise the "no route satisfying towards progress" failure
+   naming the target.
+4. **Progress-first ranking + arrival reporting.** *[the rework]* This is the
+   **MAY**, corrected. Rank the progress candidates by closeness to the target
+   (profit only as a tie-breaker) at the one-hop candidate pick and at the
+   multi-hop per-node keep and chain selection — keyed on the canonical target,
+   no per-engine reinterpretation. When the winning route's last hop lands in
+   the target system, report it as arrival ("arrived after N hops") rather than
+   as a partial / no-viable-continuation route, since the early stop is the
+   intended outcome, not a shortfall.
+5. **Documentation** (after code accepted): `SPEC_STATUS.md`, `BASELINE.md`,
    `INDEX.md`, and the Slice 17 completion report.
 
-## To confirm during implementation
+## To confirm during the ranking rework (step 4)
 
-- **Single shared predicate helper.** Both fetch entrypoints are the same
-  function, so one helper consulting canonical state covers both shapes; confirm
-  at the seam there is no second candidate-fetch path that bypasses it.
-- **Target resolution path.** Reuse the endpoint resolver; settle the
-  station-names-a-target case (use parent system) explicitly.
-- **No-progress vs no-trade distinction.** Whether the cheaper "exists but no
-  progress" signal is available from the open search, for the failure message.
-- **Performance.** The predicate only ever *removes* candidate rows (a sphere
-  around the target), so it cannot make the search slower than the unconstrained
-  open-destination run; if anything it narrows it. Watch it on a spot-check,
-  don't pre-optimise.
+- **Ranking key.** Rank candidates by destination distance to the target
+  (closest wins); break ties on the existing practical-value score. For the
+  multi-hop beam, the per-node keep and the chain pick order on closeness to the
+  target — confirm this composes with the existing beam trim and onward-
+  viability check without stranding a route on a direct-but-dead-end first hop.
+- **Arrival reporting.** Detect "winning route's last hop is in the target
+  system" and surface it as "arrived after N hops". The multi-hop engine already
+  returns short routes with a partial-route warning when expansion runs dry;
+  reuse that hop-count path but label the target-reached case as success, not a
+  shortfall.
+- **Performance.** Progress-first ranking is a different sort key over the same
+  filtered candidates, so it adds no fetch cost. The slow open-multi-hop search
+  is existing engine behaviour, not introduced here; watch but don't fold an
+  engine-speed fix into this slice.
 
 ## Acceptance — spot-checks, handed to Tromador
 
 ```text
---from X --towards Z --hops N   -> multi-hop route; each hop strictly closer to Z;
-                                   route need not reach Z
---from X --towards Z --hops 1   -> single best hop that moves toward Z
+--from X --towards Z --hops N   -> heads directly at Z, each hop strictly closer;
+                                   arrives and stops early when Z is reachable
+                                   ("arrived after K hops", K <= N), else gets as
+                                   close as it can within N hops
+--from X --towards Z (ample range/hops) -> arrives at Z in fewer than N hops and
+                                   reports the arrival
+--from X --towards Z --hops 1   -> single hop that lands nearest Z (the target
+                                   itself if a profitable hop reaches it)
 --towards Z without --from      -> clean CommandLineError (already enforced)
 --towards Z --to Y              -> clean CommandLineError ("specify one or the other")
 --towards Z, no progressing trade -> "no route satisfying towards progress",
@@ -189,8 +276,11 @@ default (no --towards)          -> existing open-destination routes unchanged
 - `--towards` combined with `--to` — rejected, not supported.
 - `--avoid`, `--via`, `--loop`, `--shorten`, `--unique`, `--direct`, and the
   pruning controls — later slices.
-- Any reshaping of the per-hop search engine or the scoring curve — Slice 17
-  only narrows the candidate set; it does not change how survivors are ranked.
+- Reshaping the search engine's strategy or speed — the slow open-multi-hop
+  search is existing behaviour, untouched here.
+- Changing the protected `--ls-penalty` curve — unchanged. Ranking *order* under
+  `--towards` becoming progress-first is the slice's job (in scope); the curve
+  itself is not modified, and serves only as the tie-breaker.
 
 ## Validation posture
 
