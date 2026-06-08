@@ -115,7 +115,7 @@ separate semantics for the same option.
 | Spec section | Status | Note |
 |--------------|--------|------|
 | Early validation | `[done]` | Static checks before planning. Some listed early-failure pairs (e.g. `--loop` with `--unique`) are moot while those options are gated. |
-| Name and place resolution | `[done]` | Scoped system/station forms; unknown / ambiguous / system / station distinguished. |
+| Name and place resolution | `[done]` | Scoped/unscoped forms; unknown / ambiguous / system / station distinguished. Partial matching (exact → prefix → substring) and duplicate-system `@N` coordinate disambiguation now active for `trade run`, via the shared `TradeORM` lookup. |
 | Origin selection | `[done]` | Station / system / omitted; `--start-jumps` expands origins from the anchor's empty-jump neighbourhood. |
 | Destination selection | `[done]` | Station / system / omitted; `--end-jumps` expands destinations from the anchor's empty-jump neighbourhood. |
 | Avoid semantics | `[todo]` | `--avoid` gated. |

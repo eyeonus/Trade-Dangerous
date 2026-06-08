@@ -121,6 +121,14 @@ Do unify the contract.
 
 ### Cross-cutting behaviour
 
+- **Endpoint name resolution** — `--from` / `--to` / `--towards` resolve once at
+  dispatch through the shared `TradeORM` lookup: exact, then prefix, then
+  substring (no typo tolerance). A non-exact match echoes `… resolved as …`.
+  Genuine duplicate system names disambiguate by `@N` with coordinates
+  (`Name@N — (x, y, z)`, ordered by Galactic X); a bare collision lists the
+  candidates, a bad index reports the valid range. The planner consumes the
+  resolved endpoint DTOs on `RunRequest`; the database handle never enters the
+  planner.
 - **Cargo optimiser** — bounded branch-and-bound, multi-commodity; the bound is
   admissible (proven exact against a brute-force harness). Destination demand is
   a hard quantity cap, not just an eligibility threshold.

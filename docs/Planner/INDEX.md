@@ -189,6 +189,14 @@ Each completed slice has an implementation plan (what needs to be done) and a co
 | [eighteenth_slice_implementation_plan.md](eighteenth_slice_implementation_plan.md) | Design plan for Slice 18, with the authorised legacy trace that pinned the contract: legacy `--direct` forced `hops = 1`, set the jump range to effectively infinite, and skipped reachability; the open-destination "to anywhere" mode (a full-galaxy in-Python scan) is deliberately dropped. The validation philosophy — tolerate the moot, reject contradictory route-shape intent — and the renderer handling of a hop with no jump path. |
 | [eighteenth_slice_completion_report.md](eighteenth_slice_completion_report.md) | Proof of completion: the un-gate across both validation layers, the canonical `hops → 1`, the reachability skip in `_best_pair_plan`, the renderer's direct-leg line, and the spot-checks. Records the discovery that `trade run` carries two validation layers (the redundancy the next slice resolves). |
 
+### Slice 19 — Fuzzy Name Matching and Duplicate-System Disambiguation (Complete)
+**`trade run` resolves partial endpoint names (exact → prefix → substring, no typo tolerance) by reusing the shared `TradeORM` lookup, with an approximate-match echo and `@N` coordinate disambiguation for genuine duplicate system names. Resolution moved to dispatch; the planner reads resolved endpoint DTOs and never touches the database handle.**
+
+| Document | Content |
+|----------|---------|
+| [nineteenth_slice_implementation_plan.md](nineteenth_slice_implementation_plan.md) | Design plan for Slice 19: reuse `lookup_place`/`lookup_system` rather than building a second resolver; resolve `--from`/`--to`/`--towards` once at dispatch onto `RunRequest`; the approximate-match echo; the #224 `@N`-by-coordinate disambiguation; and the three lookup-path defects (regex escaping, the stray `45`, the stale TradeDB-wrapper attributes) fixed via one shared candidate-list formatter at both raise sites. |
+| [nineteenth_slice_completion_report.md](nineteenth_slice_completion_report.md) | Proof of completion: the resolver-as-adapter wiring, the resolve-once-at-dispatch flow, the shared `format_system_candidates` helper, the regex escape, and the live spot-checks — partial names, the `@N` collision list, the invalid-index message, and an `@1` selection growing a real route from one specific duplicate system. |
+
 ---
 
 ## Reference and Technical Notes
