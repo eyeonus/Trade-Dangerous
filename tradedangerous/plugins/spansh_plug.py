@@ -90,7 +90,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         # --- EDCD sourcing (hardcoded URLs; can be disabled or overridden) ---
         "no_edcd": "Disable EDCD preloads (categories, items, FDev tables) and rare item enrichment.",
         "edcd_commodity": "Override URL or local path for EDCD commodity.csv.",
-        "edcd_outfitting": "Override URL or local path for EDCD outfitting.csv.",
         "edcd_shipyard": "Override URL or local path for EDCD shipyard.csv.",
         "edcd_rares": "Override URL or local path for EDCD rare_commodity.csv.",
         "skip_galaxy": "Skip the galaxy_stations.json bulk import; run EDCD enrichment and export only.",
@@ -102,7 +101,6 @@ class ImportPlugin(plugins.ImportPluginBase):
     # Hardcoded EDCD sources (raw GitHub)
     EDCD_URLS = {
         "commodity": "https://raw.githubusercontent.com/EDCD/FDevIDs/master/commodity.csv",
-        "outfitting": "https://raw.githubusercontent.com/EDCD/FDevIDs/master/outfitting.csv",
         "shipyard": "https://raw.githubusercontent.com/EDCD/FDevIDs/master/shipyard.csv",
         "rares": "https://raw.githubusercontent.com/EDCD/FDevIDs/master/rare_commodity.csv",
     }
@@ -195,9 +193,9 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         Download (or resolve) EDCD CSVs to tmp/ with conditional caching.
         Honors -O no_edcd=1 and per-file overrides:
-          - edcd_commodity, edcd_outfitting, edcd_shipyard, edcd_rares
+          - edcd_commodity, edcd_shipyard, edcd_rares
         Each override may be a local path or an http(s) URL.
-        Returns dict: {commodity,outfitting,shipyard,rares} -> Path or None.
+        Returns dict: {commodity,shipyard,rares} -> Path or None.
         """
         
         def _resolve_one(opt_key: str, default_url: str, basename: str) -> Optional[Path]:
@@ -230,11 +228,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                 return target if target.exists() else None
         
         if self.getOption("no_edcd"):
-            return {"commodity": None, "outfitting": None, "shipyard": None, "rares": None}
-        
+            return {"commodity": None, "shipyard": None, "rares": None}
+
         return {
             "commodity": _resolve_one("edcd_commodity", self.EDCD_URLS["commodity"], "commodity"),
-            "outfitting": _resolve_one("edcd_outfitting", self.EDCD_URLS["outfitting"], "outfitting"),
             "shipyard":  _resolve_one("edcd_shipyard",  self.EDCD_URLS["shipyard"],  "shipyard"),
             "rares":     _resolve_one("edcd_rares",     self.EDCD_URLS["rares"],     "rare_commodity"),
         }
