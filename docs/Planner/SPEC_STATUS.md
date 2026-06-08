@@ -46,7 +46,7 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 | `--loop` | `[todo]` | Gated. |
 | `--via` | `[todo]` | Gated. |
 | `--avoid` | `[todo]` | Gated. |
-| `--direct` | `[todo]` | Gated. |
+| `--direct` | `[varied]` | Single direct hop between a fixed `--from` and `--to`; no jump/distance checks. Requires both endpoints; single-hop only; open-destination mode dropped. See Variations. |
 | `--shorten` | `[todo]` | Gated. |
 | `--unique` | `[todo]` | Gated. |
 | `--loop-interval` | `[todo]` | Gated. |
@@ -55,7 +55,7 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 
 | Option | Status | Note |
 |--------|--------|------|
-| `--ly-per` | `[done]` | Required (unless `--direct`, which is gated). |
+| `--ly-per` | `[done]` | Required, unless `--direct` — then moot and ignored. |
 | `--jumps-per` | `[done]` | Any non-negative int. Keyed default: omitted → 2 if `--ly-per ≤ 12.5`, else 1. |
 | `--start-jumps` | `[done]` | Empty positioning jumps before the first trade hop; expands eligible origins from the `--from` anchor's system. Requires `--from`. |
 | `--end-jumps` | `[done]` | Mirror after the last hop; expands eligible destinations from the `--to` anchor's system. Requires `--to`. |
@@ -125,7 +125,7 @@ separate semantics for the same option.
 | Trade candidate generation | `[done]` | |
 | Cargo fitting | `[done]` | Capacity, credits, insurance, margin, limit, supply, demand-as-cap, gain-per-ton. Avoided-commodity input is moot (`--avoid` gated). |
 | Credits, insurance, margin | `[done]` | |
-| Reachability | `[done]` | `--ly-per`, `--jumps-per`, same-system supercruise. `--direct` is `[todo]`. |
+| Reachability | `[done]` | `--ly-per`, `--jumps-per`, same-system supercruise. `--direct` bypasses reachability for a fixed pair (see Variations). |
 | Route generation | `[done]` | |
 | Route ranking | `[done]` | Practical value with ls-penalty; `--to` honoured; `--towards` ranks progress-first (closest, then fewer hops, profit only breaking ties). The other shaping options (`--loop`/`--shorten`/`--via`/`--unique`) are gated. |
 | ls-penalty | `[done]` | Protected curve. |
@@ -183,6 +183,20 @@ Each of these is a chosen difference, not a gap. Do not revert without raising i
    fewer hops, profit only a tie-breaker) reads the spec's "MAY optimise profit
    among forward-progress candidates" as the optional permission it is, not a
    licence to override the "MUST move closer" requirement.
+
+7. **`--direct` is a fixed-pair single hop.** The spec describes `--direct` as a
+   general reachability bypass and is silent on endpoints; its plural "hops"
+   (Reachability section) leans multi-hop. We scope it to the bounded, useful
+   case: the best single trade between a fixed `--from` and `--to`, jump route
+   left to the commander. Three chosen differences: (a) **single hop only** —
+   the legacy path forced `hops = 1` and the parser already makes `--direct`
+   mutually exclusive with `--hops`; (b) **both endpoints required** — the spec
+   never demands it, but an open end under `--direct` has no spatial bound, so
+   we reject it; (c) **open-destination "to anywhere" mode dropped** — the
+   legacy did it by scanning the whole preloaded galaxy in Python, the
+   preload-first pattern this rewrite removes, so it is deferred, not rebuilt.
+   `--ly-per`/`--jumps-per` are tolerated but ignored; `--towards` and empty-jump
+   positioning are rejected as contradictory.
 
 ---
 

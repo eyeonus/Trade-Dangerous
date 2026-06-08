@@ -147,6 +147,12 @@ Do unify the contract.
   the target ends the route ("arrived after N hops"); if the hops run out first
   it gets as close as it can. The "MAY optimise profit" in the spec is read as
   the optional permission it is, subordinate to the "MUST move closer" rule.
+- **`--direct`** — the relocation run. Plans the single most profitable trade
+  between a fixed `--from` and `--to` with no jump-path or distance checks; the
+  commander flies the route themselves. Requires both endpoints, single hop only
+  (mutually exclusive with `--hops`). `--ly-per`/`--jumps-per` are tolerated but
+  ignored; `--towards` and empty-jump positioning are rejected as contradictory.
+  The hop carries no jump path and shows as a direct leg in the route output.
 
 ### Legacy retired
 
@@ -232,16 +238,26 @@ unknown-pad station is admitted unless `--pad-size L` is set. Full reasoning in
 ## What's still owed
 
 The authoritative, option-by-option status lives in **`SPEC_STATUS.md`**. In
-short, the route shapes, empty-jump positioning, and `--towards` are done; what
-remains is the rest of the modifier and display surface — `--via`, `--avoid`,
-`--loop`, `--unique`, `--shorten`, `--loop-interval`, and the search/display
-controls
+short, the route shapes, empty-jump positioning, `--towards`, and `--direct` are
+done; what remains is the rest of the modifier and display surface — `--via`,
+`--avoid`, `--loop`, `--unique`, `--shorten`, `--loop-interval`, and the
+search/display controls
 (`--routes > 1`, `--max-routes`, `--prune-*`, `--checklist`, `--x52-pro`). Three
 options (`--show-jumps`, `--summary`, `--progress`) parse without error but
 currently do nothing — see `SPEC_STATUS.md`.
 
 Agreed-but-unscheduled decisions and noted-for-later items:
 
+- **Single validator (agreed next slice).** `trade run` validates in two places:
+  the command-layer `validateRunArgumentsFast` (the legacy-complete suite that
+  raises `CommandLineError`) and the planner's `validation.py` (the in-progress
+  new-planner validator on the neutral `RunRequest`). With `--old` retired there
+  is one path, so the two are redundant and have diverged in spots (e.g. the
+  `--insurance` rule differs — `credits + 42` buffer vs none). Plan: consolidate
+  onto `validation.py`, slim the command layer to parse → build → delegate, and
+  first confirm planner failures present as cleanly as today's `CommandLineError`s.
+  Genuine parser-level concerns (the `--direct`/`--hops` mutual exclusion,
+  credit-suffix parsing) stay in the argument definitions.
 - **`--sco` flag** — declares an SCO drive; clamps `--ls-penalty` to 0. UX
   signalling (flag / ship profile / journal) to resolve when it lands.
 - **`--bulk-tax-mode`** — decided. If ever built, the switch does one thing:

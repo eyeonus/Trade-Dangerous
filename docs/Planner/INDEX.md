@@ -181,6 +181,14 @@ Each completed slice has an implementation plan (what needs to be done) and a co
 | [seventeenth_slice_implementation_plan.md](seventeenth_slice_implementation_plan.md) | Design plan for Slice 17, with the mid-slice correction recorded: the MUST (strict-progress filter at the shared open-destination fetch) vs the MAY (progress-first ranking, profit an optional tie-breaker) read from the spec's RFC 2119 keywords; the legacy goal-scoring review that confirmed the reading; arrival and early stop as emergent properties; the `--towards`/`--to` exclusion. |
 | [seventeenth_slice_completion_report.md](seventeenth_slice_completion_report.md) | Proof of completion: the five-step build, the shared progress-rank helper applied at every selection point (non-towards paths byte-identical), arrival capture in the open-anchor engine, arrival reporting, and the Sol → Lave spot-check arriving in 2 of 3 hops. |
 
+### Slice 18 — Direct Point-to-Point Trade (`--direct`) (Complete)
+**`--direct` plans the single most profitable trade between a fixed `--from` and `--to` with no jump-path or distance checks — the relocation run that doesn't fly empty. Requires both endpoints, single hop only; `--ly-per`/`--jumps-per` tolerated but ignored; `--towards` and empty-jump positioning rejected.**
+
+| Document | Content |
+|----------|---------|
+| [eighteenth_slice_implementation_plan.md](eighteenth_slice_implementation_plan.md) | Design plan for Slice 18, with the authorised legacy trace that pinned the contract: legacy `--direct` forced `hops = 1`, set the jump range to effectively infinite, and skipped reachability; the open-destination "to anywhere" mode (a full-galaxy in-Python scan) is deliberately dropped. The validation philosophy — tolerate the moot, reject contradictory route-shape intent — and the renderer handling of a hop with no jump path. |
+| [eighteenth_slice_completion_report.md](eighteenth_slice_completion_report.md) | Proof of completion: the un-gate across both validation layers, the canonical `hops → 1`, the reachability skip in `_best_pair_plan`, the renderer's direct-leg line, and the spot-checks. Records the discovery that `trade run` carries two validation layers (the redundancy the next slice resolves). |
+
 ---
 
 ## Reference and Technical Notes
