@@ -483,35 +483,28 @@ Reduce `TradeCalc.__init__()` setup overhead before touching route maths.
 - `run` shows measurable improvement before route-maths work begins
 
 ### Tasks
-- [x] K1. Add `TradeCalc.__init__()` sub-phase timings
-  - Status note: `Sub-phase time_block calls (item_filter, query_prep, row_scan, finalize) already present at DEBUG0. Added a new DEBUG0 line exposing rows_seen, dmdCount, supCount, and restriction state. Benchmark runs confirm row_scan dominates; all other phases are negligible. Every tested command shape scans identical 9,137,044 rows with no restriction active.`
-  - Evidence: `46c60034; timings.txt benchmark session 2026-05-03; docs/PERF_NOTES.md K1 section`
-- [x] K2. Derive candidate station IDs before constructor
-  - Status note: `For explicit station-to-station, one-hop runs (no startJumps, endJumps, viaPlaces, loop, goalSystem, or shorten), restrict_station_ids is derived before TradeCalc construction and passed at the call site. Guard conditions prevent unsafe application to multi-hop or geometrically open shapes. row_scan: 9.1M rows/~47s → 139 rows/~4ms. TradeCalc.__init__: ~47s → ~8ms. Route output and suitability semantics unchanged.`
-  - Evidence: `3c5962d4; benchmark 2026-05-03`
-- [x] K2A. Station type registry and settlement/fleet filter rationalisation
-  - Status note: `Inserted before K3 because capability filtering exposed that station type semantics were still legacy/collapsed and the old --odyssey filter was misnamed. Added tradedangerous/db/station_types.py as the canonical source of truth: 0-15 type_id constants, DISPLAY_NAMES, external Spansh type mapping, FLEET_CARRIER_TYPE_IDS, SETTLEMENT_TYPE_IDS, PLANETARY_BY_TYPE_IDS, and fleet_carrier_state()/settlement_state() helpers. Spansh import now maps station.type through the registry instead of the old collapsed _build_station_type_map(). --odyssey/--od was renamed to --settlement with no legacy alias across commands and GUI. Y/N/? semantics were corrected: Y=in classification set, N=known and not in set, ?=UNKNOWN/type_id 0. Full six-combination SQL filter logic was applied in local/buy/sell; nav/olddata/run use Python-side station state. --settlement Y requires planetary Y, centralised in CommandEnv.checkSettlement(). TradeDB.odysseyStates became settlementStates; Station.odyssey became settlement; _loadStations() uses registry helpers. Listener fallback for unknown station types was corrected to UNKNOWN/type_id 0. Fresh Sol-25ly fixtures were regenerated from Spansh/EDDBlink, fixture-dependent tests updated, stray generated fixture files removed. Fixture was subsequently regenerated with corrected system list; Blanco Manufacturing Forge is a natural duplicate in Lushertha and Jastreb Sector CL-Y d145.`
-  - Evidence: `80b67f2b; 0c19625d; 9d48ed45; 1c82e381; 58bb1cc1; a9761f9d; fd7529d8; a19719d2; 542af129; 7df13360; 0a300de7; ee777adc; 432 tests passing`
-- [x] K3. Wire station restriction narrowing properly
-  - Status note: `K3A capability preload filtering landed and was pragmatically validated. station_id IN (SELECT station_id FROM Station WHERE ...) subquery added to TradeCalc.__init__() query_prep. Filters pushed: padSize (max_pad_size), noPlanet/planetary (planetary), fleet (type_id via FLEET_CARRIER_TYPE_IDS registry), settlement (type_id via SETTLEMENT_TYPE_IDS registry), blackMarket (blackmarket), maxLs (ls_from_star). Registry constants used throughout; no raw magic numbers. Explicit anchor stations (origPlace/destPlace/viaSet) UNIONed into the subquery so checkStationSuitability() retains correct error provenance. Parser normalisation bug fixed: all four station filter parsers now store val.upper() at parse time. --stl alias added for --settlement. Further K3 preload/cache optimisation is paused pending K4.`
-  - Evidence: `2f72d32b; 5bebc304; 4a81a218; 432 tests passing; live validation on 2026-05-08`
-- [x] K4. First-principles trade run architecture review
-  - Status note: `Phase A (SQL provider self-check) and Phase B (raw edge parity) confirmed PRICE_AND_UNITS as the legacy-compatible edge eligibility rule. The open design question -- how to consume SQL candidate edges without materialising millions into Python -- was answered by building a clean-room planner that queries the database directly per run, with no full-galaxy preload. Decision: replace the preload-first TradeCalc/TradeDB model, do not narrow it. The planner rewrite (Slices 1-14, docs/Planner/) delivered the replacement; trade run is planner-only and tradecalc.py / tradedb.py are retired. This closes Checkpoint K and supersedes K5/K6/K7.`
-  - Evidence: `docs/K4_PHASE_B_CONCLUSION.md; k4_proto/provider.py; k4_proto/selfcheck.py; k4_proto/parity.py; fixtures Achenar/Dawes Hub (29,628 edges exact match) and Shinrarta Dezhra/Jameson Memorial (1,702,258 edges exact match)`
-- [~] K5. Push more filtering into SQL
-  - Status note: `Superseded. K4 replaced the preload-first model; the new planner pushes filtering into SQL by design, so there is no legacy preload left to optimise here.`
-  - Evidence: `K4 planning decision 2026-05-08`
-- [~] K6. Evaluate SQL-side timestamp handling
-  - Status note: `Superseded. This concerned the legacy preload/parse_ts() route path, which is retired with the rest of the preload-first model; the planner does its own SQL-side age handling.`
-  - Evidence: `K4 planning decision 2026-05-08`
-- [~] K7. Re-benchmark `run`
-  - Status note: `Superseded. The legacy run path this would benchmark is retired; the new planner's per-shape timings are recorded across the Slice 1-14 completion reports in docs/Planner/.`
-  - Evidence: `K4 planning decision 2026-05-08`
+- Checkpoint K's original goal was wholly replaced with a complete rewrite of `trade run`
+- tradedb.py and tradecalc.py were retired and archived
+- tradedangerous/planner contains the new code
+- this major rewrite was fully documented under docs/Planner
 
-### Notes
-- K3A was tactical containment, not the final answer to trade run performance — and K4 superseded it.
-- K4 existed because TradeCalc materialised a large Python-side market cache and then performed database-like filtering/joining over that cache during normal single-query CLI execution. The clean-room planner removes that model entirely: it queries the database directly per run.
-- Checkpoint K is complete, realised by the planner rewrite (Slices 1–14). The legacy route path, TradeCalc, the full-galaxy preload, and TradeDB are retired. Full record: `docs/Planner/` (`SLICE_SUMMARY.md`, `fourteenth_slice_completion_report.md`).
+### Follow-up: outfitting-table drop and SQLite↔ORM reconciliation
+- Schema cleanup riding on the rebuild (not part of the `trade run` planner): the
+  outfitting tables `Upgrade`, `UpgradeVendor`, and the `FDevOutfitting` EDCD bridge
+  were dropped. No command ever queried them — `UpgradeVendor` was a 2014 `dbimport`
+  placeholder for a `buy --upgrade` mode that was never built, and at ~3.6 GiB it
+  cost hours of import time. Ships (`Ship`/`ShipVendor`/`FDevShipyard`) and the
+  `Station.outfitting` Y/N flag are kept.
+- Removed from: the SQLite template, the ORM models, the spansh and eddblink
+  importers, and the buildcache/CSV glue. The listeners drive those plugins rather
+  than the tables directly, so they needed no change. (commits `ac2d2669`, `cea68d0c`)
+- SQLite template reconciled with the ORM in the same pass: the two previously
+  ORM-only indexes (`idx_category_by_name`, `idx_item_by_category`) added to the
+  template, name columns widened to `VARCHAR(128)`, `FDevShipyard.id` made a
+  PRIMARY KEY, and the unused `StationBuying`/`StationSelling` views dropped. SQLite
+  effects are cosmetic; the value is keeping the two hand-maintained schemas in step
+  so a consequential drift is less likely to slip through. (commit `6e5319d0`)
+- Docs updated: `docs/ORM_Schema_reference.md`, `docs/db_engine_reference.md`.
 
 ---
 

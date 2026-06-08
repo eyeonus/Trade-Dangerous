@@ -294,6 +294,12 @@ Executes a multi-statement SQL script safely, stripping comments and empty lines
 ### `_create_sqlite_from_legacy(engine)`
 Recreate SQLite schema from legacy SQL file.
 
+> The template (`TradeDangerous.sql`) is the canonical SQLite shape and is kept
+> reconciled with the ORM models (`orm_models.py`); the current table catalogue
+> lives in `docs/ORM_Schema_reference.md`. The outfitting tables (`Upgrade`,
+> `UpgradeVendor`, `FDevOutfitting`) and the `StationBuying`/`StationSelling`
+> views were removed in the overall-refactor schema cleanup (Checkpoint K).
+
 ---
 
 ## Public Reset Functions
