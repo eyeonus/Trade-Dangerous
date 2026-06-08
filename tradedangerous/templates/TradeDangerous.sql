@@ -36,11 +36,11 @@ BEGIN TRANSACTION;
 CREATE TABLE System
  (
    system_id BIGINT PRIMARY KEY,
-   name VARCHAR(40) COLLATE nocase,
+   name VARCHAR(128) COLLATE nocase,
    -- derived normalised search key (uppercased; punctuation, spaces and
    -- apostrophes stripped) used for partial-name lookup. Populated via
    -- corrections.normalize_str; nullable, no index (queried with leading wildcard).
-   lookup_name VARCHAR(40) COLLATE nocase,
+   lookup_name VARCHAR(128) COLLATE nocase,
    pos_x DOUBLE NOT NULL,
    pos_y DOUBLE NOT NULL,
    pos_z DOUBLE NOT NULL,
@@ -55,9 +55,9 @@ CREATE INDEX idx_system_by_name ON System (name);
 CREATE TABLE Station
  (
    station_id BIGINT PRIMARY KEY,
-   name VARCHAR(40) COLLATE nocase,
+   name VARCHAR(128) COLLATE nocase,
    -- derived normalised search key; see System.lookup_name.
-   lookup_name VARCHAR(40) COLLATE nocase,
+   lookup_name VARCHAR(128) COLLATE nocase,
    system_id BIGINT NOT NULL,
    ls_from_star INTEGER NOT NULL DEFAULT 0
        CHECK (ls_from_star >= 0),
@@ -94,7 +94,7 @@ CREATE INDEX idx_station_by_system_name ON Station (system_id, name);
 CREATE TABLE Ship
  (
    ship_id INTEGER PRIMARY KEY,
-   name VARCHAR(40) COLLATE nocase,
+   name VARCHAR(128) COLLATE nocase,
    cost INTEGER,
 
    UNIQUE (ship_id)
@@ -122,16 +122,17 @@ CREATE INDEX idx_shipvendor_by_station ON ShipVendor (station_id);
 CREATE TABLE Category
  (
    category_id INTEGER PRIMARY KEY,
-   name VARCHAR(40) COLLATE nocase,
+   name VARCHAR(128) COLLATE nocase,
 
    UNIQUE (category_id)
  );
+CREATE INDEX idx_category_by_name ON Category (name);
 
 
 CREATE TABLE Item
  (
    item_id INTEGER PRIMARY KEY,
-   name VARCHAR(40) COLLATE nocase,
+   name VARCHAR(128) COLLATE nocase,
    category_id INTEGER NOT NULL,
    ui_order INTEGER NOT NULL DEFAULT 0,
    avg_price INTEGER,
@@ -148,6 +149,7 @@ CREATE TABLE Item
     ON DELETE RESTRICT
  );
  CREATE INDEX idx_item_by_fdev_id ON Item (fdev_id);
+CREATE INDEX idx_item_by_category ON Item (category_id);
 
 
 CREATE TABLE StationItem
@@ -173,28 +175,6 @@ CREATE INDEX si_mod_stn_itm ON StationItem(modified, station_id, item_id);
 CREATE INDEX si_itm_dmdpr ON StationItem(item_id, demand_price) WHERE demand_price > 0;
 CREATE INDEX si_itm_suppr ON StationItem(item_id, supply_price) WHERE supply_price > 0;
 
-CREATE VIEW StationBuying AS
-SELECT  station_id,
-        item_id,
-        demand_price AS price,
-        demand_units AS units,
-        demand_level AS level,
-        modified
-  FROM  StationItem
- WHERE  demand_price > 0
-;
-
-CREATE VIEW StationSelling AS
-SELECT  station_id,
-        item_id,
-        supply_price AS price,
-        supply_units AS units,
-        supply_level AS level,
-        modified
-  FROM  StationItem
- WHERE  supply_price > 0
-;
-
 --
 -- The FDevShipyard table maps the FDev API IDs to data
 -- ready for EDDN.
@@ -213,9 +193,9 @@ SELECT  station_id,
 
 CREATE TABLE FDevShipyard
  (
-   id INTEGER NOT NULL,
-   symbol VARCHAR(40),
-   name VARCHAR(40) COLLATE nocase,
+   id INTEGER PRIMARY KEY,
+   symbol VARCHAR(128),
+   name VARCHAR(128) COLLATE nocase,
    entitlement VARCHAR(50),
 
    UNIQUE (id)
