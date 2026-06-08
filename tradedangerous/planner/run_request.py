@@ -75,6 +75,11 @@ class RunRequest:
 def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
     """Build a neutral request from the parsed command environment."""
 
+    # --direct is a single direct hop by definition; the parser makes it
+    # mutually exclusive with --hops, so resolve the canonical hop count to 1
+    # here rather than letting the --hops default flow through to dispatch.
+    direct = getattr(cmdenv, "direct", False)
+
     return RunRequest(
         capacity_units=getattr(cmdenv, "capacity", None),
         starting_credits=getattr(cmdenv, "credits", None),
@@ -83,7 +88,7 @@ def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
         margin=getattr(cmdenv, "margin", 0.0) or 0.0,
         from_text=getattr(cmdenv, "starting", None),
         to_text=getattr(cmdenv, "ending", None),
-        hops=getattr(cmdenv, "hops", 1),
+        hops=1 if direct else getattr(cmdenv, "hops", 1),
         max_jumps_per_hop=_resolve_jumps_per_hop(
             getattr(cmdenv, "maxJumpsPer", None),
             getattr(cmdenv, "maxLyPer", None),
@@ -116,7 +121,7 @@ def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
         progress=getattr(cmdenv, "progress", False),
         detail=getattr(cmdenv, "detail", 0) or 0,
         debug=getattr(cmdenv, "debug", False),
-        direct=getattr(cmdenv, "direct", False),
+        direct=direct,
         start_jumps=getattr(cmdenv, "startJumps", 0) or 0,
         end_jumps=getattr(cmdenv, "endJumps", 0) or 0,
         empty_ly_per=getattr(cmdenv, "emptyLyPer", None),

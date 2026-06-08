@@ -184,7 +184,10 @@ def _render_hop(
 
     lines.append("")
     lines.append("  Travel:")
-    if hop.jump_path.is_same_system:
+    if hop.jump_path is None:
+        # --direct carries no jump path: the commander plots the route.
+        lines.append("    Direct: plot your own jump route")
+    elif hop.jump_path.is_same_system:
         lines.append("    Same-system supercruise")
     else:
         path = " -> ".join(system.name for system in hop.jump_path.systems)

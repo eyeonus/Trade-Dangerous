@@ -385,20 +385,26 @@ def _best_pair_plan(
         for destination_station in destination_stations:
             if source_station.station_id == destination_station.station_id:
                 continue
-            reach_started = time.perf_counter()
-            try:
-                jump_path = plan_jump_path(
-                    _system_from_station(source_station),
-                    _system_from_station(destination_station),
-                    max_jumps_per_hop=int(request.max_jumps_per_hop or 0),
-                    max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
-                    session=session,
-                    bubble_cache=bubble_cache,
-                )
-            except failures.NoReachableRoute:
+            if request.direct:
+                # --direct: the commander plots the jumps themselves, so the
+                # planner skips reachability and carries no jump path. Every
+                # pair is treated as reachable.
+                jump_path = None
+            else:
+                reach_started = time.perf_counter()
+                try:
+                    jump_path = plan_jump_path(
+                        _system_from_station(source_station),
+                        _system_from_station(destination_station),
+                        max_jumps_per_hop=int(request.max_jumps_per_hop or 0),
+                        max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
+                        session=session,
+                        bubble_cache=bubble_cache,
+                    )
+                except failures.NoReachableRoute:
+                    reachability_ms += _elapsed_ms(reach_started)
+                    continue
                 reachability_ms += _elapsed_ms(reach_started)
-                continue
-            reachability_ms += _elapsed_ms(reach_started)
             saw_reachable_pair = True
             market_started = time.perf_counter()
             try:

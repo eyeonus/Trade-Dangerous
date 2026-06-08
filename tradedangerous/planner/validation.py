@@ -23,7 +23,10 @@ def validate_run_request(request: RunRequest) -> None:
 
     _require_present(request.capacity_units, "--capacity")
     _require_present(request.starting_credits, "--credits")
-    _require_present(request.max_ly_per_jump, "--ly-per")
+    if not request.direct:
+        # --direct discards the jump model entirely, so --ly-per is moot under
+        # it and not required. Every other shape needs it.
+        _require_present(request.max_ly_per_jump, "--ly-per")
 
     if request.hops < 1:
         raise InvalidNumericOption(
@@ -37,8 +40,34 @@ def validate_run_request(request: RunRequest) -> None:
             option_name="--hops",
         )
 
+    # --direct is a single direct hop between two named endpoints: the best
+    # trade from --from to --to, with the jump route left to the commander. It
+    # needs both ends anchored, and it throws away the reachability model, so the
+    # options that shape multi-hop routing or empty-jump positioning have nothing
+    # to act on and are rejected outright rather than silently ignored. We do not
+    # guess which of two contradictory flags the commander meant. Options that
+    # --direct merely makes moot (--ly-per, --jumps-per) are tolerated, so a
+    # standard paste-in block is not punished for an irrelevant flag.
+    # (--direct with --loop is already rejected at the parser.)
+    if request.direct:
+        if not request.from_text or not request.to_text:
+            raise MissingRequiredInput(
+                "--direct needs both --from and --to.",
+                option_name="--direct",
+            )
+        if request.towards_text:
+            raise ContradictoryOptions(
+                "--direct cannot be combined with --towards.",
+                option_name="--direct",
+            )
+        if request.start_jumps or request.end_jumps:
+            raise ContradictoryOptions(
+                "--direct cannot be combined with --start-jumps or "
+                "--end-jumps.",
+                option_name="--direct",
+            )
+
     unsupported = (
-        ("--direct", request.direct),
         ("--loop", request.loop),
         ("--via", bool(request.via)),
         ("--avoid", bool(request.avoid)),
@@ -133,7 +162,9 @@ def validate_run_request(request: RunRequest) -> None:
             option_name="--jumps-per",
         )
 
-    if request.max_ly_per_jump is None or request.max_ly_per_jump <= 0:
+    if not request.direct and (
+        request.max_ly_per_jump is None or request.max_ly_per_jump <= 0
+    ):
         raise InvalidNumericOption(
             "--ly-per must be greater than zero.",
             option_name="--ly-per",

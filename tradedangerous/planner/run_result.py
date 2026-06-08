@@ -120,7 +120,9 @@ class PlannedHop:
     cargo: CargoPlan
     raw_profit: int
     practical_score: float
-    jump_path: JumpPath
+    # None under --direct: reachability is skipped, so the hop carries no jump
+    # path and the commander plots the route themselves.
+    jump_path: JumpPath | None
 
 
 @dataclass(frozen=True, slots=True)

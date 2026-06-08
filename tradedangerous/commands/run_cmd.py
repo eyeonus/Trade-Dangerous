@@ -381,7 +381,27 @@ def validateRunArgumentsFast(cmdenv):
     
     if cmdenv.loop and cmdenv.direct:
         raise CommandLineError("Cannot use --direct and --loop together")
-    
+
+    # --direct is a single direct hop between two named endpoints: the best
+    # trade from --from to --to, with the jump route left to the commander. It
+    # needs both ends anchored, and it discards the reachability model, so the
+    # options that shape multi-hop routing or empty-jump positioning have nothing
+    # to act on. We reject those rather than guess which of two contradictory
+    # flags the commander meant. Options --direct merely makes moot (--ly-per,
+    # --jumps-per) are tolerated, so a standard paste-in block is not punished.
+    if cmdenv.direct:
+        if cmdenv.goalSystem:
+            raise CommandLineError(
+                "--direct cannot be combined with --towards."
+            )
+        if cmdenv.startJumps or cmdenv.endJumps:
+            raise CommandLineError(
+                "--direct cannot be combined with --start-jumps or --end-jumps."
+            )
+        if not getattr(cmdenv, "starting", None) \
+                or not getattr(cmdenv, "ending", None):
+            raise CommandLineError("--direct needs both --from and --to.")
+
     if (
         cmdenv.limit is not None
         and cmdenv.capacity is not None
@@ -400,7 +420,6 @@ def validateRunArgumentsFast(cmdenv):
         )
     
     unsupported = (
-        ("--direct", getattr(cmdenv, "direct", False)),
         ("--loop", getattr(cmdenv, "loop", False)),
         ("--via", bool(getattr(cmdenv, "via", None))),
         ("--avoid", bool(getattr(cmdenv, "avoid", None))),
