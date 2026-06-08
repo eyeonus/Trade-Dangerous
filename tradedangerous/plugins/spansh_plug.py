@@ -27,6 +27,7 @@ import sys
 import time
 import traceback
 import typing
+import zlib
 
 # SQLAlchemy
 from sqlalchemy import MetaData, Table, select, insert, update, func, and_, or_, UniqueConstraint
@@ -57,7 +58,7 @@ if typing.TYPE_CHECKING:
     from tradedangerous.tradeorm import TradeORM
 
 
-DEFAULT_URL = "https://downloads.spansh.co.uk/galaxy_stations.json"
+DEFAULT_URL = "https://downloads.spansh.co.uk/galaxy_stations.json.gz"
 
 
 class ImportPlugin(plugins.ImportPluginBase):
@@ -1157,20 +1158,33 @@ class ImportPlugin(plugins.ImportPluginBase):
         downloaded = 0
         
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "TradeDangerous"})
+            # Spansh publishes galaxy_stations.json.gz (~4GB) alongside the raw
+            # ~20GB JSON. For a .gz source we decompress the stream as it
+            # arrives, so only the compressed dump crosses the wire while the
+            # cache file on disk stays plain JSON for the parser. Progress
+            # counts the compressed bytes pulled, matching Content-Length.
+            is_gzip = url.split("?", 1)[0].endswith(".gz")
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "TradeDangerous", "Accept-Encoding": "identity"},
+            )
             with urllib.request.urlopen(req, timeout=60) as resp:
                 total = int(resp.headers.get("Content-Length") or 0)
                 start = time.time()
-                
+                # 16 + MAX_WBITS selects gzip (header + trailer) decoding.
+                decomp = zlib.decompressobj(16 + zlib.MAX_WBITS) if is_gzip else None
+
                 with tmp_path.open("wb") as out:
                     while True:
                         chunk = resp.read(1024 * 1024)
                         if not chunk:
                             break
-                        out.write(chunk)
                         downloaded += len(chunk)
+                        out.write(decomp.decompress(chunk) if decomp else chunk)
                         self._download_progress(label, downloaded, total, start)
-            
+                    if decomp:
+                        out.write(decomp.flush())
+
             tmp_path.replace(cache_path)
         finally:
             try:
