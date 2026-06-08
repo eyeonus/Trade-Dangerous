@@ -37,6 +37,10 @@ CREATE TABLE System
  (
    system_id BIGINT PRIMARY KEY,
    name VARCHAR(40) COLLATE nocase,
+   -- derived normalised search key (uppercased; punctuation, spaces and
+   -- apostrophes stripped) used for partial-name lookup. Populated via
+   -- corrections.normalize_str; nullable, no index (queried with leading wildcard).
+   lookup_name VARCHAR(40) COLLATE nocase,
    pos_x DOUBLE NOT NULL,
    pos_y DOUBLE NOT NULL,
    pos_z DOUBLE NOT NULL,
@@ -52,6 +56,8 @@ CREATE TABLE Station
  (
    station_id BIGINT PRIMARY KEY,
    name VARCHAR(40) COLLATE nocase,
+   -- derived normalised search key; see System.lookup_name.
+   lookup_name VARCHAR(40) COLLATE nocase,
    system_id BIGINT NOT NULL,
    ls_from_star INTEGER NOT NULL DEFAULT 0
        CHECK (ls_from_star >= 0),

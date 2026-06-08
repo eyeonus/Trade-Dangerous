@@ -289,6 +289,13 @@ def processImportFile(
                     rowdict["class_"] = rowdict.pop("class")
                 if tableName == "FDevOutfitting" and "class" in rowdict:
                     rowdict["class_"] = rowdict.pop("class")
+                # Derived lookup_name for System/Station: recompute from the
+                # (already corrected) name so a rebuild always yields a correct
+                # search key, overriding whatever the CSV carried. See
+                # corrections.normalize_str.
+                if tableName in ("System", "Station"):
+                    nm = rowdict.get("name")
+                    rowdict["lookup_name"] = corrections.normalize_str(nm) if isinstance(nm, str) else None
                 # ORM insert/merge
                 Model = getattr(SA, tableName)
                 obj = Model(**rowdict)

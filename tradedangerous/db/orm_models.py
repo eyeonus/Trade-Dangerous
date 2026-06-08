@@ -128,6 +128,12 @@ class System(Base):
     
     system_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str] = mapped_column(CIString(128), nullable=False)
+    # Derived normalised search key for partial-name lookup; populated via
+    # corrections.normalize_str. Nullable with no default: an unpopulated
+    # row is simply invisible to fuzzy candidate gathering until the next write
+    # or rebuild fills it. No index -- it is only ever queried with a leading
+    # wildcard, which a B-tree cannot accelerate.
+    lookup_name: Mapped[str | None] = mapped_column(CIString(128), nullable=True)
     pos_x: Mapped[float] = mapped_column(nullable=False)
     pos_y: Mapped[float] = mapped_column(nullable=False)
     pos_z: Mapped[float] = mapped_column(nullable=False)
@@ -155,7 +161,9 @@ class Station(Base):
     
     station_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str] = mapped_column(CIString(128), nullable=False)
-    
+    # Derived normalised search key; see System.lookup_name.
+    lookup_name: Mapped[str | None] = mapped_column(CIString(128), nullable=True)
+
     def dbname(self) -> str:
         return f"{self.system.name}/{self.name}"
     

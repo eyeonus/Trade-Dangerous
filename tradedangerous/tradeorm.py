@@ -25,6 +25,7 @@ from .tradeexcept import (
     SystemNotStationError,
     format_system_candidates,
 )
+from .corrections import normalize_str, _normalize_trans, _trim_trans
 from .db import (
     orm_models as orm,          # type: ignore  # so we can access models easily
     make_engine_from_config,    # type: ignore
@@ -34,15 +35,11 @@ from .db import (
 if typing.TYPE_CHECKING:
     from .db.engine import sessionmaker, Engine, Session  # type: ignore
 
-# Normalization tables matching TradeDB.normalizeTrans and TradeDB.trimTrans.
-# Stage 1: uppercase a-z, delete [ ] ( ) * + - . , { } :
-_normalize_trans = str.maketrans(
-    'abcdefghijklmnopqrstuvwxyz',
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-    '[]()*+-.,{}:'
-)
-# Stage 2: delete space and apostrophe
-_trim_trans = str.maketrans('', '', " '")
+# Normalisation now lives in the dependency-free corrections module so every
+# writer of lookup_name shares one rule. _normalize_trans, _trim_trans and
+# normalize_str are imported above; the module-level names are kept so the
+# internal .translate(...) calls below and the TradeORM class attributes still
+# resolve unchanged.
 
 
 class TradeORM:
@@ -139,23 +136,12 @@ class TradeORM:
     def normalize_str(s: str) -> str:
         """Apply the two-stage normalisation used by _list_search.
 
-        Equivalent to TradeDB.normalizedStr(): stage-1 uppercases and removes
-        punctuation; stage-2 removes spaces and apostrophes.
+        Compatibility shim: delegates to corrections.normalize_str (the shared
+        rule). The bare name below resolves to the imported module-level
+        function, not this method, so there is no recursion. Kept because
+        commandenv and external callers use TradeORM.normalize_str().
         """
-        return s.translate(_normalize_trans).translate(_trim_trans)
-
-    @staticmethod
-    def _prefix_of(name: str) -> str:
-        """Stage-1 normalize *name* and return the first space-delimited word.
-
-        Used to build 'name ILIKE prefix%' DB queries that narrow candidates
-        to a manageable superset before Python-side partial matching runs.
-        No leading wildcard is used, so prefix scans can exploit
-        idx_system_by_name / idx_station_by_name.
-        """
-        normalized = name.translate(_normalize_trans)
-        parts = normalized.split()
-        return parts[0] if parts else name
+        return normalize_str(s)
 
     @staticmethod
     def _list_search(
@@ -304,7 +290,8 @@ class TradeORM:
             raise LookupError(f"Unrecognized place: {name!r}")
         raise AmbiguityError(
             "Place", name, all_candidates,
-            key=lambda p: p.name,
+            # Candidates reaching here are stations; show the System/Station pair.
+            key=lambda p: p.dbname(),
         )
 
     # ------------------------------------------------------------------
@@ -386,36 +373,25 @@ class TradeORM:
         )
 
         if not stn_results and not sys_results:
-            # Neither exact scan found anything — try partial via prefix ILIKE,
-            # then interior ILIKE if prefix returns nothing (two-step superset).
-            prefix = self._prefix_of(name)
+            # Neither exact scan found anything — gather candidates via the
+            # normalised lookup_name key, a true superset of what the Python
+            # matcher accepts (interior and cross-space fragments included).
+            needle = normalize_str(name)
             stn_cands = (
                 self.session.query(orm.Station)
-                .filter(orm.Station.name.ilike(f"{prefix}%"))
+                .filter(orm.Station.lookup_name.ilike(f"%{needle}%"))
                 .all()
             )
-            if not stn_cands:
-                stn_cands = (
-                    self.session.query(orm.Station)
-                    .filter(orm.Station.name.ilike(f"%{name}%"))
-                    .all()
-                )
             sys_cands = (
                 self.session.query(orm.System)
-                .filter(orm.System.name.ilike(f"{prefix}%"))
+                .filter(orm.System.lookup_name.ilike(f"%{needle}%"))
                 .all()
             )
-            if not sys_cands:
-                sys_cands = (
-                    self.session.query(orm.System)
-                    .filter(orm.System.name.ilike(f"%{name}%"))
-                    .all()
-                )
             if stn_cands:
                 try:
                     stn_results = [
                         self._list_search(
-                            "Station", name, stn_cands, key=lambda s: s.name
+                            "Station", name, stn_cands, key=lambda s: s.dbname()
                         )
                     ]
                 except LookupError:
@@ -495,22 +471,17 @@ class TradeORM:
         )
 
         if not results:
-            # Partial matching fallback — mirrors listSearch on systemByName/systemByID.
-            # Full name (including any @N) is passed to _list_search; @N is treated as
-            # a literal search string in the partial path (DOCUMENTED LEGACY BUG parity).
-            prefix = self._prefix_of(name)
+            # Partial matching fallback — gather candidates via the normalised
+            # lookup_name key (a true superset of the Python matcher). The full
+            # name (including any @N) is passed to _list_search; @N is treated
+            # as a literal search string in the partial path (DOCUMENTED LEGACY
+            # BUG parity — it will simply not match lookup_name, as before).
+            needle = normalize_str(name)
             candidates = (
                 self.session.query(orm.System)
-                .filter(orm.System.name.ilike(f"{prefix}%"))
+                .filter(orm.System.lookup_name.ilike(f"%{needle}%"))
                 .all()
             )
-            if not candidates:
-                # Interior fallback: prefix ILIKE is not a superset for interior-suffix names.
-                candidates = (
-                    self.session.query(orm.System)
-                    .filter(orm.System.name.ilike(f"%{name}%"))
-                    .all()
-                )
             if not candidates:
                 raise LookupError(f"unknown system: {base_name!r}")
             return self._list_search(
@@ -593,27 +564,23 @@ class TradeORM:
                 .all()
             )
             if not stn_results:
-                # Partial station fallback: prefix ILIKE then interior ILIKE.
-                prefix = self._prefix_of(norm)
+                # Partial station fallback — gather candidates via the
+                # normalised lookup_name superset (handles interior and
+                # cross-space fragments, e.g. "hamlinc" -> Abraham Lincoln).
+                needle = normalize_str(norm)
                 stn_cands = (
                     self.session.query(orm.Station)
-                    .filter(orm.Station.name.ilike(f"{prefix}%"))
+                    .filter(orm.Station.lookup_name.ilike(f"%{needle}%"))
                     .all()
                 )
                 if not stn_cands:
-                    stn_cands = (
-                        self.session.query(orm.Station)
-                        .filter(orm.Station.name.ilike(f"%{norm}%"))
-                        .all()
-                    )
-                if not stn_cands:
                     raise LookupError(f"Unrecognized place: {name!r}")
                 return self._list_search(
-                    "Station", norm, stn_cands, key=lambda s: s.name
+                    "Station", norm, stn_cands, key=lambda s: s.dbname()
                 )
             if len(stn_results) == 1:
                 return stn_results[0]
-            raise AmbiguityError("Place", norm, stn_results, key=lambda s: s.name)
+            raise AmbiguityError("Place", norm, stn_results, key=lambda s: s.dbname())
 
         # Slow path: compound form with slash.
         # Strip leading @ annotation (not @N — that is suppressed here).
@@ -630,20 +597,15 @@ class TradeORM:
                 .all()
             )
             if not sys_results:
-                # Partial system matching — prefix ILIKE then interior ILIKE,
-                # then _place_lookup to tier the candidates.
-                prefix = self._prefix_of(sys_part)
+                # Partial system matching — gather candidates via the
+                # normalised lookup_name superset, then _place_lookup to tier
+                # them.
+                needle = normalize_str(sys_part)
                 sys_cands = (
                     self.session.query(orm.System)
-                    .filter(orm.System.name.ilike(f"{prefix}%"))
+                    .filter(orm.System.lookup_name.ilike(f"%{needle}%"))
                     .all()
                 )
-                if not sys_cands:
-                    sys_cands = (
-                        self.session.query(orm.System)
-                        .filter(orm.System.name.ilike(f"%{sys_part}%"))
-                        .all()
-                    )
                 if sys_cands:
                     exact_m, close_m, word_m, any_m = self._place_lookup(
                         sys_part, sys_cands
@@ -690,19 +652,14 @@ class TradeORM:
                 .all()
             )
             if not results:
-                # Partial global search: prefix ILIKE then interior ILIKE.
-                prefix = self._prefix_of(stn_part)
+                # Partial global search — gather candidates via the normalised
+                # lookup_name superset, then tier them.
+                needle = normalize_str(stn_part)
                 stn_cands = (
                     self.session.query(orm.Station)
-                    .filter(orm.Station.name.ilike(f"{prefix}%"))
+                    .filter(orm.Station.lookup_name.ilike(f"%{needle}%"))
                     .all()
                 )
-                if not stn_cands:
-                    stn_cands = (
-                        self.session.query(orm.Station)
-                        .filter(orm.Station.name.ilike(f"%{stn_part}%"))
-                        .all()
-                    )
                 if not stn_cands:
                     raise LookupError(f"Unrecognized place: {name!r}")
                 exact_m, close_m, word_m, any_m = self._place_lookup(

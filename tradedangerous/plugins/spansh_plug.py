@@ -47,6 +47,7 @@ from tradedangerous.db.station_types import (
     station_type_id_from_external,
     PLANETARY_BY_TYPE_IDS,
 )
+from tradedangerous.corrections import normalize_str
 
 
 if typing.TYPE_CHECKING:
@@ -1732,31 +1733,32 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         if modified is None:
             modified = datetime.utcfromtimestamp(0)
-        
+
         row = {
             "system_id": system_id,
             "name": name,
+            "lookup_name": normalize_str(name),
             "pos_x": x, "pos_y": y, "pos_z": z,
             "modified": modified,
         }
-        
+
         if db_utils.is_sqlite(self.session):
             db_utils.sqlite_upsert_modified(
                 self.session, t_system,
                 rows=[row],
                 key_cols=("system_id",),
                 modified_col="modified",
-                update_cols=("name", "pos_x", "pos_y", "pos_z"),
+                update_cols=("name", "lookup_name", "pos_x", "pos_y", "pos_z"),
             )
             return
-        
+
         if db_utils.is_mysql(self.session):
             db_utils.mysql_upsert_modified(
                 self.session, t_system,
                 rows=[row],
                 key_cols=("system_id",),
                 modified_col="modified",
-                update_cols=("name", "pos_x", "pos_y", "pos_z"),
+                update_cols=("name", "lookup_name", "pos_x", "pos_y", "pos_z"),
             )
             return
         
@@ -1780,6 +1782,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     "station_id": station_id,
                     "system_id": system_id,
                     "name": name,
+                    "lookup_name": normalize_str(name),
                     "ls_from_star": ls_from_star,
                     "max_pad_size": max_pad,
                     "type_id": type_id,
@@ -1796,7 +1799,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 key_cols=("station_id",),
                 modified_col="modified",
                 update_cols=(
-                    "system_id", "name", "ls_from_star", "max_pad_size", "type_id", "planetary",
+                    "system_id", "name", "lookup_name", "ls_from_star", "max_pad_size", "type_id", "planetary",
                     "market", "blackmarket", "shipyard", "outfitting", "rearm", "refuel", "repair",
                 ),
             )
@@ -1809,6 +1812,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     "station_id": station_id,
                     "system_id": system_id,
                     "name": name,
+                    "lookup_name": normalize_str(name),
                     "ls_from_star": ls_from_star,
                     "max_pad_size": max_pad,
                     "type_id": type_id,
@@ -1825,7 +1829,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 key_cols=("station_id",),
                 modified_col="modified",
                 update_cols=(
-                    "system_id", "name", "ls_from_star", "max_pad_size", "type_id", "planetary",
+                    "system_id", "name", "lookup_name", "ls_from_star", "max_pad_size", "type_id", "planetary",
                     "market", "blackmarket", "shipyard", "outfitting", "rearm", "refuel", "repair",
                 ),
             )
