@@ -474,16 +474,33 @@ def _is_unanchored_request(request) -> bool:
     return not request.from_text and not request.to_text
 
 
+def _endpoint_display(endpoint, fallback_text):
+    """Friendly name for a resolved endpoint in failure messages.
+
+    Prefers the resolved canonical name — System/Station for a station, System
+    for a system — so the error reads in full even when the commander typed a
+    partial. Falls back to the raw input text if resolution is somehow absent.
+    """
+
+    if endpoint is None:
+        return fallback_text
+    if endpoint.station is not None:
+        return endpoint.station.dbname
+    if endpoint.system is not None:
+        return endpoint.system.name
+    return fallback_text
+
+
 def _planner_result_message(exc, request) -> str:
     """Build the user-facing message for a planner failure that has no result.
 
     The new planner knows enough about the search shape to say what actually
     happened, so the legacy 'possible causes' footer (which advises checking
     for missing systems or stale prices) is misleading here. The wording
-    follows the failure spec: it names the endpoints the user typed where
-    they typed them, talks about 'jump settings' rather than internal terms,
-    and only recommends --jumps-per where increasing it is genuinely the
-    likely fix.
+    follows the failure spec: it names the resolved endpoints in full (a
+    partial name reads back as the real station/system), talks about 'jump
+    settings' rather than internal terms, and only recommends --jumps-per
+    where increasing it is genuinely the likely fix.
 
     StationHasNoUsablePriceData (and its subclasses) carry their own
     specific message from the planner — they describe a different kind of
@@ -508,6 +525,8 @@ def _planner_result_message(exc, request) -> str:
 
     from_named = bool(request.from_text)
     to_named = bool(request.to_text)
+    from_label = _endpoint_display(request.from_endpoint, request.from_text)
+    to_label = _endpoint_display(request.to_endpoint, request.to_text)
 
     if (
         isinstance(exc, NoReachableRoute)
@@ -516,8 +535,8 @@ def _planner_result_message(exc, request) -> str:
     ):
         # Fixed endpoints, but the jump settings cannot connect them.
         return (
-            f"No route was found from {request.from_text} to "
-            f"{request.to_text} with the current jump settings.\n"
+            f"No route was found from {from_label} to "
+            f"{to_label} with the current jump settings.\n"
             f"\n"
             f"Try increasing --jumps-per or choosing a closer start or "
             f"destination."
@@ -526,8 +545,8 @@ def _planner_result_message(exc, request) -> str:
     if from_named and to_named:
         # Fixed endpoints are connectable, but no profitable trade exists.
         return (
-            f"No profitable trade was found from {request.from_text} to "
-            f"{request.to_text} with the current jump settings.\n"
+            f"No profitable trade was found from {from_label} to "
+            f"{to_label} with the current jump settings.\n"
             f"\n"
             f"Try relaxing filters or choosing a different start or "
             f"destination."
@@ -535,7 +554,7 @@ def _planner_result_message(exc, request) -> str:
 
     if from_named:
         return (
-            f"No profitable trade was found from {request.from_text} with "
+            f"No profitable trade was found from {from_label} with "
             f"the current jump settings.\n"
             f"\n"
             f"Try increasing --jumps-per, choosing a different starting "
@@ -544,7 +563,7 @@ def _planner_result_message(exc, request) -> str:
 
     if to_named:
         return (
-            f"No profitable trade was found to {request.to_text} with the "
+            f"No profitable trade was found to {to_label} with the "
             f"current jump settings.\n"
             f"\n"
             f"Try increasing --jumps-per, choosing a different destination, "
