@@ -409,6 +409,7 @@ def processPrices(
                 station_id=newID,
                 system_id=systemID,
                 name=name,
+                lookup_name=corrections.normalize_str(name),
                 ls_from_star=0,
                 blackmarket='?',
                 max_pad_size='?',
