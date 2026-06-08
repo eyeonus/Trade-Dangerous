@@ -91,15 +91,13 @@ class ImportPlugin(plugins.ImportPluginBase):
     pluginOptions = {
         'item':         "Update Items using latest file from server. (Implies '-O system,station')",
         'ship':         "Update Ships using latest file from server.",
-        'upgrade':      "Update Upgrades using latest file from server.",
         'system':       "Update Systems using latest file from server.",
         'station':      "Update Stations using latest file from server. (Implies '-O system')",
         'shipvend':     "Update ShipVendors using latest file from server. (Implies '-O system,station,ship')",
-        'upvend':       "Update UpgradeVendors using latest file from server. (Implies '-O system,station,upgrade')",
         'listings':     "Update market data using latest listings.csv dump. (Implies '-O item,system,station')",
         'all':          "Update everything with latest dumpfiles. (Regenerates all tables)",
         'clean':        "Erase entire database and rebuild from empty. (Regenerates all tables.)",
-        'skipvend':     "Don't regenerate ShipVendors or UpgradeVendors. (Supercedes '-O all', '-O clean'.)",
+        'skipvend':     "Don't regenerate ShipVendors. (Supercedes '-O all', '-O clean'.)",
         'force':        "Force regeneration of selected items even if source file not updated since previous run. "
                         "(Useful for updating Vendor tables if they were skipped during a '-O clean' run.)",
         'purge':        "Remove any empty systems that previously had fleet carriers.",
@@ -124,10 +122,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.shipVendorPath = Path("ShipVendor.csv")
         self.stationsPath = Path("Station.csv")
         self.sysPath = Path("System.csv")
-        self.upgradesPath = Path("Upgrade.csv")
-        self.urlOutfitting = "https://raw.githubusercontent.com/EDCD/FDevIDs/master/outfitting.csv"
-        self.FDevOutfittingPath = self.tdb.data_dir / Path("FDevOutfitting.csv")
-        self.upgradeVendorPath = Path("UpgradeVendor.csv")
         self.listingsPath = Path("listings.csv")
         self.liveListingsPath = Path("listings-live.csv")
         self.pricesPath = Path("listings.prices")
@@ -708,8 +702,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 "Category", "Item",
                 "Ship", "ShipVendor",
                 "Station", "System",
-                "Upgrade", "UpgradeVendor",
-                "FDevShipyard", "FDevOutfitting",
+                "FDevShipyard",
             ]:
                 f = self.tdb.data_dir / f"{name}.csv"
                 try:
@@ -745,10 +738,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.options["ship"] = True
             self.options["station"] = True
 
-        if self.getOption("upvend"):
-            self.options["upgrade"] = True
-            self.options["station"] = True
-
         if self.getOption("item"):
             self.options["station"] = True
 
@@ -761,8 +750,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.options["shipvend"] = True
             self.options["station"] = True
             self.options["system"] = True
-            self.options["upgrade"] = True
-            self.options["upvend"] = True
             self.options["listings"] = True
 
         if self.getOption("solo"):
@@ -771,15 +758,12 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         if self.getOption("skipvend"):
             self.options["shipvend"] = False
-            self.options["upvend"] = False
 
         # Download required files and decide which tables need upsert-refresh.
         force = self.getOption("force")
 
-        upgrade_changed = False
         ship_changed = False
         shipvend_changed = False
-        upvend_changed = False
         system_changed = False
         station_changed = False
         category_changed = False
@@ -787,13 +771,6 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         # FDev bridge CSVs are treated as "changed" when we re-download them.
         fdev_shipyard_changed = False
-        fdev_outfitting_changed = False
-
-        if self.getOption("upgrade"):
-            upgrade_changed = self.downloadFile(self.upgradesPath) or force
-            if upgrade_changed:
-                transfers.download(self.tdenv, self.urlOutfitting, self.FDevOutfittingPath)
-                fdev_outfitting_changed = True
 
         if self.getOption("ship"):
             ship_changed = self.downloadFile(self.shipPath) or force
@@ -803,9 +780,6 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         if self.getOption("shipvend"):
             shipvend_changed = self.downloadFile(self.shipVendorPath) or force
-
-        if self.getOption("upvend"):
-            upvend_changed = self.downloadFile(self.upgradeVendorPath) or force
 
         if self.getOption("system"):
             system_changed = self.downloadFile(self.sysPath) or force
@@ -820,11 +794,11 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         # If any of the non-listings tables changed, ensure DB is fresh and then upsert-refresh.
         build_cache = any([
-            upgrade_changed, ship_changed,
-            shipvend_changed, upvend_changed,
+            ship_changed,
+            shipvend_changed,
             system_changed, station_changed,
             category_changed, item_changed,
-            fdev_shipyard_changed, fdev_outfitting_changed,
+            fdev_shipyard_changed,
         ])
 
         if build_cache:
@@ -867,16 +841,8 @@ class ImportPlugin(plugins.ImportPluginBase):
             if fdev_shipyard_changed:
                 jobs.append(("FDevShipyard", self.FDevShipyardPath.resolve()))
 
-            if upgrade_changed:
-                jobs.append(("Upgrade", (self.tdb.data_dir / self.upgradesPath).resolve()))
-            if fdev_outfitting_changed:
-                jobs.append(("FDevOutfitting", self.FDevOutfittingPath.resolve()))
-
             if shipvend_changed:
                 jobs.append(("ShipVendor", (self.tdb.data_dir / self.shipVendorPath).resolve()))
-
-            if upvend_changed:
-                jobs.append(("UpgradeVendor", (self.tdb.data_dir / self.upgradeVendorPath).resolve()))
 
             self._refresh_dump_tables(jobs)
             self.tdb.close()

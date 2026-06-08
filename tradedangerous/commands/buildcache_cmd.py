@@ -72,13 +72,10 @@ _STANDARD_TABLES = (
     ("Station.csv", "Station"),
     ("Ship.csv", "Ship"),
     ("ShipVendor.csv", "ShipVendor"),
-    ("Upgrade.csv", "Upgrade"),
-    ("UpgradeVendor.csv", "UpgradeVendor"),
     ("Category.csv", "Category"),
     ("Item.csv", "Item"),
     ("StationItem.csv", "StationItem"),
     ("FDevShipyard.csv", "FDevShipyard"),
-    ("FDevOutfitting.csv", "FDevOutfitting"),
 )
 
 

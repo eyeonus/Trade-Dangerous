@@ -284,11 +284,6 @@ def processImportFile(
                             )
                             rowdict[key] = None
                 
-                # Special handling for SQL reserved word `class`
-                if tableName == "Upgrade" and "class" in rowdict:
-                    rowdict["class_"] = rowdict.pop("class")
-                if tableName == "FDevOutfitting" and "class" in rowdict:
-                    rowdict["class_"] = rowdict.pop("class")
                 # Derived lookup_name for System/Station: recompute from the
                 # (already corrected) name so a rebuild always yields a correct
                 # search key, overriding whatever the CSV carried. See

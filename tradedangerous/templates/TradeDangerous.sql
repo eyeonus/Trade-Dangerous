@@ -119,36 +119,6 @@ CREATE TABLE ShipVendor
 ;
 CREATE INDEX idx_shipvendor_by_station ON ShipVendor (station_id);
 
-CREATE TABLE Upgrade
- (
-   upgrade_id INTEGER PRIMARY KEY,
-   name VARCHAR(40) COLLATE nocase,
-   class NUMBER NOT NULL,
-   rating CHAR(1) NOT NULL,
-   ship VARCHAR(40) COLLATE nocase,
-
-   UNIQUE (upgrade_id)
- );
-
-
-CREATE TABLE UpgradeVendor
- (
-   upgrade_id INTEGER NOT NULL,
-   station_id BIGINT NOT NULL,
-   modified DATETIME NOT NULL,
-
-   PRIMARY KEY (upgrade_id, station_id),
-
-   FOREIGN KEY (upgrade_id) REFERENCES Upgrade(upgrade_id)
-    ON UPDATE CASCADE
-    ON DELETE CASCADE,
-   FOREIGN KEY (station_id) REFERENCES Station(station_id)
-    ON UPDATE CASCADE
-    ON DELETE CASCADE
- ) WITHOUT ROWID
-;
-CREATE INDEX idx_vendor_by_station_id ON UpgradeVendor (station_id);
-
 CREATE TABLE Category
  (
    category_id INTEGER PRIMARY KEY,
@@ -226,14 +196,13 @@ SELECT  station_id,
 ;
 
 --
--- The next two tables (FDevShipyard, FDevOutfitting) are
--- used to map the FDev API IDs to data ready for EDDN.
+-- The FDevShipyard table maps the FDev API IDs to data
+-- ready for EDDN.
 --
 -- The column names are the same as the header line from
--- the EDCD/FDevIDs csv files, so we can just download the
--- files (shipyard.csv, outfitting.csv) and save them
--- as (FDevShipyard.csv, FDevOutfitting.csv) into the
--- data directory.
+-- the EDCD/FDevIDs csv file, so we can just download the
+-- file (shipyard.csv) and save it as FDevShipyard.csv
+-- into the data directory.
 --
 -- see https://github.com/EDCD/FDevIDs
 --
@@ -247,26 +216,6 @@ CREATE TABLE FDevShipyard
    id INTEGER NOT NULL,
    symbol VARCHAR(40),
    name VARCHAR(40) COLLATE nocase,
-   entitlement VARCHAR(50),
-
-   UNIQUE (id)
- );
-
-
-CREATE TABLE FDevOutfitting
- (
-   id INTEGER NOT NULL,
-   symbol VARCHAR(40),
-   category CHAR(10)
-      CHECK (category IN ('hardpoint','internal','standard','utility')),
-   name VARCHAR(40) COLLATE nocase,
-   mount CHAR(10)
-      CHECK (mount IN (NULL, 'Fixed','Gimballed','Turreted')),
-   guidance CHAR(10)
-      CHECK (guidance IN (NULL, 'Dumbfire','Seeker','Swarm')),
-   ship VARCHAR(40) COLLATE nocase,
-   class CHAR(1) NOT NULL,
-   rating CHAR(1) NOT NULL,
    entitlement VARCHAR(50),
 
    UNIQUE (id)

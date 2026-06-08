@@ -64,7 +64,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     """
     Spansh galaxy dump importer:
       - Consumes galaxy_stations.json (local file or remote URL)
-      - Updates System, Station, Ship/ShipVendor, Upgrade/UpgradeVendor, Item/StationItem
+      - Updates System, Station, Ship/ShipVendor, Item/StationItem
       - Respects per-service freshness & optional maxage (days)
       - Enriches Item.rare_station_id from EDCD rare_commodity.csv after station identity exists
       - Exports CSVs and rebuilds TradeDangerous.prices
@@ -512,25 +512,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         if not rows:
             return 0
         
-        # --- table-specific sanitation (fixes ck_fdo_mount / ck_fdo_guidance) ---
-        if table.name == "FDevOutfitting":
-            allowed_mount = {"Fixed", "Gimballed", "Turreted"}
-            allowed_guid  = {"Dumbfire", "Seeker", "Swarm"}
-            
-            def _norm(val, allowed):
-                if val is None:
-                    return None
-                s = str(val).strip()
-                if not s or s not in allowed:
-                    return None
-                return s
-            
-            for r in rows:
-                if "mount" in r:
-                    r["mount"] = _norm(r["mount"], allowed_mount)
-                if "guidance" in r:
-                    r["guidance"] = _norm(r["guidance"], allowed_guid)
-        
         # --- perform upsert using chosen key columns ---
         upd_cols = tuple(c for c in cols if c not in key_cols)
         
@@ -544,10 +525,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         raise RuntimeError(f"Unsupported dialect for {table.name} upsert: {session.get_bind().dialect.name}")
     
-    def _edcd_import_fdev_catalogs(self, session: Session, tables: dict[str, Table], *, outfitting_csv: Path, shipyard_csv: Path) -> tuple[int, int]:
-        u = self._edcd_import_table_direct(session, tables["FDevOutfitting"], outfitting_csv)
-        s = self._edcd_import_table_direct(session, tables["FDevShipyard"],   shipyard_csv)
-        return (u, s)
+    def _edcd_import_fdev_catalogs(self, session: Session, tables: dict[str, Table], *, shipyard_csv: Path) -> int:
+        return self._edcd_import_table_direct(session, tables["FDevShipyard"], shipyard_csv)
     
     # --------------------------------------
     # Comparison Helpers
@@ -562,7 +541,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         id_col: str,
     ) -> tuple[int, int, int]:
         """
-        Per-row rule for ShipVendor / UpgradeVendor:
+        Per-row rule for ShipVendor:
           - If db.modified > ts_sp: leave row.
           - If db.modified == ts_sp: no-op.
           - If db.modified <  ts_sp: set modified = ts_sp.
@@ -656,28 +635,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 keep_ids.add(int(ship_id))
                 master_rows.append({"ship_id": ship_id, "name": name})
         
-        elif kind == "module":
-            t_master = tables["Upgrade"]
-            t_vendor = tables["UpgradeVendor"]
-            id_key = "moduleId"
-            id_col = "upgrade_id"
-            master_rows = []
-            keep_ids = set()
-            for e in entries:
-                if not isinstance(e, dict):
-                    continue
-                up_id = e.get(id_key)
-                name = e.get("name")
-                if up_id is None or name is None:
-                    continue
-                keep_ids.add(int(up_id))
-                master_rows.append({
-                    "upgrade_id": up_id,
-                    "name": name,
-                    "class": e.get("class"),
-                    "rating": e.get("rating"),
-                    "ship": e.get("ship"),
-                })
         else:
             raise CleanExit(f"_sync_vendor_block_fast: unknown kind={kind!r}")
         
@@ -902,15 +859,15 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         After streaming, delete baseline rows for stations absent from the JSON
         if the JSON timestamp is >= row.modified. Never delete newer-than-JSON rows.
-        Returns (market_del, outfit_del, ship_del) counts.
+        Returns (market_del, ship_del) counts.
         """
-        t_si, t_uv, t_sv, t_st = tables["StationItem"], tables["UpgradeVendor"], tables["ShipVendor"], tables["Station"]
+        t_si, t_sv, t_st = tables["StationItem"], tables["ShipVendor"], tables["Station"]
         
         # All station ids in DB
         all_sids = [int(r[0]) for r in self.session.execute(select(t_st.c.station_id)).all()]
         absent = [sid for sid in all_sids if sid not in present_station_ids]
         if not absent:
-            return (0, 0, 0)
+            return (0, 0)
         
         # Markets: delete baseline rows (from_live=0) with modified <= json_ts
         del_m = self.session.execute(
@@ -924,18 +881,13 @@ class ImportPlugin(plugins.ImportPluginBase):
         ).rowcount or 0
         
         # Vendors: delete rows with modified <= json_ts
-        del_u = self.session.execute(
-            tables["UpgradeVendor"].delete().where(
-                and_(t_uv.c.station_id.in_(absent), or_(t_uv.c.modified.is_(None), t_uv.c.modified <= json_ts))
-            )
-        ).rowcount or 0
         del_s = self.session.execute(
             tables["ShipVendor"].delete().where(
                 and_(t_sv.c.station_id.in_(absent), or_(t_sv.c.modified.is_(None), t_sv.c.modified <= json_ts))
             )
         ).rowcount or 0
-        
-        return (int(del_m), int(del_u), int(del_s))
+
+        return (int(del_m), int(del_s))
     
     # ------------------------------
     # Lifecycle hooks
@@ -1020,19 +972,18 @@ class ImportPlugin(plugins.ImportPluginBase):
         except Exception as e:
             self._warn(f"EDCD items skipped due to error: {e!r}")
         
-        # FDev catalogs (outfitting, shipyard) — COMMIT immediately as well.
+        # FDev catalog (shipyard) — COMMIT immediately as well.
         try:
-            if edcd.get("outfitting") and edcd.get("shipyard"):
-                u, s = self._edcd_import_fdev_catalogs(
+            if edcd.get("shipyard"):
+                s = self._edcd_import_fdev_catalogs(
                     self.session, tables,
-                    outfitting_csv=edcd["outfitting"],
                     shipyard_csv=edcd["shipyard"],
                 )
-                if (u + s) > 0:
-                    self._print(f"EDCD FDev: Outfitting upserts={u:,}  Shipyard upserts={s:,}")
+                if s > 0:
+                    self._print(f"EDCD FDev: Shipyard upserts={s:,}")
                 self.session.commit()
         except Exception as e:
-            self._warn(f"EDCD FDev catalogs skipped due to error: {e!r}")
+            self._warn(f"EDCD FDev catalog skipped due to error: {e!r}")
         
         # Load categories (may have grown) before Spansh import
         try:
@@ -1314,8 +1265,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         meta = MetaData()
         names = [
             "System", "Station", "Item", "Category", "StationItem",
-            "Ship", "ShipVendor", "Upgrade", "UpgradeVendor",
-            "FDevOutfitting", "FDevShipyard",
+            "Ship", "ShipVendor",
+            "FDevShipyard",
         ]
         return {n: Table(n, meta, autoload_with=engine) for n in names}
     
@@ -1450,10 +1401,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                     has_outfit = bool(st.get("hasOutfitting") or ("outfitting" in st))
                     has_ship   = bool(st.get("hasShipyard") or ("shipyard" in st))
                     mkt_ts  = svc_ts(st, "market")
-                    outf_ts = svc_ts(st, "outfitting")
                     ship_ts = svc_ts(st, "shipyard")
                     mkt_fresh  = recent(mkt_ts)
-                    outf_fresh = recent(outf_ts)
                     ship_fresh = recent(ship_ts)
                     
                     # Pre-extract market commodities once (used for optional Item upsert outside station lock + StationItem work inside)
@@ -1600,34 +1549,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                                             stats["ship_stations"] += 1
                                     
                                     # ----------------------------
-                                    # Outfitting vendor (under station lock)
-                                    # ----------------------------
-                                    if has_outfit and outf_fresh:
-                                        modules = (st.get("outfitting") or {}).get("modules") or []
-                                        if isinstance(modules, list) and modules:
-                                            if force_baseline:
-                                                wrote = self._upsert_outfitting(tables, station_id, modules, outf_ts)
-                                                _, _, delc = self._apply_vendor_block_per_rules(
-                                                    tables["UpgradeVendor"], station_id,
-                                                    (m.get("moduleId") for m in modules if isinstance(m, dict)),
-                                                    outf_ts, id_col="upgrade_id",
-                                                )
-                                                if wrote or delc:
-                                                    stats["outfit_writes"] += 1
-                                                    batch_ops += (wrote + delc)
-                                                stats["outfit_stations"] += 1
-                                            else:
-                                                wrote, delc = self._sync_vendor_block_fast(
-                                                    tables, station_id=station_id, entries=modules, ts_sp=outf_ts, kind="module"
-                                                )
-                                                if wrote or delc:
-                                                    stats["outfit_writes"] += 1
-                                                    batch_ops += (wrote + delc)
-                                                stats["outfit_stations"] += 1
-                                        else:
-                                            stats["outfit_stations"] += 1
-                                    
-                                    # ----------------------------
                                     # Market (under station lock; Item upserts already committed outside lock)
                                     # ----------------------------
                                     if has_market and mkt_fresh:
@@ -1702,14 +1623,14 @@ class ImportPlugin(plugins.ImportPluginBase):
         # and only where modified <= json_ts, so anything newer (e.g. live/ZMQ) is preserved.
         try:
             if force_baseline and seen_station_ids:
-                m_del, u_del, s_del = self._cleanup_absent_stations(
+                m_del, s_del = self._cleanup_absent_stations(
                     tables,
                     present_station_ids=seen_station_ids,
                     json_ts=json_ts,
                 )
-                if (m_del + u_del + s_del) > 0 and self._debug_level >= 1:
+                if (m_del + s_del) > 0 and self._debug_level >= 1:
                     self._print(
-                        f"Baseline cleanup: markets={m_del:,}  upgrades={u_del:,}  ships={s_del:,}"
+                        f"Baseline cleanup: markets={m_del:,}  ships={s_del:,}"
                     )
         except Exception as e:
             self._warn(f"Absent-station cleanup skipped due to error: {e!r}")
@@ -1836,46 +1757,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             return
         
         raise RuntimeError(f"Unsupported dialect for Station upsert: {self.session.get_bind().dialect.name}")
-    
-    def _upsert_outfitting(self, tables: dict[str, Table], station_id: int, modules: list[dict[str, Any]], ts: datetime) -> int:
-        t_up, t_vendor = tables["Upgrade"], tables["UpgradeVendor"]
-        up_rows, vendor_rows = [], []
-        
-        for mo in modules:
-            up_id = mo.get("moduleId")
-            name = mo.get("name")
-            cls = mo.get("class")
-            rating = mo.get("rating")
-            ship = mo.get("ship")
-            if up_id is None or name is None:
-                continue
-            
-            up_rows.append({"upgrade_id": up_id, "name": name, "class": cls, "rating": rating, "ship": ship})
-            vendor_rows.append({"upgrade_id": up_id, "station_id": station_id, "modified": ts})
-        
-        if up_rows:
-            if db_utils.is_sqlite(self.session):
-                db_utils.sqlite_upsert_simple(self.session, t_up, rows=up_rows, key_cols=("upgrade_id",),
-                                              update_cols=("name", "class", "rating", "ship"))
-            elif db_utils.is_mysql(self.session):
-                db_utils.mysql_upsert_simple(self.session, t_up, rows=up_rows, key_cols=("upgrade_id",),
-                                             update_cols=("name", "class", "rating", "ship"))
-            else:
-                raise RuntimeError(f"Unsupported dialect for Upgrade upsert: {self.session.get_bind().dialect.name}")
-        
-        wrote = 0
-        if vendor_rows:
-            if db_utils.is_sqlite(self.session):
-                db_utils.sqlite_upsert_modified(self.session, t_vendor, rows=vendor_rows,
-                                                key_cols=("upgrade_id", "station_id"), modified_col="modified", update_cols=())
-                wrote = len(vendor_rows)
-            elif db_utils.is_mysql(self.session):
-                db_utils.mysql_upsert_modified(self.session, t_vendor, rows=vendor_rows,
-                                               key_cols=("upgrade_id", "station_id"), modified_col="modified", update_cols=())
-                wrote = len(vendor_rows)
-            else:
-                raise RuntimeError(f"Unsupported dialect for UpgradeVendor upsert: {self.session.get_bind().dialect.name}")
-        return wrote
     
     def _upsert_market(
         self,
@@ -2244,14 +2125,11 @@ class ImportPlugin(plugins.ImportPluginBase):
         tables = [
             "StationItem",
             "ShipVendor",
-            "UpgradeVendor",
             "Station",
             "System",
             "Category",          # <-- REQUIRED for correct downstream category mapping
             "Item",
             "Ship",
-            "Upgrade",
-            "FDevOutfitting",
             "FDevShipyard",
         ]
         if skip_stationitems:
@@ -2334,9 +2212,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             "Ship.csv",
             "Station.csv",
             "System.csv",
-            "Upgrade.csv",
             "ShipVendor.csv",
-            "UpgradeVendor.csv",
         )
     
         copied = 0

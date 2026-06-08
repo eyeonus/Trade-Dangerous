@@ -9,7 +9,6 @@ from sqlalchemy import (
     Integer,
     BigInteger,
     String,
-    CHAR,
     Enum,
     Index,
     UniqueConstraint,
@@ -193,7 +192,6 @@ class Station(Base):
     system: Mapped["System"] = relationship(back_populates="stations")
     items: Mapped[list["StationItem"]] = relationship(back_populates="station", cascade="all, delete-orphan")
     ship_vendors: Mapped[list["ShipVendor"]] = relationship(back_populates="station", cascade="all, delete-orphan")
-    upgrade_vendors: Mapped[list["UpgradeVendor"]] = relationship(back_populates="station", cascade="all, delete-orphan")
     
     __table_args__ = (
         CheckConstraint("ls_from_star >= 0", name="ck_station_ls_from_star_nonnegative"),
@@ -336,85 +334,15 @@ class ShipVendor(Base):
     __table_args__ = (Index("idx_shipvendor_by_station", "station_id"),{"sqlite_with_rowid": False},)
 
 
-class Upgrade(Base):
-    """ Upgrade represents what Frontier call 'Outfitting', components that can
-        be acquired to upgrade your instance of a ship. """
-    __tablename__ = "Upgrade"
-    
-    upgrade_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(CIString(128), nullable=False)
-    class_: Mapped[int] = mapped_column("class", Integer, nullable=False)
-    rating: Mapped[str] = mapped_column(CHAR(1), nullable=False)
-    ship: Mapped[str | None] = mapped_column(CIString(128))
-    
-    # Relationships
-    vendors: Mapped[list["UpgradeVendor"]] = relationship(back_populates="upgrade")
-
-
-class UpgradeVendor(Base):
-    """ UpgradeVendor tracks all the locations where Outfitting upgrades can be
-        acquired in the game universe. """
-    __tablename__ = "UpgradeVendor"
-    
-    upgrade_id: Mapped[int] = mapped_column(
-        ForeignKey("Upgrade.upgrade_id", ondelete="CASCADE", onupdate="CASCADE"),
-        primary_key=True,
-    )
-    station_id: Mapped[int] = mapped_column(
-        BigInteger,
-        ForeignKey("Station.station_id", ondelete="CASCADE", onupdate="CASCADE"),
-        primary_key=True,
-    )
-    modified: Mapped[str] = mapped_column(DateTime6(), nullable=False)
-    
-    # Relationships
-    upgrade: Mapped["Upgrade"] = relationship(back_populates="vendors")
-    station: Mapped["Station"] = relationship(back_populates="upgrade_vendors")
-    
-    __table_args__ = (Index("idx_vendor_by_station_id", "station_id"),{"sqlite_with_rowid": False},)
-
-
 class FDevShipyard(Base):
     """ FDevShipyard is a vestigial bridge between originally crowd-sourced ship information,
         and the data that is now available thanks to frontier's journal logs. """
     __tablename__ = "FDevShipyard"
-    
+
     id = Column(Integer, primary_key=True, unique=True, nullable=False)
     symbol = Column(CIString(128))
     name = Column(CIString(128))
     entitlement = Column(String(50))
-
-
-class FDevOutfitting(Base):
-    """ FDevOutfitting is a vestigial bridge between originally crowd-sourced outfitting (upgrade)
-        information and the data that has been auto-scraped from frontier's journal logs. """
-    __tablename__ = "FDevOutfitting"
-    
-    id = Column(Integer, primary_key=True, unique=True, nullable=False)
-    symbol = Column(CIString(128))
-    category = Column(String(10))
-    name = Column(CIString(128))
-    mount = Column(String(20))
-    guidance = Column(String(20))
-    ship = Column(CIString(128))
-    class_ = Column("class", String(1), nullable=False)
-    rating = Column(String(1), nullable=False)
-    entitlement = Column(String(50))
-    
-    __table_args__ = (
-        CheckConstraint(
-            "category IN ('hardpoint','internal','standard','utility')",
-            name="ck_fdo_category",
-        ),
-        CheckConstraint(
-            "(mount IN ('Fixed','Gimballed','Turreted')) OR (mount IS NULL)",
-            name="ck_fdo_mount",
-        ),
-        CheckConstraint(
-            "(guidance IN ('Dumbfire','Seeker','Swarm')) OR (guidance IS NULL)",
-            name="ck_fdo_guidance",
-        ),
-    )
 
 
 __all__ = [
@@ -428,8 +356,5 @@ __all__ = [
     "StationItem",
     "Ship",
     "ShipVendor",
-    "Upgrade",
-    "UpgradeVendor",
     "FDevShipyard",
-    "FDevOutfitting",
 ]
