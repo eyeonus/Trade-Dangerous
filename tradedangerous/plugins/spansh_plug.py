@@ -606,10 +606,10 @@ class ImportPlugin(plugins.ImportPluginBase):
             station_id: int,
             entries: list[dict[str, Any]],
             ts_sp: Optional[datetime],
-            kind: str,  # "ship" or "module"
+            kind: str,  # "ship"
         ) -> tuple[int, int]:
         """
-        Fast, set-based vendor sync for a single station and one service (shipyard/outfitting).
+        Fast, set-based vendor sync for a single station and one service (shipyard).
         
         Returns: (number_of_inserts_or_updates_on_vendor_links, deletions_count).
         """
@@ -2215,7 +2215,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     
         # Public contract (served by eddblink + documented on the files index):
         #   - Reference tables
-        #   - Outfitting + vendor tables (optional in client, but real server dependencies)
+        #   - Vendor tables (optional in client, but real server dependencies)
         # listings.csv and listings-live.csv are listener-owned; not mirrored here.
         public_csv = (
             "Category.csv",
