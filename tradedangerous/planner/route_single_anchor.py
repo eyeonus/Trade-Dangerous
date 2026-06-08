@@ -6,7 +6,7 @@ import time
 
 from sqlalchemy.orm import Session
 
-from . import resolver, run_result
+from . import run_result
 from .run_request import RunRequest
 
 from .route_common import (
@@ -46,22 +46,14 @@ def _plan_open_anchor_multi_hop(
     # The fixed endpoint (the seed) is the one the user supplied; its trade role
     # is the opposite of open_role. open_role="source" anchors on --to as the
     # destination; open_role="destination" anchors on --from as the source.
+    # The anchor endpoint was resolved once at dispatch; read the canonical DTO.
     if open_role == "source":
-        anchor_text = request.to_text
-        anchor_option = "--to"
+        anchor_endpoint = request.to_endpoint
         anchor_role = "destination"
     else:
-        anchor_text = request.from_text
-        anchor_option = "--from"
+        anchor_endpoint = request.from_endpoint
         anchor_role = "source"
-
-    resolution_started = time.perf_counter()
-    anchor_endpoint = resolver.resolve_endpoint(
-        session,
-        str(anchor_text),
-        option_name=anchor_option,
-    )
-    resolution_ms = _elapsed_ms(resolution_started)
+    resolution_ms = 0.0
 
     station_filter_started = time.perf_counter()
     anchor_stations = _stations_from_endpoint(

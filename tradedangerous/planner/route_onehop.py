@@ -42,18 +42,11 @@ def _plan_fixed_endpoints(
 ) -> run_result.RunResult:
     """Plan one hop when both endpoints are supplied by the user."""
 
-    resolution_started = time.perf_counter()
-    source_endpoint = resolver.resolve_endpoint(
-        session,
-        str(request.from_text),
-        option_name="--from",
-    )
-    destination_endpoint = resolver.resolve_endpoint(
-        session,
-        str(request.to_text),
-        option_name="--to",
-    )
-    resolution_ms = _elapsed_ms(resolution_started)
+    # Endpoints were resolved once at dispatch; the planner reads the canonical
+    # DTOs rather than resolving names again.
+    source_endpoint = request.from_endpoint
+    destination_endpoint = request.to_endpoint
+    resolution_ms = 0.0
 
     station_filter_started = time.perf_counter()
     source_stations = _stations_from_endpoint(
@@ -117,24 +110,15 @@ def _best_open_ended_plan(
     one path; only the endpoint derivation below depends on open_role.
     """
 
-    # The fixed endpoint is the one the user supplied; its role, option name,
-    # and request text are the inverse of open_role.
+    # The fixed endpoint is the one the user supplied; its role is the inverse
+    # of open_role. It was resolved once at dispatch, so read the canonical DTO.
     if open_role == "source":
         fixed_role = "destination"
-        fixed_option = "--to"
-        fixed_text = request.to_text
+        fixed_endpoint = request.to_endpoint
     else:
         fixed_role = "source"
-        fixed_option = "--from"
-        fixed_text = request.from_text
-
-    resolution_started = time.perf_counter()
-    fixed_endpoint = resolver.resolve_endpoint(
-        session,
-        str(fixed_text),
-        option_name=fixed_option,
-    )
-    resolution_ms = _elapsed_ms(resolution_started)
+        fixed_endpoint = request.from_endpoint
+    resolution_ms = 0.0
 
     station_filter_started = time.perf_counter()
     fixed_stations = _stations_from_endpoint(

@@ -7,7 +7,7 @@ import time
 
 from sqlalchemy.orm import Session
 
-from . import failures, resolver, run_result
+from . import failures, run_result
 from .cargo import reset_cargo_counters
 from .reachability import plan_jump_path
 from .route_anchored import _plan_multi_hop
@@ -42,12 +42,6 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
     validation_started = time.perf_counter()
     validate_run_request(request)
     validation_ms = _elapsed_ms(validation_started)
-
-    # Resolve --towards once into canonical request state. The open-destination
-    # engines then apply the per-hop progress constraint in one shared place
-    # (the candidate fetch), instead of each re-resolving or re-deciding it.
-    if request.towards_text:
-        request = _resolve_towards_target(session, request)
 
     # Zero the cargo path counters so the diagnostics reflect only this run.
     reset_cargo_counters()
@@ -113,35 +107,6 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
     if request.start_jumps or request.end_jumps:
         result = _attach_positioning_legs(session, request, result)
     return result
-
-
-def _resolve_towards_target(
-    session: Session,
-    request: RunRequest,
-) -> RunRequest:
-    """Resolve --towards to a target system and carry it on the request.
-
-    --towards names a system the route must keep moving toward. Resolution
-    needs a database session, so it happens here at dispatch rather than during
-    request parsing. A station name collapses to its parent system, because the
-    progress metric is system-to-system distance. The resolved target is stored
-    as canonical request state for the open-destination fetch to consume.
-    """
-
-    endpoint = resolver.resolve_endpoint(
-        session, request.towards_text, option_name="--towards",
-    )
-    target = _positioning_anchor_system(endpoint)
-    if target is None:
-        # resolve_endpoint populates a station or a system or raises, so a None
-        # target is an internal contract breach rather than user error. Fail
-        # loudly instead of silently dropping the progress constraint.
-        raise failures.UnknownPlace(
-            f"--towards could not resolve to a system: {request.towards_text}",
-            option_name="--towards",
-            entity_name=request.towards_text,
-        )
-    return dataclasses.replace(request, towards_target=target)
 
 
 def _annotate_towards_arrival(
@@ -232,18 +197,12 @@ def _attach_positioning_legs(
     leg_cache: dict[int, object] = {}
 
     start_anchor = None
-    if request.start_jumps and request.from_text:
-        start_endpoint = resolver.resolve_endpoint(
-            session, request.from_text, option_name="--from",
-        )
-        start_anchor = _positioning_anchor_system(start_endpoint)
+    if request.start_jumps and request.from_endpoint is not None:
+        start_anchor = _positioning_anchor_system(request.from_endpoint)
 
     end_anchor = None
-    if request.end_jumps and request.to_text:
-        end_endpoint = resolver.resolve_endpoint(
-            session, request.to_text, option_name="--to",
-        )
-        end_anchor = _positioning_anchor_system(end_endpoint)
+    if request.end_jumps and request.to_endpoint is not None:
+        end_anchor = _positioning_anchor_system(request.to_endpoint)
 
     new_routes = []
     for route in result.routes:

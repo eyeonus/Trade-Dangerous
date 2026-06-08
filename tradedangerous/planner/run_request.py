@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from .resolver import ResolvedEndpoint
     from .run_result import ResolvedSystem
 
 
@@ -26,6 +27,11 @@ class RunRequest:
     margin: float = 0.0
     from_text: str | None = None
     to_text: str | None = None
+    # Resolved --from / --to endpoints (station or system DTOs). Filled once at
+    # dispatch from from_text / to_text via the shared TradeORM lookup, so the
+    # planner shapes consume canonical resolved state instead of re-resolving.
+    from_endpoint: ResolvedEndpoint | None = None
+    to_endpoint: ResolvedEndpoint | None = None
     hops: int = 1
     max_jumps_per_hop: int | None = None
     max_ly_per_jump: float | None = None

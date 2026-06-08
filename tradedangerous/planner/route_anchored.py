@@ -6,7 +6,7 @@ import time
 
 from sqlalchemy.orm import Session
 
-from . import data_gateway, failures, resolver, run_result
+from . import data_gateway, failures, run_result
 from .cargo import optimise_cargo
 from .reachability import plan_jump_path
 from .run_request import RunRequest
@@ -63,18 +63,10 @@ def _plan_multi_hop(
     planner is willing to *spend* on a later hop's buy.
     """
 
-    resolution_started = time.perf_counter()
-    origin_endpoint = resolver.resolve_endpoint(
-        session,
-        str(request.from_text),
-        option_name="--from",
-    )
-    destination_endpoint = resolver.resolve_endpoint(
-        session,
-        str(request.to_text),
-        option_name="--to",
-    )
-    resolution_ms = _elapsed_ms(resolution_started)
+    # Endpoints were resolved once at dispatch; read the canonical DTOs.
+    origin_endpoint = request.from_endpoint
+    destination_endpoint = request.to_endpoint
+    resolution_ms = 0.0
 
     station_filter_started = time.perf_counter()
     origin_stations = _stations_from_endpoint(

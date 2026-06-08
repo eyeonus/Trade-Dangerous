@@ -1,24 +1,27 @@
-"""Station name resolution for trade run planning."""
+"""Endpoint name resolution for trade run planning.
+
+Endpoint names (--from / --to / --towards) resolve through the shared
+``TradeORM`` place lookup, which owns the exact -> prefix -> substring matching
+and the ``@N`` duplicate-system disambiguation. This module is the thin
+planner-side adapter: it calls that lookup once, converts the ORM row to the
+planner's neutral DTOs, and reports whether the match was approximate (so
+dispatch can echo the expansion). No ORM object travels past this module into
+the planner.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session, joinedload
+from typing import TYPE_CHECKING
 
 from tradedangerous.db.orm_models import Station, System
 
 from .data_gateway import _resolved_station_from_model
-from .failures import (
-    AmbiguousPlace,
-    AmbiguousStation,
-    AmbiguousSystem,
-    UnknownPlace,
-    UnknownStation,
-    UnknownSystem,
-)
+from .failures import UnknownPlace
 from .run_result import ResolvedStation, ResolvedSystem
+
+if TYPE_CHECKING:
+    from tradedangerous.tradeorm import TradeORM
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +40,10 @@ class ResolvedEndpoint:
     option_name: str
     system: ResolvedSystem | None = None
     station: ResolvedStation | None = None
+    # True when the lookup matched something other than the verbatim name
+    # (a partial / fuzzy hit). Dispatch echoes these so the commander sees what
+    # their input expanded to; an exact or @N-indexed name is not approximate.
+    approximate: bool = False
 
     @property
     def is_station(self) -> bool:
@@ -48,23 +55,20 @@ class ResolvedEndpoint:
 
 
 def parse_endpoint_reference(text: str, *, option_name: str) -> EndpointReference:
-    """Parse supported station or system endpoint reference forms.
+    """Split an endpoint into its (system, station) parts.
 
-    Accepted endpoint forms include:
-    - System
-    - System/Station
-    - @System
-    - @System/Station
-    - System\\Station
-    - /Station
-    - Station
+    Accepted forms: System, System/Station, @System, @System/Station,
+    System\\Station, /Station, Station. This drives the approximate-match
+    check; the actual lookup is delegated to ``TradeORM.lookup_place``, which
+    does its own parsing.
     """
 
     cleaned = (text or "").strip()
     if not cleaned:
-        raise UnknownStation(
+        raise UnknownPlace(
             f"{option_name} endpoint name is empty.",
             option_name=option_name,
+            entity_name=text,
         )
 
     if cleaned.startswith("@"):
@@ -74,7 +78,9 @@ def parse_endpoint_reference(text: str, *, option_name: str) -> EndpointReferenc
     if delimiter is None:
         return EndpointReference(system_name=None, station_name=cleaned)
 
-    system_name, station_name = (part.strip() for part in cleaned.split(delimiter, 1))
+    system_name, station_name = (
+        part.strip() for part in cleaned.split(delimiter, 1)
+    )
     return EndpointReference(
         system_name=system_name or None,
         station_name=station_name or None,
@@ -94,192 +100,114 @@ def _system_to_resolved(system: System) -> ResolvedSystem:
     )
 
 
+def system_for_endpoint(endpoint: ResolvedEndpoint) -> ResolvedSystem | None:
+    """Collapse an endpoint to its system.
+
+    A station endpoint positions on its parent system; a system endpoint is its
+    own system. Returns None for an unpopulated endpoint so the caller can raise
+    rather than assume a side is filled.
+    """
+
+    if endpoint.station is not None:
+        station = endpoint.station
+        return ResolvedSystem(
+            system_id=station.system_id,
+            name=station.system_name,
+            dbname=station.system_name,
+            x=station.x,
+            y=station.y,
+            z=station.z,
+        )
+    return endpoint.system
+
+
 def resolve_endpoint(
-    session: Session,
+    orm_db: "TradeORM",
     text: str,
     *,
     option_name: str,
 ) -> ResolvedEndpoint:
-    """Resolve a run endpoint as either a fixed station or a system."""
+    """Resolve a run endpoint to a fixed station or a system.
 
-    reference = parse_endpoint_reference(text, option_name=option_name)
+    Delegates to ``TradeORM.lookup_place`` for exact -> prefix -> substring
+    matching and ``@N`` duplicate-system disambiguation. The returned ORM row is
+    converted to neutral DTOs here, so no ORM object travels further into the
+    planner. An unknown name becomes a planner ``UnknownPlace``; an ambiguous
+    name or a bad ``@N`` index propagates as the lookup's own exception, which
+    already carries the user-facing candidate / ``@N`` message.
+    """
 
-    if reference.system_name:
-        system = _resolve_exact_system(
-            session,
-            reference.system_name,
+    try:
+        place = orm_db.lookup_place(text)
+    except LookupError as exc:
+        raise UnknownPlace(
+            f"Unrecognized {option_name} place: {text}",
             option_name=option_name,
-        )
-        resolved_system = _system_to_resolved(system)
-        if reference.station_name:
-            station = _resolve_exact_station_in_system(
-                session,
-                reference.station_name,
-                system_id=system.system_id,
-                option_name=option_name,
-                original_text=text,
-            )
-            return ResolvedEndpoint(
-                original_text=text,
-                option_name=option_name,
-                station=_resolved_station_from_model(station, resolved_system),
-            )
+            entity_name=text,
+        ) from exc
 
+    approximate = _was_approximate(text, place, option_name=option_name)
+
+    if isinstance(place, Station):
+        resolved_system = _system_to_resolved(place.system)
+        station = _resolved_station_from_model(place, resolved_system)
         return ResolvedEndpoint(
             original_text=text,
             option_name=option_name,
-            system=resolved_system,
+            station=station,
+            approximate=approximate,
         )
 
-    return _resolve_unscoped_endpoint(
-        session,
-        str(reference.station_name),
-        option_name=option_name,
+    return ResolvedEndpoint(
         original_text=text,
+        option_name=option_name,
+        system=_system_to_resolved(place),
+        approximate=approximate,
     )
 
 
-def _resolve_unscoped_endpoint(
-    session: Session,
-    name: str,
+def _was_approximate(
+    text: str,
+    place: System | Station,
     *,
     option_name: str,
-    original_text: str,
-) -> ResolvedEndpoint:
-    """Resolve an unscoped endpoint by exact system/station candidates.
+) -> bool:
+    """Report whether the input matched anything other than the exact name.
 
-    Future fuzzy matching should extend this helper after exact candidates
-    fail, not replace the exact-first behaviour.
+    A pure case difference, or an ``@N`` selection of an otherwise exact name,
+    does not count as approximate — only a genuine partial / fuzzy expansion
+    does, which is what the dispatch echo exists to surface.
     """
 
-    systems = _find_exact_systems(session, name)
-    stations = _find_exact_stations_global(session, name)
-    if systems and stations:
-        raise AmbiguousPlace(
-            f"Ambiguous endpoint in {option_name}: {original_text}",
-            option_name=option_name,
-            entity_name=original_text,
-            details={
-                "systems": [system.name for system in systems],
-                "stations": [station.dbname() for station in stations],
-            },
-        )
-    if systems:
-        if len(systems) > 1:
-            raise AmbiguousSystem(
-                f"Ambiguous system in {option_name}: {original_text}",
-                option_name=option_name,
-                entity_name=original_text,
-                details={"matches": [system.name for system in systems]},
-            )
-        return ResolvedEndpoint(
-            original_text=original_text,
-            option_name=option_name,
-            system=_system_to_resolved(systems[0]),
-        )
-    if stations:
-        if len(stations) > 1:
-            raise AmbiguousStation(
-                f"Ambiguous station in {option_name}: {original_text}",
-                option_name=option_name,
-                entity_name=original_text,
-                details={"matches": [station.dbname() for station in stations]},
-            )
-        station = stations[0]
-        return ResolvedEndpoint(
-            original_text=original_text,
-            option_name=option_name,
-            station=_resolved_station_from_model(station, _system_to_resolved(station.system)),
-        )
-    raise UnknownPlace(
-        f"Unknown system or station in {option_name}: {original_text}",
-        option_name=option_name,
-        entity_name=original_text,
-    )
+    reference = parse_endpoint_reference(text, option_name=option_name)
+    system_in = _strip_index(reference.system_name)
+    station_in = _strip_index(reference.station_name)
+
+    if isinstance(place, Station):
+        if system_in and not _names_equal(system_in, place.system.name):
+            return True
+        if station_in and not _names_equal(station_in, place.name):
+            return True
+        return False
+
+    # System: the supplied token is the system half when the input was scoped,
+    # otherwise the bare name (which the parser places in station_name).
+    supplied = system_in or station_in
+    return bool(supplied and not _names_equal(supplied, place.name))
 
 
-def _find_exact_systems(session: Session, name: str) -> list[System]:
-    stmt = (
-        select(System)
-        .where(func.upper(System.name) == name.upper())
-        .order_by(System.system_id)
-    )
-    return list(session.scalars(stmt))
+def _names_equal(supplied: str, resolved: str) -> bool:
+    """Case-insensitive name comparison for the approximate-match check."""
+
+    return supplied.casefold() == str(resolved).casefold()
 
 
-def _find_exact_stations_global(session: Session, name: str) -> list[Station]:
-    stmt = (
-        select(Station)
-        .options(joinedload(Station.system))
-        .where(func.upper(Station.name) == name.upper())
-        .order_by(Station.system_id, Station.station_id)
-    )
-    return list(session.scalars(stmt))
+def _strip_index(name: str | None) -> str | None:
+    """Strip a trailing ``@N`` duplicate-system index from a supplied name."""
 
-
-def _resolve_exact_system(
-    session: Session,
-    name: str,
-    *,
-    option_name: str,
-) -> System:
-    stmt = (
-        select(System)
-        .where(func.upper(System.name) == name.upper())
-        .order_by(System.system_id)
-    )
-    matches = list(session.scalars(stmt))
-
-    if not matches:
-        raise UnknownSystem(
-            f"Unknown system in {option_name}: {name}",
-            option_name=option_name,
-            entity_name=name,
-        )
-
-    if len(matches) > 1:
-        raise AmbiguousSystem(
-            f"Ambiguous system in {option_name}: {name}",
-            option_name=option_name,
-            entity_name=name,
-            details={"matches": [system.name for system in matches]},
-        )
-
-    return matches[0]
-
-
-def _resolve_exact_station_in_system(
-    session: Session,
-    name: str,
-    *,
-    system_id: int,
-    option_name: str,
-    original_text: str,
-) -> Station:
-    stmt = (
-        select(Station)
-        .options(joinedload(Station.system))
-        .where(Station.system_id == system_id)
-        .where(func.upper(Station.name) == name.upper())
-        .order_by(Station.station_id)
-    )
-    matches = list(session.scalars(stmt))
-
-    if not matches:
-        raise UnknownStation(
-            f"Unknown station in {option_name}: {original_text}",
-            option_name=option_name,
-            entity_name=original_text,
-        )
-
-    if len(matches) > 1:
-        raise AmbiguousStation(
-            f"Ambiguous station in {option_name}: {original_text}",
-            option_name=option_name,
-            entity_name=original_text,
-            details={"matches": [station.dbname() for station in matches]},
-        )
-
-    return matches[0]
-
-
+    if name is None:
+        return None
+    at = name.rfind("@")
+    if at > 0 and name[at + 1:].isdigit():
+        return name[:at]
+    return name

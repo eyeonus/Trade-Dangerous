@@ -18,7 +18,13 @@ import re
 import typing
 
 from . import TradeEnv, fs
-from .tradeexcept import AmbiguityError, TradeException, MissingDB, SystemNotStationError
+from .tradeexcept import (
+    AmbiguityError,
+    TradeException,
+    MissingDB,
+    SystemNotStationError,
+    format_system_candidates,
+)
 from .db import (
     orm_models as orm,          # type: ignore  # so we can access models easily
     make_engine_from_config,    # type: ignore
@@ -164,14 +170,16 @@ class TradeORM:
         Returns the single matched candidate or raises LookupError /
         AmbiguityError.
 
-        Contract notes (PRESERVE FOR PARITY):
+        Contract notes:
         - An exact normalized-length match returns immediately, bypassing
-          ambiguity checking.
-        - The word-boundary regex uses the original *lookup* string
-          unescaped (DOCUMENTED LEGACY BUG — preserved for parity).
+          ambiguity checking (PRESERVE FOR PARITY).
+        - The word-boundary regex escapes *lookup* so regex metacharacters in
+          user input match literally and a malformed fragment cannot raise
+          re.error. This intentionally departs from the legacy unescaped
+          behaviour, which was a bug.
         """
         needle = lookup.translate(_normalize_trans).translate(_trim_trans)
-        word_re = re.compile(f"\\b{lookup}\\b", re.IGNORECASE)
+        word_re = re.compile(rf"\b{re.escape(lookup)}\b", re.IGNORECASE)
         partial_match: list = []
         word_match: list = []
 
@@ -512,22 +520,23 @@ class TradeORM:
         if index is not None:
             if 1 <= index <= len(results):
                 return results[index - 1]
+            candidates = "\n".join(format_system_candidates(results))
             raise TradeException(
-                f"System {base_name!r}@{index} does not exist "
-                f"(valid range: 1-{len(results)})"
+                f'System "{base_name}" has {len(results)} matching entries '
+                f"(@1..@{len(results)}).\n"
+                f'"{base_name}@{index}" is not a valid index.\n\n'
+                "Use one of the available forms:\n\n"
+                f"{candidates}"
             )
 
         if len(results) == 1:
             return results[0]
 
+        # Genuine duplicate-system collision: hand the ordered (index, System)
+        # pairs to AmbiguityError, whose System branch renders the @N list via
+        # the shared formatter.
         pairs = list(enumerate(results, start=1))
-        raise AmbiguityError(
-            "System", base_name, pairs,
-            key=lambda pair: (
-                f"{pair[1].name.upper()}/@{pair[0]} "
-                f"({pair[1].pos_x:.1f}, {pair[1].pos_y:.1f}, {pair[1].pos_z:.1f})"
-            ),
-        )
+        raise AmbiguityError("System", base_name, pairs)
 
     def lookup_place(
         self,

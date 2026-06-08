@@ -50,6 +50,23 @@ class MissingDB(TradeException):
             "managing data by hand, use the buildcache subcommand."
         )
 
+
+def format_system_candidates(systems) -> list[str]:
+    """Render duplicate-system candidates as indented '@N' lines.
+
+    Each line is ``    Name@N - (x, y, z)`` (em dash in the live output),
+    1-based, in the order supplied — the lookup orders by ascending Galactic X,
+    then Y, Z, id. Takes ORM System rows (name, pos_x/pos_y/pos_z). This is the
+    single place that owns the format, shared by the bare duplicate-name error
+    and the invalid-@N error so the two can never drift apart.
+    """
+    return [
+        f"    {system.name}@{index} — "
+        f"({system.pos_x:.1f}, {system.pos_y:.1f}, {system.pos_z:.1f})"
+        for index, system in enumerate(systems, start=1)
+    ]
+
+
 class AmbiguityError(TradeException):
     """
         Raised when a search key could match multiple entities.
@@ -84,23 +101,14 @@ class AmbiguityError(TradeException):
             and isinstance(anyMatch[0], tuple)
             and len(anyMatch[0]) >= 2
         ):
+            systems = [system for _index, system in anyMatch]
             lines = [
                 f'System name "{self.searchKey}" refers to more than one distinct system.',
                 "",
                 'Select the one you intended using "@N":',
                 "",
             ]
-            for index, system in anyMatch:
-                # Be tolerant in case the contents are not exactly (int, System)
-                try:
-                    name = system.dbname
-                    x, y, z = system.posX, system.posY, system.posZ
-                    lines.append(
-                        f"    {name}@{index} 45 ({x:.1f}, {y:.1f}, {z:.1f})"
-                    )
-                except Exception:
-                    # Fallback to the provided key() formatter
-                    lines.append(f"    {key((index, system))}")
+            lines.extend(format_system_candidates(systems))
             lines.append("")
             lines.append("(Index numbers are ordered by Galactic X coordinate.)")
             return "\n".join(lines)

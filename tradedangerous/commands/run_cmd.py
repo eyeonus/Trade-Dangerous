@@ -1,4 +1,5 @@
 from __future__ import annotations
+import dataclasses
 import sys
 
 from .commandenv import Needs
@@ -19,6 +20,7 @@ from tradedangerous.planner.failures import (
     StationHasNoUsablePriceData,
     UnknownPlace,
 )
+from tradedangerous.planner import resolver
 from tradedangerous.planner.render_text import render_run_result
 from tradedangerous.planner.run_route import plan_route
 from tradedangerous.planner.run_request import run_request_from_cmdenv
@@ -571,6 +573,66 @@ def _abort_unanchored_run(results, message):
     return results
 
 
+def _resolve_named_endpoint(tdb, text, option_name):
+    """Resolve one endpoint name if supplied, echoing an approximate match.
+
+    Returns the ResolvedEndpoint, or None when no name was given for this
+    option. An unknown name is reported as a clean CommandLineError; an
+    ambiguous name or a bad @N index propagates as the lookup's own message
+    (the @N candidate list), which the CLI prints verbatim.
+    """
+
+    if not text:
+        return None
+    try:
+        endpoint = resolver.resolve_endpoint(tdb, text, option_name=option_name)
+    except UnknownPlace as exc:
+        raise CommandLineError(exc.message) from exc
+    if endpoint.approximate:
+        canonical = (
+            endpoint.station.dbname if endpoint.station is not None
+            else endpoint.system.name
+        )
+        print(f"{option_name} {text} resolved as {canonical}", flush=True)
+    return endpoint
+
+
+def _resolve_request_endpoints(request, tdb):
+    """Resolve --from / --to / --towards once and carry the results on the request.
+
+    Resolution happens here at dispatch so the planner shapes work from
+    canonical resolved endpoints and never see the TradeORM handle. --towards
+    collapses to its system, matching the progress metric's system-to-system
+    distance.
+    """
+
+    updates = {}
+
+    from_endpoint = _resolve_named_endpoint(tdb, request.from_text, "--from")
+    if from_endpoint is not None:
+        updates["from_endpoint"] = from_endpoint
+
+    to_endpoint = _resolve_named_endpoint(tdb, request.to_text, "--to")
+    if to_endpoint is not None:
+        updates["to_endpoint"] = to_endpoint
+
+    if request.towards_text:
+        towards_endpoint = _resolve_named_endpoint(
+            tdb, request.towards_text, "--towards",
+        )
+        target = resolver.system_for_endpoint(towards_endpoint)
+        if target is None:
+            raise CommandLineError(
+                "--towards could not resolve to a system: "
+                f"{request.towards_text}"
+            )
+        updates["towards_target"] = target
+
+    if not updates:
+        return request
+    return dataclasses.replace(request, **updates)
+
+
 def run(results, cmdenv, tdb):
     request = run_request_from_cmdenv(cmdenv)
     session = getattr(tdb, "session", None)
@@ -584,6 +646,11 @@ def run(results, cmdenv, tdb):
         # the user simply mistyped the command. plan_route re-validates
         # as its own input contract; the repeat is cheap.
         validate_run_request(request)
+
+        # Resolve the named endpoints once here, at dispatch, via the shared
+        # TradeORM lookup. The planner then consumes the resolved DTOs and never
+        # touches the database handle for name resolution.
+        request = _resolve_request_endpoints(request, tdb)
 
         # Both endpoints omitted: the galaxy-wide search. It is markedly
         # slower than a search that names either endpoint, so it runs
