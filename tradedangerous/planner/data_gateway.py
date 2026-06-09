@@ -730,6 +730,11 @@ def fetch_station_pair_candidates(
         # outlier supply or demand prices cannot leak into candidate rows.
         filters.append(source_item.supply_price <= request.max_price)
         filters.append(destination_item.demand_price <= request.max_price)
+    if request.avoid_item_ids:
+        # Avoided commodities are never bought. Excluding the buy side removes
+        # the whole buy->sell pair (the pair is matched on item_id), so the
+        # commodity never enters cargo and is never sold.
+        filters.append(source_item.item_id.notin_(request.avoid_item_ids))
 
     stmt = (
         select(
@@ -817,6 +822,10 @@ def _classify_zero_result_failure(
         # are above the cap genuinely has no usable selling data under the
         # current settings, and the probe must report it consistently.
         source_filters.append(StationItem.supply_price <= request.max_price)
+    if request.avoid_item_ids:
+        # Same consistency: a source whose only sellable rows are avoided
+        # commodities has no usable selling data under the current settings.
+        source_filters.append(StationItem.item_id.notin_(request.avoid_item_ids))
 
     if not session.execute(
         select(StationItem.item_id).where(and_(*source_filters)).limit(1)
@@ -979,6 +988,12 @@ def fetch_open_ended_trade_candidates(
                     onward_filters.append(onward.modified >= cutoff)
                 if request.max_price > 0:
                     onward_filters.append(onward.supply_price <= request.max_price)
+                if request.avoid_item_ids:
+                    # The onward leg here is the next hop's buy, so an avoided
+                    # commodity must not count toward onward viability either.
+                    onward_filters.append(
+                        onward.item_id.notin_(request.avoid_item_ids)
+                    )
             onward_exists = select(literal(1)).where(and_(*onward_filters)).exists()
 
         supply_filters = [
@@ -994,6 +1009,11 @@ def fetch_open_ended_trade_candidates(
         if request.max_price > 0:
             supply_filters.append(
                 StationItem.supply_price <= request.max_price
+            )
+        if request.avoid_item_ids:
+            # Avoided commodities are never bought (the buy side of the trade).
+            supply_filters.append(
+                StationItem.item_id.notin_(request.avoid_item_ids)
             )
         if onward_exists is not None and open_role == "source":
             # Backward open source: require onward demand so the next hop back
@@ -1302,6 +1322,14 @@ def fetch_unanchored_trade_candidates(
         item_bounds, item_names = _unanchored_item_bounds(
             session, request, available_credits, cutoff
         )
+        if request.avoid_item_ids:
+            # Avoided commodities are never bought, so drop them from the
+            # candidate item set before any per-item supply/demand work. The
+            # match helpers read the supply temp, so they inherit the exclusion.
+            item_bounds = [
+                bound for bound in item_bounds
+                if bound[0] not in request.avoid_item_ids
+            ]
 
         candidates: list[TradeCandidate] = []
         best_total_profit = 0
