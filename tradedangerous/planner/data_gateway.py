@@ -2003,6 +2003,7 @@ def _match_via_on_demand_reach(
                     max_jumps_per_hop=max_jumps,
                     max_ly_per_jump=max_ly,
                     bubble_cache=bubble_cache,
+                    avoid_system_ids=request.avoid_system_ids,
                 ):
                     continue
                 # _unanchored_candidate_from_row expects positional row[0..7]:

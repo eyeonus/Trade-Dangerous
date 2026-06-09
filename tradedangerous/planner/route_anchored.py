@@ -470,6 +470,7 @@ def best_open_ended_trades_from(
                 max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
                 session=session,
                 bubble_cache=bubble_cache,
+                avoid_system_ids=request.avoid_system_ids,
             )
         except failures.NoReachableRoute:
             # The reachable subquery has already filtered to in-range systems,
@@ -534,6 +535,7 @@ def best_fixed_pair_trade_from(
                 max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
                 session=session,
                 bubble_cache=bubble_cache,
+                avoid_system_ids=request.avoid_system_ids,
             )
         except failures.NoReachableRoute:
             continue

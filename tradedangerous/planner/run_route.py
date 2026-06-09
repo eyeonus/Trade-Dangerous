@@ -216,6 +216,7 @@ def _attach_positioning_legs(
                 max_ly_per_jump=empty_ly,
                 session=session,
                 bubble_cache=leg_cache,
+                avoid_system_ids=request.avoid_system_ids,
             )
         if end_anchor is not None and route.stations:
             end_leg = plan_jump_path(
@@ -225,6 +226,7 @@ def _attach_positioning_legs(
                 max_ly_per_jump=empty_ly,
                 session=session,
                 bubble_cache=leg_cache,
+                avoid_system_ids=request.avoid_system_ids,
             )
         new_routes.append(
             dataclasses.replace(

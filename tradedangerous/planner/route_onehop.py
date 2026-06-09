@@ -224,6 +224,7 @@ def _best_open_ended_plan(
         max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
         session=session,
         bubble_cache=bubble_cache,
+        avoid_system_ids=request.avoid_system_ids,
     )
     reachability_ms = _elapsed_ms(reachability_started)
     best_pair = replace(best_pair, jump_path=jump_path)
@@ -325,6 +326,7 @@ def _plan_unanchored(
         max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
         session=session,
         bubble_cache=bubble_cache,
+        avoid_system_ids=request.avoid_system_ids,
     )
     reachability_ms = _elapsed_ms(reachability_started)
     best_pair = replace(best_pair, jump_path=jump_path)
@@ -384,6 +386,7 @@ def _best_pair_plan(
                         max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
                         session=session,
                         bubble_cache=bubble_cache,
+                        avoid_system_ids=request.avoid_system_ids,
                     )
                 except failures.NoReachableRoute:
                     reachability_ms += _elapsed_ms(reach_started)

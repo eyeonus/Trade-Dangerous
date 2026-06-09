@@ -428,6 +428,7 @@ def _positioning_stations(
         max_jumps_per_hop=positioning_jumps,
         max_ly_per_jump=float(empty_ly or 0.0),
         bubble_cache=positioning_bubble_cache,
+        avoid_system_ids=request.avoid_system_ids,
     )
 
     stations = data_gateway.fetch_eligible_stations_in_reachable_systems(
@@ -917,6 +918,7 @@ def best_open_ended_hop_candidates(
             max_jumps_per_hop=int(request.max_jumps_per_hop),
             max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
             bubble_cache=bubble_cache,
+            avoid_system_ids=request.avoid_system_ids,
         )
 
     candidates = data_gateway.fetch_open_ended_trade_candidates(
@@ -1021,6 +1023,7 @@ def best_open_ended_hop_candidates(
                 max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
                 session=session,
                 bubble_cache=bubble_cache,
+                avoid_system_ids=request.avoid_system_ids,
             )
         except failures.NoReachableRoute:
             # The reachable subquery already filtered to in-range systems, so

@@ -50,6 +50,7 @@ def plan_jump_path(
     max_ly_per_jump: float,
     session: Session,
     bubble_cache: dict[int, _LocalBubble],
+    avoid_system_ids: frozenset[int],
 ) -> JumpPath:
     """Return a jump path from source to destination within the request limits.
 
@@ -125,7 +126,8 @@ def plan_jump_path(
     bubble = bubble_cache.get(source.system_id)
     if bubble is None:
         bubble = _load_local_bubble(
-            session, source, bubble_radius, max_ly_per_jump
+            session, source, bubble_radius, max_ly_per_jump,
+            avoid_system_ids=avoid_system_ids,
         )
         bubble_cache[source.system_id] = bubble
 
@@ -178,6 +180,8 @@ def _load_local_bubble(
     anchor: ResolvedSystem,
     radius_ly: float,
     max_ly_per_jump: float,
+    *,
+    avoid_system_ids: frozenset[int],
 ) -> _LocalBubble:
     """Fetch every system within radius_ly of the anchor and precompute adjacency.
 
@@ -202,6 +206,12 @@ def _load_local_bubble(
             dx * dx + dy * dy + dz * dz <= radius_sq,
         )
     )
+    if avoid_system_ids:
+        # --avoid: drop avoided systems from the jump graph entirely, so no BFS
+        # path can route through one. A permit-locked system cannot be entered
+        # even in transit, so it must never appear as a stepping stone. The set
+        # is small (a handful of user tokens), so a literal NOT IN is cheap.
+        stmt = stmt.where(System.system_id.notin_(avoid_system_ids))
 
     systems: list[ResolvedSystem] = []
     id_to_index: dict[int, int] = {}
@@ -316,6 +326,7 @@ def reachable_systems_from(
     max_jumps_per_hop: int,
     max_ly_per_jump: float,
     bubble_cache: dict[int, _LocalBubble],
+    avoid_system_ids: frozenset[int],
 ) -> tuple[ResolvedSystem, ...]:
     """Return every system reachable from anchor within max_jumps_per_hop.
 
@@ -334,7 +345,8 @@ def reachable_systems_from(
     bubble = bubble_cache.get(anchor.system_id)
     if bubble is None:
         bubble = _load_local_bubble(
-            session, anchor, bubble_radius, max_ly_per_jump
+            session, anchor, bubble_radius, max_ly_per_jump,
+            avoid_system_ids=avoid_system_ids,
         )
         bubble_cache[anchor.system_id] = bubble
 
@@ -356,6 +368,7 @@ def is_system_pair_reachable(
     max_jumps_per_hop: int,
     max_ly_per_jump: float,
     bubble_cache: dict[int, _LocalBubble],
+    avoid_system_ids: frozenset[int],
 ) -> bool:
     """Return whether destination_system_id is reachable from source_system_id.
 
@@ -399,7 +412,8 @@ def is_system_pair_reachable(
         )
         bubble_radius = max_jumps_per_hop * max_ly_per_jump
         bubble = _load_local_bubble(
-            session, anchor, bubble_radius, max_ly_per_jump
+            session, anchor, bubble_radius, max_ly_per_jump,
+            avoid_system_ids=avoid_system_ids,
         )
         bubble_cache[source_system_id] = bubble
 
