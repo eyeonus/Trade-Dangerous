@@ -67,6 +67,30 @@ def validate_run_request(request: RunRequest) -> None:
                 option_name="--direct",
             )
 
+    # Steering and positioning options each need a companion endpoint to act
+    # on. --towards steers an open route toward a target, so it needs a fixed
+    # start (--from). --start-jumps / --end-jumps expand the eligible endpoints
+    # outward from an anchor system, so each needs the anchor it expands from.
+    # (--towards combined with --to is rejected at the parser, so it is not
+    # repeated here.)
+    if request.towards_text and not request.from_text:
+        raise MissingRequiredInput(
+            "--towards requires --from.",
+            option_name="--towards",
+        )
+
+    if request.start_jumps and not request.from_text:
+        raise MissingRequiredInput(
+            "--start-jumps requires --from.",
+            option_name="--start-jumps",
+        )
+
+    if request.end_jumps and not request.to_text:
+        raise MissingRequiredInput(
+            "--end-jumps requires --to.",
+            option_name="--end-jumps",
+        )
+
     unsupported = (
         ("--loop", request.loop),
         ("--via", bool(request.via)),
