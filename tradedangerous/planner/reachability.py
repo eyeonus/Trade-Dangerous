@@ -206,12 +206,15 @@ def _load_local_bubble(
             dx * dx + dy * dy + dz * dz <= radius_sq,
         )
     )
-    if avoid_system_ids:
-        # --avoid: drop avoided systems from the jump graph entirely, so no BFS
-        # path can route through one. A permit-locked system cannot be entered
-        # even in transit, so it must never appear as a stepping stone. The set
-        # is small (a handful of user tokens), so a literal NOT IN is cheap.
-        stmt = stmt.where(System.system_id.notin_(avoid_system_ids))
+    # --avoid: drop avoided systems from the jump graph so no BFS path can route
+    # through one (the permit case: a permit-locked system cannot be entered even
+    # in transit). The anchor is always kept, even when it is itself avoided --
+    # the explicit-origin carve-out: you may leave the system you started in
+    # (--from X --avoid X) but never route back, because every other bubble still
+    # excludes it. The set is small, so a literal NOT IN is cheap.
+    excluded = avoid_system_ids - {anchor.system_id}
+    if excluded:
+        stmt = stmt.where(System.system_id.notin_(excluded))
 
     systems: list[ResolvedSystem] = []
     id_to_index: dict[int, int] = {}

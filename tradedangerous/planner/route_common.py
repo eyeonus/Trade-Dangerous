@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from sqlalchemy.orm import Session
 
@@ -365,10 +365,25 @@ def _stations_from_endpoint(
             entity_name=endpoint.original_text,
         )
 
+    # Explicit-origin carve-out: a --from system the commander also avoided is
+    # still a valid place to START from -- they named it. Drop just that system
+    # from the system-avoid set for this origin fetch, so its stations are
+    # eligible origins. avoid still applies everywhere else (destinations,
+    # transit, later hops) and to any specific avoided station within the system,
+    # so the route never returns. Destinations get no carve-out: avoiding where
+    # you must end is a genuine contradiction, left to fail.
+    origin_request = request
+    if role == "source" and endpoint.system.system_id in request.avoid_system_ids:
+        origin_request = replace(
+            request,
+            avoid_system_ids=request.avoid_system_ids
+            - {endpoint.system.system_id},
+        )
+
     stations = data_gateway.fetch_eligible_stations_in_system(
         session,
         endpoint.system,
-        request,
+        origin_request,
         role=role,
     )
     if stations:
