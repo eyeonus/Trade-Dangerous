@@ -197,6 +197,19 @@ Each completed slice has an implementation plan (what needs to be done) and a co
 | [nineteenth_slice_implementation_plan.md](nineteenth_slice_implementation_plan.md) | Design plan for Slice 19: reuse `lookup_place`/`lookup_system` rather than building a second resolver; resolve `--from`/`--to`/`--towards` once at dispatch onto `RunRequest`; the approximate-match echo; the #224 `@N`-by-coordinate disambiguation; and the three lookup-path defects (regex escaping, the stray `45`, the stale TradeDB-wrapper attributes) fixed via one shared candidate-list formatter at both raise sites. |
 | [nineteenth_slice_completion_report.md](nineteenth_slice_completion_report.md) | Proof of completion: the resolver-as-adapter wiring, the resolve-once-at-dispatch flow, the shared `format_system_candidates` helper, the regex escape, and the live spot-checks — partial names, the `@N` collision list, the invalid-index message, and an `@1` selection growing a real route from one specific duplicate system. |
 
+### Slice 20 — Single Validator (Complete)
+**The legacy command-layer argument checker is retired; the planner's
+`validate_run_request` on the `RunRequest` is the one validator. Three
+argument-pair rules moved into it first (`--towards` and `--start-jumps` need
+`--from`; `--end-jumps` needs `--to`); the `--towards`/`--to` and
+`--direct`/`--hops` exclusions stay at the parser.**
+
+Planned in session, not in a separate plan doc — a small slice.
+
+| Document | Content |
+|----------|---------|
+| [twentieth_slice_completion_report.md](twentieth_slice_completion_report.md) | Proof of completion: the three rules ported, `validateRunArgumentsFast` removed, the insurance non-divergence, the two kept call sites, and the live spot-checks. |
+
 ---
 
 ## Reference and Technical Notes

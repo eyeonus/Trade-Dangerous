@@ -114,7 +114,7 @@ separate semantics for the same option.
 
 | Spec section | Status | Note |
 |--------------|--------|------|
-| Early validation | `[done]` | Static checks before planning. Some listed early-failure pairs (e.g. `--loop` with `--unique`) are moot while those options are gated. |
+| Early validation | `[done]` | One validator — the planner's `validate_run_request` on the `RunRequest`; the legacy command-layer checker was removed. Parser-level mutual exclusions (`--to`/`--towards`/`--loop`, `--direct`/`--hops`) stay at the parser. Some early-failure pairs (e.g. `--loop` with `--unique`) are moot while those options are gated. |
 | Name and place resolution | `[done]` | Syntax picks the namespace: a bare name is a system, `/name` a station, `system/station` a scoped station — no cross-namespace fall-through; misses and candidate lists name a System or Station (never "place"). Partial matching (exact → prefix → substring, gathered against a normalised `lookup_name` superset) and duplicate-system `@N` coordinate disambiguation are active for `trade run`, through the shared `TradeORM` lookup. |
 | Origin selection | `[done]` | Station / system / omitted; `--start-jumps` expands origins from the anchor's empty-jump neighbourhood. |
 | Destination selection | `[done]` | Station / system / omitted; `--end-jumps` expands destinations from the anchor's empty-jump neighbourhood. |

@@ -177,7 +177,11 @@ Do unify the contract.
 `trade run` is planner-only. The legacy `trade run --old` path, `TradeCalc`, the
 full-galaxy preload model, and `TradeDB` are gone from live code (archived).
 `TradeORM` is the single DB handle. The EDDN listener was repointed off the
-retired `tradedb`/`cache` modules onto `TradeORM`.
+retired `tradedb`/`cache` modules onto `TradeORM`. Argument validation is single
+too: the legacy command-layer checker was removed, leaving the planner's
+`validate_run_request` (on the neutral `RunRequest`) as the one validator —
+parser-level mutual exclusions (`--to`/`--towards`/`--loop`,
+`--direct`/`--hops`) stay at the argument parser.
 
 ---
 
@@ -266,16 +270,6 @@ currently do nothing — see `SPEC_STATUS.md`.
 
 Agreed-but-unscheduled decisions and noted-for-later items:
 
-- **Single validator (agreed next slice).** `trade run` validates in two places:
-  the command-layer `validateRunArgumentsFast` (the legacy-complete suite that
-  raises `CommandLineError`) and the planner's `validation.py` (the in-progress
-  new-planner validator on the neutral `RunRequest`). With `--old` retired there
-  is one path, so the two are redundant and have diverged in spots (e.g. the
-  `--insurance` rule differs — `credits + 42` buffer vs none). Plan: consolidate
-  onto `validation.py`, slim the command layer to parse → build → delegate, and
-  first confirm planner failures present as cleanly as today's `CommandLineError`s.
-  Genuine parser-level concerns (the `--direct`/`--hops` mutual exclusion,
-  credit-suffix parsing) stay in the argument definitions.
 - **`--sco` flag** — declares an SCO drive; clamps `--ls-penalty` to 0. UX
   signalling (flag / ship profile / journal) to resolve when it lands.
 - **`--bulk-tax-mode`** — decided. If ever built, the switch does one thing:
