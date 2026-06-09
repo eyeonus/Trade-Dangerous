@@ -291,6 +291,15 @@ def _station_attribute_predicates(request: RunRequest):
                 )
             )
         )
+    # --avoid station/system exclusion. An avoided station is never an eligible
+    # route station; an avoided system bars every station within it. The id sets
+    # are small (a handful of user-typed tokens), so a literal NOT IN is correct
+    # and cheap here. This is the single seam every attribute-filtered candidate
+    # fetch flows through, so both shapes inherit the exclusion in one place.
+    if request.avoid_station_ids:
+        predicates.append(Station.station_id.notin_(request.avoid_station_ids))
+    if request.avoid_system_ids:
+        predicates.append(Station.system_id.notin_(request.avoid_system_ids))
     return tuple(predicates)
 
 
