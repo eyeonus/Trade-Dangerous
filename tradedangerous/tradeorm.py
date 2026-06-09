@@ -287,9 +287,9 @@ class TradeORM:
                 return tier[0]
         all_candidates = exact + close + word + any_
         if not all_candidates:
-            raise LookupError(f"Unrecognized place: {name!r}")
+            raise LookupError(f"unknown station: {name!r}")
         raise AmbiguityError(
-            "Place", name, all_candidates,
+            "Station", name, all_candidates,
             # Candidates reaching here are stations; show the System/Station pair.
             key=lambda p: p.dbname(),
         )
@@ -335,7 +335,7 @@ class TradeORM:
             if isinstance(place, orm.Station):
                 return place
             raise SystemNotStationError(
-                f"Place {name!r} resolved to a system, not a station; specify a station name"
+                f"{name!r} resolved to a system, not a station; specify a station name"
             )
 
         if system is not None:
@@ -418,15 +418,11 @@ class TradeORM:
         station = stn_results[0] if stn_results else None
         sys_obj = sys_results[0] if sys_results else None
 
-        if station and sys_obj:
-            if station.system_id == sys_obj.system_id:
-                return station  # same system — station wins (Aulin-pattern)
-            raise AmbiguityError(
-                "Place", name,
-                [station, sys_obj],
-                key=lambda x: x.name,
-            )
-
+        # A station match wins outright. If a bare name also matches a system
+        # elsewhere, that system is irrelevant here: lookup_station only ever
+        # returns a station, so a coincidentally-named system is not an
+        # alternative the caller could pick. (Same-system matches are the
+        # Aulin-pattern case — the station is the more specific answer.)
         if station:
             return station
 
@@ -513,26 +509,31 @@ class TradeORM:
         self,
         name: str | orm.System | orm.Station,
     ) -> orm.System | orm.Station:
-        """ Resolve a place name to a System or Station, with partial matching.
+        """ Resolve a place name to a System or Station.
 
-        Accepts System/Station instances (pass-through) or a str in any of:
-          bare name, @system, /station, system/station, @system/station.
-        Backslash is treated as forward slash.
+        The syntax picks the namespace — there is no cross-namespace
+        fall-through:
+          bare name / @name  -> always a SYSTEM
+          /station           -> always a STATION (searched globally)
+          system/station     -> a station within the named system(s)
+          system/            -> the named system
 
-        Fast path (no slash after stripping @ annotation):
-          Calls lookup_system() — inherits full @N semantics and partial
-          system matching.  Falls through to exact-then-partial global station
-          search on LookupError.  AmbiguityError / TradeException propagate
-          immediately.  If a leading @ is present and the system is not found:
-          LookupError (@ signals "this is a system", no station fallback).
+        Accepts System/Station instances (pass-through) or a str in any of
+        the forms above.  Backslash is treated as forward slash.
 
-        Slow path (slash present):
-          System part: exact query first; if nothing, prefix ILIKE + _place_lookup.
-          Station part: if system candidates exist, all their stations are
-          searched via _place_lookup (handles interior substrings such as
-          "braham" → "Abraham Lincoln").  If no system context, prefix ILIKE +
-          _place_lookup globally.
-          @N is suppressed in compound syntax (PRESERVE FOR PARITY).
+        Bare path (no slash):
+          Delegates to lookup_system() — inherits full @N semantics and
+          partial system matching.  A miss raises LookupError ("unknown
+          system"); it never falls through to a station search.  A leading @
+          is an accepted, redundant "this is a system" marker.
+
+        Slash path:
+          System part: exact query first; if nothing, lookup_name ILIKE +
+          _place_lookup.  Station part: if system candidates exist, all their
+          stations are searched via _place_lookup (handles interior substrings
+          such as "braham" -> "Abraham Lincoln"); with no system context the
+          station is searched globally.  @N is suppressed in compound syntax
+          (PRESERVE FOR PARITY).
         """
         if isinstance(name, (orm.System, orm.Station)):
             return name
@@ -547,40 +548,15 @@ class TradeORM:
         slash_pos = norm.find("/")
 
         if slash_pos == -1:
-            # Fast path: bare name or @name, no slash.
+            # Bare name (optionally @-prefixed) names a SYSTEM. The syntax
+            # picks the namespace: a name with no slash is always a system,
+            # with no fall-through to a station search. To name a station, use
+            # the "/station" form. A leading @ is accepted as a redundant
+            # "this is a system" marker; @N disambiguation still flows through
+            # to lookup_system. LookupError ("unknown system") and
+            # AmbiguityError("System", ...) propagate from there.
             bare = norm[1:] if at_prefix else norm
-            try:
-                return self.lookup_system(bare)
-            except LookupError:
-                pass
-            # AmbiguityError / TradeException propagate above.
-            if at_prefix:
-                # @ marks explicit system intent — no station fallback.
-                raise LookupError(f"Unrecognized place: {name!r}")
-            # Exact station query first.
-            stn_results = (
-                self.session.query(orm.Station)
-                .filter(orm.Station.name == norm)
-                .all()
-            )
-            if not stn_results:
-                # Partial station fallback — gather candidates via the
-                # normalised lookup_name superset (handles interior and
-                # cross-space fragments, e.g. "hamlinc" -> Abraham Lincoln).
-                needle = normalize_str(norm)
-                stn_cands = (
-                    self.session.query(orm.Station)
-                    .filter(orm.Station.lookup_name.ilike(f"%{needle}%"))
-                    .all()
-                )
-                if not stn_cands:
-                    raise LookupError(f"Unrecognized place: {name!r}")
-                return self._list_search(
-                    "Station", norm, stn_cands, key=lambda s: s.dbname()
-                )
-            if len(stn_results) == 1:
-                return stn_results[0]
-            raise AmbiguityError("Place", norm, stn_results, key=lambda s: s.dbname())
+            return self.lookup_system(bare)
 
         # Slow path: compound form with slash.
         # Strip leading @ annotation (not @N — that is suppressed here).
@@ -618,7 +594,7 @@ class TradeORM:
         if not stn_part:
             # "system/" with no station — return system if unambiguous.
             if not sys_results:
-                raise LookupError(f"Unrecognized place: {name!r}")
+                raise LookupError(f"unknown system: {name!r}")
             if len(sys_results) == 1:
                 return sys_results[0]
             raise AmbiguityError(
@@ -661,17 +637,17 @@ class TradeORM:
                     .all()
                 )
                 if not stn_cands:
-                    raise LookupError(f"Unrecognized place: {name!r}")
+                    raise LookupError(f"unknown station: {name!r}")
                 exact_m, close_m, word_m, any_m = self._place_lookup(
                     stn_part, stn_cands
                 )
                 return self._resolve_place_tiers(name, exact_m, close_m, word_m, any_m)
 
         if not results:
-            raise LookupError(f"Unrecognized place: {name!r}")
+            raise LookupError(f"unknown station: {name!r}")
         if len(results) == 1:
             return results[0]
-        raise AmbiguityError("Place", stn_part, results, key=lambda s: s.name)
+        raise AmbiguityError("Station", stn_part, results, key=lambda s: s.dbname())
 
     def lookup_item(self, name: str | orm.Item) -> orm.Item:
         """Exact-then-normalised item lookup by name.

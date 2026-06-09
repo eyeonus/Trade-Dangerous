@@ -140,8 +140,11 @@ def resolve_endpoint(
     try:
         place = orm_db.lookup_place(text)
     except LookupError as exc:
+        # Surface the lookup's own message, which already names the namespace
+        # it searched ("unknown system: 'hamlinc'" for a bare name, "unknown
+        # station: '/foo'" for the /station form) — never "place".
         raise UnknownPlace(
-            f"Unrecognized {option_name} place: {text}",
+            f"{option_name}: {exc}",
             option_name=option_name,
             entity_name=text,
         ) from exc
