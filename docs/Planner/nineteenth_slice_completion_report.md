@@ -79,3 +79,47 @@ The `tradeorm` / `tradeexcept` fixes may turn existing parity tests red where th
 pin the old behaviour; left so, to be reconciled in the single later suite pass.
 A disposable probe spot-checked the DB-dependent paths and is deleted at slice
 close.
+
+---
+
+## Follow-on within the slice — namespace-by-syntax resolution
+
+After the initial wiring was spot-checked, three further changes were made to
+the same resolution path.
+
+**Namespace by syntax.** The original wiring inherited a system-then-station
+fall-through for a bare name, which left the system-vs-station choice implicit
+and, where a name matched both, silent. No legacy spec covers the case (it
+post-dates the legacy path), so a policy was set: a **bare** name (optionally
+`@`-prefixed) is **always a system**; **`/name`** is **always a station**
+(searched globally); **`system/station`** is a station within the named
+system(s); **`system/`** is the named system. The syntax picks the namespace —
+the resolver never guesses across it. A bare miss reports `unknown system: …`,
+a station-form miss `unknown station: …`, and every error and candidate list
+names a **System** or a **Station** — "place" no longer appears in any output.
+`@` is kept as an accepted, now-redundant "this is a system" marker.
+`lookup_station` (used by `trade`/`market`, not the run planner) was aligned to
+the same principle: it only ever returns a station, so its old mixed
+`[station, system]` ambiguity was dropped — an exact station wins outright.
+
+**Partial matching via a normalised key.** Candidate gathering for partial
+matches now runs against a stored, normalised `lookup_name` column (uppercased;
+punctuation, spaces and apostrophes stripped) on System and Station, instead of
+the earlier two-step prefix probe. A single `lookup_name LIKE '%needle%'` is a
+true **superset** of what the Python matcher can accept, so the SQL prefilter
+never hides a match it would have made — interior and cross-space fragments
+included (`hamlinc` → *Abraham Lincoln*). The Python tier still makes the final
+exact/word/substring decision.
+
+**Ambiguity rendering across a closed session.** `AmbiguityError` now renders
+its candidate labels at construction, while the database session is still open,
+rather than deferring to `__str__`. The CLI stringifies the error after the
+session closes, and a label such as `Station.dbname()` crosses the
+Station→System relationship, which cannot lazy-load on a detached instance.
+Rendering eagerly removes the `DetachedInstanceError` a scoped collision (e.g.
+`shin/jam`) otherwise hit.
+
+Verified on live data: bare names resolve as systems and `/name` as stations;
+misses report `unknown system` / `unknown station`; `shin/jam` lists
+`System/Station` pairs without error; `hamlinc` (bare) reports an unknown
+system, `/hamlinc` resolves *Abraham Lincoln*.

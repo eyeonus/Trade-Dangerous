@@ -123,12 +123,22 @@ Do unify the contract.
 
 - **Endpoint name resolution** — `--from` / `--to` / `--towards` resolve once at
   dispatch through the shared `TradeORM` lookup: exact, then prefix, then
-  substring (no typo tolerance). A non-exact match echoes `… resolved as …`.
-  Genuine duplicate system names disambiguate by `@N` with coordinates
-  (`Name@N — (x, y, z)`, ordered by Galactic X); a bare collision lists the
-  candidates, a bad index reports the valid range. The planner consumes the
-  resolved endpoint DTOs on `RunRequest`; the database handle never enters the
-  planner.
+  substring (no typo tolerance). Syntax picks the namespace, with no
+  cross-namespace fall-through: a bare name (optionally `@`-prefixed) is always
+  a **system**, `/name` is always a **station**, `system/station` is a station
+  within the named system(s), `system/` is the named system. A bare miss
+  reports `unknown system: …`; a station-form miss reports `unknown station:
+  …`; every error and candidate list names a System or a Station — never
+  "place". A non-exact match echoes `… resolved as …`. Genuine duplicate system
+  names disambiguate by `@N` with coordinates (`Name@N — (x, y, z)`, ordered by
+  Galactic X); a bare collision lists the candidates, a bad index reports the
+  valid range. Partial-name candidates are gathered against a stored normalised
+  `lookup_name` key — a true superset of the Python matcher, so the SQL
+  prefilter never hides a match. The planner consumes the resolved endpoint DTOs
+  on `RunRequest`; the database handle never enters the planner. (The
+  `lookup_name` column this relies on, and other schema edits made alongside
+  this work, are documented in the main-refactor docs — schema surface is
+  recorded there, not in the planner docs.)
 - **Cargo optimiser** — bounded branch-and-bound, multi-commodity; the bound is
   admissible (proven exact against a brute-force harness). Destination demand is
   a hard quantity cap, not just an eligibility threshold.

@@ -190,7 +190,7 @@ Each completed slice has an implementation plan (what needs to be done) and a co
 | [eighteenth_slice_completion_report.md](eighteenth_slice_completion_report.md) | Proof of completion: the un-gate across both validation layers, the canonical `hops → 1`, the reachability skip in `_best_pair_plan`, the renderer's direct-leg line, and the spot-checks. Records the discovery that `trade run` carries two validation layers (the redundancy the next slice resolves). |
 
 ### Slice 19 — Fuzzy Name Matching and Duplicate-System Disambiguation (Complete)
-**`trade run` resolves partial endpoint names (exact → prefix → substring, no typo tolerance) by reusing the shared `TradeORM` lookup, with an approximate-match echo and `@N` coordinate disambiguation for genuine duplicate system names. Resolution moved to dispatch; the planner reads resolved endpoint DTOs and never touches the database handle.**
+**`trade run` resolves partial endpoint names (exact → prefix → substring, no typo tolerance) by reusing the shared `TradeORM` lookup, with an approximate-match echo and `@N` coordinate disambiguation for genuine duplicate system names. Resolution moved to dispatch; the planner reads resolved endpoint DTOs and never touches the database handle. A follow-on set the namespace-by-syntax policy (bare = system, `/name` = station, no cross-namespace fall-through; errors name a System or Station, never "place"), moved partial-candidate gathering onto a normalised `lookup_name` superset, and rendered ambiguity labels before the session closes.**
 
 | Document | Content |
 |----------|---------|
