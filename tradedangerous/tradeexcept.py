@@ -87,7 +87,18 @@ class AmbiguityError(TradeException):
         self.searchKey = searchKey
         self.anyMatch = anyMatch
         self.key = key
-    
+        # Render candidate labels now, while we are still inside the live DB
+        # session that produced these ORM objects. Deferring key() to __str__
+        # is unsafe: the CLI stringifies the error after the session has closed,
+        # and a key such as Station.dbname() crosses the Station->System
+        # relationship, which cannot lazy-load on a detached instance
+        # (DetachedInstanceError). The (index, System) tuple form used for
+        # duplicate-system collisions is rendered separately in __str__ from
+        # columns only, so it is skipped here.
+        self.rendered = None
+        if anyMatch and not isinstance(anyMatch[0], tuple):
+            self.rendered = [key(c) for c in anyMatch[:AMBIGUITY_LIMIT]]
+
     def __str__(self) -> str:
         anyMatch, key = self.anyMatch, self.key
         
@@ -120,8 +131,14 @@ class AmbiguityError(TradeException):
             # Not matching anything is not "ambiguous".
             raise RuntimeError('called AmbiguityError with no matches')
         
-        # Truncate the list of candidates so we don't show more than 10
-        candidates = [key(c) for c in anyMatch[:AMBIGUITY_LIMIT]]
+        # Truncate the list of candidates so we don't show more than 10.
+        # Prefer the labels rendered eagerly at construction time, while the DB
+        # session was still live; fall back to applying key() now only if they
+        # were not captured.
+        if self.rendered is not None:
+            candidates = list(self.rendered)
+        else:
+            candidates = [key(c) for c in anyMatch[:AMBIGUITY_LIMIT]]
         if len(anyMatch) < 3:
             opportunities = " or ".join(candidates)
         else:
