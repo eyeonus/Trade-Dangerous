@@ -67,6 +67,14 @@ class RunRequest:
     loop: bool = False
     via: tuple[str, ...] = ()
     avoid: tuple[str, ...] = ()
+    # Resolved --avoid tokens, filled once at dispatch from `avoid` via the
+    # shared TradeORM lookup. Each avoid token resolves to a system, a station,
+    # or a commodity; the planner consumes these id sets and never re-resolves.
+    # Empty sets (the default) mean nothing was avoided, so every existing call
+    # path is unchanged when --avoid is absent.
+    avoid_system_ids: frozenset[int] = frozenset()
+    avoid_station_ids: frozenset[int] = frozenset()
+    avoid_item_ids: frozenset[int] = frozenset()
     unique: bool = False
     loop_interval: int | None = None
     shorten: bool = False

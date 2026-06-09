@@ -94,7 +94,6 @@ def validate_run_request(request: RunRequest) -> None:
     unsupported = (
         ("--loop", request.loop),
         ("--via", bool(request.via)),
-        ("--avoid", bool(request.avoid)),
         ("--unique", request.unique),
         ("--loop-interval", request.loop_interval is not None),
         ("--shorten", request.shorten),

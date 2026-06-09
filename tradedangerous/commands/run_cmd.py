@@ -512,6 +512,21 @@ def _resolve_request_endpoints(request, tdb):
             )
         updates["towards_target"] = target
 
+    if request.avoid:
+        # Resolve every --avoid token once here, into the three id sets the
+        # planner consumes. An unresolvable token is a clean CommandLineError;
+        # an ambiguous name or bad @N propagates as the lookup's own message
+        # (its candidate / @N list), which the CLI prints verbatim.
+        try:
+            resolved_avoid = resolver.resolve_avoid_tokens(tdb, request.avoid)
+        except UnknownPlace as exc:
+            raise CommandLineError(exc.message) from exc
+        updates["avoid_system_ids"] = resolved_avoid.system_ids
+        updates["avoid_station_ids"] = resolved_avoid.station_ids
+        updates["avoid_item_ids"] = resolved_avoid.item_ids
+        for token, canonical in resolved_avoid.echoes:
+            print(f"--avoid {token} resolved as {canonical}", flush=True)
+
     if not updates:
         return request
     return dataclasses.replace(request, **updates)
