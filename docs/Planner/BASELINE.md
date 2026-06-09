@@ -171,6 +171,15 @@ Do unify the contract.
   (mutually exclusive with `--hops`). `--ly-per`/`--jumps-per` are tolerated but
   ignored; `--towards` and empty-jump positioning are rejected as contradictory.
   The hop carries no jump path and shows as a direct leg in the route output.
+- **`--avoid`** — excludes a commodity, system, or station from a route. Tokens
+  resolve once at dispatch (repeated / comma-separated, fuzzy-matched like the
+  endpoints): a slash means a place, a bare token is a system or commodity,
+  resolved precision-first with a place winning a same-tier tie. An avoided
+  commodity is never bought (so never carried or sold); an avoided station is
+  never a route station; an avoided system is barred as a route station *and*
+  from every jump path — the permit case, since a permit-locked system cannot be
+  entered even in transit. The explicit `--from` is exempt as the origin: you may
+  start in an avoided system, but the route never returns to it.
 
 ### Legacy retired
 
@@ -260,9 +269,9 @@ unknown-pad station is admitted unless `--pad-size L` is set. Full reasoning in
 ## What's still owed
 
 The authoritative, option-by-option status lives in **`SPEC_STATUS.md`**. In
-short, the route shapes, empty-jump positioning, `--towards`, and `--direct` are
-done; what remains is the rest of the modifier and display surface — `--via`,
-`--avoid`, `--loop`, `--unique`, `--shorten`, `--loop-interval`, and the
+short, the route shapes, empty-jump positioning, `--towards`, `--direct`, and
+`--avoid` are done; what remains is the rest of the modifier and display surface
+— `--via`, `--loop`, `--unique`, `--shorten`, `--loop-interval`, and the
 search/display controls
 (`--routes > 1`, `--max-routes`, `--prune-*`, `--checklist`, `--x52-pro`). Three
 options (`--show-jumps`, `--summary`, `--progress`) parse without error but

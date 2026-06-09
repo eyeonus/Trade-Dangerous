@@ -210,6 +210,14 @@ Planned in session, not in a separate plan doc — a small slice.
 |----------|---------|
 | [twentieth_slice_completion_report.md](twentieth_slice_completion_report.md) | Proof of completion: the three rules ported, `validateRunArgumentsFast` removed, the insurance non-divergence, the two kept call sites, and the live spot-checks. |
 
+### Slice 21 — `--avoid` (Commodity / System / Station Exclusion) (Complete)
+**`--avoid` excludes a commodity, system, or station from a route. Tokens resolve once at dispatch (repeated / comma-separated, fuzzy-matched like the endpoints; bare = system or commodity, slash = place, precision-first with a place winning a same-tier tie). An avoided commodity is never bought; an avoided station is never a route station; an avoided system is also barred from jump-path transit (the permit case). The explicit `--from` is exempt as the origin — start there, never return.**
+
+| Document | Content |
+|----------|---------|
+| [twenty_first_slice_implementation_plan.md](twenty_first_slice_implementation_plan.md) | Design plan for Slice 21: resolve avoid tokens once into three id sets; the application seams (the shared station-attribute predicate for station/system, the buy-side commodity filters, the reachability bubble for jump-path transit); the explicit-origin carve-out; the precision-first, place-wins resolution order. |
+| [twenty_first_slice_completion_report.md](twenty_first_slice_completion_report.md) | Proof of completion: the five-part build across resolution, station/system exclusion, commodity buy-side exclusion, jump-path transit exclusion, and the origin carve-out; the required-argument threading through reachability; and the live spot-checks including the transit reroute and the invariant holding. |
+
 ---
 
 ## Reference and Technical Notes

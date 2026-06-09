@@ -45,7 +45,7 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 | `--towards` | `[done]` | Steers toward a target system; progress-first ranking, arrives and stops early. Requires `--from`; rejects `--to`. See Variations. |
 | `--loop` | `[todo]` | Gated. |
 | `--via` | `[todo]` | Gated. |
-| `--avoid` | `[todo]` | Gated. |
+| `--avoid` | `[done]` | Excludes a commodity, system, or station; repeated / comma-separated, fuzzy-matched like the endpoints. Avoided commodity never bought; avoided station never a route station; avoided system also barred from jump-path transit (the permit case). Explicit `--from` exempt as origin. |
 | `--direct` | `[varied]` | Single direct hop between a fixed `--from` and `--to`; no jump/distance checks. Requires both endpoints; single-hop only; open-destination mode dropped. See Variations. |
 | `--shorten` | `[todo]` | Gated. |
 | `--unique` | `[todo]` | Gated. |
@@ -118,7 +118,7 @@ separate semantics for the same option.
 | Name and place resolution | `[done]` | Syntax picks the namespace: a bare name is a system, `/name` a station, `system/station` a scoped station — no cross-namespace fall-through; misses and candidate lists name a System or Station (never "place"). Partial matching (exact → prefix → substring, gathered against a normalised `lookup_name` superset) and duplicate-system `@N` coordinate disambiguation are active for `trade run`, through the shared `TradeORM` lookup. |
 | Origin selection | `[done]` | Station / system / omitted; `--start-jumps` expands origins from the anchor's empty-jump neighbourhood. |
 | Destination selection | `[done]` | Station / system / omitted; `--end-jumps` expands destinations from the anchor's empty-jump neighbourhood. |
-| Avoid semantics | `[todo]` | `--avoid` gated. |
+| Avoid semantics | `[done]` | Commodity / system / station exclusion; avoided systems barred from transit; explicit `--from` origin exempt. Namespace by syntax (bare = system or commodity, slash = place), resolved precision-first with a place winning a same-tier tie. |
 | Via semantics | `[todo]` | `--via` gated. |
 | Station eligibility | `[done]` | All implemented filters applied SQL-side. |
 | Market-data eligibility | `[varied]` | To spec, plus `_MIN_MEANINGFUL_DEMAND = 2` — see Variations. |
