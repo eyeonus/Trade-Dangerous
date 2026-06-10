@@ -1513,19 +1513,47 @@ def fetch_unanchored_trade_candidates(
         Index("ix_td_unanchored_demand_sys", "system_id"),
         prefixes=["TEMPORARY"],
     )
+    # Stations that pass the request's attribute filters (pad size, planetary,
+    # fleet carrier, ...), reduced once for the whole walk. The bounds
+    # aggregates and both per-item reductions drive from this instead of
+    # re-deriving the filter set from Station for every commodity; it also
+    # carries the system_id the reductions partition by. The primary key
+    # doubles as the probe index for the per-row station_id lookups.
+    qualifying = Table(
+        "td_unanchored_qual",
+        metadata,
+        Column("station_id", BigInteger, primary_key=True),
+        Column("system_id", BigInteger),
+        prefixes=["TEMPORARY"],
+    )
 
     connection = session.connection()
     # Tune the connection for bulk work: temp tables in memory and a larger
     # page cache on SQLite, session-scoped commit and lock tuning on MariaDB.
     begin_bulk_mode(session)
-    _create_unanchored_temps(connection, supply_temp, demand_temp)
+    _create_unanchored_temps(connection, supply_temp, demand_temp, qualifying)
 
     pairs_examined = 0
     pairs_accepted = 0
     cap_hits = 0
     try:
+        # The station-attribute filters stay defined once, in
+        # _station_attribute_predicates; this reduces Station to the
+        # qualifying (station_id, system_id) pairs every later stage drives
+        # from. ANALYZE hands the optimiser the temp's real cardinality so
+        # the per-item reductions get sane join plans.
+        session.execute(
+            qualifying.insert().from_select(
+                ["station_id", "system_id"],
+                select(Station.station_id, Station.system_id).where(
+                    and_(*_station_attribute_predicates(request))
+                ),
+            )
+        )
+        analyze_temp_table(session, qualifying)
+
         item_bounds, item_names = _unanchored_item_bounds(
-            session, request, available_credits, cutoff
+            session, qualifying, request, available_credits, cutoff
         )
         if request.avoid_item_ids:
             # Avoided commodities are never bought, so drop them from the
@@ -1545,10 +1573,17 @@ def fetch_unanchored_trade_candidates(
                 break
             is_sensitive = item_id in sensitive_item_ids
             _reduce_supply_by_system(
-                session, supply_temp, item_id, request, available_credits, cutoff
+                session,
+                qualifying,
+                supply_temp,
+                item_id,
+                request,
+                available_credits,
+                cutoff,
             )
             _reduce_demand_by_system(
-                session, demand_temp, item_id, request, cutoff, is_sensitive
+                session, qualifying, demand_temp, item_id, request, cutoff,
+                is_sensitive,
             )
 
             if same_system:
@@ -1620,23 +1655,32 @@ def fetch_unanchored_trade_candidates(
         # cleanup failure: the temp tables are session-scoped and the run is
         # being torn down anyway.
         try:
-            _drop_unanchored_temps(connection, supply_temp, demand_temp)
+            _drop_unanchored_temps(
+                connection, supply_temp, demand_temp, qualifying
+            )
         except Exception:
             pass
 
 
-def _create_unanchored_temps(connection, supply_temp, demand_temp) -> None:
+def _create_unanchored_temps(
+    connection, supply_temp, demand_temp, qualifying
+) -> None:
     """Create the run-scoped temporary tables, replacing any stale leftovers."""
 
+    qualifying.drop(connection, checkfirst=True)
     demand_temp.drop(connection, checkfirst=True)
     supply_temp.drop(connection, checkfirst=True)
     supply_temp.create(connection)
     demand_temp.create(connection)
+    qualifying.create(connection)
 
 
-def _drop_unanchored_temps(connection, supply_temp, demand_temp) -> None:
+def _drop_unanchored_temps(
+    connection, supply_temp, demand_temp, qualifying
+) -> None:
     """Drop the run-scoped temporary tables once the search has finished."""
 
+    qualifying.drop(connection, checkfirst=True)
     demand_temp.drop(connection, checkfirst=True)
     supply_temp.drop(connection, checkfirst=True)
 
@@ -1726,6 +1770,7 @@ def _bounds_aggregate(
 
 def _unanchored_item_bounds(
     session: Session,
+    qualifying: Table,
     request: RunRequest,
     available_credits: int,
     cutoff: datetime | None,
@@ -1748,68 +1793,46 @@ def _unanchored_item_bounds(
     fires and the walk grinds through commodities that cannot win.
 
     The station-attribute filters live on Station, not on the market rows, so
-    they are applied once: Station is reduced to the qualifying station ids in a
-    temp table, and the two price aggregates read only those stations' market
-    rows. The aggregate is forced to drive from that small temp
-    (force_order_join); left to itself the optimiser scans all ~11M market rows
-    and seeks the station per row, instead of scanning the ~14% of stations that
-    qualify and seeking their market rows — measured ~60x slower.
+    they are applied once: the caller reduces Station into the run-scoped
+    ``qualifying`` temp (already populated here), and the two price aggregates
+    read only those stations' market rows. The aggregate is forced to drive
+    from that small temp (force_order_join); left to itself the optimiser
+    scans all ~11M market rows and seeks the station per row, instead of
+    scanning the ~14% of stations that qualify and seeking their market rows
+    — measured ~60x slower.
 
     The demand floor here is the uniform _MIN_MEANINGFUL_DEMAND; the reductions
     raise it to 4 for bulk-sale-tax-sensitive items, but using the looser floor
     keeps this one grouped query and a looser floor is still admissible.
     """
 
-    connection = session.connection()
-    qualifying = Table(
-        "td_unanchored_qual",
-        MetaData(),
-        Column("station_id", BigInteger),
-        prefixes=["TEMPORARY"],
+    join_kw = force_order_join(session)
+    min_supply = _bounds_aggregate(
+        session,
+        qualifying.name,
+        join_kw,
+        aggregate="MIN",
+        price_column="supply_price",
+        units_column="supply_units",
+        units_floor=1,
+        price_ceiling=available_credits,
+        min_units=request.min_supply,
+        cutoff=cutoff,
+        max_price=request.max_price,
     )
-    qualifying.drop(connection, checkfirst=True)
-    qualifying.create(connection)
-    try:
-        # The station-attribute filters stay defined once, in
-        # _station_attribute_predicates; here they reduce Station to the
-        # qualifying station ids that both bounds aggregates drive from.
-        session.execute(
-            qualifying.insert().from_select(
-                ["station_id"],
-                select(Station.station_id).where(
-                    and_(*_station_attribute_predicates(request))
-                ),
-            )
-        )
-        join_kw = force_order_join(session)
-        min_supply = _bounds_aggregate(
-            session,
-            qualifying.name,
-            join_kw,
-            aggregate="MIN",
-            price_column="supply_price",
-            units_column="supply_units",
-            units_floor=1,
-            price_ceiling=available_credits,
-            min_units=request.min_supply,
-            cutoff=cutoff,
-            max_price=request.max_price,
-        )
-        max_demand = _bounds_aggregate(
-            session,
-            qualifying.name,
-            join_kw,
-            aggregate="MAX",
-            price_column="demand_price",
-            units_column="demand_units",
-            units_floor=_MIN_MEANINGFUL_DEMAND,
-            price_ceiling=None,
-            min_units=request.min_demand,
-            cutoff=cutoff,
-            max_price=request.max_price,
-        )
-    finally:
-        qualifying.drop(connection, checkfirst=True)
+    max_demand = _bounds_aggregate(
+        session,
+        qualifying.name,
+        join_kw,
+        aggregate="MAX",
+        price_column="demand_price",
+        units_column="demand_units",
+        units_floor=_MIN_MEANINGFUL_DEMAND,
+        price_ceiling=None,
+        min_units=request.min_demand,
+        cutoff=cutoff,
+        max_price=request.max_price,
+    )
     bounds: list[tuple[int, int]] = []
     for item_id, supply_price in min_supply.items():
         demand_price = max_demand.get(item_id)
@@ -1829,6 +1852,7 @@ def _unanchored_item_bounds(
 
 def _reduce_supply_by_system(
     session: Session,
+    qualifying: Table,
     supply_temp: Table,
     item_id: int,
     request: RunRequest,
@@ -1842,6 +1866,12 @@ def _reduce_supply_by_system(
     within each system and the outer query keeps rank one. This is standard
     SQL — it relies on no single backend's handling of non-grouped columns —
     so the reduction behaves identically whichever database is in use.
+
+    Station eligibility comes from the run-scoped ``qualifying`` temp — the
+    station-attribute filters were applied once when it was populated, so
+    the per-item join is a primary-key probe rather than a Station join
+    with the whole predicate set re-evaluated per commodity. The temp also
+    carries the system_id the ranking partitions by.
     """
 
     session.execute(supply_temp.delete())
@@ -1851,7 +1881,6 @@ def _reduce_supply_by_system(
         StationItem.supply_price > 0,
         StationItem.supply_units > 0,
         StationItem.supply_price <= available_credits,
-        *_station_attribute_predicates(request),
     ]
     if request.min_supply is not None:
         filters.append(StationItem.supply_units >= request.min_supply)
@@ -1862,14 +1891,14 @@ def _reduce_supply_by_system(
 
     ranked = (
         select(
-            Station.system_id.label("system_id"),
+            qualifying.c.system_id.label("system_id"),
             StationItem.station_id.label("station_id"),
             StationItem.supply_price.label("supply_price"),
             StationItem.supply_units.label("supply_units"),
             StationItem.modified.label("modified"),
             func.row_number()
             .over(
-                partition_by=Station.system_id,
+                partition_by=qualifying.c.system_id,
                 order_by=(
                     StationItem.supply_price.asc(),
                     StationItem.station_id.asc(),
@@ -1878,7 +1907,7 @@ def _reduce_supply_by_system(
             .label("rank_in_system"),
         )
         .select_from(StationItem)
-        .join(Station, Station.station_id == StationItem.station_id)
+        .join(qualifying, qualifying.c.station_id == StationItem.station_id)
         .where(and_(*filters))
         .subquery()
     )
@@ -1899,6 +1928,7 @@ def _reduce_supply_by_system(
 
 def _reduce_demand_by_system(
     session: Session,
+    qualifying: Table,
     demand_temp: Table,
     item_id: int,
     request: RunRequest,
@@ -1910,6 +1940,8 @@ def _reduce_demand_by_system(
     The mirror of the supply reduction: ROW_NUMBER ranks each system's
     eligible buyers, dearest first with station id as the tie-break, and the
     outer query keeps rank one. Standard SQL, identical on every backend.
+    Station eligibility comes from the run-scoped ``qualifying`` temp, same
+    as the supply reduction.
 
     is_sensitive is known at call time — True for Metals/Minerals items —
     and drives the bulk-sale-tax cap: effective_demand_units is set to
@@ -1929,7 +1961,6 @@ def _reduce_demand_by_system(
         StationItem.item_id == item_id,
         StationItem.demand_price > 0,
         StationItem.demand_units >= min_demand_floor,
-        *_station_attribute_predicates(request),
     ]
     if request.min_demand is not None:
         filters.append(StationItem.demand_units >= request.min_demand)
@@ -1955,7 +1986,7 @@ def _reduce_demand_by_system(
 
     ranked = (
         select(
-            Station.system_id.label("system_id"),
+            qualifying.c.system_id.label("system_id"),
             StationItem.station_id.label("station_id"),
             StationItem.demand_price.label("demand_price"),
             StationItem.demand_units.label("demand_units"),
@@ -1963,7 +1994,7 @@ def _reduce_demand_by_system(
             StationItem.modified.label("modified"),
             func.row_number()
             .over(
-                partition_by=Station.system_id,
+                partition_by=qualifying.c.system_id,
                 order_by=(
                     StationItem.demand_price.desc(),
                     StationItem.station_id.asc(),
@@ -1972,7 +2003,7 @@ def _reduce_demand_by_system(
             .label("rank_in_system"),
         )
         .select_from(StationItem)
-        .join(Station, Station.station_id == StationItem.station_id)
+        .join(qualifying, qualifying.c.station_id == StationItem.station_id)
         .where(and_(*filters))
         .subquery()
     )
