@@ -141,7 +141,12 @@ Do unify the contract.
   recorded there, not in the planner docs.)
 - **Cargo optimiser** — bounded branch-and-bound, multi-commodity; the bound is
   admissible (proven exact against a brute-force harness). Destination demand is
-  a hard quantity cap, not just an eligibility threshold.
+  a hard quantity cap, not just an eligibility threshold. Callers pre-filter:
+  a candidate pair whose admissible ceiling cannot beat the worst pair currently
+  kept skips the solve, and pairs are solved best-first so the threshold rises
+  fast. Exact (routes unchanged); it is what makes the real-budget shapes
+  (fixed-terminal, one-hop open) fast — the fixed-terminal Sol→Lave run dropped
+  285s → 46s, the one-hop open from Sol 8m40 → ~5s.
 - **Bulk-sale-tax cap** — Metals/Minerals destination quantity capped at
   `floor(demand * 0.25)` to avoid the in-game bulk-sale price penalty.
 - **`--max-price`** — absolute commodity-price cap (default 1,500,000 cr/t),
@@ -295,8 +300,14 @@ Agreed-but-unscheduled decisions and noted-for-later items:
   higher-scoring winners; mechanisms hold but current data/scorer don't make
   them change a winner. Re-evaluation triggers recorded in
   `fifth_slice_restructure_implementation_plan.md`.
-- **Shared expansion-cost floor** — narrow candidate rows before cargo fitting;
-  helps the open multi-hop shapes. Performance only.
+- **Shared expansion-cost floor** — two halves. The *cargo* half (skip solving
+  pairs that cannot place) is **done** — the cargo pre-filter above. The *fetch*
+  half — narrowing candidate rows before they leave SQL — is still owed: once
+  cargo is pre-filtered it is the dominant cost on the real-budget shapes (the
+  fixed-terminal Layer-1 demand scan), and it is the whole cost on the optimistic
+  open multi-hop shapes (those fit cargo against a non-binding budget, so the
+  pre-filter is inert there and their time is candidate fetch/group). Performance
+  only.
 - **`nav` / `olddata` rebuild** — parked for the main refactor's checkpoint L.
 - **Listener loose ends** — the 15A change is committed in the listener repo;
   the client path and a full spansh import are assumed-working pending a real
