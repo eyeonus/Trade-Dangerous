@@ -804,6 +804,113 @@ def fetch_station_pair_candidates(
     return tuple(candidates)
 
 
+def _usable_selling_filters(
+    station_clause,
+    request: RunRequest,
+    cutoff: datetime | None,
+) -> list:
+    """Filters defining "usable selling data" for the failure probes.
+
+    Shared by the single-pair classifier and the station-set probes so the
+    two can never drift apart on what counts as a sellable row.
+    """
+
+    filters = [
+        station_clause,
+        StationItem.supply_price > 0,
+        StationItem.supply_units > 0,
+    ]
+    if request.min_supply is not None:
+        filters.append(StationItem.supply_units >= request.min_supply)
+    if cutoff is not None:
+        filters.append(StationItem.modified >= cutoff)
+    if request.max_price > 0:
+        # Apply the cap to the failure probe too: a station whose only rows
+        # are above the cap genuinely has no usable selling data under the
+        # current settings, and the probe must report it consistently.
+        filters.append(StationItem.supply_price <= request.max_price)
+    if request.avoid_item_ids:
+        # Same consistency: a source whose only sellable rows are avoided
+        # commodities has no usable selling data under the current settings.
+        filters.append(StationItem.item_id.notin_(request.avoid_item_ids))
+    return filters
+
+
+def _usable_buying_filters(
+    station_clause,
+    request: RunRequest,
+    cutoff: datetime | None,
+) -> list:
+    """Filters defining "usable buying data" — mirror of the selling probe.
+
+    No avoid-commodity arm: --avoid bars the buy side of a trade, so a
+    destination's demand rows stay usable whatever the avoid list says.
+    """
+
+    filters = [
+        station_clause,
+        StationItem.demand_price > 0,
+        StationItem.demand_units >= _MIN_MEANINGFUL_DEMAND,
+    ]
+    if request.min_demand is not None:
+        filters.append(StationItem.demand_units >= request.min_demand)
+    if cutoff is not None:
+        filters.append(StationItem.modified >= cutoff)
+    if request.max_price > 0:
+        # Mirror the supply-side probe: a destination whose only buy rows
+        # are above the cap has no usable buying data under the user's
+        # settings.
+        filters.append(StationItem.demand_price <= request.max_price)
+    return filters
+
+
+def station_set_has_selling_data(
+    session: Session,
+    station_ids: tuple[int, ...],
+    request: RunRequest,
+) -> bool:
+    """Whether any station in the set has usable selling data.
+
+    One LIMIT-1 probe over the whole set. Matrix planners call this on
+    their no-route failure path instead of classifying every zero-result
+    pair inside the hot loop; the id set is an endpoint expansion — tens
+    of stations at most — so a literal IN is safe.
+    """
+
+    if not station_ids:
+        return False
+    filters = _usable_selling_filters(
+        StationItem.station_id.in_(station_ids),
+        request,
+        _age_cutoff(request.age_days),
+    )
+    return session.execute(
+        select(StationItem.item_id).where(and_(*filters)).limit(1)
+    ).first() is not None
+
+
+def station_set_has_buying_data(
+    session: Session,
+    station_ids: tuple[int, ...],
+    request: RunRequest,
+) -> bool:
+    """Whether any station in the set has usable buying data.
+
+    Mirror of station_set_has_selling_data for the destination side.
+    """
+
+    if not station_ids:
+        return False
+    filters = _usable_buying_filters(
+        StationItem.station_id.in_(station_ids),
+        request,
+        _age_cutoff(request.age_days),
+    )
+    return session.execute(
+        select(StationItem.item_id).where(and_(*filters)).limit(1)
+    ).first() is not None
+
+
 def _classify_zero_result_failure(
     session: Session,
     source: ResolvedStation,
@@ -813,25 +920,9 @@ def _classify_zero_result_failure(
 ) -> None:
     """Raise the most specific failure when a station-pair join returns no candidates."""
 
-    source_filters = [
-        StationItem.station_id == source.station_id,
-        StationItem.supply_price > 0,
-        StationItem.supply_units > 0,
-    ]
-    if request.min_supply is not None:
-        source_filters.append(StationItem.supply_units >= request.min_supply)
-    if cutoff is not None:
-        source_filters.append(StationItem.modified >= cutoff)
-    if request.max_price > 0:
-        # Apply the cap to the failure probe too: a station whose only rows
-        # are above the cap genuinely has no usable selling data under the
-        # current settings, and the probe must report it consistently.
-        source_filters.append(StationItem.supply_price <= request.max_price)
-    if request.avoid_item_ids:
-        # Same consistency: a source whose only sellable rows are avoided
-        # commodities has no usable selling data under the current settings.
-        source_filters.append(StationItem.item_id.notin_(request.avoid_item_ids))
-
+    source_filters = _usable_selling_filters(
+        StationItem.station_id == source.station_id, request, cutoff
+    )
     if not session.execute(
         select(StationItem.item_id).where(and_(*source_filters)).limit(1)
     ).first():
@@ -841,23 +932,9 @@ def _classify_zero_result_failure(
             entity_name=source.dbname,
         )
 
-    destination_filters = [
-        StationItem.station_id == destination.station_id,
-        StationItem.demand_price > 0,
-        StationItem.demand_units >= _MIN_MEANINGFUL_DEMAND,
-    ]
-    if request.min_demand is not None:
-        destination_filters.append(StationItem.demand_units >= request.min_demand)
-    if cutoff is not None:
-        destination_filters.append(StationItem.modified >= cutoff)
-    if request.max_price > 0:
-        # Mirror the supply-side probe: a destination whose only buy rows
-        # are above the cap has no usable buying data under the user's
-        # settings.
-        destination_filters.append(
-            StationItem.demand_price <= request.max_price
-        )
-
+    destination_filters = _usable_buying_filters(
+        StationItem.station_id == destination.station_id, request, cutoff
+    )
     if not session.execute(
         select(StationItem.item_id).where(and_(*destination_filters)).limit(1)
     ).first():

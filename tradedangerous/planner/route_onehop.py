@@ -445,9 +445,13 @@ def _best_pair_plan(
     cargo_optimisation_ms = 0.0
     candidate_trade_count = 0
     saw_reachable_pair = False
-    saw_source_selling_data = False
-    saw_destination_buying_data = False
     saw_profitable_pair = False
+    # Stations that took part in at least one reachable pair. Zero-result
+    # classification is disabled inside the matrix loop (it costs up to two
+    # probe queries per empty pair); if no pair wins, these sets feed two
+    # aggregate probes on the failure path instead.
+    reachable_source_ids: set[int] = set()
+    reachable_destination_ids: set[int] = set()
     available_credits = (
         int(request.starting_credits or 0) - request.insurance_reserve
     )
@@ -477,25 +481,18 @@ def _best_pair_plan(
                     continue
                 reachability_ms += _elapsed_ms(reach_started)
             saw_reachable_pair = True
+            reachable_source_ids.add(source_station.station_id)
+            reachable_destination_ids.add(destination_station.station_id)
             market_started = time.perf_counter()
-            try:
-                candidates = data_gateway.fetch_station_pair_candidates(
-                    session,
-                    source_station,
-                    destination_station,
-                    request,
-                    available_credits=available_credits,
-                )
-            except failures.SourceHasNoSellingData:
-                market_query_ms += _elapsed_ms(market_started)
-                continue
-            except failures.DestinationHasNoBuyingData:
-                saw_source_selling_data = True
-                market_query_ms += _elapsed_ms(market_started)
-                continue
+            candidates = data_gateway.fetch_station_pair_candidates(
+                session,
+                source_station,
+                destination_station,
+                request,
+                available_credits=available_credits,
+                classify_zero_result=False,
+            )
             market_query_ms += _elapsed_ms(market_started)
-            saw_source_selling_data = True
-            saw_destination_buying_data = True
             candidate_trade_count += len(candidates)
             if not candidates:
                 continue
@@ -538,12 +535,18 @@ def _best_pair_plan(
         raise failures.NoReachableRoute(
             "No station pair within range was found for the chosen endpoints."
         )
-    if not saw_source_selling_data:
+    # No pair won; classify coarsely now, two probes for the whole matrix
+    # rather than two per empty pair inside the loop.
+    if not data_gateway.station_set_has_selling_data(
+        session, tuple(reachable_source_ids), request
+    ):
         raise failures.SourceHasNoSellingData(
             "No source station within range had usable selling data.",
             option_name="--from",
         )
-    if not saw_destination_buying_data:
+    if not data_gateway.station_set_has_buying_data(
+        session, tuple(reachable_destination_ids), request
+    ):
         raise failures.DestinationHasNoBuyingData(
             "No destination station within range had usable buying data.",
             option_name="--to",
