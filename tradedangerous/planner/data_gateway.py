@@ -904,6 +904,15 @@ def fetch_open_ended_trade_candidates(
     matched on item_id in Python; a single self-join would instead let SQLite
     scan the market table galaxy-wide by item_id, so the two sides stay apart.
 
+    The open side's query is narrowed before any row leaves SQL: the fixed
+    side's per-item price bounds are aggregated into a small temp table first
+    (the fixed side is one named place, so this is cheap), and the open-side
+    query keeps only rows whose item the fixed side actually trades, at a
+    price that could clear --gain-per-ton against the fixed side's best
+    price. Both are necessary conditions, never sufficient ones — the exact
+    per-pair gain test still runs in the Python match loop — so the candidate
+    set is unchanged; rows that could never pair simply stop being fetched.
+
     ``available_credits`` is the credit budget for the hop's buy step; the
     supply query filters out commodities whose unit price exceeds it.
     ``terminal_hop=False`` adds an onward-viability predicate on the open side
@@ -1025,18 +1034,6 @@ def fetch_open_ended_trade_candidates(
             # can sell into it.
             supply_filters.append(onward_exists)
 
-        supply_rows = session.execute(
-            select(
-                StationItem.item_id,
-                StationItem.station_id,
-                StationItem.supply_price,
-                StationItem.supply_units,
-                StationItem.modified,
-            ).where(and_(*supply_filters))
-        ).all()
-        if not supply_rows:
-            return ()
-
         demand_filters = [
             demand_station_filter,
             StationItem.demand_price > 0,
@@ -1055,17 +1052,116 @@ def fetch_open_ended_trade_candidates(
             # the next hop's cargo.
             demand_filters.append(onward_exists)
 
-        demand_rows = session.execute(
-            select(
-                StationItem.item_id,
-                StationItem.station_id,
-                StationItem.demand_price,
-                StationItem.demand_units,
-                StationItem.modified,
-            ).where(and_(*demand_filters))
-        ).all()
-        if not demand_rows:
-            return ()
+        # The fixed side is one named place — a handful of stations at most —
+        # so its per-item price extremes are cheap to aggregate. They become
+        # the open side's narrowing: an open-side row only survives when the
+        # fixed side trades that item at all, at a price the row could clear
+        # --gain-per-ton against. Aggregated straight into a temp table in
+        # SQL (no Python round-trip), probed by the open-side query as a
+        # correlated EXISTS on the temp's primary key — the same shape as
+        # onward_exists above, which keeps the outer query driving from the
+        # reachable station set rather than flipping onto an item-id scan.
+        min_gain = request.min_gain_per_ton
+        max_gain = request.max_gain_per_ton
+        bounds_temp = Table(
+            "td_open_fixed_bounds",
+            MetaData(),
+            Column("item_id", BigInteger, primary_key=True),
+            Column("min_price", Integer),
+            Column("max_price", Integer),
+            prefixes=["TEMPORARY"],
+        )
+        connection = session.connection()
+        bounds_temp.drop(connection, checkfirst=True)
+        bounds_temp.create(connection)
+        try:
+            if open_role == "destination":
+                fixed_price = StationItem.supply_price
+                fixed_filters = supply_filters
+            else:
+                fixed_price = StationItem.demand_price
+                fixed_filters = demand_filters
+            session.execute(
+                bounds_temp.insert().from_select(
+                    ["item_id", "min_price", "max_price"],
+                    select(
+                        StationItem.item_id,
+                        func.min(fixed_price),
+                        func.max(fixed_price),
+                    )
+                    .where(and_(*fixed_filters))
+                    .group_by(StationItem.item_id),
+                )
+            )
+            if not _temp_has_rows(session, bounds_temp):
+                # The fixed endpoint has no usable rows at all under the
+                # current filters — nothing can pair, so the open-side query
+                # never needs to run.
+                return ()
+
+            if open_role == "destination":
+                # An open demand row must beat the fixed side's cheapest
+                # supply by at least --gain-per-ton; under --max-gain-per-ton
+                # it must also not exceed the dearest supply by more than the
+                # cap. Interval-overlap necessary conditions — the exact pair
+                # test stays in the match loop below.
+                bounds_match = [
+                    bounds_temp.c.item_id == StationItem.item_id,
+                    StationItem.demand_price >= bounds_temp.c.min_price + min_gain,
+                ]
+                if max_gain > 0:
+                    bounds_match.append(
+                        StationItem.demand_price <= bounds_temp.c.max_price + max_gain
+                    )
+                demand_filters.append(
+                    select(literal(1))
+                    .select_from(bounds_temp)
+                    .where(and_(*bounds_match))
+                    .exists()
+                )
+            else:
+                # Mirror for an open supply row against the fixed side's
+                # demand extremes.
+                bounds_match = [
+                    bounds_temp.c.item_id == StationItem.item_id,
+                    StationItem.supply_price <= bounds_temp.c.max_price - min_gain,
+                ]
+                if max_gain > 0:
+                    bounds_match.append(
+                        StationItem.supply_price >= bounds_temp.c.min_price - max_gain
+                    )
+                supply_filters.append(
+                    select(literal(1))
+                    .select_from(bounds_temp)
+                    .where(and_(*bounds_match))
+                    .exists()
+                )
+
+            supply_rows = session.execute(
+                select(
+                    StationItem.item_id,
+                    StationItem.station_id,
+                    StationItem.supply_price,
+                    StationItem.supply_units,
+                    StationItem.modified,
+                ).where(and_(*supply_filters))
+            ).all()
+            if not supply_rows:
+                return ()
+
+            demand_rows = session.execute(
+                select(
+                    StationItem.item_id,
+                    StationItem.station_id,
+                    StationItem.demand_price,
+                    StationItem.demand_units,
+                    StationItem.modified,
+                ).where(and_(*demand_filters))
+            ).all()
+            if not demand_rows:
+                return ()
+        finally:
+            bounds_temp.drop(connection, checkfirst=True)
 
         demand_by_item: dict[int, list] = {}
         for row in demand_rows:
@@ -1084,8 +1180,6 @@ def fetch_open_ended_trade_candidates(
             item_names[int(item_id)] = str(name)
             item_categories[int(item_id)] = int(category_id)
 
-        min_gain = request.min_gain_per_ton
-        max_gain = request.max_gain_per_ton
         now_utc = datetime.now(timezone.utc)
 
         candidates = []
