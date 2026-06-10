@@ -104,6 +104,10 @@ class MarketTimestampInvalid(PlannerFailure):
     """A market timestamp could not be parsed safely."""
 
 
+class PlannerDataError(PlannerFailure):
+    """Planner-visible database content is missing or internally inconsistent."""
+
+
 class NoReachableRoute(PlannerFailure):
     """No route satisfies the requested reachability constraints."""
 

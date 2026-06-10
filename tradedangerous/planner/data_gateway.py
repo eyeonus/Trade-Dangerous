@@ -43,6 +43,7 @@ from .failures import (
     DestinationHasNoBuyingData,
     DestinationStationIneligible,
     MarketTimestampInvalid,
+    PlannerDataError,
     SourceHasNoSellingData,
     SourceStationIneligible,
     StationHasNoMarket,
@@ -684,14 +685,17 @@ def fetch_station_pair_candidates(
     request: RunRequest,
     *,
     available_credits: int,
+    classify_zero_result: bool = True,
 ) -> tuple[TradeCandidate, ...]:
     """Fetch profitable commodities for one source/destination station pair.
 
     Runs the selective join first. Diagnostic probes to classify source-side
-    or destination-side missing data are deferred to the zero-result path
-    only. ``available_credits`` is the credit budget for the hop's buy step;
-    single-hop callers pass ``starting_credits - insurance_reserve``, multi-
-    hop callers pass the per-frontier-node budget after the margin haircut.
+    or destination-side missing data are optional on the zero-result path.
+    Matrix callers disable them inside hot loops and aggregate failures after
+    the whole endpoint set has been searched. ``available_credits`` is the
+    credit budget for the hop's buy step; single-hop callers pass
+    ``starting_credits - insurance_reserve``, multi-hop callers pass the
+    per-frontier-node budget after the margin haircut.
     """
 
     source_item = aliased(StationItem)
@@ -757,10 +761,11 @@ def fetch_station_pair_candidates(
         )
     )
 
+    now_utc = datetime.now(timezone.utc)
     candidates = []
     for row in session.execute(stmt):
-        source_age = _age_days(row[4])
-        destination_age = _age_days(row[7])
+        source_age = _age_days(row[4], now_utc=now_utc)
+        destination_age = _age_days(row[7], now_utc=now_utc)
         profit_per_unit = int(row[5]) - int(row[2])
         demand_units = int(row[6])
         sensitive = int(row[8]) in sensitive_category_ids
@@ -793,7 +798,7 @@ def fetch_station_pair_candidates(
             )
         )
 
-    if not candidates:
+    if not candidates and classify_zero_result:
         _classify_zero_result_failure(session, source, destination, request, cutoff)
 
     return tuple(candidates)
@@ -1081,6 +1086,7 @@ def fetch_open_ended_trade_candidates(
 
         min_gain = request.min_gain_per_ton
         max_gain = request.max_gain_per_ton
+        now_utc = datetime.now(timezone.utc)
 
         candidates = []
         for supply in supply_rows:
@@ -1091,7 +1097,7 @@ def fetch_open_ended_trade_candidates(
             source_station_id = int(supply[1])
             buy_price = int(supply[2])
             source_supply_units = int(supply[3])
-            source_age = _age_days(supply[4])
+            source_age = _age_days(supply[4], now_utc=now_utc)
             item_name = item_names.get(item_id, "")
             sensitive = item_categories.get(item_id) in sensitive_category_ids
             for demand in demand_matches:
@@ -1131,7 +1137,7 @@ def fetch_open_ended_trade_candidates(
                         source_supply_units=source_supply_units,
                         destination_demand_units=demand_units,
                         source_age_days=source_age,
-                        destination_age_days=_age_days(demand[4]),
+                        destination_age_days=_age_days(demand[4], now_utc=now_utc),
                         bulk_sale_tax_sensitive=sensitive,
                         effective_destination_demand_units=effective_demand,
                     )
@@ -2132,44 +2138,64 @@ _MIN_MEANINGFUL_DEMAND = 2
 # category names), so the resolver matches on Category.name rather than
 # hardcoded ids — ids are deployment-local, names are the contract.
 _BULK_SALE_TAX_CATEGORY_NAMES = ("Metals", "Minerals")
+_BULK_SALE_TAX_CATEGORY_IDS_CACHE_KEY = "planner.bulk_sale_tax_category_ids"
+_BULK_SALE_TAX_ITEM_IDS_CACHE_KEY = "planner.bulk_sale_tax_item_ids"
 
 
 def _bulk_sale_tax_category_ids(session: Session) -> frozenset[int]:
     """Resolve the bulk-sale-tax category names to local category_ids.
 
-    Run once per candidate-fetch path. Returns an empty set if neither
-    category exists in the local database — behaviour reverts to "no
-    commodity is bulk-tax-sensitive", a safe degradation rather than a
-    crash. Category.name is CIString, so the IN match is case-insensitive
-    on both backends.
+    Cached per SQLAlchemy session. Metals and Minerals are required category
+    rows in a valid imported database; if either is missing, the planner cannot
+    safely apply the bulk-sale demand cap and must fail loudly. Category.name is
+    CIString, so the IN match is case-insensitive on both backends.
     """
+
+    cached = session.info.get(_BULK_SALE_TAX_CATEGORY_IDS_CACHE_KEY)
+    if cached is not None:
+        return cached
 
     rows = session.execute(
         select(Category.category_id).where(
             Category.name.in_(_BULK_SALE_TAX_CATEGORY_NAMES)
         )
     ).all()
-    return frozenset(int(row[0]) for row in rows)
+    resolved = frozenset(int(row[0]) for row in rows)
+    if len(resolved) != len(_BULK_SALE_TAX_CATEGORY_NAMES):
+        raise PlannerDataError(
+            "Bulk-sale-tax commodity categories are missing from the database.",
+            details={
+                "required_category_names": _BULK_SALE_TAX_CATEGORY_NAMES,
+                "resolved_count": len(resolved),
+            },
+        )
+
+    session.info[_BULK_SALE_TAX_CATEGORY_IDS_CACHE_KEY] = resolved
+    return resolved
 
 
 def _bulk_sale_tax_sensitive_item_ids(session: Session) -> frozenset[int]:
     """Resolve bulk-sale-tax sensitive item_ids in one query.
 
-    The unanchored walk iterates every profitable item and benefits from
-    a flat membership set rather than re-resolving the category for each
-    item. Returns an empty set when no sensitive categories are present
-    locally — safe degradation, same as _bulk_sale_tax_category_ids.
+    Cached per SQLAlchemy session. The unanchored walk iterates every
+    profitable item and benefits from a flat membership set rather than
+    re-resolving the category for each item.
     """
 
+    cached = session.info.get(_BULK_SALE_TAX_ITEM_IDS_CACHE_KEY)
+    if cached is not None:
+        return cached
+
     sensitive_category_ids = _bulk_sale_tax_category_ids(session)
-    if not sensitive_category_ids:
-        return frozenset()
     rows = session.execute(
         select(Item.item_id).where(
             Item.category_id.in_(tuple(sensitive_category_ids))
         )
     ).all()
-    return frozenset(int(row[0]) for row in rows)
+    resolved = frozenset(int(row[0]) for row in rows)
+
+    session.info[_BULK_SALE_TAX_ITEM_IDS_CACHE_KEY] = resolved
+    return resolved
 
 
 _KNOWN_PAD_SIZES = ("S", "M", "L")
@@ -2216,7 +2242,11 @@ def _age_cutoff(age_days: float | None) -> datetime | None:
     return datetime.now(timezone.utc) - timedelta(days=float(age_days))
 
 
-def _age_days(value: object) -> float | None:
+def _age_days(
+    value: object,
+    *,
+    now_utc: datetime | None = None,
+) -> float | None:
     if value is None:
         return None
 
@@ -2239,6 +2269,9 @@ def _age_days(value: object) -> float | None:
     if modified.tzinfo is None:
         modified = modified.replace(tzinfo=timezone.utc)
 
+    if now_utc is None:
+        now_utc = datetime.now(timezone.utc)
+
     return (
-        datetime.now(timezone.utc) - modified.astimezone(timezone.utc)
+        now_utc - modified.astimezone(timezone.utc)
     ).total_seconds() / 86400.0

@@ -611,6 +611,7 @@ def best_fixed_pair_trade_from(
                 destination,
                 request,
                 available_credits=available_credits,
+                classify_zero_result=False,
             )
         except failures.StationHasNoUsablePriceData:
             # Either side missing usable data — skip this pair; another
