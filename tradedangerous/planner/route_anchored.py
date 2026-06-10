@@ -116,6 +116,10 @@ def _plan_multi_hop(
     # Released in the finally below so a partial run does not leak tables.
     reachable_memo: dict = {}
 
+    # Station DTOs are immutable for the run; the cache stops frontier
+    # layers re-fetching stations earlier layers already hydrated.
+    station_cache: dict[int, run_result.ResolvedStation] = {}
+
     market_query_ms = 0.0
     candidate_trade_count = 0
     frontier_widths: list[int] = []
@@ -162,6 +166,7 @@ def _plan_multi_hop(
                     destination_envelope_xyz=to_system_xyz,
                     destination_envelope_ly=envelope_ly,
                     expansion_stats=expansion_stats,
+                    station_cache=station_cache,
                 )
                 for trade in children:
                     next_frontier.append(
@@ -359,6 +364,7 @@ def best_open_ended_trades_from(
     destination_envelope_xyz: tuple[float, float, float] | None = None,
     destination_envelope_ly: float | None = None,
     expansion_stats: run_result.ExpansionStats | None = None,
+    station_cache: dict[int, run_result.ResolvedStation] | None = None,
 ) -> list[_HopCandidate]:
     """Return the top-K best forward trades from a single source station.
 
@@ -427,6 +433,7 @@ def best_open_ended_trades_from(
     destination_stations = data_gateway.fetch_stations_by_id(
         session,
         open_station_ids,
+        cache=station_cache,
     )
     if expansion_stats is not None:
         expansion_stats.fetch_ms += _elapsed_ms(hydrate_started)

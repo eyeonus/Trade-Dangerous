@@ -667,6 +667,10 @@ def _plan_open_anchor_route(
 
     reachable_memo: dict = {}
 
+    # Station DTOs are immutable for the run; the cache stops frontier
+    # layers re-fetching stations earlier layers already hydrated.
+    station_cache: dict[int, run_result.ResolvedStation] = {}
+
     # --towards: chains that reach the target system are captured here as
     # finished routes. An arrived chain has no closer next hop, so the beam
     # would otherwise discard it; collecting it lets it compete in the final
@@ -709,6 +713,7 @@ def _plan_open_anchor_route(
                     bubble_cache=bubble_cache,
                     reachable_memo=reachable_memo,
                     expansion_stats=expansion_stats,
+                    station_cache=station_cache,
                 )
                 for trade in children:
                     child = _make_open_child(node, trade)
@@ -828,6 +833,7 @@ def _plan_open_anchor_route(
                 bubble_cache=bubble_cache,
                 reachable_memo=reachable_memo,
                 expansion_stats=expansion_stats,
+                station_cache=station_cache,
             )
             for trade in children:
                 finalist_nodes.append(_make_open_child(node, trade))
@@ -963,6 +969,7 @@ def best_open_ended_hop_candidates(
     bubble_cache: dict[int, object],
     reachable_memo: dict | None = None,
     expansion_stats: run_result.ExpansionStats | None = None,
+    station_cache: dict[int, run_result.ResolvedStation] | None = None,
 ) -> list[_HopCandidate]:
     """Return the top-K best optimistic single-hop trades on the open side.
 
@@ -1052,6 +1059,7 @@ def best_open_ended_hop_candidates(
     open_stations = data_gateway.fetch_stations_by_id(
         session,
         open_station_ids,
+        cache=station_cache,
     )
 
     grouped_pairs = _group_pairs(candidates)

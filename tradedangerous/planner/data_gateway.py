@@ -1349,21 +1349,42 @@ def any_reachable_station_pair(
 def fetch_stations_by_id(
     session: Session,
     station_ids: tuple[int, ...],
+    *,
+    cache: dict[int, ResolvedStation] | None = None,
 ) -> dict[int, ResolvedStation]:
     """Fetch ResolvedStation DTOs for a set of station ids, keyed by id.
 
     Used to materialise the destination stations that actually appear in
     open-ended trade candidates, so reachable stations with no profitable
     trade are never loaded into planner space.
+
+    ``cache`` is a run-scoped DTO store: frontier expansion rediscovers the
+    same stations across layers and neighbouring nodes, and the DTOs are
+    immutable for the run, so with a cache supplied only ids not yet seen
+    touch the database. The returned dict still covers exactly the requested
+    ids that exist.
     """
 
     if not station_ids:
         return {}
 
+    if cache is None:
+        missing = station_ids
+    else:
+        missing = tuple(
+            station_id for station_id in station_ids if station_id not in cache
+        )
+        if not missing:
+            return {
+                station_id: cache[station_id]
+                for station_id in station_ids
+                if station_id in cache
+            }
+
     stmt = (
         select(Station, System)
         .join(System, System.system_id == Station.system_id)
-        .where(Station.station_id.in_(station_ids))
+        .where(Station.station_id.in_(missing))
     )
     stations: dict[int, ResolvedStation] = {}
     for station, system in session.execute(stmt):
@@ -1379,7 +1400,14 @@ def fetch_stations_by_id(
             station,
             resolved_system,
         )
-    return stations
+    if cache is None:
+        return stations
+    cache.update(stations)
+    return {
+        station_id: cache[station_id]
+        for station_id in station_ids
+        if station_id in cache
+    }
 
 
 # Per commodity the unanchored search keeps at most this many of the
