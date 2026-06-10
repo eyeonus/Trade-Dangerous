@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+import heapq
 import time
 from dataclasses import dataclass, replace
 
 from sqlalchemy.orm import Session
 
 from . import data_gateway, failures, resolver, run_result
-from .cargo import cargo_counters, optimise_cargo
+from .cargo import cargo_counters, cargo_pruned, cargo_time_ms, optimise_cargo
 from .reachability import plan_jump_path, reachable_systems_from
 from .run_request import RunRequest
-from .score import score_with_destination_penalty
+from .score import ls_penalty_multiplier, score_with_destination_penalty
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,6 +91,87 @@ _MULTIHOP_EXPANSION_WIDTH = 50
 _MULTIHOP_FRONTIER_WIDTH = 50
 
 
+class _KeptScoreThreshold:
+    """Running practical-score floor for the top-K pairs a search keeps.
+
+    A pair whose optimistic ceiling cannot reach current() can skip its cargo
+    solve — it could never enter the kept set. K=1 collapses to "the single best
+    so far", which is exactly what the one-hop planners keep.
+
+    current() returns None (prune nothing) until the kept set is full, or when
+    pruning is disabled — e.g. --towards ranks by progress toward the target,
+    not by score, so a score floor would be meaningless there.
+    """
+
+    __slots__ = ("_k", "_enabled", "_heap")
+
+    def __init__(self, keep_k: int, *, enabled: bool = True):
+        self._k = keep_k
+        self._enabled = enabled
+        self._heap: list[float] = []          # min-heap of kept practical scores
+
+    def current(self) -> float | None:
+        if not self._enabled or len(self._heap) < self._k:
+            return None
+        return self._heap[0]
+
+    def offer(self, score: float) -> None:
+        """Record a solved pair's practical score into the kept set."""
+        if not self._enabled:
+            return
+        if len(self._heap) < self._k:
+            heapq.heappush(self._heap, score)
+        elif score > self._heap[0]:
+            heapq.heapreplace(self._heap, score)
+
+
+def cargo_prune_floor(
+    threshold: float | None,
+    destination_ls: int | None,
+    penalty_percent: float,
+) -> float | None:
+    """Raw-profit floor a pair to this destination must clear to place.
+
+    The kept set ranks by practical score = raw profit * ls multiplier, so the
+    practical threshold converts to a raw-profit floor by dividing out this
+    destination's exact multiplier (cheap — it needs only ls distance and the
+    penalty, both known before any solve). Handed to optimise_cargo as
+    prune_below_raw.
+
+    Returns None — meaning do not prune — when the threshold is not set yet, or
+    when the multiplier is non-positive (an extreme-distance station whose
+    practical score is <= 0 regardless of profit; rare, left for the solve).
+    """
+    if threshold is None:
+        return None
+    multiplier = ls_penalty_multiplier(destination_ls, penalty_percent)
+    if multiplier <= 0:
+        return None
+    return threshold / multiplier
+
+
+def cargo_order_key(
+    pair_candidates: tuple[run_result.TradeCandidate, ...],
+    destination_ls: int | None,
+    capacity_units: int,
+    penalty_percent: float,
+) -> float:
+    """Cheap best-first ordering score for a candidate pair.
+
+    Sorting pairs by this descending solves the most promising first, so the
+    kept-score threshold rises fast and the long tail prunes hard. It is a loose
+    optimistic estimate (a full hold of the best per-unit margin, scaled by the
+    destination multiplier); ordering affects only prune efficiency, never the
+    result, so it need not be admissible.
+    """
+    best_ppu = max(candidate.profit_per_unit for candidate in pair_candidates)
+    return (
+        capacity_units
+        * best_ppu
+        * ls_penalty_multiplier(destination_ls, penalty_percent)
+    )
+
+
 def _multihop_result(
     *,
     request: RunRequest,
@@ -134,6 +216,8 @@ def _multihop_result(
         multihop_final_hop_stats=final_hop_stats,
         cargo_fast_path_hits=cargo_fast_hits,
         cargo_recursive_hits=cargo_recursive_hits,
+        cargo_pruned_solves=cargo_pruned(),
+        cargo_optimisation_ms=cargo_time_ms(),
         multihop_correction_stats=correction_stats,
     )
     

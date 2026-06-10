@@ -15,6 +15,7 @@ from .score import score_with_destination_penalty
 from .route_common import (
     _FrontierNode,
     _HopCandidate,
+    _KeptScoreThreshold,
     _MULTIHOP_EXPANSION_WIDTH,
     _MULTIHOP_FRONTIER_WIDTH,
     _best_partial_node,
@@ -25,6 +26,8 @@ from .route_common import (
     _reconstruct_route,
     _stations_from_endpoint,
     _system_from_station,
+    cargo_order_key,
+    cargo_prune_floor,
 )
 
 
@@ -395,6 +398,7 @@ def best_open_ended_trades_from(
 
     source_system = _system_from_station(source_station)
 
+    fetch_started = time.perf_counter()
     candidates = data_gateway.fetch_open_ended_trade_candidates(
         session,
         (source_station.station_id,),
@@ -409,12 +413,14 @@ def best_open_ended_trades_from(
         expansion_stats=expansion_stats,
     )
     if expansion_stats is not None:
+        expansion_stats.fetch_ms += _elapsed_ms(fetch_started)
         expansion_stats.candidate_rows += len(candidates)
     if not candidates:
         if expansion_stats is not None:
             expansion_stats.elapsed_ms += _elapsed_ms(helper_started)
         return []
 
+    hydrate_started = time.perf_counter()
     open_station_ids = tuple(
         {candidate.destination_station_id for candidate in candidates}
     )
@@ -422,6 +428,8 @@ def best_open_ended_trades_from(
         session,
         open_station_ids,
     )
+    if expansion_stats is not None:
+        expansion_stats.fetch_ms += _elapsed_ms(hydrate_started)
 
     grouped_pairs = _group_pairs(candidates)
     if expansion_stats is not None:
@@ -429,9 +437,40 @@ def best_open_ended_trades_from(
 
     # Score every viable pair first; defer the jump-path computation until
     # after the top-K trim so we only pay it for survivors.
-    scored: list[tuple[float, run_result.ResolvedStation, run_result.CargoPlan]] = []
-    for (_source_id, destination_id), pair_candidates in grouped_pairs.items():
-        destination_station = destination_stations.get(destination_id)
+    #
+    # Pairs are solved best-first by a cheap optimistic key, and each solve is
+    # handed the score of the worst pair currently in the top-K. A pair whose
+    # admissible ceiling cannot reach that floor is pruned before the expensive
+    # solve. Selection still happens by (score desc, original position asc), so
+    # tied scores resolve exactly as an unordered scan would — pruning and
+    # reordering change the work done, never the route chosen. This engine ranks
+    # purely by score (it never sees --towards), so pruning is always enabled.
+    capacity_units = int(request.capacity_units or 0)
+    penalty_percent = request.ls_penalty_percent
+    threshold = _KeptScoreThreshold(top_k)
+    original_order = {key: index for index, key in enumerate(grouped_pairs)}
+
+    def _pair_order_key(item):
+        (_src, dest_id), candidates_for_pair = item
+        destination = destination_stations.get(dest_id)
+        if destination is None:
+            return float("-inf")
+        return cargo_order_key(
+            candidates_for_pair,
+            destination.ls_from_star,
+            capacity_units,
+            penalty_percent,
+        )
+
+    ordered_pairs = sorted(
+        grouped_pairs.items(), key=_pair_order_key, reverse=True
+    )
+
+    scored: list[
+        tuple[float, int, run_result.ResolvedStation, run_result.CargoPlan]
+    ] = []
+    for pair_key, pair_candidates in ordered_pairs:
+        destination_station = destination_stations.get(pair_key[1])
         if destination_station is None:
             # A destination that lost its DTO during the fetch — defensive
             # skip rather than a KeyError. fetch_stations_by_id should always
@@ -440,28 +479,50 @@ def best_open_ended_trades_from(
             continue
         if expansion_stats is not None:
             expansion_stats.cargo_calls += 1
+        prune_floor = cargo_prune_floor(
+            threshold.current(),
+            destination_station.ls_from_star,
+            penalty_percent,
+        )
+        cargo_started = time.perf_counter()
         try:
             cargo = optimise_cargo(
                 pair_candidates,
-                capacity_units=int(request.capacity_units or 0),
+                capacity_units=capacity_units,
                 available_credits=available_credits,
                 cargo_limit_per_item=request.cargo_limit_per_item,
+                prune_below_raw=prune_floor,
             )
         except failures.NoProfitableTrades:
+            continue
+        finally:
+            if expansion_stats is not None:
+                expansion_stats.cargo_ms += _elapsed_ms(cargo_started)
+        if cargo is None:
+            # Pruned: the pair's ceiling cannot beat the kept top-K.
             continue
         practical_score = score_with_destination_penalty(
             cargo.total_profit,
             destination_distance_ls=destination_station.ls_from_star,
-            penalty_percent=request.ls_penalty_percent,
+            penalty_percent=penalty_percent,
         )
-        scored.append((practical_score, destination_station, cargo))
+        threshold.offer(practical_score)
+        scored.append(
+            (
+                practical_score,
+                original_order[pair_key],
+                destination_station,
+                cargo,
+            )
+        )
 
-    scored.sort(key=lambda item: item[0], reverse=True)
+    scored.sort(key=lambda item: (-item[0], item[1]))
 
     hop_candidates: list[_HopCandidate] = []
-    for practical_score, destination_station, cargo in scored:
+    for practical_score, _original_index, destination_station, cargo in scored:
         if len(hop_candidates) >= top_k:
             break
+        jump_started = time.perf_counter()
         try:
             jump_path = plan_jump_path(
                 source_system,
@@ -477,6 +538,9 @@ def best_open_ended_trades_from(
             # so a NoReachableRoute here is a corner case — fall through and
             # try the next-best candidate.
             continue
+        finally:
+            if expansion_stats is not None:
+                expansion_stats.jump_ms += _elapsed_ms(jump_started)
         hop_candidates.append(
             _HopCandidate(
                 destination_station=destination_station,

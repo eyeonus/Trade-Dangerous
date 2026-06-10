@@ -238,7 +238,41 @@ def _render_multihop_diagnostics(diagnostics: PlannerDiagnostics) -> list[str]:
     """
 
     if diagnostics.hops_planned <= 1:
-        return []
+        # Single-hop runs have no frontier/layer machinery, but the same phase
+        # timings, candidate count, and cargo split a multi-hop run reports are
+        # all tracked — surface them so a ticket from any route shape carries
+        # comparable diagnostics.
+        lines = [
+            "",
+            "Diagnostics:",
+            f"  Total: {diagnostics.total_planner_ms:.0f}ms "
+            f"(station-filter {diagnostics.station_filter_ms:.0f}ms, "
+            f"market {diagnostics.market_query_ms:.0f}ms, "
+            f"reachability {diagnostics.reachability_ms:.0f}ms, "
+            f"cargo {diagnostics.cargo_optimisation_ms:.0f}ms)",
+        ]
+        if diagnostics.candidate_trade_count:
+            lines.append(
+                f"  Candidates: {diagnostics.candidate_trade_count:n} trades"
+            )
+        lines.append(
+            f"  Cargo: {diagnostics.cargo_fast_path_hits:n} fast-path, "
+            f"{diagnostics.cargo_recursive_hits:n} branch-and-bound, "
+            f"{diagnostics.cargo_pruned_solves:n} pruned, "
+            f"{diagnostics.cargo_optimisation_ms:.0f}ms"
+        )
+        if (
+            diagnostics.unanchored_pairs_examined
+            or diagnostics.unanchored_pairs_accepted
+        ):
+            lines.append(
+                f"  Unanchored: "
+                f"{diagnostics.unanchored_pairs_examined:n} examined, "
+                f"{diagnostics.unanchored_pairs_accepted:n} accepted, "
+                f"{diagnostics.unanchored_bubble_systems:n} bubble systems, "
+                f"{diagnostics.unanchored_per_commodity_cap_hits:n} cap hits"
+            )
+        return lines
 
     lines = ["", "Diagnostics:"]
     lines.append(
@@ -259,11 +293,23 @@ def _render_multihop_diagnostics(diagnostics: PlannerDiagnostics) -> list[str]:
             f"{expansion.children_returned:n} children, "
             f"{expansion.elapsed_ms:.0f}ms"
         )
+        lines.append(
+            f"  Expansion phases: "
+            f"fetch {expansion.fetch_ms:.0f}ms, "
+            f"cargo {expansion.cargo_ms:.0f}ms, "
+            f"jump {expansion.jump_ms:.0f}ms"
+        )
 
-    if diagnostics.cargo_fast_path_hits or diagnostics.cargo_recursive_hits:
+    if (
+        diagnostics.cargo_fast_path_hits
+        or diagnostics.cargo_recursive_hits
+        or diagnostics.cargo_pruned_solves
+    ):
         lines.append(
             f"  Cargo: {diagnostics.cargo_fast_path_hits:n} fast-path, "
-            f"{diagnostics.cargo_recursive_hits:n} branch-and-bound"
+            f"{diagnostics.cargo_recursive_hits:n} branch-and-bound, "
+            f"{diagnostics.cargo_pruned_solves:n} pruned, "
+            f"{diagnostics.cargo_optimisation_ms:.0f}ms"
         )
 
     correction = diagnostics.multihop_correction_stats

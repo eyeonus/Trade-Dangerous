@@ -8,17 +8,20 @@ from dataclasses import dataclass, replace
 from sqlalchemy.orm import Session
 
 from . import data_gateway, failures, resolver, run_result
-from .cargo import optimise_cargo
+from .cargo import cargo_counters, cargo_pruned, optimise_cargo
 from .reachability import plan_jump_path
 from .run_request import RunRequest
 from .score import score_with_destination_penalty
 
 from .route_common import (
+    _KeptScoreThreshold,
     _distance_sq_to_target,
     _elapsed_ms,
     _group_pairs,
     _stations_from_endpoint,
     _system_from_station,
+    cargo_order_key,
+    cargo_prune_floor,
 )
 
 
@@ -77,6 +80,7 @@ def _plan_fixed_endpoints(
         bubble_cache,
     )
 
+    cargo_fast_hits, cargo_recursive_hits = cargo_counters()
     diagnostics = run_result.PlannerDiagnostics(
         validation_ms=validation_ms,
         resolution_ms=resolution_ms,
@@ -84,6 +88,9 @@ def _plan_fixed_endpoints(
         market_query_ms=market_query_ms,
         reachability_ms=reachability_ms,
         cargo_optimisation_ms=cargo_optimisation_ms,
+        cargo_fast_path_hits=cargo_fast_hits,
+        cargo_recursive_hits=cargo_recursive_hits,
+        cargo_pruned_solves=cargo_pruned(),
         total_planner_ms=_elapsed_ms(started),
         candidate_trade_count=candidate_trade_count,
     )
@@ -179,28 +186,62 @@ def _best_open_ended_plan(
     station_map.update(open_stations)
     grouped_pairs = _group_pairs(candidates)
 
+    capacity_units = int(request.capacity_units or 0)
+    penalty_percent = request.ls_penalty_percent
+
+    # Solve best-first and prune pairs that cannot beat the best so far. The
+    # single-best selection (_pair_is_better) breaks ties deterministically by
+    # station id, so it is independent of solve order — reordering and pruning
+    # change only the work done. Pruning is by score, so it is disabled under
+    # --towards, which ranks by progress toward the target rather than score.
+    threshold = _KeptScoreThreshold(1, enabled=request.towards_target is None)
+
+    def _order_key(item):
+        (_src, dest_id), candidates_for_pair = item
+        destination = station_map.get(dest_id)
+        if destination is None:
+            return float("-inf")
+        return cargo_order_key(
+            candidates_for_pair,
+            destination.ls_from_star,
+            capacity_units,
+            penalty_percent,
+        )
+
     best_pair = None
     cargo_optimisation_ms = 0.0
-    for (source_id, destination_id), pair_candidates in grouped_pairs.items():
+    for (source_id, destination_id), pair_candidates in sorted(
+        grouped_pairs.items(), key=_order_key, reverse=True
+    ):
         source_station = station_map[source_id]
         destination_station = station_map[destination_id]
+        prune_floor = cargo_prune_floor(
+            threshold.current(),
+            destination_station.ls_from_star,
+            penalty_percent,
+        )
         cargo_started = time.perf_counter()
         try:
             cargo = optimise_cargo(
                 pair_candidates,
-                capacity_units=int(request.capacity_units or 0),
+                capacity_units=capacity_units,
                 available_credits=available_credits,
                 cargo_limit_per_item=request.cargo_limit_per_item,
+                prune_below_raw=prune_floor,
             )
         except failures.NoProfitableTrades:
             cargo_optimisation_ms += _elapsed_ms(cargo_started)
             continue
         cargo_optimisation_ms += _elapsed_ms(cargo_started)
+        if cargo is None:
+            # Pruned: cannot beat the best pair found so far.
+            continue
         practical_score = score_with_destination_penalty(
             cargo.total_profit,
             destination_distance_ls=destination_station.ls_from_star,
-            penalty_percent=request.ls_penalty_percent,
+            penalty_percent=penalty_percent,
         )
+        threshold.offer(practical_score)
         pair = _PairPlan(
             source_station=source_station,
             destination_station=destination_station,
@@ -229,6 +270,7 @@ def _best_open_ended_plan(
     reachability_ms = _elapsed_ms(reachability_started)
     best_pair = replace(best_pair, jump_path=jump_path)
 
+    cargo_fast_hits, cargo_recursive_hits = cargo_counters()
     diagnostics = run_result.PlannerDiagnostics(
         validation_ms=validation_ms,
         resolution_ms=resolution_ms,
@@ -236,6 +278,9 @@ def _best_open_ended_plan(
         market_query_ms=market_query_ms,
         reachability_ms=reachability_ms,
         cargo_optimisation_ms=cargo_optimisation_ms,
+        cargo_fast_path_hits=cargo_fast_hits,
+        cargo_recursive_hits=cargo_recursive_hits,
+        cargo_pruned_solves=cargo_pruned(),
         total_planner_ms=_elapsed_ms(started),
         candidate_trade_count=candidate_trade_count,
     )
@@ -280,29 +325,64 @@ def _plan_unanchored(
 
     grouped_pairs = _group_pairs(candidates)
 
+    capacity_units = int(request.capacity_units or 0)
+    penalty_percent = request.ls_penalty_percent
+    available_credits = (
+        int(request.starting_credits or 0) - request.insurance_reserve
+    )
+
+    # Solve best-first and prune pairs that cannot beat the best so far;
+    # _pair_is_better breaks ties by station id, so the result is independent of
+    # solve order. Unanchored has no --from, so --towards never applies, but the
+    # disabled-under-towards guard is kept uniform with the open-ended path.
+    threshold = _KeptScoreThreshold(1, enabled=request.towards_target is None)
+
+    def _order_key(item):
+        (_src, dest_id), candidates_for_pair = item
+        destination = station_map.get(dest_id)
+        if destination is None:
+            return float("-inf")
+        return cargo_order_key(
+            candidates_for_pair,
+            destination.ls_from_star,
+            capacity_units,
+            penalty_percent,
+        )
+
     best_pair = None
     cargo_optimisation_ms = 0.0
-    for (source_id, destination_id), pair_candidates in grouped_pairs.items():
+    for (source_id, destination_id), pair_candidates in sorted(
+        grouped_pairs.items(), key=_order_key, reverse=True
+    ):
         source_station = station_map[source_id]
         destination_station = station_map[destination_id]
+        prune_floor = cargo_prune_floor(
+            threshold.current(),
+            destination_station.ls_from_star,
+            penalty_percent,
+        )
         cargo_started = time.perf_counter()
         try:
             cargo = optimise_cargo(
                 pair_candidates,
-                capacity_units=int(request.capacity_units or 0),
-                available_credits=int(request.starting_credits or 0)
-                - request.insurance_reserve,
+                capacity_units=capacity_units,
+                available_credits=available_credits,
                 cargo_limit_per_item=request.cargo_limit_per_item,
+                prune_below_raw=prune_floor,
             )
         except failures.NoProfitableTrades:
             cargo_optimisation_ms += _elapsed_ms(cargo_started)
             continue
         cargo_optimisation_ms += _elapsed_ms(cargo_started)
+        if cargo is None:
+            # Pruned: cannot beat the best pair found so far.
+            continue
         practical_score = score_with_destination_penalty(
             cargo.total_profit,
             destination_distance_ls=destination_station.ls_from_star,
-            penalty_percent=request.ls_penalty_percent,
+            penalty_percent=penalty_percent,
         )
+        threshold.offer(practical_score)
         pair = _PairPlan(
             source_station=source_station,
             destination_station=destination_station,
@@ -331,6 +411,7 @@ def _plan_unanchored(
     reachability_ms = _elapsed_ms(reachability_started)
     best_pair = replace(best_pair, jump_path=jump_path)
 
+    cargo_fast_hits, cargo_recursive_hits = cargo_counters()
     diagnostics = run_result.PlannerDiagnostics(
         validation_ms=validation_ms,
         resolution_ms=0.0,
@@ -338,6 +419,9 @@ def _plan_unanchored(
         market_query_ms=market_query_ms,
         reachability_ms=reachability_ms,
         cargo_optimisation_ms=cargo_optimisation_ms,
+        cargo_fast_path_hits=cargo_fast_hits,
+        cargo_recursive_hits=cargo_recursive_hits,
+        cargo_pruned_solves=cargo_pruned(),
         total_planner_ms=_elapsed_ms(started),
         candidate_trade_count=candidate_trade_count,
         unanchored_pairs_examined=unanchored_counters.pairs_examined,

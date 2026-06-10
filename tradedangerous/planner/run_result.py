@@ -162,6 +162,14 @@ class ExpansionStats:
     grouped_pairs: int = 0
     cargo_calls: int = 0
     children_returned: int = 0
+    # Phase split of the per-call expansion cost, accumulated alongside
+    # elapsed_ms so a slow expansion can be attributed: SQL candidate fetch
+    # plus station hydrate (fetch_ms), the cargo optimiser (cargo_ms), and
+    # survivor jump-path planning (jump_ms). Whatever of elapsed_ms these three
+    # do not account for is grouping/scoring/Python overhead.
+    fetch_ms: float = 0.0
+    cargo_ms: float = 0.0
+    jump_ms: float = 0.0
     elapsed_ms: float = 0.0
 
 
@@ -252,10 +260,12 @@ class PlannerDiagnostics:
     multihop_final_hop_stats: FinalHopStats | None = None
     # Cargo optimiser path split (debug). fast-path is the exact greedy fill
     # taken when credit cannot bind; recursive is the branch-and-bound
-    # fallback. Both zero outside runs that fit cargo. Surfaced in the
-    # diagnostics line to show where cargo time goes.
+    # fallback; pruned is the solves a caller pre-empted as unwinnable. All
+    # zero outside runs that fit cargo. Surfaced in the diagnostics line to
+    # show where cargo time goes.
     cargo_fast_path_hits: int = 0
     cargo_recursive_hits: int = 0
+    cargo_pruned_solves: int = 0
     # Open-origin credit-correction accounting. None outside that path.
     multihop_correction_stats: CorrectionStats | None = None
 

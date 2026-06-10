@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 
 from .failures import NoProfitableTrades
@@ -9,21 +10,39 @@ from .run_result import CargoLine, CargoPlan, TradeCandidate
 
 
 # Debug instrumentation: how often the exact greedy fast path is taken versus
-# the branch-and-bound fallback. A plain dict so it can be mutated without a
-# module-level rebinding. Reset per run by the planner and surfaced in the
-# diagnostics line, so the cargo cost split is visible without a profiler.
-_cargo_path_counts = {"fast": 0, "recursive": 0}
+# the branch-and-bound fallback, how many solves the caller pre-empted as
+# unwinnable, and the wall time spent fitting cargo. A plain dict so it can be
+# mutated without a module-level rebinding. Reset per run by the planner and
+# surfaced in the diagnostics line, so the cargo cost split is visible without
+# a profiler.
+_cargo_path_counts = {"fast": 0, "recursive": 0, "pruned": 0, "ms": 0.0}
 
 
 def reset_cargo_counters() -> None:
     """Zero the cargo path counters at the start of a planner run."""
     _cargo_path_counts["fast"] = 0
     _cargo_path_counts["recursive"] = 0
+    _cargo_path_counts["pruned"] = 0
+    _cargo_path_counts["ms"] = 0.0
 
 
 def cargo_counters() -> tuple[int, int]:
     """Return (fast_path_hits, recursive_hits) since the last reset."""
     return _cargo_path_counts["fast"], _cargo_path_counts["recursive"]
+
+
+def cargo_pruned() -> int:
+    """Return the count of solves skipped as unwinnable since the last reset."""
+    return _cargo_path_counts["pruned"]
+
+
+def cargo_time_ms() -> float:
+    """Return total wall time (ms) spent in optimise_cargo since the last reset.
+
+    Accumulated across every caller, so any route shape gets a per-run cargo
+    cost without each engine timing its own optimise_cargo calls.
+    """
+    return _cargo_path_counts["ms"]
 
 
 # Hard ceiling on branch-and-bound node visits per optimise_cargo call. A
@@ -47,11 +66,49 @@ def optimise_cargo(
     capacity_units: int,
     available_credits: int,
     cargo_limit_per_item: int = 0,
-) -> CargoPlan:
-    """Return an optimal cargo plan for one hop.
+    prune_below_raw: float | None = None,
+) -> CargoPlan | None:
+    """Time-wrapped entry point for the cargo optimiser.
+
+    Delegates to _optimise_cargo and accumulates the wall time into the module
+    counter, so the per-run cargo cost is visible in diagnostics for any route
+    shape without each engine timing its own calls. ``prune_below_raw`` is
+    passed through: when the pair cannot beat the caller's kept threshold the
+    delegate returns None, and that None is returned here unchanged.
+    """
+
+    started = time.perf_counter()
+    try:
+        return _optimise_cargo(
+            candidates,
+            capacity_units=capacity_units,
+            available_credits=available_credits,
+            cargo_limit_per_item=cargo_limit_per_item,
+            prune_below_raw=prune_below_raw,
+        )
+    finally:
+        _cargo_path_counts["ms"] += (time.perf_counter() - started) * 1000.0
+
+
+def _optimise_cargo(
+    candidates: tuple[TradeCandidate, ...],
+    *,
+    capacity_units: int,
+    available_credits: int,
+    cargo_limit_per_item: int = 0,
+    prune_below_raw: float | None = None,
+) -> CargoPlan | None:
+    """Return an optimal cargo plan for one hop, or None when pre-empted.
 
     The objective is maximum total profit under shared cargo capacity and
     credit constraints, with source supply and destination demand as hard caps.
+
+    When ``prune_below_raw`` is supplied, the optimiser first checks the
+    admissible root bound (the most profit this pair could possibly yield). If
+    even that cannot reach ``prune_below_raw``, the pair cannot beat what the
+    caller is already keeping, so the full solve is skipped and None is
+    returned. None is distinct from the NoProfitableTrades raise, which means no
+    viable plan exists at all.
     """
 
     bounded = _build_bounded_candidates(
@@ -218,6 +275,19 @@ def optimise_cargo(
             profit += quantity * candidate.trade.profit_per_unit
             cost += quantity * buy_price
         return quantities, profit, cost
+
+    if prune_below_raw is not None:
+        # Caller-supplied skip: if the most profit this pair could ever yield —
+        # the admissible root bound — cannot reach the score the caller is
+        # already keeping, the full solve is wasted. Strict <, so a pair that
+        # merely ties the threshold is still solved and left to the caller's
+        # tie-break. Counted apart from the "no viable plan" raise below.
+        root_bound = optimistic_upper_bound(
+            0, capacity_units, available_credits, 0
+        )
+        if root_bound < prune_below_raw:
+            _cargo_path_counts["pruned"] += 1
+            return None
 
     if _credit_cannot_bind(bounded, capacity_units, available_credits):
         # Exact greedy fast path. With unit cargo weights and a budget that
