@@ -304,6 +304,34 @@ def _station_attribute_predicates(request: RunRequest):
     return tuple(predicates)
 
 
+def _reachable_memo_key(
+    anchor_system: ResolvedSystem,
+    request: RunRequest,
+) -> tuple[int, int, float]:
+    """Key a memoised reachable-set temp table by what defines its contents."""
+
+    return (
+        int(anchor_system.system_id),
+        int(request.max_jumps_per_hop),
+        float(request.max_ly_per_jump or 0.0),
+    )
+
+
+def reachable_memo_contains(
+    memo: dict,
+    anchor_system: ResolvedSystem,
+    request: RunRequest,
+) -> bool:
+    """Whether the memo already holds this anchor's reachable temp table.
+
+    Callers that precompute the reachable set in memory (the cKDTree BFS)
+    check this first: on a hit the temp table is reused as-is and a
+    precomputed set would be discarded unread, so the BFS can be skipped.
+    """
+
+    return _reachable_memo_key(anchor_system, request) in memo
+
+
 @contextmanager
 def _reachable_station_query(
     session: Session,
@@ -390,11 +418,7 @@ def _reachable_station_query(
     memo_key: tuple[int, int, float] | None = None
     temp: Table | None = None
     if reachable_memo is not None:
-        memo_key = (
-            int(anchor_system.system_id),
-            int(request.max_jumps_per_hop),
-            float(request.max_ly_per_jump or 0.0),
-        )
+        memo_key = _reachable_memo_key(anchor_system, request)
         temp = reachable_memo.get(memo_key)
         if expansion_stats is not None:
             if temp is not None:

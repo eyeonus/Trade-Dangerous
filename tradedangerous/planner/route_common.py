@@ -1016,8 +1016,17 @@ def best_open_ended_hop_candidates(
     # hand it to the candidate fetch to bulk-insert, instead of the per-anchor
     # SQL spatial BFS. --jumps-per 0 (same-system) needs no reachable set, so
     # the fetch falls back to its same-system path when none is supplied.
+    # When the request memo already holds this anchor's temp table the fetch
+    # reuses it directly and never reads a precomputed set, so the BFS is
+    # skipped rather than computed and thrown away.
     precomputed_reachable = None
-    if (request.max_jumps_per_hop or 0) >= 1:
+    memo_has_table = (
+        reachable_memo is not None
+        and data_gateway.reachable_memo_contains(
+            reachable_memo, anchor_system, request
+        )
+    )
+    if (request.max_jumps_per_hop or 0) >= 1 and not memo_has_table:
         precomputed_reachable = reachable_systems_from(
             session,
             anchor_system,
