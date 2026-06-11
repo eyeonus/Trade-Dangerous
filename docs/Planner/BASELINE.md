@@ -300,14 +300,16 @@ Agreed-but-unscheduled decisions and noted-for-later items:
   higher-scoring winners; mechanisms hold but current data/scorer don't make
   them change a winner. Re-evaluation triggers recorded in
   `fifth_slice_restructure_implementation_plan.md`.
-- **Shared expansion-cost floor** — two halves. The *cargo* half (skip solving
-  pairs that cannot place) is **done** — the cargo pre-filter above. The *fetch*
-  half — narrowing candidate rows before they leave SQL — is still owed: once
-  cargo is pre-filtered it is the dominant cost on the real-budget shapes (the
-  fixed-terminal Layer-1 demand scan), and it is the whole cost on the optimistic
-  open multi-hop shapes (those fit cargo against a non-binding budget, so the
-  pre-filter is inert there and their time is candidate fetch/group). Performance
-  only.
+- **Shared expansion-cost floor** — **done**, both halves. The *cargo* half is
+  the Slice 22 pre-filter (skip solving pairs that cannot place). The *fetch*
+  half landed in Slice 23: the open-ended candidate queries are narrowed in
+  SQL by the fixed side's per-item price bounds, so open-side rows that could
+  never pair never leave the database (exact — candidates unchanged; the big
+  open multi-hop shape 159s → 83s). Residual, unscheduled: fetch is still the
+  dominant cost on the multi-hop shapes — the EXISTS probe stops rows being
+  materialised, but the database still walks the reachable stations' market
+  rows to evaluate it. Cutting deeper means a different query shape.
+  Performance only.
 - **`nav` / `olddata` rebuild** — parked for the main refactor's checkpoint L.
 - **Listener loose ends** — the 15A change is committed in the listener repo;
   the client path and a full spansh import are assumed-working pending a real

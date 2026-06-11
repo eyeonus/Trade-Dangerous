@@ -218,6 +218,23 @@ Planned in session, not in a separate plan doc — a small slice.
 | [twenty_first_slice_implementation_plan.md](twenty_first_slice_implementation_plan.md) | Design plan for Slice 21: resolve avoid tokens once into three id sets; the application seams (the shared station-attribute predicate for station/system, the buy-side commodity filters, the reachability bubble for jump-path transit); the explicit-origin carve-out; the precision-first, place-wins resolution order. |
 | [twenty_first_slice_completion_report.md](twenty_first_slice_completion_report.md) | Proof of completion: the five-part build across resolution, station/system exclusion, commodity buy-side exclusion, jump-path transit exclusion, and the origin carve-out; the required-argument threading through reachability; and the live spot-checks including the transit reroute and the invariant holding. |
 
+### Slice 22 — Cargo Pre-Filter (Complete)
+**Skip unwinnable cargo solves: an admissible pre-check (the optimiser's own root bound, ls multiplier folded in) prunes the branch-and-bound solve for any pair that provably cannot beat the kept set, solving best-first so the threshold rises fast. Routes byte-identical; the slow real-budget shapes 6–130× faster (fixed-terminal Sol→Lave 285s → 46s, one-hop open from Sol 8m40 → ~5s).**
+
+| Document | Content |
+|----------|---------|
+| [twenty_second_slice_implementation_plan.md](twenty_second_slice_implementation_plan.md) | Design plan for Slice 22: the Camp A (real-budget, cargo-bound) vs Camp B (optimistic-budget, fetch-bound) measurement, the reused admissible bound, the exactness proof, the `--towards` carve-out, and the wiring across the fixed-terminal and one-hop open engines. |
+| [twenty_second_slice_completion_report.md](twenty_second_slice_completion_report.md) | Proof of completion: the prune mechanism, the verification table (routes unchanged, 47,457 of 51,596 solves pruned on the fixed-terminal case), Camp B confirmed inert, and the observed bottleneck shift to candidate fetch. |
+
+### Slice 23 — Fetch-Path Overhead Sweep (Complete)
+**Post-Slice-22 the planner was fetch-bound. Seven verified leaks closed — headline: the open-ended candidate queries are narrowed in SQL by the fixed side's per-item price bounds (small temp table + correlated EXISTS), so rows that could never pair never leave the database. Also: aggregate failure classification for endpoint matrices, a run-scoped station DTO cache, a run-scoped unanchored qualifying temp, a skipped redundant reachable precompute, session-cached bulk-tax ids, single per-fetch timestamps. Routes unchanged; the large open multi-hop shape 159s → 83s.**
+
+Planned in session from a supplied seam analysis, no separate plan doc — each claimed issue was verified against the code before remediation.
+
+| Document | Content |
+|----------|---------|
+| [twenty_third_slice_completion_report.md](twenty_third_slice_completion_report.md) | Proof of completion: the seven verified seams, the rejected Python-side aggregation and the SQL shape that replaced it, the exactness argument, the live verification table, and the remaining fetch-bound residual. |
+
 ---
 
 ## Reference and Technical Notes

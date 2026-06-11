@@ -137,9 +137,9 @@ separate semantics for the same option.
 | Output contract | `[done]` | Default route output plus verbose per-hop / cumulative / jump-path detail. |
 | Checklist output | `[todo]` | |
 | Progress output | `[todo]` | |
-| Failure behaviour | `[varied]` | Distinct families implemented; affordability is folded into "no profitable trades" — see Variations. The via/towards/loop/unique no-route classes are moot (gated). |
+| Failure behaviour | `[varied]` | Distinct families implemented; affordability is folded into "no profitable trades" — see Variations. The via/towards/loop/unique no-route classes are moot (gated). Matrix endpoint shapes classify missing-data failures in aggregate on the no-route path, not per pair; in a rare cross-pair corner (one pair's source lacks data, a different pair's destination lacks data) the reported family is "no profitable trades" where per-pair probing named a side. |
 | Data requirements | `[done]` | Database is the source of truth; only the needed scope is materialised. |
-| Performance contract | `[done]` | Early narrowing, filters pushed into SQL, materially faster than legacy. The real-budget shapes (fixed-terminal, one-hop open) additionally pre-filter cargo — a pair that cannot beat the kept set skips the branch-and-bound solve (exact; routes unchanged), solving best-first so the threshold rises fast. |
+| Performance contract | `[done]` | Early narrowing, filters pushed into SQL, materially faster than legacy. The real-budget shapes (fixed-terminal, one-hop open) additionally pre-filter cargo — a pair that cannot beat the kept set skips the branch-and-bound solve (exact; routes unchanged), solving best-first so the threshold rises fast. The open-ended candidate fetches are narrowed in SQL by the fixed endpoint's per-item price bounds, so open-side rows that could never pair never leave the database (exact; candidates unchanged). |
 
 ---
 
