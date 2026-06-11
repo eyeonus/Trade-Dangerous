@@ -1,6 +1,6 @@
 # Slice 24 — Qualify Once: Run-Scoped Market Qualification for the Multi-Hop Engines
 
-*Implementation plan. Status: awaiting approval. 2026-06-11.*
+*Implementation plan. Status: approved 2026-06-11.*
 
 ---
 
@@ -57,11 +57,13 @@ reason. The multi-hop engines never got the same treatment.
   Considered at length; compatible with this slice's design (it would
   order the *pairing* stage, which this slice leaves untouched). Revisit
   only if the post-slice residual still demands it.
-- **Orphan-row hygiene on the write path.** The data findings show a
-  current writer leaves stale rows behind under newer partial updates
-  (546 stations, almost all rows inert). Investigating which
-  import/listener path does it belongs with that code, not this slice.
-  Recorded; the affected stations are profiled in the findings.
+- **Orphan-row hygiene on the write path — since closed.** The data
+  findings traced the stale rows to the spansh import's per-row merge;
+  the station snapshot write rule fixed it the same day (commit
+  `b2c3b90e`, see `docs/station_snapshot_write_rule.md`). The existing
+  residue washes out through normal listener traffic. The spec's audit
+  checklist (enumerating any other StationItem/ShipVendor writers)
+  remains open there, not here.
 
 ---
 
