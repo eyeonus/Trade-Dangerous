@@ -1,7 +1,9 @@
 # Station Snapshot Write Rule — Fix Specification
 
-*Spec only; not yet scheduled. 2026-06-11. Separate from the planner
-Slice 24 work — this is import/write-path, not planner.*
+*Spec. 2026-06-11. Separate from the planner Slice 24 work — this is
+import/write-path, not planner. Both `spansh_plug.py` writers were
+converted the same day (commit `b2c3b90e`); the audit checklist below
+remains open.*
 
 ---
 
@@ -50,30 +52,30 @@ live): replace station market rows", ~line 1988). No change needed,
 beyond confirming it also gates on "incoming newer than existing" rather
 than trusting message order.
 
-### `spansh_plug.py` market write — to be converted
+### `spansh_plug.py` market write — converted (commit `b2c3b90e`)
 
-The per-station market write (~lines 780–853) currently does per-row
-merging: upsert with a `ts_sp > modified` guard per row, then delete
-rows missing from the dump — but only spansh-written rows
-(`from_live = 0`) not newer than the dump.
+The per-station market write previously did per-row merging: upsert
+with a `ts_sp > modified` guard per row, then delete rows missing from
+the dump — but only spansh-written rows (`from_live = 0`) not newer
+than the dump.
 
 Proven consequence (from_live split on the local mixed stations:
-87,290 of 87,296 stale rows are spansh-written): when a dump's
-per-station data is older than fresher listener rows, the guard
-correctly spares the live rows but **inserts the dump's catalogue
-extras at the dump's older timestamp underneath them**. That is the
+87,290 of 87,296 stale rows were spansh-written): when a dump's
+per-station data was older than fresher listener rows, the guard
+correctly spared the live rows but **inserted the dump's catalogue
+extras at the dump's older timestamp underneath them**. That was the
 mixed-timestamp factory.
 
-Conversion: replace the whole upsert/keep-list/guarded-delete dance
-with the write rule above. The skip check is nearly free — the function
-already loads every existing row's `modified` before merging, so
-"newest existing" is one `max()` over data in hand.
+Now fixed: the upsert/keep-list/guarded-delete dance is replaced with
+the write rule above — one `max(modified)` skip check, then delete-all
+and insert the whole snapshot.
 
-### `spansh_plug.py` ShipVendor write — same conversion
+### `spansh_plug.py` ShipVendor write — converted (commit `b2c3b90e`)
 
 The shipyard-stock table (`ShipVendor`, which ships each station sells)
-is maintained with the same per-row merge pattern (~lines 548–600). A
-shipyard list arrives whole too. Apply the same rule.
+was maintained with the same per-row merge pattern — and delisted ships
+were never deleted at all. The same skip-or-replace conversion fixed
+both faults in the same commit.
 
 ## Audit checklist (complete before calling the fault closed)
 
