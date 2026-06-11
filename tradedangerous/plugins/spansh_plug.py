@@ -655,43 +655,36 @@ class ImportPlugin(plugins.ImportPluginBase):
             else:
                 raise RuntimeError(f"Unsupported dialect for {t_master.name} upsert: {self.session.get_bind().dialect.name}")
         
-        # 2) Link rows with timestamp guard for vendor tables.
-        wrote = 0
-        delc = 0
-        if keep_ids:
-            existing = {
-                int(r[0]): (r[1] or None)
-                for r in self.session.execute(
-                    select(getattr(t_vendor.c, id_col), t_vendor.c.modified).where(
-                        and_(t_vendor.c.station_id == station_id, getattr(t_vendor.c, id_col).in_(keep_ids))
-                    )
-                ).all()
-            }
-            to_insert = keep_ids - set(existing.keys())
-            to_update = {
-                vid for vid, mod in existing.items()
-                if (mod is None) or (ts_eff > mod)
-            }
-            wrote = len(to_insert) + len(to_update)
-            
-            vendor_rows = [{id_col: vid, "station_id": station_id, "modified": ts_eff} for vid in keep_ids]
-            if db_utils.is_sqlite(self.session):
-                db_utils.sqlite_upsert_modified(
-                    self.session, t_vendor, rows=vendor_rows,
-                    key_cols=(id_col, "station_id"),
-                    modified_col="modified",
-                    update_cols=(),
-                )
-            elif db_utils.is_mysql(self.session):
-                db_utils.mysql_upsert_modified(
-                    self.session, t_vendor, rows=vendor_rows,
-                    key_cols=(id_col, "station_id"),
-                    modified_col="modified",
-                    update_cols=(),
-                )
-            else:
-                raise RuntimeError(f"Unsupported dialect for {t_vendor.name} upsert: {self.session.get_bind().dialect.name}")
-        
+        # 2) Station snapshot rule (docs/station_snapshot_write_rule.md):
+        #    the shipyard list arrives whole too. If anything already
+        #    present is newer than this snapshot, skip the whole station;
+        #    otherwise replace its vendor rows wholesale. The wholesale
+        #    delete also removes delisted ships, which the old guarded
+        #    upsert never deleted on this path. An empty keep_ids means
+        #    parse failures, not an observed-empty shipyard — skip.
+        if not keep_ids:
+            return 0, 0
+
+        newest = self.session.execute(
+            select(func.max(t_vendor.c.modified)).where(
+                t_vendor.c.station_id == station_id
+            )
+        ).scalar()
+        if newest is not None and newest > ts_eff:
+            return 0, 0
+
+        res = self.session.execute(
+            t_vendor.delete().where(t_vendor.c.station_id == station_id)
+        )
+        delc = int(res.rowcount or 0)
+
+        vendor_rows = [
+            {id_col: vid, "station_id": station_id, "modified": ts_eff}
+            for vid in sorted(keep_ids)
+        ]
+        self.session.execute(insert(t_vendor), vendor_rows)
+        wrote = len(vendor_rows)
+
         return wrote, delc
     
     def _sync_market_block_fast(
@@ -787,68 +780,43 @@ class ImportPlugin(plugins.ImportPluginBase):
                 )
             else:
                 raise RuntimeError(f"Unsupported dialect for {t_item.name} upsert: {self.session.get_bind().dialect.name}")
-        # 2) Compute effective inserts/updates for StationItem (pre-check modified), then upsert
-        wrote = 0
-        if link_rows:
-            existing = {
-                (int(r[0]), int(r[1])): (r[2] or None)
-                for r in self.session.execute(
-                    select(t_si.c.station_id, t_si.c.item_id, t_si.c.modified).where(
-                        and_(t_si.c.station_id == int(station_id), t_si.c.item_id.in_(keep_ids))
-                    )
-                ).all()
-            }
-            to_insert = {
-                (int(station_id), rid) for rid in keep_ids
-                if (int(station_id), rid) not in existing
-            }
-            to_update = {
-                (int(station_id), rid)
-                for rid, mod in ((rid, existing.get((int(station_id), rid))) for rid in keep_ids)
-                if (mod is None) or (ts_sp is not None and ts_sp > mod)
-            }
-            wrote = len(to_insert) + len(to_update)
+        # 2) Station snapshot rule (docs/station_snapshot_write_rule.md):
+        #    a market arrives as one whole snapshot, never piecemeal, so
+        #    whoever owns the newest row owns the whole station. If
+        #    anything already present is newer than this dump's snapshot,
+        #    the dump's entire picture of the station is stale — skip it
+        #    outright. Otherwise the snapshot replaces the market
+        #    wholesale: delete everything, insert the dump's rows, all at
+        #    the snapshot timestamp. The caller gates on a non-empty
+        #    commodities list, so an empty link_rows here means parse
+        #    failures, not an observed-empty market — skip rather than
+        #    wipe.
+        if not link_rows:
+            return 0, 0
 
-            if db_utils.is_sqlite(self.session):
-                db_utils.sqlite_upsert_modified(
-                    self.session, t_si, rows=link_rows,
-                    key_cols=("station_id", "item_id"),
-                    modified_col="modified",
-                    update_cols=(
-                        "demand_price", "demand_units", "demand_level",
-                        "supply_price", "supply_units", "supply_level",
-                    ),
-                )
-            elif db_utils.is_mysql(self.session):
-                db_utils.mysql_upsert_modified(
-                    self.session, t_si, rows=link_rows,
-                    key_cols=("station_id", "item_id"),
-                    modified_col="modified",
-                    update_cols=(
-                        "demand_price", "demand_units", "demand_level",
-                        "supply_price", "supply_units", "supply_level",
-                    ),
-                )
-            else:
-                raise RuntimeError(f"Unsupported dialect for {t_si.name} upsert: {self.session.get_bind().dialect.name}")
+        newest = self.session.execute(
+            select(func.max(t_si.c.modified)).where(
+                t_si.c.station_id == int(station_id)
+            )
+        ).scalar()
+        if newest is not None and ts_sp is not None and newest > ts_sp:
+            return 0, 0
 
-        # 3) Delete baseline rows missing from JSON, not newer than ts_sp
-        delc = 0
-        base_where = and_(
-            t_si.c.station_id == int(station_id),
-            t_si.c.from_live == 0,
-            or_(t_si.c.modified.is_(None), t_si.c.modified <= ts_sp),
+        res = self.session.execute(
+            t_si.delete().where(t_si.c.station_id == int(station_id))
         )
-        if keep_ids:
-            delete_stmt = t_si.delete().where(and_(base_where, ~t_si.c.item_id.in_(keep_ids)))
-        else:
-            delete_stmt = t_si.delete().where(base_where)
-
-        res = self.session.execute(delete_stmt)
         try:
             delc = int(res.rowcount or 0)
         except Exception:
             delc = 0
+
+        # The old upsert path absorbed a repeated commodity entry; a
+        # plain insert must not. Dedupe by item_id, last entry wins,
+        # then restore the stable item_id order (deadlock posture).
+        deduped = {int(row["item_id"]): row for row in link_rows}
+        snapshot_rows = [deduped[iid] for iid in sorted(deduped)]
+        self.session.execute(insert(t_si), snapshot_rows)
+        wrote = len(snapshot_rows)
 
         return wrote, delc
 
