@@ -667,6 +667,11 @@ def _plan_open_anchor_route(
 
     reachable_memo: dict = {}
 
+    # Run-constant row qualification is answered once per station into
+    # run-scoped temps; frontier bubbles overlap heavily, so later anchors
+    # reuse earlier anchors' work. Released with the memo below.
+    qualification = data_gateway.QualificationCache()
+
     # Station DTOs are immutable for the run; the cache stops frontier
     # layers re-fetching stations earlier layers already hydrated.
     station_cache: dict[int, run_result.ResolvedStation] = {}
@@ -714,6 +719,7 @@ def _plan_open_anchor_route(
                     reachable_memo=reachable_memo,
                     expansion_stats=expansion_stats,
                     station_cache=station_cache,
+                    qualification=qualification,
                 )
                 for trade in children:
                     child = _make_open_child(node, trade)
@@ -834,6 +840,7 @@ def _plan_open_anchor_route(
                 reachable_memo=reachable_memo,
                 expansion_stats=expansion_stats,
                 station_cache=station_cache,
+                qualification=qualification,
             )
             for trade in children:
                 finalist_nodes.append(_make_open_child(node, trade))
@@ -937,6 +944,7 @@ def _plan_open_anchor_route(
         )
         route = best_route
     finally:
+        qualification.release(session)
         data_gateway.release_reachable_memo(session, reachable_memo)
 
     return _multihop_result(
@@ -970,6 +978,7 @@ def best_open_ended_hop_candidates(
     reachable_memo: dict | None = None,
     expansion_stats: run_result.ExpansionStats | None = None,
     station_cache: dict[int, run_result.ResolvedStation] | None = None,
+    qualification: data_gateway.QualificationCache | None = None,
 ) -> list[_HopCandidate]:
     """Return the top-K best optimistic single-hop trades on the open side.
 
@@ -1052,6 +1061,7 @@ def best_open_ended_hop_candidates(
         reachable_memo=reachable_memo,
         expansion_stats=expansion_stats,
         precomputed_reachable_systems=precomputed_reachable,
+        qualification=qualification,
     )
     if expansion_stats is not None:
         expansion_stats.fetch_ms += _elapsed_ms(fetch_started)

@@ -173,6 +173,13 @@ class ExpansionStats:
     cargo_ms: float = 0.0
     jump_ms: float = 0.0
     elapsed_ms: float = 0.0
+    # Qualify-once cache effect: stations qualified into the run-scoped
+    # temps, rows landed there, and the time spent populating them.
+    # Population happens mid-fetch, so qual_ms is also inside fetch_ms —
+    # it is the attributable slice, not an additional cost.
+    qual_stations: int = 0
+    qual_rows: int = 0
+    qual_ms: float = 0.0
 
 
 @dataclass(slots=True)

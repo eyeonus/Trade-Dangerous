@@ -299,6 +299,12 @@ def _render_multihop_diagnostics(diagnostics: PlannerDiagnostics) -> list[str]:
             f"cargo {expansion.cargo_ms:.0f}ms, "
             f"jump {expansion.jump_ms:.0f}ms"
         )
+        if expansion.qual_ms > 0 or expansion.qual_stations:
+            lines.append(
+                f"  Qualification: {expansion.qual_stations:n} stations, "
+                f"{expansion.qual_rows:n} rows cached, "
+                f"{expansion.qual_ms:.0f}ms"
+            )
 
     if (
         diagnostics.cargo_fast_path_hits

@@ -116,6 +116,11 @@ def _plan_multi_hop(
     # Released in the finally below so a partial run does not leak tables.
     reachable_memo: dict = {}
 
+    # Run-constant row qualification is answered once per station into
+    # run-scoped temps; frontier bubbles overlap heavily, so later anchors
+    # reuse earlier anchors' work. Released with the memo below.
+    qualification = data_gateway.QualificationCache()
+
     # Station DTOs are immutable for the run; the cache stops frontier
     # layers re-fetching stations earlier layers already hydrated.
     station_cache: dict[int, run_result.ResolvedStation] = {}
@@ -167,6 +172,7 @@ def _plan_multi_hop(
                     destination_envelope_ly=envelope_ly,
                     expansion_stats=expansion_stats,
                     station_cache=station_cache,
+                    qualification=qualification,
                 )
                 for trade in children:
                     next_frontier.append(
@@ -332,6 +338,7 @@ def _plan_multi_hop(
         )
         route = _reconstruct_route(winner, request)
     finally:
+        qualification.release(session)
         data_gateway.release_reachable_memo(session, reachable_memo)
 
     return _multihop_result(
@@ -365,6 +372,7 @@ def best_open_ended_trades_from(
     destination_envelope_ly: float | None = None,
     expansion_stats: run_result.ExpansionStats | None = None,
     station_cache: dict[int, run_result.ResolvedStation] | None = None,
+    qualification: data_gateway.QualificationCache | None = None,
 ) -> list[_HopCandidate]:
     """Return the top-K best forward trades from a single source station.
 
@@ -417,6 +425,7 @@ def best_open_ended_trades_from(
         destination_envelope_xyz=destination_envelope_xyz,
         destination_envelope_ly=destination_envelope_ly,
         expansion_stats=expansion_stats,
+        qualification=qualification,
     )
     if expansion_stats is not None:
         expansion_stats.fetch_ms += _elapsed_ms(fetch_started)
