@@ -241,6 +241,16 @@ Planned in session from a supplied seam analysis, no separate plan doc — each 
 
 ## Reference and Technical Notes
 
+### [timing_baselines.md](timing_baselines.md)
+Recorded wall-clock and phase-split baselines for the multi-hop route shapes
+(2026-06-11 run set, the first with the open-anchor phase timers wired).
+Captures the scaling findings: fetch throughput is flat (time tracks candidate
+rows), jump range multiplies per-layer cost ~4–5× while hops only add layers,
+and the candidate fetch dominates every shape.
+
+**Purpose:** Before/after comparison for future performance work. Routes drift
+with database refreshes; the volume/time relationships are the stable signal.
+
 ### [tuples.md](tuples.md)
 Filter semantics and design decisions:
 - **Y/N/? state filters** — accepted-state sets for `--black-market`, `--fleet-carrier`, `--settlement`, `--planetary`
