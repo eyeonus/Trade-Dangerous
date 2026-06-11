@@ -269,6 +269,59 @@ Also measure: the union-of-bubbles size on the worst baseline shape
 (`--from sol --hops 6 --jumps 2`) — distinct stations and qualified-row
 count — to size the temp tables before building them.
 
+**P3 results (2026-06-11) — gate passed: GO for Part B.**
+
+Method note first: the planned subtraction split (full minus
+qual-only) produced invalid numbers — the qual-only variant returns
+~7× more rows to Python, and row materialisation swamps the SQL
+difference. Two replacement instruments, both clean: COUNT-only
+timings (pure SQL cost, no rows returned) and a direct rehearsal of
+the Part B temp. The reconstructed queries' row counts matched P2's
+exactly on all three reference bubbles, so the instruments measure
+the real query.
+
+The per-anchor cost decomposition (Sol j2 terminal, open filters,
+~194ms total; Sol j1 proportions identical):
+
+| share | ms | % |
+|---|---|---|
+| SQL walk + qualification | 65.5 | ~34% |
+| fixed-side bounds EXISTS | +25.3 | ~13% |
+| Python materialisation of the 39,596 output rows | ~102.9 | ~53% |
+
+Rehearsal (build the qualified temp once, ANALYZE, run the pairing
+query against it): per-anchor net saving **21–44%** across the four
+bubbles (Sol/Lave × j1/j2); the build cost (123ms for the biggest
+bubble) amortises within 2–3 overlapping anchors, and frontier
+bubbles overlap far more than that. The onward-viability EXISTS is
+cheap as-is (+3–46ms; 2–20% of the SQL share) — no case for moving
+it out of the pairing query.
+
+Union sizing on `--from sol --hops 6 --jumps 2` (146s run, 123
+distinct bubbles): union is 10,864 systems, 125,953 qualifying
+stations, 2.63M raw rows. The temps would hold ~1.10M demand-qual +
+~0.38M supply-qual rows ≈ 1.5M — comfortably inside SQLite temp
+storage; the layer-scoped fallback in Risks is not needed. Against
+the run's cumulative candidate volume (7.2M rows fetched across 256
+calls over a 2.63M-row universe), the run re-reads each distinct row
+roughly 3× on output alone, more on walk — the overlap Part B
+exists to collapse.
+
+Two consequences recorded:
+
+1. **GO.** Walk+qualification is ~a third of per-anchor cost at open
+   filters and the rehearsal confirms the saving is real and
+   compounding (later anchors ride earlier anchors' qualification).
+   Under `--age` the win grows: stage 0 cuts the walk itself, and the
+   temps shrink with the fresh-station set.
+2. **The post-slice residual has a shape already.** Python
+   materialisation of output rows is the single largest per-anchor
+   cost at open filters (~53%) and Part B does not touch it. Output
+   volume, not SQL, is the likely next frontier — which is exactly
+   the territory of the deferred bound-ordered pairing (it cuts rows
+   *returned*, not rows scanned). Decision stands: revisit only if
+   the post-slice residual demands it; the evidence is now on file.
+
 ---
 
 ## Part B — Run-scoped qualification temps
