@@ -196,6 +196,62 @@ unevenly dense, and quantifying how much row volume they actually carry.
 and cannot do to cost, in the completion report and folded into
 `timing_baselines.md`.
 
+**P2 results (2026-06-11) — cost tracks rows visited; the `--fc N`
+question is closed.**
+
+Probe: one memoised reachable temp per bubble (Sol j1, Sol j2,
+Lave j2 at ly-per 30), the same direct fetch repeated under each
+filter state. Same anchor, same bubble — any change is the filter's.
+Row counts are exact; timings are single-run, warm cache, with an
+open-state repeat confirming drift was nil.
+
+Sol j1 (286 systems), fixed side Daedalus:
+
+| state | stations | rows visited | rows out | fetch ms |
+|---|---|---|---|---|
+| open | 6,938 | 142,375 | 8,237 | 52.7 |
+| `--fc N` | 4,117 | 140,676 | 8,173 | 51.5 |
+| `--planetary N` | 3,392 | 81,992 | 5,124 | 34.7 |
+| `--age 3` | 6,938 | 142,375 | 1,336 | 26.4 |
+| `--age 1` | 6,938 | 142,375 | — | 1.6 |
+| `--fc N --age 3` | 4,117 | 140,676 | 1,333 | 47.1 |
+
+Sol j2 and Lave j2 show the same proportions throughout.
+
+Findings:
+
+1. **Cost tracks rows visited, not stations.** `--planetary N` cut
+   42% of rows and ~34% of time. `--fc N` cut 41% of *stations* but
+   1.2% of rows — and time did not move. A filter buys cost relief
+   exactly in proportion to the market rows it removes.
+2. **The `--fc N` mystery is data shape, not a defect.** In the
+   current dataset carriers are near-ubiquitous (86% of systems round
+   Sol) but their markets are almost empty: 0.6 rows per carrier
+   against 29 per non-carrier; 92% of carriers in the Sol bubble have
+   no market rows at all. Excluding carriers removes stations and
+   pairing work, not fetch volume. Scoped to this snapshot: a fresher
+   import with heavy carrier traffic would shift the ratio.
+3. **`--age` today never shrinks the walk.** The age predicate is
+   row-level, so stations and rows visited are unchanged in every age
+   state. Its time saving (52.7→26.4ms) comes from rows failing the
+   cheap `modified` test before the per-row EXISTS probes run. The
+   walk itself remains — which is precisely what Part B's stage 0
+   station-level cut removes.
+4. **`--age 1` returning instantly is the fixed-side early-out.** The
+   snapshot is older than one day, so the fixed side's bounds temp
+   came up empty and the open-side query never ran. Working as
+   designed.
+5. **Carrier density hypothesis confirmed, with a twist.** Carriers
+   are widespread (86% of systems at Sol, 31% out at Lave) and very
+   unevenly stacked (up to 127 in one system), but in this snapshot
+   they are row-trivial. The pairing-side win of `--fc N` (fewer
+   stations → fewer pairs downstream) is real; the fetch-side win is
+   not.
+
+The `--fc N --age 3` row ran ~20ms slower than `--age 3` alone at Sol
+(equal at Lave) — single-run noise territory; the row counts, which
+are exact, show the states equivalent.
+
 ### P3 — Cost split: qualification vs pairing
 
 Time the per-call fetch cost in two parts for a sample of anchors:

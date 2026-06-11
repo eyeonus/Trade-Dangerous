@@ -430,3 +430,27 @@ Layer 5: 50 in, 50 calls, 1430 children, kept 50 (8077ms)
 Final hop: 50 attempted, 41 reach destination, 999 market candidates, 41 viable, 2331ms
 real 1m51.888s
 ```
+
+# Probe set P2 — fixed-anchor filter sweep (2026-06-11, Slice 24)
+
+Run set 2's `--fc N` twins compared different frontiers, so row volumes
+were never like for like. P2 pinned the bubble — one anchor, one
+reachable temp, the same fetch under each filter state — and settled
+what attribute filters do to cost. Full tables in the Slice 24 plan
+(`twenty_fourth_slice_implementation_plan.md`, P2 results).
+
+The law it establishes:
+
+- **A filter buys cost relief in proportion to the market rows it
+  removes, not the stations.** `--planetary N` removed 42% of rows and
+  ~34% of fetch time. `--fc N` removed 41% of *stations* but 1.2% of
+  rows — fetch time did not move.
+- **`--fc N` is row-trivial in this snapshot** because carriers here
+  are near-empty: 0.6 market rows per carrier against 29 per
+  non-carrier; 92% of carriers in the Sol bubble carry no rows at all.
+  Its effect on routes (run set 2) is pairing-side — fewer stations,
+  fewer pairs — not fetch-side.
+- **`--age` never shrinks the walk today**: it is a row predicate, so
+  rows visited are unchanged; its time saving is rows failing the
+  cheap `modified` test before the per-row EXISTS probes. The Slice 24
+  stage-0 station-level cut is what turns `--age` into a walk reducer.
