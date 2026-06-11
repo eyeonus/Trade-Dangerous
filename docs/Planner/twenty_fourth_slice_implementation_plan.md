@@ -133,6 +133,44 @@ Confirm or refute:
 If station-first does not hold, that is a defect to fix on its own
 before any caching work — caching a mis-planned query bakes the fault in.
 
+**P1 results (2026-06-11) — station-first holds; no defect.**
+
+Probe: SQLAlchemy engine hook capturing the open-side fetch as the
+planner executed it, with `EXPLAIN QUERY PLAN` run on the same
+connection (the temps are connection-scoped). Three states from Sol at
+`--hops 2`: jumps 1 open, jumps 2 open, jumps 1 with
+`--fc N --planetary N --pad-size L`. Six unique query shapes captured
+(terminal and non-terminal, across first- and second-hop anchors); all
+six produced the identical plan:
+
+```text
+SEARCH StationItem USING PRIMARY KEY (station_id=?)
+LIST SUBQUERY 2
+    SEARCH Station USING INDEX idx_station_by_system (system_id=?)
+    USING INDEX sqlite_autoindex_td_reachable_systems_<K>_1 FOR IN-OPERATOR
+CORRELATED SCALAR SUBQUERY 3        -- onward viability (non-terminal only)
+    SEARCH StationItem_1 USING PRIMARY KEY (station_id=?)
+CORRELATED SCALAR SUBQUERY 4        -- fixed-side price bounds
+    SEARCH td_open_fixed_bounds USING INDEX ... (item_id=?)
+```
+
+Both confirmations hold:
+
+1. **Station-first.** The outer access is `SEARCH ... USING PRIMARY
+   KEY (station_id=?)` driven by the eligible-station list subquery —
+   never a `SCAN` of StationItem. The station list itself drives from
+   the reachable temp's autoindex into `idx_station_by_system`.
+2. **Attribute filters cut before StationItem.** In the filtered
+   state, `planetary IN (?)` and the carrier `type_id IN (...)` sit
+   inside the Station list subquery: a station failing them never
+   reaches the StationItem search at all.
+
+Both EXISTS probes are PK/autoindex point searches per row — correct
+shape, but per-row and per-anchor, which is exactly the cost P3
+measures and Part B hoists. Verdict: the query is well-planned;
+nothing to fix before caching work. The `--fc N` cost mystery is not
+a planning defect — P2 measures what the filters actually remove.
+
 ### P2 — Fixed-anchor filter sweep (the `--fc N` question)
 
 The run-set-2 comparison was confounded: filtered runs chose different
