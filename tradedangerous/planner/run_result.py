@@ -164,9 +164,11 @@ class ExpansionStats:
     children_returned: int = 0
     # Phase split of the per-call expansion cost, accumulated alongside
     # elapsed_ms so a slow expansion can be attributed: SQL candidate fetch
-    # plus station hydrate (fetch_ms), the cargo optimiser (cargo_ms), and
-    # survivor jump-path planning (jump_ms). Whatever of elapsed_ms these three
-    # do not account for is grouping/scoring/Python overhead.
+    # plus station hydrate (fetch_ms; the open-anchor engine also folds its
+    # in-memory reachable-set precompute in, since that work exists to feed
+    # the fetch), the cargo optimiser (cargo_ms), and survivor jump-path
+    # planning (jump_ms). Whatever of elapsed_ms these three do not account
+    # for is grouping/scoring/Python overhead.
     fetch_ms: float = 0.0
     cargo_ms: float = 0.0
     jump_ms: float = 0.0

@@ -1012,6 +1012,11 @@ def best_open_ended_hop_candidates(
 
     anchor_system = _system_from_station(anchor_station)
 
+    # Fetch phase starts here: the reachable-set precompute exists to feed the
+    # candidate fetch, so its BFS cost is folded into fetch_ms rather than
+    # left in the unattributed overhead remainder.
+    fetch_started = time.perf_counter()
+
     # Compute the reachable-systems set in memory from the cKDTree bubble and
     # hand it to the candidate fetch to bulk-insert, instead of the per-anchor
     # SQL spatial BFS. --jumps-per 0 (same-system) needs no reachable set, so
@@ -1049,6 +1054,7 @@ def best_open_ended_hop_candidates(
         precomputed_reachable_systems=precomputed_reachable,
     )
     if expansion_stats is not None:
+        expansion_stats.fetch_ms += _elapsed_ms(fetch_started)
         expansion_stats.candidate_rows += len(candidates)
     if not candidates:
         if expansion_stats is not None:
@@ -1057,6 +1063,7 @@ def best_open_ended_hop_candidates(
 
     # The open side is whichever role the planner chooses; the anchor fills the
     # other. Group on the open station and materialise only those DTOs.
+    hydrate_started = time.perf_counter()
     if open_role == "source":
         open_station_ids = tuple(
             {candidate.source_station_id for candidate in candidates}
@@ -1070,6 +1077,8 @@ def best_open_ended_hop_candidates(
         open_station_ids,
         cache=station_cache,
     )
+    if expansion_stats is not None:
+        expansion_stats.fetch_ms += _elapsed_ms(hydrate_started)
 
     grouped_pairs = _group_pairs(candidates)
     if expansion_stats is not None:
@@ -1095,6 +1104,7 @@ def best_open_ended_hop_candidates(
             continue
         if expansion_stats is not None:
             expansion_stats.cargo_calls += 1
+        cargo_started = time.perf_counter()
         try:
             cargo = optimise_cargo(
                 pair_candidates,
@@ -1104,6 +1114,9 @@ def best_open_ended_hop_candidates(
             )
         except failures.NoProfitableTrades:
             continue
+        finally:
+            if expansion_stats is not None:
+                expansion_stats.cargo_ms += _elapsed_ms(cargo_started)
         # ls-penalty rides on the hop's destination: the anchor when the open
         # side is the source, the chosen station when it is the destination.
         destination_distance_ls = (
@@ -1128,6 +1141,7 @@ def best_open_ended_hop_candidates(
         if len(hop_candidates) >= top_k:
             break
         open_system = _system_from_station(open_station)
+        jump_started = time.perf_counter()
         try:
             # Anchor reachability on the fixed endpoint so its bubble is built
             # once and reused across every candidate; plan_jump_path returns
@@ -1145,6 +1159,9 @@ def best_open_ended_hop_candidates(
             # The reachable subquery already filtered to in-range systems, so
             # this is a corner case — fall through to the next-best candidate.
             continue
+        finally:
+            if expansion_stats is not None:
+                expansion_stats.jump_ms += _elapsed_ms(jump_started)
         # Store the hop in source -> destination flight order. For an open
         # source the anchor is the destination, so anchor -> open is
         # destination -> source and is reversed; for an open destination
