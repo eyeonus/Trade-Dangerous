@@ -1087,57 +1087,117 @@ def best_open_ended_hop_candidates(
     # Score every viable pair first; defer the jump-path computation until
     # after the top-K trim so we only pay it for survivors. The anchor is
     # fixed, so _group_pairs keys differ only by the open station.
+    #
+    # Pairs are solved best-first by a cheap optimistic key, and each solve
+    # is handed the score of the worst pair currently in the top-K. A pair
+    # whose admissible ceiling cannot reach that floor is pruned before the
+    # expensive solve. Final selection still sorts by progress rank with the
+    # original fetch order breaking ties, so pruning and reordering change
+    # the work done, never the children chosen. --towards ranks by progress
+    # toward the target rather than by score, so the score floor would be
+    # meaningless there — the threshold is disabled and every pair solves.
+    capacity_units = int(request.capacity_units or 0)
+    penalty_percent = request.ls_penalty_percent
+    anchor_is_destination = open_role == "source"
+    threshold = _KeptScoreThreshold(
+        top_k, enabled=request.towards_target is None
+    )
+    original_order = {key: index for index, key in enumerate(grouped_pairs)}
+
+    def _pair_order_key(item):
+        (_source_id, destination_id), candidates_for_pair = item
+        if anchor_is_destination:
+            destination_ls = anchor_station.ls_from_star
+        else:
+            destination = open_stations.get(destination_id)
+            if destination is None:
+                return float("-inf")
+            destination_ls = destination.ls_from_star
+        return cargo_order_key(
+            candidates_for_pair,
+            destination_ls,
+            capacity_units,
+            penalty_percent,
+        )
+
+    ordered_pairs = sorted(
+        grouped_pairs.items(), key=_pair_order_key, reverse=True
+    )
+
     scored: list[
         tuple[
             float,
             run_result.ResolvedStation,
             run_result.CargoPlan,
             tuple[run_result.TradeCandidate, ...],
+            int,
         ]
     ] = []
-    for (source_id, destination_id), pair_candidates in grouped_pairs.items():
+    for pair_key, pair_candidates in ordered_pairs:
+        source_id, destination_id = pair_key
         open_id = source_id if open_role == "source" else destination_id
         open_station = open_stations.get(open_id)
         if open_station is None:
             # An open station that lost its DTO during the fetch — defensive
             # skip rather than a KeyError, mirroring the forward helper.
             continue
+        # ls-penalty rides on the hop's destination: the anchor when the open
+        # side is the source, the chosen station when it is the destination.
+        destination_distance_ls = (
+            anchor_station.ls_from_star
+            if anchor_is_destination
+            else open_station.ls_from_star
+        )
         if expansion_stats is not None:
             expansion_stats.cargo_calls += 1
+        prune_floor = cargo_prune_floor(
+            threshold.current(),
+            destination_distance_ls,
+            penalty_percent,
+        )
         cargo_started = time.perf_counter()
         try:
             cargo = optimise_cargo(
                 pair_candidates,
-                capacity_units=int(request.capacity_units or 0),
+                capacity_units=capacity_units,
                 available_credits=optimistic_credits,
                 cargo_limit_per_item=request.cargo_limit_per_item,
+                prune_below_raw=prune_floor,
             )
         except failures.NoProfitableTrades:
             continue
         finally:
             if expansion_stats is not None:
                 expansion_stats.cargo_ms += _elapsed_ms(cargo_started)
-        # ls-penalty rides on the hop's destination: the anchor when the open
-        # side is the source, the chosen station when it is the destination.
-        destination_distance_ls = (
-            anchor_station.ls_from_star
-            if open_role == "source"
-            else open_station.ls_from_star
-        )
+        if cargo is None:
+            # Pruned: the pair's ceiling cannot beat the kept top-K.
+            continue
         practical_score = score_with_destination_penalty(
             cargo.total_profit,
             destination_distance_ls=destination_distance_ls,
-            penalty_percent=request.ls_penalty_percent,
+            penalty_percent=penalty_percent,
         )
-        scored.append((practical_score, open_station, cargo, pair_candidates))
+        threshold.offer(practical_score)
+        scored.append(
+            (
+                practical_score,
+                open_station,
+                cargo,
+                pair_candidates,
+                original_order[pair_key],
+            )
+        )
 
+    # Restore original fetch order first, then stable-sort by progress rank,
+    # so equal-rank candidates resolve exactly as the unordered scan did.
+    scored.sort(key=lambda item: item[4])
     scored.sort(
         key=lambda item: _candidate_progress_rank(item, request),
         reverse=True,
     )
 
     hop_candidates: list[_HopCandidate] = []
-    for practical_score, open_station, cargo, pair_candidates in scored:
+    for practical_score, open_station, cargo, pair_candidates, _ in scored:
         if len(hop_candidates) >= top_k:
             break
         open_system = _system_from_station(open_station)
