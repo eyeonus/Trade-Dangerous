@@ -242,7 +242,13 @@ unknown-pad station is admitted unless `--pad-size L` is set. Full reasoning in
 
 - **No default age limit.** With no `--age`, every row is used whatever its age
   — deliberate (supports the `olddata` relight playstyle). `--age` is the user's
-  opt-in lever.
+  opt-in lever. It is a rolling window sampled once at the run's first fetch
+  (floats legal — `--age 0.25` is six hours); to reproduce an aged run later,
+  widen `--age` by the elapsed time per the project CLAUDE.md note.
+- **Market data lands as whole-station snapshots.** Every writer (listener,
+  spansh, eddblink) now applies the station snapshot write rule
+  (`docs/station_snapshot_write_rule.md`): one `modified` per station, so
+  station-level freshness reads are sound by construction.
 - **Markets have two independent sides.** A station may legitimately supply only
   (origin only) or demand only (destination only); mid-route stations must do
   both. The planner handles one-sided stations; legacy did not.
@@ -305,11 +311,19 @@ Agreed-but-unscheduled decisions and noted-for-later items:
   half landed in Slice 23: the open-ended candidate queries are narrowed in
   SQL by the fixed side's per-item price bounds, so open-side rows that could
   never pair never leave the database (exact — candidates unchanged; the big
-  open multi-hop shape 159s → 83s). Residual, unscheduled: fetch is still the
-  dominant cost on the multi-hop shapes — the EXISTS probe stops rows being
-  materialised, but the database still walks the reachable stations' market
-  rows to evaluate it. Cutting deeper means a different query shape.
-  Performance only.
+  open multi-hop shape 159s → 83s). Slice 24 added the qualify-once layer:
+  run-constant row predicates are answered once per station into run-scoped
+  temps (lazily, SQL-side), and with `--age` set a station-level fresh-set
+  cut means stale stations are never walked at all. Exact (run set 3:
+  16/16 baseline runs byte-identical); ~10% off open-filter wall, and `--age`
+  became a true cost lever (worst shape 124s open → 55s at `--age 3`, 38s at
+  `--age 1`; a realistic stacked-filter run lands ~27s). Residual,
+  deferred-not-dead: per-anchor cost is now dominated by Python materialising
+  the rows each query returns (~53% measured) — the named lever is
+  bound-ordered pairing with a provable early stop (return fewer rows);
+  evidence in the Slice 24 plan (P3) and `timing_baselines.md`. The
+  fixed-terminal envelope shapes benefit least from the cache and are now the
+  slowest shapes left. Performance only.
 - **`nav` / `olddata` rebuild** — parked for the main refactor's checkpoint L.
 - **Listener loose ends** — the 15A change is committed in the listener repo;
   the client path and a full spansh import are assumed-working pending a real

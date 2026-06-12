@@ -237,6 +237,16 @@ Planned in session from a supplied seam analysis, no separate plan doc — each 
 
 ---
 
+### Slice 24 — Qualify Once (Complete)
+**Run-constant row qualification answered once per station into lazily populated run-scoped temps; with `--age`, a station-level fresh-set cut means stale stations are never walked. Exact (16/16 baseline runs byte-identical); ~10% off open-filter wall, and `--age` became a true cost lever: worst shape 124s open → 55s at `--age 3` → 38s at `--age 1`; realistic stacked filters ~27s. Probes P1–P3 closed the `--fc N` question (filter cost law: relief is proportional to rows removed) and measured the residual (~53% Python row materialisation — the bound-ordering evidence).**
+
+| Document | Content |
+|----------|---------|
+| [twenty_fourth_slice_implementation_plan.md](twenty_fourth_slice_implementation_plan.md) | The approved plan, with the P1/P2/P3 probe results recorded in place and the data findings that settled the `--age` design. |
+| [twenty_fourth_slice_completion_report.md](twenty_fourth_slice_completion_report.md) | Proof of completion: the build, the exactness verification, run sets 3 and 4, variances from plan, and the import-path write-rule side quest. |
+
+---
+
 ## Reference and Technical Notes
 
 ## Reference and Technical Notes

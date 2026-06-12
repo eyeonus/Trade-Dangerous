@@ -72,7 +72,7 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 | `--settlement` | `[done]` | Y/N/? set. |
 | `--black-market` | `[done]` | Y/N/? set. |
 | `--ls-max` | `[done]` | Max distance from arrival star. |
-| `--age` | `[done]` | Excludes rows older than N days. No default — absent `--age` uses every row (deliberate; see BASELINE). |
+| `--age` | `[done]` | Excludes rows older than N days. No default — absent `--age` uses every row (deliberate; see BASELINE). The cutoff is sampled once at the run's first fetch, so one run shares one "now"; the multi-hop shapes also derive a fresh-station set from it up front, so stale stations are never walked. |
 | `--pad-size` | `[varied]` | Ship-fit threshold, not the legacy model — see Variations. |
 
 ### Commodity and trade filters
