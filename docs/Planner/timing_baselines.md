@@ -920,3 +920,355 @@ real	0m5.942s
 
 real	1m35.456s
 ```
+
+# Run set 4 — aged baselines on the clean database (2026-06-12)
+
+Conditions as run set 3 plus: database freshly rebuilt the same day via
+the converted eddblink import (uniformity 94,367 of 94,367 — zero mixed
+stations), so the snapshot invariant the `--age` station cut relies on
+holds by construction. The eight baseline shapes at `--age 3`, then
+`--age 1` (newly meaningful on day-fresh data). Run start times are
+recorded per run in the verbatims below.
+
+**Comparison rule — read before comparing anything to this set.**
+`--age` is a rolling window, so these figures are anchored to their
+recorded start times. To reproduce a run exactly later, widen `--age`
+by the elapsed time since that start (minutes ÷ 1440) per the
+"Reproducing `--age` runs exactly" note in the project CLAUDE.md — and
+check the database's data age first: on a stale database the same
+`--age` value selects a different fraction of the universe and the
+comparison is meaningless.
+
+Window sizes on this snapshot: `--age 3` keeps 19,383 of 94,367
+stations (21%) and 3.1M of 15.2M rows; `--age 1` keeps 9,461 stations
+(10%) and 1.45M rows.
+
+## Headline table (open-filter run set 3 wall shown for context)
+
+| # | Shape | Jumps | Open wall | age 3 wall / fetch | age 1 wall / fetch |
+|---|---|---|---|---|---|
+| 1 | `--from sol --hops 3` | 1 | 13.8s | 9.5s / 6.5s | 6.1s / 4.6s |
+| 2 | `--from sol --hops 3` | 2 | 56.2s | 27.9s / 23.6s | 19.8s / 16.6s |
+| 3 | `--to lave --hops 3` | 1 | 4.7s | 3.9s / 2.6s | 3.5s / 2.5s |
+| 4 | `--to lave --hops 3` | 2 | 21.5s | 11.3s / 9.3s | 9.7s / 7.8s |
+| 5 | `--from sol --hops 6` | 1 | 29.8s | 15.7s / 12.2s | 11.5s / 9.3s |
+| 6 | `--from sol --hops 6` | 2 | 124.0s | 55.3s / 47.2s | 38.3s / 32.8s |
+| 7 | `--from sol --to lave --hops 6` | 1 | 10.2s | 7.5s / 5.7s | 5.6s / 4.1s |
+| 8 | `--from sol --to lave --hops 6` | 2 | 121.9s | 85.0s / 66.3s | 70.5s / 54.7s |
+
+## What run set 4 establishes
+
+1. **`--age` is now a real cost lever.** P2 proved that pre-cache, the
+   age predicate never shrank the walk (rows visited unchanged within a
+   fixed bubble). With stage 0, stale stations are never walked: the
+   worst shape (run 6) drops from 124s open to 55.3s at `--age 3` and
+   38.3s at `--age 1` — −55% and −69% wall.
+2. **The caveat is honest scope, not noise:** an aged run answers a
+   different question than an open run (fresh data only — candidate
+   volumes, routes and profits all legitimately differ). The comparison
+   measures what adding `--age` buys a commander, not like-for-like
+   engine speed. There is no pre-cache aged baseline; this set is the
+   reference for aged shapes from here on.
+3. **The fresh-set build costs ~1s, once per run** (the `--age` runs'
+   qualification figures sit ~1s above their open twins). One DISTINCT
+   range scan over the modified-led index, paid once, buying the
+   station-level cut for the whole run.
+4. **The fixed-terminal j2 shape (run 8) again benefits least** —
+   85s/70.5s against 121.9s open — consistent with the known cache weak
+   spot: the destination envelope narrows per call, so the skip marker
+   never engages there.
+
+## Per-run diagnostics (verbatim)
+
+### [age3 1/8] trade run --from sol --hops 3 --age 3 --capacity 720 --credits 200000000 --ly-per 30
+
+```text
+started 2026-06-12 13:58:36
+  Total: 7491ms (resolution 0ms, station-filter 4ms, search 7475ms)
+  Expansion: 163 calls, memo 103/60 hit/miss, 320459 candidate rows, 35666 pairs, 35666 cargo calls, 6350 children, 
+7449ms
+  Expansion phases: fetch 6507ms, cargo 796ms, jump 7ms
+  Qualification: 27819 stations, 77881 rows cached, 1646ms
+  Cargo: 7641 fast-path, 0 branch-and-bound, 28028 pruned, 788ms
+  Correction: 2500 finalists, 1 attempted, 1 corrected, 3 cargo calls (3 fast-path, 0 b&b), 1ms
+  Layer 1: 63 in, 63 calls, 1350 children, kept 50 (2049ms)
+  Layer 2: 50 in, 50 calls, 2500 children, kept 50 (3340ms)
+
+real	0m9.542s
+```
+
+### [age3 2/8] trade run --from sol --hops 3 --jumps 2 --age 3 --capacity 720 --credits 200000000 --ly-per 30
+
+```text
+started 2026-06-12 13:58:45
+  Total: 26835ms (resolution 0ms, station-filter 2ms, search 26810ms)
+  Expansion: 163 calls, memo 85/78 hit/miss, 1085490 candidate rows, 110134 pairs, 110134 cargo calls, 6350 children, 
+26704ms
+  Expansion phases: fetch 23572ms, cargo 1555ms, jump 1063ms
+  Qualification: 110725 stations, 243759 rows cached, 3796ms
+  Cargo: 8545 fast-path, 0 branch-and-bound, 101592 pruned, 1533ms
+  Correction: 2500 finalists, 1 attempted, 1 corrected, 3 cargo calls (3 fast-path, 0 b&b), 1ms
+  Layer 1: 63 in, 63 calls, 1350 children, kept 50 (4273ms)
+  Layer 2: 50 in, 50 calls, 2500 children, kept 50 (13377ms)
+
+real	0m27.908s
+```
+
+### [age3 3/8] trade run --to lave --hops 3 --age 3 --capacity 720 --credits 200000000 --ly-per 30
+
+```text
+started 2026-06-12 13:59:13
+  Total: 2931ms (resolution 0ms, station-filter 2ms, search 2922ms)
+  Expansion: 130 calls, memo 66/64 hit/miss, 97055 candidate rows, 9479 pairs, 9479 cargo calls, 5074 children, 2913ms
+  Expansion phases: fetch 2649ms, cargo 212ms, jump 6ms
+  Qualification: 11137 stations, 10142 rows cached, 1057ms
+  Cargo: 5471 fast-path, 0 branch-and-bound, 4011 pruned, 210ms
+  Correction: 2444 finalists, 1 attempted, 1 corrected, 3 cargo calls (3 fast-path, 0 b&b), 1ms
+  Layer 1: 30 in, 30 calls, 150 children, kept 50 (886ms)
+  Layer 2: 50 in, 50 calls, 2480 children, kept 50 (1161ms)
+
+real	0m3.850s
+```
+
+### [age3 4/8] trade run --to lave --hops 3 --jumps 2 --age 3 --capacity 720 --credits 200000000 --ly-per 30
+
+```text
+started 2026-06-12 13:59:17
+  Total: 10289ms (resolution 0ms, station-filter 2ms, search 10272ms)
+  Expansion: 130 calls, memo 48/82 hit/miss, 328567 candidate rows, 31394 pairs, 31394 cargo calls, 5150 children, 
+10248ms
+  Expansion phases: fetch 9295ms, cargo 470ms, jump 360ms
+  Qualification: 85930 stations, 64902 rows cached, 2343ms
+  Cargo: 6673 fast-path, 0 branch-and-bound, 24724 pruned, 464ms
+  Correction: 2500 finalists, 1 attempted, 1 corrected, 3 cargo calls (3 fast-path, 0 b&b), 1ms
+  Layer 1: 30 in, 30 calls, 150 children, kept 50 (1036ms)
+  Layer 2: 50 in, 50 calls, 2500 children, kept 50 (5095ms)
+
+real	0m11.259s
+```
+
+### [age3 5/8] trade run --from sol --hops 6 --age 3 --capacity 720 --credits 200000000 --ly-per 30
+
+```text
+started 2026-06-12 13:59:28
+  Total: 14646ms (resolution 0ms, station-filter 2ms, search 14625ms)
+  Expansion: 313 calls, memo 249/64 hit/miss, 725141 candidate rows, 80788 pairs, 80788 cargo calls, 13848 children, 
+14552ms
+  Expansion phases: fetch 12207ms, cargo 2007ms, jump 16ms
+  Qualification: 30927 stations, 83345 rows cached, 1301ms
+  Cargo: 16835 fast-path, 0 branch-and-bound, 63959 pruned, 1991ms
+  Correction: 2499 finalists, 1 attempted, 1 corrected, 6 cargo calls (6 fast-path, 0 b&b), 1ms
+  Layer 1: 63 in, 63 calls, 1350 children, kept 50 (1864ms)
+  Layer 2: 50 in, 50 calls, 2500 children, kept 50 (3097ms)
+  Layer 3: 50 in, 50 calls, 2500 children, kept 50 (2744ms)
+  Layer 4: 50 in, 50 calls, 2499 children, kept 50 (2577ms)
+  Layer 5: 50 in, 50 calls, 2500 children, kept 50 (2574ms)
+
+real	0m15.706s
+```
+
+### [age3 6/8] trade run --from sol --hops 6 --jumps 2 --age 3 --capacity 720 --credits 200000000 --ly-per 30
+
+```text
+started 2026-06-12 13:59:44
+  Total: 54027ms (resolution 0ms, station-filter 2ms, search 53986ms)
+  Expansion: 313 calls, memo 186/127 hit/miss, 2506516 candidate rows, 249661 pairs, 249661 cargo calls, 13850 children,
+53724ms
+  Expansion phases: fetch 47162ms, cargo 3919ms, jump 1575ms
+  Qualification: 126071 stations, 275976 rows cached, 4440ms
+  Cargo: 18415 fast-path, 0 branch-and-bound, 231252 pruned, 3867ms
+  Correction: 2500 finalists, 1 attempted, 1 corrected, 6 cargo calls (6 fast-path, 0 b&b), 1ms
+  Layer 1: 63 in, 63 calls, 1350 children, kept 50 (4227ms)
+  Layer 2: 50 in, 50 calls, 2500 children, kept 50 (12629ms)
+  Layer 3: 50 in, 50 calls, 2500 children, kept 50 (10988ms)
+  Layer 4: 50 in, 50 calls, 2500 children, kept 50 (10545ms)
+  Layer 5: 50 in, 50 calls, 2500 children, kept 50 (9606ms)
+
+real	0m55.299s
+```
+
+### [age3 7/8] trade run --from sol --to lave --hops 6 --age 3 --capacity 720 --credits 200000000 --ly-per 30
+
+```text
+started 2026-06-12 14:00:39
+  Total: 6459ms (resolution 0ms, station-filter 3ms, search 6437ms)
+  Expansion: 247 calls, memo 81/166 hit/miss, 157263 candidate rows, 16854 pairs, 16854 cargo calls, 5050 children, 
+5974ms
+  Expansion phases: fetch 5656ms, cargo 243ms, jump 10ms
+  Qualification: 21768 stations, 62255 rows cached, 1566ms
+  Cargo: 5770 fast-path, 0 branch-and-bound, 11108 pruned, 240ms
+  Layer 1: 63 in, 63 calls, 1350 children, kept 50 (2058ms)
+  Layer 2: 50 in, 50 calls, 2488 children, kept 50 (2297ms)
+  Layer 3: 50 in, 50 calls, 749 children, kept 50 (612ms)
+  Layer 4: 50 in, 50 calls, 371 children, kept 34 (713ms)
+  Layer 5: 34 in, 34 calls, 92 children, kept 8 (312ms)
+  Final hop: 8 attempted, 8 reach destination, 117 market candidates, 8 viable, 446ms
+
+real	0m7.488s
+```
+
+### [age3 8/8] trade run --from sol --to lave --hops 6 --jumps 2 --age 3 --capacity 720 --credits 200000000 --ly-per 30
+
+```text
+started 2026-06-12 14:00:47
+  Total: 83519ms (resolution 0ms, station-filter 3ms, search 83482ms)
+  Expansion: 263 calls, memo 106/157 hit/miss, 1374833 candidate rows, 130660 pairs, 130660 cargo calls, 9958 children, 
+79605ms
+  Expansion phases: fetch 66327ms, cargo 2018ms, jump 10578ms
+  Qualification: 114516 stations, 248368 rows cached, 5140ms
+  Cargo: 12844 fast-path, 0 branch-and-bound, 117927 pruned, 1995ms
+  Layer 1: 63 in, 63 calls, 1350 children, kept 50 (5160ms)
+  Layer 2: 50 in, 50 calls, 2500 children, kept 50 (26078ms)
+  Layer 3: 50 in, 50 calls, 2500 children, kept 50 (23449ms)
+  Layer 4: 50 in, 50 calls, 2447 children, kept 50 (17353ms)
+  Layer 5: 50 in, 50 calls, 1161 children, kept 50 (7758ms)
+  Final hop: 50 attempted, 37 reach destination, 878 market candidates, 37 viable, 3684ms
+
+real	1m25.048s
+```
+
+### [age1 1/8] trade run --from sol --hops 3 --age 1 --capacity 720 --credits 200000000 --ly-per 30
+
+```text
+started 2026-06-12 14:02:12
+  Total: 5198ms (resolution 0ms, station-filter 2ms, search 5185ms)
+  Expansion: 163 calls, memo 96/67 hit/miss, 192394 candidate rows, 19206 pairs, 19206 cargo calls, 5606 children, 
+5170ms
+  Expansion phases: fetch 4608ms, cargo 474ms, jump 7ms
+  Qualification: 28563 stations, 39531 rows cached, 1269ms
+  Cargo: 6283 fast-path, 0 branch-and-bound, 12926 pruned, 470ms
+  Correction: 2500 finalists, 1 attempted, 1 corrected, 3 cargo calls (3 fast-path, 0 b&b), 1ms
+  Layer 1: 63 in, 63 calls, 638 children, kept 50 (1290ms)
+  Layer 2: 50 in, 50 calls, 2468 children, kept 50 (2272ms)
+
+real	0m6.114s
+```
+
+### [age1 2/8] trade run --from sol --hops 3 --jumps 2 --age 1 --capacity 720 --credits 200000000 --ly-per 30
+
+```text
+started 2026-06-12 14:02:18
+  Total: 18706ms (resolution 0ms, station-filter 2ms, search 18685ms)
+  Expansion: 163 calls, memo 85/78 hit/miss, 531870 candidate rows, 52847 pairs, 52847 cargo calls, 5750 children, 
+18635ms
+  Expansion phases: fetch 16613ms, cargo 802ms, jump 1000ms
+  Qualification: 108716 stations, 113938 rows cached, 3063ms
+  Cargo: 6826 fast-path, 0 branch-and-bound, 46024 pruned, 792ms
+  Correction: 2500 finalists, 1 attempted, 1 corrected, 3 cargo calls (3 fast-path, 0 b&b), 1ms
+  Layer 1: 63 in, 63 calls, 750 children, kept 50 (2212ms)
+  Layer 2: 50 in, 50 calls, 2500 children, kept 50 (9140ms)
+
+real	0m19.806s
+```
+
+### [age1 3/8] trade run --to lave --hops 3 --age 1 --capacity 720 --credits 200000000 --ly-per 30
+
+```text
+started 2026-06-12 14:02:38
+  Total: 2635ms (resolution 0ms, station-filter 2ms, search 2624ms)
+  Expansion: 130 calls, memo 66/64 hit/miss, 57365 candidate rows, 5733 pairs, 5733 cargo calls, 4690 children, 2618ms
+  Expansion phases: fetch 2497ms, cargo 81ms, jump 5ms
+  Qualification: 14602 stations, 6240 rows cached, 1017ms
+  Cargo: 4923 fast-path, 0 branch-and-bound, 813 pruned, 80ms
+  Correction: 2167 finalists, 1 attempted, 1 corrected, 3 cargo calls (3 fast-path, 0 b&b), 1ms
+  Layer 1: 30 in, 30 calls, 100 children, kept 50 (856ms)
+  Layer 2: 50 in, 50 calls, 2423 children, kept 50 (1042ms)
+
+real	0m3.548s
+```
+
+### [age1 4/8] trade run --to lave --hops 3 --jumps 2 --age 1 --capacity 720 --credits 200000000 --ly-per 30
+
+```text
+started 2026-06-12 14:02:41
+  Total: 8697ms (resolution 0ms, station-filter 2ms, search 8682ms)
+  Expansion: 130 calls, memo 50/80 hit/miss, 172024 candidate rows, 17266 pairs, 17266 cargo calls, 5076 children, 
+8668ms
+  Expansion phases: fetch 7783ms, cargo 373ms, jump 440ms
+  Qualification: 81765 stations, 31381 rows cached, 2126ms
+  Cargo: 5779 fast-path, 0 branch-and-bound, 11490 pruned, 369ms
+  Correction: 2476 finalists, 1 attempted, 1 corrected, 3 cargo calls (3 fast-path, 0 b&b), 0ms
+  Layer 1: 30 in, 30 calls, 100 children, kept 50 (968ms)
+  Layer 2: 50 in, 50 calls, 2500 children, kept 50 (3997ms)
+
+real	0m9.688s
+```
+
+### [age1 5/8] trade run --from sol --hops 6 --age 1 --capacity 720 --credits 200000000 --ly-per 30
+
+```text
+started 2026-06-12 14:02:51
+  Total: 10436ms (resolution 0ms, station-filter 2ms, search 10417ms)
+  Expansion: 313 calls, memo 246/67 hit/miss, 459820 candidate rows, 44886 pairs, 44886 cargo calls, 13106 children, 
+10366ms
+  Expansion phases: fetch 9279ms, cargo 829ms, jump 17ms
+  Qualification: 28563 stations, 39531 rows cached, 1295ms
+  Cargo: 14920 fast-path, 0 branch-and-bound, 29972 pruned, 819ms
+  Correction: 2500 finalists, 1 attempted, 1 corrected, 6 cargo calls (6 fast-path, 0 b&b), 1ms
+  Layer 1: 63 in, 63 calls, 638 children, kept 50 (1323ms)
+  Layer 2: 50 in, 50 calls, 2468 children, kept 50 (2295ms)
+  Layer 3: 50 in, 50 calls, 2500 children, kept 50 (2039ms)
+  Layer 4: 50 in, 50 calls, 2500 children, kept 50 (1740ms)
+  Layer 5: 50 in, 50 calls, 2500 children, kept 50 (1834ms)
+
+real	0m11.487s
+```
+
+### [age1 6/8] trade run --from sol --hops 6 --jumps 2 --age 1 --capacity 720 --credits 200000000 --ly-per 30
+
+```text
+started 2026-06-12 14:03:03
+  Total: 37080ms (resolution 0ms, station-filter 2ms, search 37046ms)
+  Expansion: 313 calls, memo 196/117 hit/miss, 1276223 candidate rows, 123768 pairs, 123768 cargo calls, 13247 children,
+36913ms
+  Expansion phases: fetch 32769ms, cargo 2185ms, jump 1441ms
+  Qualification: 130971 stations, 133279 rows cached, 4071ms
+  Cargo: 15905 fast-path, 0 branch-and-bound, 107869 pruned, 2160ms
+  Correction: 2500 finalists, 1 attempted, 1 corrected, 6 cargo calls (6 fast-path, 0 b&b), 1ms
+  Layer 1: 63 in, 63 calls, 750 children, kept 50 (2301ms)
+  Layer 2: 50 in, 50 calls, 2500 children, kept 50 (9228ms)
+  Layer 3: 50 in, 50 calls, 2500 children, kept 50 (8241ms)
+  Layer 4: 50 in, 50 calls, 2500 children, kept 50 (6276ms)
+  Layer 5: 50 in, 50 calls, 2497 children, kept 50 (7142ms)
+
+real	0m38.309s
+```
+
+### [age1 7/8] trade run --from sol --to lave --hops 6 --age 1 --capacity 720 --credits 200000000 --ly-per 30
+
+```text
+started 2026-06-12 14:03:41
+  Total: 4593ms (resolution 0ms, station-filter 3ms, search 4576ms)
+  Expansion: 220 calls, memo 86/134 hit/miss, 84666 candidate rows, 8605 pairs, 8605 cargo calls, 3503 children, 4312ms
+  Expansion phases: fetch 4136ms, cargo 132ms, jump 7ms
+  Qualification: 18492 stations, 28431 rows cached, 1446ms
+  Cargo: 3834 fast-path, 0 branch-and-bound, 4783 pruned, 131ms
+  Layer 1: 63 in, 63 calls, 638 children, kept 50 (1417ms)
+  Layer 2: 50 in, 50 calls, 2471 children, kept 50 (1719ms)
+  Layer 3: 50 in, 50 calls, 174 children, kept 34 (465ms)
+  Layer 4: 34 in, 34 calls, 179 children, kept 23 (421ms)
+  Layer 5: 23 in, 23 calls, 41 children, kept 6 (301ms)
+  Final hop: 6 attempted, 6 reach destination, 52 market candidates, 6 viable, 252ms
+
+real	0m5.576s
+```
+
+### [age1 8/8] trade run --from sol --to lave --hops 6 --jumps 2 --age 1 --capacity 720 --credits 200000000 --ly-per 30
+
+```text
+started 2026-06-12 14:03:47
+  Total: 69016ms (resolution 0ms, station-filter 2ms, search 68986ms)
+  Expansion: 263 calls, memo 117/146 hit/miss, 678822 candidate rows, 65112 pairs, 65112 cargo calls, 8991 children, 
+65414ms
+  Expansion phases: fetch 54741ms, cargo 964ms, jump 9450ms
+  Qualification: 112126 stations, 116944 rows cached, 4810ms
+  Cargo: 10640 fast-path, 0 branch-and-bound, 54548 pruned, 953ms
+  Layer 1: 63 in, 63 calls, 750 children, kept 50 (2918ms)
+  Layer 2: 50 in, 50 calls, 2500 children, kept 50 (22383ms)
+  Layer 3: 50 in, 50 calls, 2500 children, kept 50 (19520ms)
+  Layer 4: 50 in, 50 calls, 2500 children, kept 50 (14318ms)
+  Layer 5: 50 in, 50 calls, 741 children, kept 50 (6372ms)
+  Final hop: 50 attempted, 38 reach destination, 493 market candidates, 38 viable, 3474ms
+
+real	1m10.462s
+```
