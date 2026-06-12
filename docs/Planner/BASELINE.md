@@ -280,6 +280,13 @@ unknown-pad station is admitted unless `--pad-size L` is set. Full reasoning in
   and the rejected user-facing-width idea are recorded in
   `beam_width_analysis.md`. Re-open only with a fresh sweep on then-current
   data.
+- **The unanchored candidate-query restructure is closed.** Probed to a
+  conclusion in Slice 5: 144 axis-uplift checks across realistic data shapes
+  found zero routes the restructure would improve. It is not pending, not
+  owed, and not a caveat — do not raise it in startup summaries, status
+  reports, or option lists. It reopens only if one of the specific triggers
+  recorded in `fifth_slice_restructure_implementation_plan.md` actually
+  fires, and the burden is on evidence that one has.
 
 ---
 
@@ -306,12 +313,6 @@ Agreed-but-unscheduled decisions and noted-for-later items:
   revisit only if the curve is ever properly documented.
 - **`--max-gain-per-ton` default** — the filter works; giving it a sane default
   cap (a different axis from `--max-price`) is an unscheduled idea.
-- **Unanchored candidate-query restructure** — investigated and **parked**
-  (per-system extrema discarding multi-commodity pairs; `--ls-penalty` applied
-  after the bounded SQL slice). 144 axis-uplift checks surfaced zero
-  higher-scoring winners; mechanisms hold but current data/scorer don't make
-  them change a winner. Re-evaluation triggers recorded in
-  `fifth_slice_restructure_implementation_plan.md`.
 - **Shared expansion-cost floor** — **done**, all layers. The *cargo* half is
   the Slice 22 pre-filter (skip solving pairs that cannot place). The *fetch*
   half landed in Slice 23: the open-ended candidate queries are narrowed in
@@ -328,11 +329,15 @@ Agreed-but-unscheduled decisions and noted-for-later items:
   Exact at every layer (Slice 25: 17/17 verification routes plus run set 5's
   8/8 byte-identical). Open multi-hop −45–61% wall (worst shape 145.7s →
   57.0s), fixed-terminal −29/−33%, one-hop planner-internal ~10× on large
-  candidate sets. Remaining residual, performance only: the fixed-terminal
-  envelope family is the slowest left for measured structural reasons — the
-  per-layer envelope defeats memo/bubble-skip reuse even on layers where it
-  constrains nothing (the recorded lever: drop provably-loose envelopes from
-  those layers' cache keys) — see `timing_baselines.md` run set 5.
+  candidate sets. The last recorded lever — drop provably-loose
+  destination envelopes per expansion call — was taken and measured
+  2026-06-12: exact at the counter level, qualification time −26%, wall
+  −3.4% on the worst fixed-terminal shape (85.9s → 83.0s). Fixed-terminal
+  remains the slowest family for structural reasons only (rows genuinely
+  read under the real-budget floor, ~5× jump-path time, the final-hop
+  close on the destination — the price of guaranteeing arrival). **The
+  performance ledger is closed**: no lever is recorded, no performance
+  work is owed. See `timing_baselines.md` run set 5, finding 5.
 - **`nav` / `olddata` rebuild** — parked for the main refactor's checkpoint L.
 - **Listener loose ends** — the 15A change is committed in the listener repo;
   the client path and a full spansh import are assumed-working pending a real

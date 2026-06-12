@@ -1334,10 +1334,27 @@ Sol; 91,584 candidates fetched → 5 read).
    loses from 4 up (48.3s vs 37.8s). The destination constraint pays
    while total reach is comparable to the separation; with slack, the
    envelope spends the early layers excluding nothing while its
-   presence still disables cache reuse. Recorded lever: a layer whose
-   envelope exceeds its bubble constrains nothing and could be dropped
-   from that layer's cache keys, giving early layers the open engine's
-   reuse.
+   presence still disables cache reuse. Recorded lever (since taken
+   and measured — see 5): a layer whose envelope exceeds its bubble
+   constrains nothing and could be dropped from that layer's cache
+   keys, giving early layers the open engine's reuse.
+5. **The loose-envelope lever — taken and measured (2026-06-12),
+   ledger closed.** Expansion calls now drop the envelope when it
+   provably contains the anchor's whole reach bubble (triangle
+   inequality, per call). Exact at the counter level: memo hits,
+   candidate rows, stream rows read, and early stops identical with
+   and without the change. The win was the per-call qualification
+   re-check alone: qualification time −26%, wall −3.4% on the worst
+   shape (85.9s → 83.0s) and −6% on its j1 twin (7.2s → 6.7s);
+   taut-envelope shapes unchanged (zero drops). Finding 3's memo
+   implication did not survive measurement: memo hit rates are
+   identical with and without the envelope — the memo key never
+   carried it — and the hit-rate difference against the open twin is
+   frontier composition, not the envelope. The remaining fixed-vs-open
+   gap is structural and stays: rows genuinely read under the
+   real-budget floor, ~5× jump-path time, and the final-hop close on
+   Y — the price of guaranteeing arrival. No further lever recorded;
+   no fixed-terminal performance work is owed.
 
 ## Per-run diagnostics (key lines)
 
