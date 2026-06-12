@@ -305,6 +305,12 @@ def _render_multihop_diagnostics(diagnostics: PlannerDiagnostics) -> list[str]:
                 f"{expansion.qual_rows:n} rows cached, "
                 f"{expansion.qual_ms:.0f}ms"
             )
+        if expansion.stream_stations_read or expansion.stream_stops:
+            lines.append(
+                f"  Stream: {expansion.stream_rows_read:n} rows read, "
+                f"{expansion.stream_stations_read:n} stations consumed, "
+                f"{expansion.stream_stops:n} early stops"
+            )
 
     if (
         diagnostics.cargo_fast_path_hits

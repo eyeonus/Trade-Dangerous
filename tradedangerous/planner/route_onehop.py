@@ -143,58 +143,37 @@ def _best_open_ended_plan(
     available_credits = (
         int(request.starting_credits or 0) - request.insurance_reserve
     )
-    candidates = data_gateway.fetch_open_ended_trade_candidates(
-        session,
-        fixed_station_ids,
-        anchor_system,
-        request,
-        open_role=open_role,
-        available_credits=available_credits,
-        terminal_hop=True,
-    )
-    if not candidates:
-        _raise_empty_open_search(
-            session,
-            anchor_system,
-            request,
-            fixed_station_ids,
-            open_role=open_role,
-        )
-
-    # Materialise only the open side's stations as DTOs; the fixed side is
-    # already in hand. The open side is the source when open_role is "source",
-    # the destination otherwise.
-    if open_role == "source":
-        open_station_ids = tuple(
-            {candidate.source_station_id for candidate in candidates}
-        )
-    else:
-        open_station_ids = tuple(
-            {candidate.destination_station_id for candidate in candidates}
-        )
-    open_stations = data_gateway.fetch_stations_by_id(
-        session,
-        open_station_ids,
-    )
-    market_query_ms = _elapsed_ms(market_started)
-    candidate_trade_count = len(candidates)
-
-    # Fixed-side and open-side stations may overlap (a same-system search
-    # reaches the fixed system's own stations); merging them keyed by id is
-    # still correct — a shared station resolves to one DTO either way.
-    station_map = {station.station_id: station for station in fixed_stations}
-    station_map.update(open_stations)
-    grouped_pairs = _group_pairs(candidates)
 
     capacity_units = int(request.capacity_units or 0)
     penalty_percent = request.ls_penalty_percent
 
-    # Solve best-first and prune pairs that cannot beat the best so far. The
-    # single-best selection (_pair_is_better) breaks ties deterministically by
-    # station id, so it is independent of solve order — reordering and pruning
-    # change only the work done. Pruning is by score, so it is disabled under
-    # --towards, which ranks by progress toward the target rather than score.
+    # Station groups stream in best-ceiling-first; pairs are solved as their
+    # group arrives, and once the next ceiling cannot beat the best score
+    # held the stream is abandoned — the remaining stations are never read.
+    # The single-best selection (_pair_is_better) breaks ties
+    # deterministically by station id, and the stop only fires strictly
+    # below the held score, so reordering, pruning, and the stop change
+    # only the work done. Pruning is by score, so it is disabled under
+    # --towards, which ranks by progress toward the target rather than
+    # score — the stream then runs to completion.
     threshold = _KeptScoreThreshold(1, enabled=request.towards_target is None)
+    # The stop converts the held score to raw profit at the most permissive
+    # destination the stream could still produce: the closest fixed station
+    # when the open side is the source (the fixed side is the destination),
+    # the curve's maximum (ls 0) when the destination varies per station.
+    if open_role == "source":
+        stop_conversion_ls = min(
+            (station.ls_from_star or 0) for station in fixed_stations
+        )
+    else:
+        stop_conversion_ls = 0
+
+    # Fixed-side and open-side stations may overlap (a same-system search
+    # reaches the fixed system's own stations); keying by id keeps the map
+    # correct — a shared station resolves to one DTO either way. Open-side
+    # DTOs are materialised per consumed group, so abandoned stations are
+    # never hydrated.
+    station_map = {station.station_id: station for station in fixed_stations}
 
     def _order_key(item):
         (_src, dest_id), candidates_for_pair = item
@@ -210,48 +189,96 @@ def _best_open_ended_plan(
 
     best_pair = None
     cargo_optimisation_ms = 0.0
-    for (source_id, destination_id), pair_candidates in sorted(
-        grouped_pairs.items(), key=_order_key, reverse=True
-    ):
-        source_station = station_map[source_id]
-        destination_station = station_map[destination_id]
-        prune_floor = cargo_prune_floor(
-            threshold.current(),
-            destination_station.ls_from_star,
-            penalty_percent,
-        )
-        cargo_started = time.perf_counter()
-        try:
-            cargo = optimise_cargo(
-                pair_candidates,
-                capacity_units=capacity_units,
-                available_credits=available_credits,
-                cargo_limit_per_item=request.cargo_limit_per_item,
-                prune_below_raw=prune_floor,
-            )
-        except failures.NoProfitableTrades:
-            cargo_optimisation_ms += _elapsed_ms(cargo_started)
-            continue
-        cargo_optimisation_ms += _elapsed_ms(cargo_started)
-        if cargo is None:
-            # Pruned: cannot beat the best pair found so far.
-            continue
-        practical_score = score_with_destination_penalty(
-            cargo.total_profit,
-            destination_distance_ls=destination_station.ls_from_star,
-            penalty_percent=penalty_percent,
-        )
-        threshold.offer(practical_score)
-        pair = _PairPlan(
-            source_station=source_station,
-            destination_station=destination_station,
-            jump_path=None,
-            cargo=cargo,
-            practical_score=practical_score,
-        )
-        if _pair_is_better(pair, best_pair, request):
-            best_pair = pair
+    candidate_trade_count = 0
+    group_iter = data_gateway.iter_open_ended_station_groups(
+        session,
+        fixed_station_ids,
+        anchor_system,
+        request,
+        open_role=open_role,
+        available_credits=available_credits,
+        terminal_hop=True,
+    )
+    try:
+        for open_station_id, ceiling_ppu, station_candidates in group_iter:
+            floor = threshold.current()
+            if floor is not None:
+                stop_floor = cargo_prune_floor(
+                    floor, stop_conversion_ls, penalty_percent
+                )
+                if (
+                    stop_floor is not None
+                    and capacity_units * ceiling_ppu < stop_floor
+                ):
+                    # Provable early stop: ceilings are non-increasing and
+                    # no unread station can reach the held score.
+                    break
+            if open_station_id not in station_map:
+                open_station = data_gateway.fetch_stations_by_id(
+                    session,
+                    (open_station_id,),
+                ).get(open_station_id)
+                if open_station is None:
+                    # Lost its DTO during the fetch — defensive skip.
+                    continue
+                station_map[open_station_id] = open_station
+            candidate_trade_count += len(station_candidates)
+            grouped_pairs = _group_pairs(station_candidates)
+            for (source_id, destination_id), pair_candidates in sorted(
+                grouped_pairs.items(), key=_order_key, reverse=True
+            ):
+                source_station = station_map[source_id]
+                destination_station = station_map[destination_id]
+                prune_floor = cargo_prune_floor(
+                    threshold.current(),
+                    destination_station.ls_from_star,
+                    penalty_percent,
+                )
+                cargo_started = time.perf_counter()
+                try:
+                    cargo = optimise_cargo(
+                        pair_candidates,
+                        capacity_units=capacity_units,
+                        available_credits=available_credits,
+                        cargo_limit_per_item=request.cargo_limit_per_item,
+                        prune_below_raw=prune_floor,
+                    )
+                except failures.NoProfitableTrades:
+                    cargo_optimisation_ms += _elapsed_ms(cargo_started)
+                    continue
+                cargo_optimisation_ms += _elapsed_ms(cargo_started)
+                if cargo is None:
+                    # Pruned: cannot beat the best pair found so far.
+                    continue
+                practical_score = score_with_destination_penalty(
+                    cargo.total_profit,
+                    destination_distance_ls=destination_station.ls_from_star,
+                    penalty_percent=penalty_percent,
+                )
+                threshold.offer(practical_score)
+                pair = _PairPlan(
+                    source_station=source_station,
+                    destination_station=destination_station,
+                    jump_path=None,
+                    cargo=cargo,
+                    practical_score=practical_score,
+                )
+                if _pair_is_better(pair, best_pair, request):
+                    best_pair = pair
+    finally:
+        group_iter.close()
+    # The stream interleaves fetch and solve, so the cargo share accumulated
+    # inside the loop is subtracted to keep the market figure a fetch cost.
+    market_query_ms = _elapsed_ms(market_started) - cargo_optimisation_ms
 
+    if candidate_trade_count == 0:
+        _raise_empty_open_search(
+            session,
+            anchor_system,
+            request,
+            fixed_station_ids,
+            open_role=open_role,
+        )
     if best_pair is None:
         raise failures.NoProfitableTrades(
             "No viable cargo plan was available."

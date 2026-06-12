@@ -26,7 +26,6 @@ from .route_common import (
     _reconstruct_route,
     _stations_from_endpoint,
     _system_from_station,
-    cargo_order_key,
     cargo_prune_floor,
 )
 
@@ -412,8 +411,21 @@ def best_open_ended_trades_from(
 
     source_system = _system_from_station(source_station)
 
-    fetch_started = time.perf_counter()
-    candidates = data_gateway.fetch_open_ended_trade_candidates(
+    # Station groups stream in best-ceiling-first, so the kept-score floor
+    # rises fast, pairs solve as their group arrives, and once the next
+    # ceiling cannot beat the floor the stream is abandoned — the remaining
+    # stations are never read out of the database. The jump path is still
+    # deferred to the top-K survivors below. Selection happens by
+    # (score desc, pair-best order asc), so tied scores resolve by best-pair
+    # order — pruning, solve order, and the stop change the work done, never
+    # the route chosen. This engine ranks purely by score (it never sees
+    # --towards), so pruning is always enabled. The source is one fixed
+    # station, so each station group is exactly one pair.
+    capacity_units = int(request.capacity_units or 0)
+    penalty_percent = request.ls_penalty_percent
+    threshold = _KeptScoreThreshold(top_k)
+
+    group_iter = data_gateway.iter_open_ended_station_groups(
         session,
         (source_station.station_id,),
         source_system,
@@ -427,110 +439,92 @@ def best_open_ended_trades_from(
         expansion_stats=expansion_stats,
         qualification=qualification,
     )
-    if expansion_stats is not None:
-        expansion_stats.fetch_ms += _elapsed_ms(fetch_started)
-        expansion_stats.candidate_rows += len(candidates)
-    if not candidates:
-        if expansion_stats is not None:
-            expansion_stats.elapsed_ms += _elapsed_ms(helper_started)
-        return []
-
-    hydrate_started = time.perf_counter()
-    open_station_ids = tuple(
-        {candidate.destination_station_id for candidate in candidates}
-    )
-    destination_stations = data_gateway.fetch_stations_by_id(
-        session,
-        open_station_ids,
-        cache=station_cache,
-    )
-    if expansion_stats is not None:
-        expansion_stats.fetch_ms += _elapsed_ms(hydrate_started)
-
-    grouped_pairs = _group_pairs(candidates)
-    if expansion_stats is not None:
-        expansion_stats.grouped_pairs += len(grouped_pairs)
-
-    # Score every viable pair first; defer the jump-path computation until
-    # after the top-K trim so we only pay it for survivors.
-    #
-    # Pairs are solved best-first by a cheap optimistic key, and each solve is
-    # handed the score of the worst pair currently in the top-K. A pair whose
-    # admissible ceiling cannot reach that floor is pruned before the expensive
-    # solve. Selection still happens by (score desc, original position asc), so
-    # tied scores resolve exactly as an unordered scan would — pruning and
-    # reordering change the work done, never the route chosen. This engine ranks
-    # purely by score (it never sees --towards), so pruning is always enabled.
-    capacity_units = int(request.capacity_units or 0)
-    penalty_percent = request.ls_penalty_percent
-    threshold = _KeptScoreThreshold(top_k)
-    original_order = {key: index for index, key in enumerate(grouped_pairs)}
-
-    def _pair_order_key(item):
-        (_src, dest_id), candidates_for_pair = item
-        destination = destination_stations.get(dest_id)
-        if destination is None:
-            return float("-inf")
-        return cargo_order_key(
-            candidates_for_pair,
-            destination.ls_from_star,
-            capacity_units,
-            penalty_percent,
-        )
-
-    ordered_pairs = sorted(
-        grouped_pairs.items(), key=_pair_order_key, reverse=True
-    )
 
     scored: list[
-        tuple[float, int, run_result.ResolvedStation, run_result.CargoPlan]
+        tuple[float, tuple, run_result.ResolvedStation, run_result.CargoPlan]
     ] = []
-    for pair_key, pair_candidates in ordered_pairs:
-        destination_station = destination_stations.get(pair_key[1])
-        if destination_station is None:
-            # A destination that lost its DTO during the fetch — defensive
-            # skip rather than a KeyError. fetch_stations_by_id should always
-            # cover the ids it was handed; missing entries indicate a data
-            # race rather than a planner bug.
-            continue
-        if expansion_stats is not None:
-            expansion_stats.cargo_calls += 1
-        prune_floor = cargo_prune_floor(
-            threshold.current(),
-            destination_station.ls_from_star,
-            penalty_percent,
-        )
-        cargo_started = time.perf_counter()
-        try:
-            cargo = optimise_cargo(
-                pair_candidates,
-                capacity_units=capacity_units,
-                available_credits=available_credits,
-                cargo_limit_per_item=request.cargo_limit_per_item,
-                prune_below_raw=prune_floor,
-            )
-        except failures.NoProfitableTrades:
-            continue
-        finally:
+    try:
+        for station_id, ceiling_ppu, station_candidates in group_iter:
+            floor = threshold.current()
+            if floor is not None:
+                # Forward: the destination varies per station, so the floor
+                # converts at the curve's maximum (ls 0) — admissible.
+                stop_floor = cargo_prune_floor(floor, 0, penalty_percent)
+                if (
+                    stop_floor is not None
+                    and capacity_units * ceiling_ppu < stop_floor
+                ):
+                    # Provable early stop: ceilings are non-increasing and
+                    # the floor only rises, so no unread station can place.
+                    if expansion_stats is not None:
+                        expansion_stats.stream_stops += 1
+                    break
+            hydrate_started = time.perf_counter()
+            destination_station = data_gateway.fetch_stations_by_id(
+                session,
+                (station_id,),
+                cache=station_cache,
+            ).get(station_id)
             if expansion_stats is not None:
-                expansion_stats.cargo_ms += _elapsed_ms(cargo_started)
-        if cargo is None:
-            # Pruned: the pair's ceiling cannot beat the kept top-K.
-            continue
-        practical_score = score_with_destination_penalty(
-            cargo.total_profit,
-            destination_distance_ls=destination_station.ls_from_star,
-            penalty_percent=penalty_percent,
-        )
-        threshold.offer(practical_score)
-        scored.append(
-            (
-                practical_score,
-                original_order[pair_key],
-                destination_station,
-                cargo,
-            )
-        )
+                expansion_stats.fetch_ms += _elapsed_ms(hydrate_started)
+                expansion_stats.stream_stations_read += 1
+                expansion_stats.candidate_rows += len(station_candidates)
+            if destination_station is None:
+                # A destination that lost its DTO during the fetch —
+                # defensive skip rather than a KeyError.
+                continue
+            grouped_pairs = _group_pairs(station_candidates)
+            if expansion_stats is not None:
+                expansion_stats.grouped_pairs += len(grouped_pairs)
+            for pair_key, pair_candidates in grouped_pairs.items():
+                if expansion_stats is not None:
+                    expansion_stats.cargo_calls += 1
+                prune_floor = cargo_prune_floor(
+                    threshold.current(),
+                    destination_station.ls_from_star,
+                    penalty_percent,
+                )
+                cargo_started = time.perf_counter()
+                try:
+                    cargo = optimise_cargo(
+                        pair_candidates,
+                        capacity_units=capacity_units,
+                        available_credits=available_credits,
+                        cargo_limit_per_item=request.cargo_limit_per_item,
+                        prune_below_raw=prune_floor,
+                    )
+                except failures.NoProfitableTrades:
+                    continue
+                finally:
+                    if expansion_stats is not None:
+                        expansion_stats.cargo_ms += _elapsed_ms(cargo_started)
+                if cargo is None:
+                    # Pruned: the pair's ceiling cannot beat the kept top-K.
+                    continue
+                practical_score = score_with_destination_penalty(
+                    cargo.total_profit,
+                    destination_distance_ls=destination_station.ls_from_star,
+                    penalty_percent=penalty_percent,
+                )
+                threshold.offer(practical_score)
+                scored.append(
+                    (
+                        practical_score,
+                        # Equal-score tie-break: the unstreamed fetch ordered
+                        # pairs by their best candidate, so the reconstruction
+                        # is (best ppu desc, item name) with the pair key
+                        # keeping it deterministic.
+                        (
+                            -pair_candidates[0].profit_per_unit,
+                            pair_candidates[0].item_name,
+                            pair_key,
+                        ),
+                        destination_station,
+                        cargo,
+                    )
+                )
+    finally:
+        group_iter.close()
 
     scored.sort(key=lambda item: (-item[0], item[1]))
 

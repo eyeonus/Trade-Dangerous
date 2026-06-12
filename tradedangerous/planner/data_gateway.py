@@ -1263,7 +1263,184 @@ class QualificationCache:
         self._fresh = None
 
 
-def fetch_open_ended_trade_candidates(
+def _onward_viability_filter(request: RunRequest, cutoff, open_role: str, station_id_column):
+    """Correlated EXISTS: the station stays viable for the *next* hop.
+
+    Intermediate frontier nodes must not be one-sided dead ends: an open
+    destination (forward) must be able to sell onward, an open source
+    (backward) must be able to buy onward. The conditions mirror the
+    run-constant row filters for the opposite side verbatim, so this test
+    and the qualification temps can never disagree about what "viable"
+    means. A correlated EXISTS keeps the database on the StationItem
+    primary key. The correlation column is a parameter because the open
+    side may read either StationItem directly or the qualification temp.
+    """
+
+    onward = aliased(StationItem)
+    onward_filters = [onward.station_id == station_id_column]
+    if open_role == "source":
+        onward_filters += [
+            onward.demand_price > 0,
+            onward.demand_units >= _MIN_MEANINGFUL_DEMAND,
+        ]
+        if request.min_demand is not None:
+            onward_filters.append(onward.demand_units >= request.min_demand)
+        if cutoff is not None:
+            onward_filters.append(onward.modified >= cutoff)
+        if request.max_price > 0:
+            onward_filters.append(onward.demand_price <= request.max_price)
+    else:
+        onward_filters += [
+            onward.supply_price > 0,
+            onward.supply_units > 0,
+        ]
+        if request.min_supply is not None:
+            onward_filters.append(onward.supply_units >= request.min_supply)
+        if cutoff is not None:
+            onward_filters.append(onward.modified >= cutoff)
+        if request.max_price > 0:
+            onward_filters.append(onward.supply_price <= request.max_price)
+        if request.avoid_item_ids:
+            # The onward leg here is the next hop's buy, so an avoided
+            # commodity must not count toward onward viability either.
+            onward_filters.append(
+                onward.item_id.notin_(request.avoid_item_ids)
+            )
+    return select(literal(1)).where(and_(*onward_filters)).exists()
+
+
+def _build_open_fixed_bounds(
+    session: Session,
+    open_role: str,
+    supply_filters: list,
+    demand_filters: list,
+):
+    """Aggregate the fixed side's per-item price extremes into a temp table.
+
+    The fixed side is one named place — a handful of stations at most — so
+    its per-item price extremes are cheap to aggregate, straight into a temp
+    table in SQL (no Python round-trip). They become the open side's
+    narrowing: an open-side row only survives when the fixed side trades
+    that item at all, at a price that could clear --gain-per-ton against
+    the fixed side's best price.
+
+    Returns (table, populated). populated False means the fixed endpoint
+    has no usable rows under the current filters — nothing can pair, so the
+    open-side query never needs to run. The caller owns the drop.
+    """
+
+    bounds_temp = Table(
+        "td_open_fixed_bounds",
+        MetaData(),
+        Column("item_id", BigInteger, primary_key=True),
+        Column("min_price", Integer),
+        Column("max_price", Integer),
+        prefixes=["TEMPORARY"],
+    )
+    connection = session.connection()
+    bounds_temp.drop(connection, checkfirst=True)
+    bounds_temp.create(connection)
+    if open_role == "destination":
+        fixed_price = StationItem.supply_price
+        fixed_filters = supply_filters
+    else:
+        fixed_price = StationItem.demand_price
+        fixed_filters = demand_filters
+    session.execute(
+        bounds_temp.insert().from_select(
+            ["item_id", "min_price", "max_price"],
+            select(
+                StationItem.item_id,
+                func.min(fixed_price),
+                func.max(fixed_price),
+            )
+            .where(and_(*fixed_filters))
+            .group_by(StationItem.item_id),
+        )
+    )
+    return bounds_temp, _temp_has_rows(session, bounds_temp)
+
+
+# Rows per cursor fetch when streaming the bound-ordered open-side query.
+_STREAM_PARTITION_ROWS = 2000
+
+
+def _station_group_candidates(
+    open_rows: list,
+    fixed_rows_by_item: dict[int, list],
+    *,
+    open_role: str,
+    min_gain: int,
+    max_gain: int,
+    item_names: dict[int, str],
+    item_categories: dict[int, int],
+    sensitive_category_ids: frozenset[int],
+    now_utc: datetime,
+) -> tuple[TradeCandidate, ...]:
+    """Build one open station's TradeCandidates against the fixed side.
+
+    The exact pair tests — self-pair skip, the per-pair gain window, the
+    Metals/Minerals bulk-sale cap — applied to the rows of a single open
+    station against the fixed side's rows, matched by item. Sorted by
+    (-profit_per_unit, item_name), the canonical candidate order.
+    """
+
+    candidates = []
+    for open_row in open_rows:
+        item_id = int(open_row[0])
+        fixed_matches = fixed_rows_by_item.get(item_id)
+        if not fixed_matches:
+            continue
+        for fixed_row in fixed_matches:
+            if open_role == "destination":
+                supply, demand = fixed_row, open_row
+            else:
+                supply, demand = open_row, fixed_row
+            source_station_id = int(supply[1])
+            destination_station_id = int(demand[1])
+            if destination_station_id == source_station_id:
+                # Same-station self-pair, never a valid hop. The fixed and
+                # reachable station sets legitimately overlap on a same-
+                # system search, so the invariant is enforced per pair.
+                continue
+            buy_price = int(supply[2])
+            sell_price = int(demand[2])
+            profit_per_unit = sell_price - buy_price
+            if profit_per_unit < min_gain:
+                continue
+            if max_gain > 0 and profit_per_unit > max_gain:
+                continue
+            sensitive = item_categories.get(item_id) in sensitive_category_ids
+            demand_units = int(demand[3])
+            # floor(demand * 0.25); Python integer division on non-negative
+            # ints rounds toward zero, matching floor.
+            effective_demand = demand_units // 4 if sensitive else demand_units
+            if effective_demand <= 0:
+                # Bulk-sale cap reduces this Metals/Minerals row to zero safe
+                # cargo at the advertised price; drop the pair, not the item.
+                continue
+            candidates.append(
+                TradeCandidate(
+                    item_id=item_id,
+                    item_name=item_names.get(item_id, ""),
+                    source_station_id=source_station_id,
+                    destination_station_id=destination_station_id,
+                    buy_price=buy_price,
+                    sell_price=sell_price,
+                    profit_per_unit=profit_per_unit,
+                    source_supply_units=int(supply[3]),
+                    destination_demand_units=demand_units,
+                    source_age_days=_age_days(supply[4], now_utc=now_utc),
+                    destination_age_days=_age_days(demand[4], now_utc=now_utc),
+                    bulk_sale_tax_sensitive=sensitive,
+                    effective_destination_demand_units=effective_demand,
+                )
+            )
+    candidates.sort(key=lambda c: (-c.profit_per_unit, c.item_name))
+    return tuple(candidates)
+
+
+def iter_open_ended_station_groups(
     session: Session,
     fixed_station_ids: tuple[int, ...],
     anchor_system: ResolvedSystem,
@@ -1278,72 +1455,60 @@ def fetch_open_ended_trade_candidates(
     expansion_stats: ExpansionStats | None = None,
     precomputed_reachable_systems: tuple[ResolvedSystem, ...] | None = None,
     qualification: QualificationCache | None = None,
-) -> tuple[TradeCandidate, ...]:
-    """Fetch profitable trades between a fixed endpoint and reachable stations.
+) -> Iterator[tuple[int, int, tuple[TradeCandidate, ...]]]:
+    """Stream per-station candidate groups, best open station first.
 
-    open_role is the trade role of the endpoint the planner selects — "source"
-    when --from is omitted, "destination" when --to is omitted. The fixed
-    endpoint takes the other role. The spatially-reached station set and the
-    fixed station set are assigned to the supply and demand queries from
-    open_role: an open source feeds the supply query from reachable stations
-    and the demand query from the fixed destination; an open destination feeds
-    the supply query from the fixed origin and the demand query from reachable
-    stations.
+    The open-ended candidate fetch: every profitable trade between a fixed
+    endpoint and the stations reachable from the anchor, streamed grouped
+    by open station, stations ordered by descending ceiling — the station's
+    best optimistic profit per unit, computed in SQL against the fixed
+    side's per-item price extremes (the bounds temp, joined 1:1 on its item
+    primary key). The consumer may stop iterating — close the generator —
+    once the next ceiling cannot beat what it already holds; rows past that
+    point are never read off the cursor, never converted, never paired.
 
-    The reachable stations stay a subquery (see _reachable_station_query),
-    never a materialised id list: handed to a query as a large literal
-    IN (...) they would flip SQLite onto a galaxy-wide index scan, so as a
-    subquery the query holds the StationItem primary key. The fixed endpoint
-    is one named place and small, so its id list is passed directly. Supply
-    rows and demand rows are fetched as two separate single-table queries and
-    matched on item_id in Python; a single self-join would instead let SQLite
-    scan the market table galaxy-wide by item_id, so the two sides stay apart.
+    Yields (station_id, ceiling_ppu, candidates):
 
-    The open side's query is narrowed before any row leaves SQL: the fixed
-    side's per-item price bounds are aggregated into a small temp table first
-    (the fixed side is one named place, so this is cheap), and the open-side
-    query keeps only rows whose item the fixed side actually trades, at a
-    price that could clear --gain-per-ton against the fixed side's best
-    price. Both are necessary conditions, never sufficient ones — the exact
-    per-pair gain test still runs in the Python match loop — so the candidate
-    set is unchanged; rows that could never pair simply stop being fetched.
+    - ceiling_ppu is an upper bound on the per-unit profit of any pair this
+      station could form (multiply by capacity for a raw-profit ceiling).
+      Ceilings are non-increasing across the stream.
+    - candidates is the station's TradeCandidate tuple, sorted
+      (-profit_per_unit, item_name); it may span several pairs when the
+      fixed endpoint has several stations. Stations whose rows produce no
+      candidates are skipped, which only tightens the ceiling sequence.
 
-    ``available_credits`` is the credit budget for the hop's buy step; the
-    supply query filters out commodities whose unit price exceeds it.
-    ``terminal_hop=False`` adds an onward-viability predicate on the open side
-    so a one-sided dead end cannot hold an intermediate frontier slot: an open
-    destination must be able to sell onward (checked as onward supply), an open
-    source must be able to buy onward (checked as onward demand). The route end
-    needs no such check. ``reachable_memo`` opts the
-    underlying reachable-set temp table into the per-request memo so
-    repeated callers for the same source-system / jump / range key reuse a
-    single built table.
+    Exact: an exhausted stream yields every candidate the filters admit —
+    the bounds join and ceiling are necessary-condition narrowing and
+    ordering only — and a stopped stream omits only stations whose ceiling
+    the consumer proved unbeatable. No ordering, scoring, or selection
+    decisions are made here.
 
-    When ``destination_envelope_xyz`` and ``destination_envelope_ly`` are
-    supplied, the reachable set is additionally restricted to systems within
-    that direct-distance envelope of the supplied coordinates. Multi-hop
-    fixed-terminal expansion uses this to prune destinations that cannot
-    plausibly close on --to in the remaining hops, so the demand query
-    never materialises rows that would only be dropped post-fetch. The
-    envelope is meaningful only when ``open_role="destination"`` — the open
-    side fills the demand query in that direction.
+    Onward viability (non-terminal hops) is answered per station from the
+    opposite side's qualification temp when a cache is supplied — the
+    temp's row predicates are the onward conditions, shared verbatim, so a
+    station has rows there exactly when the per-row EXISTS would pass.
+    The temp is populated for this bubble on first need and amortises
+    across every anchor that shares it. Without a cache the per-row
+    correlated EXISTS applies, unchanged.
 
-    The temp table backing the reachable-systems set is created by the
-    context manager on entry and dropped on exit (or kept alive in the memo
-    when one is supplied), so the whole supply + demand fetch must run inside
-    the ``with`` block.
-
-    When ``qualification`` is supplied, the open side's row query reads the
-    run-scoped qualification temp instead of StationItem: the run-constant
-    predicates were applied once at population time, so the per-anchor query
-    carries only the anchor-specific terms (bubble scope, credit cap, price
-    bounds, onward viability). The fixed side and the bounds build always
-    read StationItem directly — the fixed endpoint is one named place and
-    changes every call, so there is nothing run-constant to hoist.
-
-    Failure classification is left to the caller: this returns an empty tuple
-    when no candidate survives, rather than probing for a specific reason.
+    Everything else is the established fetch contract: spatial narrowing
+    via the reachable temp, the credit cap on the buy side, the
+    qualification temps for the run-constant predicates, the
+    destination-envelope restriction, and empty-result classification left
+    to the caller.
     """
+
+    fetch_started = time.perf_counter()
+
+    def _charge_fetch():
+        # Attribute generator-side work to the fetch phase; consumer time
+        # between yields is excluded by resetting the mark on resume.
+        nonlocal fetch_started
+        if expansion_stats is not None:
+            expansion_stats.fetch_ms += (
+                time.perf_counter() - fetch_started
+            ) * 1000.0
+        fetch_started = time.perf_counter()
 
     with _reachable_station_query(
         session,
@@ -1355,12 +1520,6 @@ def fetch_open_ended_trade_candidates(
         expansion_stats=expansion_stats,
         precomputed_systems=precomputed_reachable_systems,
     ) as reachable_query:
-        # open_role names the endpoint the planner selects; the spatially-
-        # reached set fills that side's query and the fixed endpoint fills the
-        # other. The reachable set stays a subquery so SQLite keeps the
-        # StationItem primary key; a large literal id list would flip it onto
-        # a galaxy-wide index scan. The fixed endpoint is one named place,
-        # small, so a literal id list is safe there.
         if open_role == "source":
             supply_station_filter = StationItem.station_id.in_(reachable_query)
             demand_station_filter = StationItem.station_id.in_(fixed_station_ids)
@@ -1368,205 +1527,79 @@ def fetch_open_ended_trade_candidates(
             supply_station_filter = StationItem.station_id.in_(fixed_station_ids)
             demand_station_filter = StationItem.station_id.in_(reachable_query)
 
-        # With the qualification cache active the cutoff is frozen at first
-        # use, so the temps and every anchor's query share one "now" instead
-        # of the cutoff drifting with the wall clock across a long run.
         if qualification is not None:
             cutoff = qualification.frozen_cutoff(request)
         else:
             cutoff = _age_cutoff(request.age_days)
         sensitive_category_ids = _bulk_sale_tax_category_ids(session)
 
-        # Intermediate frontier nodes must stay viable for the *next* hop, so a
-        # one-sided dead end cannot occupy a mid-route slot. The check rides on
-        # whichever side the planner chooses (the open side), testing the role
-        # that side needs next:
-        #   open destination (forward)  must sell onward -> onward supply rows
-        #   open source      (backward) must buy onward  -> onward demand rows
-        # A correlated EXISTS keeps the database on the StationItem primary key.
-        # terminal_hop (the route end) needs no onward check. The correlation
-        # column is a parameter because the open side may read either
-        # StationItem directly or the qualification temp.
-        def _onward_viability_exists(station_id_column):
-            onward = aliased(StationItem)
-            onward_filters = [onward.station_id == station_id_column]
-            if open_role == "source":
-                onward_filters += [
-                    onward.demand_price > 0,
-                    onward.demand_units >= _MIN_MEANINGFUL_DEMAND,
-                ]
-                if request.min_demand is not None:
-                    onward_filters.append(onward.demand_units >= request.min_demand)
-                if cutoff is not None:
-                    onward_filters.append(onward.modified >= cutoff)
-                if request.max_price > 0:
-                    onward_filters.append(onward.demand_price <= request.max_price)
-            else:
-                onward_filters += [
-                    onward.supply_price > 0,
-                    onward.supply_units > 0,
-                ]
-                if request.min_supply is not None:
-                    onward_filters.append(onward.supply_units >= request.min_supply)
-                if cutoff is not None:
-                    onward_filters.append(onward.modified >= cutoff)
-                if request.max_price > 0:
-                    onward_filters.append(onward.supply_price <= request.max_price)
-                if request.avoid_item_ids:
-                    # The onward leg here is the next hop's buy, so an avoided
-                    # commodity must not count toward onward viability either.
-                    onward_filters.append(
-                        onward.item_id.notin_(request.avoid_item_ids)
-                    )
-            return select(literal(1)).where(and_(*onward_filters)).exists()
-
-        onward_exists = None
-        if not terminal_hop:
-            onward_exists = _onward_viability_exists(StationItem.station_id)
-
-        # Row predicates split by who they depend on: the run-constant set
-        # (shared with the qualification-temp build) plus the per-hop credit
-        # cap on the supply side.
         supply_filters = [
             supply_station_filter,
             StationItem.supply_price <= available_credits,
             *_supply_constant_row_filters(request, cutoff),
         ]
-        if onward_exists is not None and open_role == "source":
-            # Backward open source: require onward demand so the next hop back
-            # can sell into it.
-            supply_filters.append(onward_exists)
-
         demand_filters = [
             demand_station_filter,
             *_demand_constant_row_filters(request, cutoff),
         ]
-        if onward_exists is not None and open_role == "destination":
-            # Forward open destination: require onward supply so it can sell
-            # the next hop's cargo.
-            demand_filters.append(onward_exists)
 
-        # The fixed side is one named place — a handful of stations at most —
-        # so its per-item price extremes are cheap to aggregate. They become
-        # the open side's narrowing: an open-side row only survives when the
-        # fixed side trades that item at all, at a price the row could clear
-        # --gain-per-ton against. Aggregated straight into a temp table in
-        # SQL (no Python round-trip), probed by the open-side query as a
-        # correlated EXISTS on the temp's primary key — the same shape as
-        # onward_exists above, which keeps the outer query driving from the
-        # reachable station set rather than flipping onto an item-id scan.
         min_gain = request.min_gain_per_ton
         max_gain = request.max_gain_per_ton
-        bounds_temp = Table(
-            "td_open_fixed_bounds",
-            MetaData(),
-            Column("item_id", BigInteger, primary_key=True),
-            Column("min_price", Integer),
-            Column("max_price", Integer),
-            prefixes=["TEMPORARY"],
+        bounds_temp, bounds_populated = _build_open_fixed_bounds(
+            session, open_role, supply_filters, demand_filters
         )
         connection = session.connection()
-        bounds_temp.drop(connection, checkfirst=True)
-        bounds_temp.create(connection)
         try:
+            if not bounds_populated:
+                # Fixed endpoint has no usable rows — nothing can pair.
+                _charge_fetch()
+                return
+
+            # The fixed side is one named place, small: read it in full and
+            # index by item for the per-station pairing.
             if open_role == "destination":
-                fixed_price = StationItem.supply_price
-                fixed_filters = supply_filters
+                fixed_query = select(
+                    StationItem.item_id,
+                    StationItem.station_id,
+                    StationItem.supply_price,
+                    StationItem.supply_units,
+                    StationItem.modified,
+                ).where(and_(*supply_filters))
             else:
-                fixed_price = StationItem.demand_price
-                fixed_filters = demand_filters
-            session.execute(
-                bounds_temp.insert().from_select(
-                    ["item_id", "min_price", "max_price"],
-                    select(
-                        StationItem.item_id,
-                        func.min(fixed_price),
-                        func.max(fixed_price),
-                    )
-                    .where(and_(*fixed_filters))
-                    .group_by(StationItem.item_id),
-                )
-            )
-            if not _temp_has_rows(session, bounds_temp):
-                # The fixed endpoint has no usable rows at all under the
-                # current filters — nothing can pair, so the open-side query
-                # never needs to run.
-                return ()
+                fixed_query = select(
+                    StationItem.item_id,
+                    StationItem.station_id,
+                    StationItem.demand_price,
+                    StationItem.demand_units,
+                    StationItem.modified,
+                ).where(and_(*demand_filters))
+            fixed_rows = session.execute(fixed_query).all()
+            if not fixed_rows:
+                _charge_fetch()
+                return
 
-            def _bounds_exists_for(item_column, price_column):
-                # An open demand row must beat the fixed side's cheapest
-                # supply by at least --gain-per-ton; under --max-gain-per-ton
-                # it must also not exceed the dearest supply by more than the
-                # cap (mirrored for an open supply row against the fixed
-                # side's demand extremes). Interval-overlap necessary
-                # conditions — the exact pair test stays in the match loop
-                # below. Column parameters because the open side may read
-                # either StationItem or the qualification temp.
-                if open_role == "destination":
-                    bounds_match = [
-                        bounds_temp.c.item_id == item_column,
-                        price_column >= bounds_temp.c.min_price + min_gain,
-                    ]
-                    if max_gain > 0:
-                        bounds_match.append(
-                            price_column <= bounds_temp.c.max_price + max_gain
-                        )
-                else:
-                    bounds_match = [
-                        bounds_temp.c.item_id == item_column,
-                        price_column <= bounds_temp.c.max_price - min_gain,
-                    ]
-                    if max_gain > 0:
-                        bounds_match.append(
-                            price_column >= bounds_temp.c.min_price - max_gain
-                        )
-                return (
-                    select(literal(1))
-                    .select_from(bounds_temp)
-                    .where(and_(*bounds_match))
-                    .exists()
-                )
+            fixed_rows_by_item: dict[int, list] = {}
+            for row in fixed_rows:
+                fixed_rows_by_item.setdefault(int(row[0]), []).append(row)
 
-            if open_role == "destination":
-                demand_filters.append(
-                    _bounds_exists_for(
-                        StationItem.item_id, StationItem.demand_price
-                    )
+            # Every candidate's item exists on both sides of the pair, so
+            # the fixed side's (small) item set covers the name/category
+            # lookups for all candidates built below.
+            item_names: dict[int, str] = {}
+            item_categories: dict[int, int] = {}
+            for item_id, name, category_id in session.execute(
+                select(Item.item_id, Item.name, Item.category_id).where(
+                    Item.item_id.in_(tuple(fixed_rows_by_item))
                 )
-            else:
-                supply_filters.append(
-                    _bounds_exists_for(
-                        StationItem.item_id, StationItem.supply_price
-                    )
-                )
+            ).all():
+                item_names[int(item_id)] = str(name)
+                item_categories[int(item_id)] = int(category_id)
 
-            supply_query = select(
-                StationItem.item_id,
-                StationItem.station_id,
-                StationItem.supply_price,
-                StationItem.supply_units,
-                StationItem.modified,
-            ).where(and_(*supply_filters))
-            demand_query = select(
-                StationItem.item_id,
-                StationItem.station_id,
-                StationItem.demand_price,
-                StationItem.demand_units,
-                StationItem.modified,
-            ).where(and_(*demand_filters))
-
+            # Open side: the qualification temp when a cache is supplied
+            # (run-constant predicates applied at population), raw
+            # StationItem otherwise.
             if qualification is not None:
-                # Replace the open side's query with one over the run-scoped
-                # qualification temp: run-constant predicates were applied at
-                # population time, so only the anchor-specific terms remain.
-                # Populated here, after the fixed-side early-out, so a dead
-                # anchor never pays for qualification.
                 open_side = "supply" if open_role == "source" else "demand"
-                # The bubble's station list is a pure function of the
-                # reachable-memo key unless a per-call narrowing (the
-                # destination envelope or --towards progress rule) is in
-                # play; without narrowing, a repeat bubble can skip the
-                # new-station check outright.
                 skip_key = None
                 if (
                     destination_envelope_xyz is None
@@ -1586,121 +1619,171 @@ def fetch_open_ended_trade_candidates(
                     expansion_stats=expansion_stats,
                     skip_key=skip_key,
                 )
-                open_filters = [open_qual.c.station_id.in_(reachable_query)]
+                open_entity = open_qual
+                station_column = open_qual.c.station_id
+                item_column = open_qual.c.item_id
+                modified_column = open_qual.c.modified
                 if open_role == "source":
-                    open_filters.append(
-                        open_qual.c.supply_price <= available_credits
-                    )
                     price_column = open_qual.c.supply_price
                     units_column = open_qual.c.supply_units
                 else:
                     price_column = open_qual.c.demand_price
                     units_column = open_qual.c.demand_units
-                if not terminal_hop:
-                    open_filters.append(
-                        _onward_viability_exists(open_qual.c.station_id)
+                open_filters = [station_column.in_(reachable_query)]
+                if open_role == "source":
+                    open_filters.append(price_column <= available_credits)
+            else:
+                open_entity = StationItem
+                station_column = StationItem.station_id
+                item_column = StationItem.item_id
+                modified_column = StationItem.modified
+                if open_role == "source":
+                    price_column = StationItem.supply_price
+                    units_column = StationItem.supply_units
+                    open_filters = list(supply_filters)
+                else:
+                    price_column = StationItem.demand_price
+                    units_column = StationItem.demand_units
+                    open_filters = list(demand_filters)
+
+            if not terminal_hop:
+                if qualification is not None:
+                    # Onward viability is a per-station fact; the opposite
+                    # side's qualification temp holds a station's rows
+                    # exactly when the per-row EXISTS would pass, so a
+                    # semi-join against it answers once per station what
+                    # the EXISTS re-derived per row.
+                    other_side = (
+                        "demand" if open_role == "source" else "supply"
                     )
-                open_filters.append(
-                    _bounds_exists_for(open_qual.c.item_id, price_column)
-                )
-                open_query = select(
-                    open_qual.c.item_id,
-                    open_qual.c.station_id,
+                    other_skip = None
+                    if (
+                        destination_envelope_xyz is None
+                        and destination_envelope_ly is None
+                        and request.towards_target is None
+                    ):
+                        other_skip = (
+                            other_side,
+                            _reachable_memo_key(anchor_system, request),
+                        )
+                    other_qual = qualification.ensure_populated(
+                        session,
+                        side=other_side,
+                        station_list=reachable_query,
+                        request=request,
+                        cutoff=cutoff,
+                        expansion_stats=expansion_stats,
+                        skip_key=other_skip,
+                    )
+                    open_filters.append(
+                        station_column.in_(select(other_qual.c.station_id))
+                    )
+                else:
+                    open_filters.append(
+                        _onward_viability_filter(
+                            request, cutoff, open_role, station_column
+                        )
+                    )
+
+            # Per-row optimistic profit against the fixed side's best price,
+            # with the interval-overlap necessary conditions inlined on the
+            # 1:1 bounds join (the EXISTS shape, expressed as a join so the
+            # bound is available to order by). The exact per-pair gain test
+            # still runs in the pairing step.
+            if open_role == "destination":
+                bounds_conditions = [
+                    price_column >= bounds_temp.c.min_price + min_gain,
+                ]
+                if max_gain > 0:
+                    bounds_conditions.append(
+                        price_column <= bounds_temp.c.max_price + max_gain
+                    )
+                opt_ppu = price_column - bounds_temp.c.min_price
+            else:
+                bounds_conditions = [
+                    price_column <= bounds_temp.c.max_price - min_gain,
+                ]
+                if max_gain > 0:
+                    bounds_conditions.append(
+                        price_column >= bounds_temp.c.min_price - max_gain
+                    )
+                opt_ppu = bounds_temp.c.max_price - price_column
+
+            ceiling = func.max(opt_ppu).over(partition_by=station_column)
+            open_query = (
+                select(
+                    item_column,
+                    station_column,
                     price_column,
                     units_column,
-                    open_qual.c.modified,
-                ).where(and_(*open_filters))
-                if open_role == "source":
-                    supply_query = open_query
-                else:
-                    demand_query = open_query
+                    modified_column,
+                    ceiling.label("ceiling_ppu"),
+                )
+                .select_from(open_entity)
+                .join(bounds_temp, bounds_temp.c.item_id == item_column)
+                .where(and_(*open_filters, *bounds_conditions))
+                .order_by(ceiling.desc(), station_column)
+            )
 
-            supply_rows = session.execute(supply_query).all()
-            if not supply_rows:
-                return ()
-
-            demand_rows = session.execute(demand_query).all()
-            if not demand_rows:
-                return ()
+            now_utc = datetime.now(timezone.utc)
+            result = session.execute(
+                open_query.execution_options(
+                    yield_per=_STREAM_PARTITION_ROWS
+                )
+            )
+            try:
+                pending_station: int | None = None
+                pending_ceiling = 0
+                pending_rows: list = []
+                for partition in result.partitions():
+                    if expansion_stats is not None:
+                        expansion_stats.stream_rows_read += len(partition)
+                    for row in partition:
+                        station_id = int(row[1])
+                        if (
+                            pending_station is not None
+                            and station_id != pending_station
+                        ):
+                            group = _station_group_candidates(
+                                pending_rows,
+                                fixed_rows_by_item,
+                                open_role=open_role,
+                                min_gain=min_gain,
+                                max_gain=max_gain,
+                                item_names=item_names,
+                                item_categories=item_categories,
+                                sensitive_category_ids=sensitive_category_ids,
+                                now_utc=now_utc,
+                            )
+                            pending_rows = []
+                            if group:
+                                _charge_fetch()
+                                yield pending_station, pending_ceiling, group
+                                fetch_started = time.perf_counter()
+                        pending_station = station_id
+                        pending_ceiling = int(row[5])
+                        pending_rows.append(row)
+                if pending_rows and pending_station is not None:
+                    group = _station_group_candidates(
+                        pending_rows,
+                        fixed_rows_by_item,
+                        open_role=open_role,
+                        min_gain=min_gain,
+                        max_gain=max_gain,
+                        item_names=item_names,
+                        item_categories=item_categories,
+                        sensitive_category_ids=sensitive_category_ids,
+                        now_utc=now_utc,
+                    )
+                    if group:
+                        _charge_fetch()
+                        yield pending_station, pending_ceiling, group
+                        fetch_started = time.perf_counter()
+            finally:
+                result.close()
+            _charge_fetch()
         finally:
             bounds_temp.drop(connection, checkfirst=True)
-
-        demand_by_item: dict[int, list] = {}
-        for row in demand_rows:
-            demand_by_item.setdefault(int(row[0]), []).append(row)
-
-        supply_item_ids = {int(row[0]) for row in supply_rows}
-        # Fetch name and category_id together so the per-candidate
-        # sensitivity check costs one dict lookup, not another query.
-        item_names: dict[int, str] = {}
-        item_categories: dict[int, int] = {}
-        for item_id, name, category_id in session.execute(
-            select(Item.item_id, Item.name, Item.category_id).where(
-                Item.item_id.in_(tuple(supply_item_ids))
-            )
-        ).all():
-            item_names[int(item_id)] = str(name)
-            item_categories[int(item_id)] = int(category_id)
-
-        now_utc = datetime.now(timezone.utc)
-
-        candidates = []
-        for supply in supply_rows:
-            item_id = int(supply[0])
-            demand_matches = demand_by_item.get(item_id)
-            if not demand_matches:
-                continue
-            source_station_id = int(supply[1])
-            buy_price = int(supply[2])
-            source_supply_units = int(supply[3])
-            source_age = _age_days(supply[4], now_utc=now_utc)
-            item_name = item_names.get(item_id, "")
-            sensitive = item_categories.get(item_id) in sensitive_category_ids
-            for demand in demand_matches:
-                destination_station_id = int(demand[1])
-                if destination_station_id == source_station_id:
-                    # Same-station self-pair, never a valid hop. The fixed and
-                    # reachable station sets legitimately overlap on a same-
-                    # system search, so the source != destination invariant
-                    # is enforced here, per pair.
-                    continue
-                sell_price = int(demand[2])
-                profit_per_unit = sell_price - buy_price
-                if profit_per_unit < min_gain:
-                    continue
-                if max_gain > 0 and profit_per_unit > max_gain:
-                    continue
-                demand_units = int(demand[3])
-                # floor(demand * 0.25); Python integer division on
-                # non-negative ints rounds toward zero, matching floor.
-                effective_demand = demand_units // 4 if sensitive else demand_units
-                if effective_demand <= 0:
-                    # Bulk-sale cap reduces this Metals/Minerals row to
-                    # zero safe cargo at the advertised price. Another
-                    # demand row for the same item at a different station
-                    # may still produce a usable cap, so we drop this
-                    # pair only, not the whole item.
-                    continue
-                candidates.append(
-                    TradeCandidate(
-                        item_id=item_id,
-                        item_name=item_name,
-                        source_station_id=source_station_id,
-                        destination_station_id=destination_station_id,
-                        buy_price=buy_price,
-                        sell_price=sell_price,
-                        profit_per_unit=profit_per_unit,
-                        source_supply_units=source_supply_units,
-                        destination_demand_units=demand_units,
-                        source_age_days=source_age,
-                        destination_age_days=_age_days(demand[4], now_utc=now_utc),
-                        bulk_sale_tax_sensitive=sensitive,
-                        effective_destination_demand_units=effective_demand,
-                    )
-                )
-
-        candidates.sort(key=lambda c: (-c.profit_per_unit, c.item_name))
-        return tuple(candidates)
 
 
 def any_reachable_station_pair(

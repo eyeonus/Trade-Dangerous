@@ -180,6 +180,15 @@ class ExpansionStats:
     qual_stations: int = 0
     qual_rows: int = 0
     qual_ms: float = 0.0
+    # Bound-ordered streaming effect: rows actually read off the cursor,
+    # station groups consumed, and how many fetches ended on the early stop
+    # (the remaining stations provably below the kept-score floor and never
+    # read). candidate_rows counts the candidates built from the rows that
+    # were read, so it falls as the stop bites — that is the saving, not a
+    # data loss.
+    stream_rows_read: int = 0
+    stream_stations_read: int = 0
+    stream_stops: int = 0
 
 
 @dataclass(slots=True)
