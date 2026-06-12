@@ -2,8 +2,10 @@
 
 *Spec. 2026-06-11. Separate from the planner Slice 24 work — this is
 import/write-path, not planner. Both `spansh_plug.py` writers were
-converted the same day (commit `b2c3b90e`); the audit checklist below
-remains open.*
+converted the same day (commit `b2c3b90e`); the eddblink listings
+import followed on 2026-06-12 (commit `f72dfcb9`) after a fresh
+rebuild proved it was minting mixed stations from clean server data.
+The audit checklist below remains open for the remaining writers.*
 
 ---
 
@@ -77,12 +79,32 @@ was maintained with the same per-row merge pattern — and delisted ships
 were never deleted at all. The same skip-or-replace conversion fixed
 both faults in the same commit.
 
+### `eddblink_plug.py` listings import — converted (commit `f72dfcb9`)
+
+The local import path (listener-exported `listings.csv` and
+`listings-live.csv` into the local DB) upserted per row, guarded by
+`modified`, with no per-station delete. Stations present in both files
+kept bulk catalogue extras beneath fresher live rows.
+
+Caught in the wild on the first fresh rebuild after the spansh fix
+(2026-06-12): the server source was perfectly uniform (94,361 of
+94,361), yet the local DB landed with 487 mixed stations — every stale
+row `from_live = 0`, every newest row `from_live = 1`. The mixing was
+minted locally, from clean inputs, by this importer.
+
+Converted to whole-station skip-or-replace, grouping file rows by
+station as the file streams. Verified by probe against the live
+database: a mixed station healed to exactly its live slice, a station
+fed older garbage was skipped untouched, and an unknown station id was
+ignored.
+
 ## Audit checklist (complete before calling the fault closed)
 
-1. **Enumerate every writer of `StationItem` / `ShipVendor`** beyond the
-   two above — the local import path (listener-produced files into the
-   local DB) and any remaining import commands — and verify each is
-   whole-station or a faithful copy of an upstream that is.
+1. **Enumerate every writer of `StationItem` / `ShipVendor`** beyond
+   those above. The local listings import (eddblink) is now converted;
+   still to check: eddblink's ShipVendor.csv handling and any remaining
+   import commands — verify each is whole-station or a faithful copy of
+   an upstream that is.
 2. **`_cleanup_absent_stations`** (spansh_plug ~line 856): deletes rows
    at stations absent from a dump. A deleter cannot create mixed
    timestamps, but review it under the snapshot rule for consistency.
