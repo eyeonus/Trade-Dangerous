@@ -189,6 +189,12 @@ class ExpansionStats:
     stream_rows_read: int = 0
     stream_stations_read: int = 0
     stream_stops: int = 0
+    # Fixed-terminal loose-envelope drops: expansion calls whose layer
+    # envelope provably contained the anchor's whole reach bubble, so it
+    # was dropped for the call — restoring the qualification skip-marker
+    # and plain reachable SQL its presence would otherwise disable.
+    # Always zero on shapes that carry no destination envelope.
+    loose_envelopes_dropped: int = 0
 
 
 @dataclass(slots=True)

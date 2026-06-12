@@ -311,6 +311,12 @@ def _render_multihop_diagnostics(diagnostics: PlannerDiagnostics) -> list[str]:
                 f"{expansion.stream_stations_read:n} stations consumed, "
                 f"{expansion.stream_stops:n} early stops"
             )
+        if expansion.loose_envelopes_dropped:
+            lines.append(
+                f"  Envelope: dropped as provably loose on "
+                f"{expansion.loose_envelopes_dropped:n} of "
+                f"{expansion.expansion_calls:n} expansion calls"
+            )
 
     if (
         diagnostics.cargo_fast_path_hits

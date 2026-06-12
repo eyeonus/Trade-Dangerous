@@ -133,6 +133,15 @@ def _plan_multi_hop(
     final_hop_stats = run_result.FinalHopStats()
 
     try:
+        # The farthest a single hop can move the ship — the radius of the
+        # reach bubble the candidate fetch grows from any anchor. A layer
+        # envelope wider than an anchor's whole bubble cannot exclude
+        # anything that anchor reaches, and is dropped per call below.
+        bubble_reach_ly = (
+            int(request.max_jumps_per_hop or 0)
+            * float(request.max_ly_per_jump or 0.0)
+        )
+
         # Intermediate hops 1..N-1: terminal_hop=False keeps demand-only
         # destinations off the frontier so they cannot occupy a node that
         # must be a viable onward source.
@@ -158,6 +167,20 @@ def _plan_multi_hop(
             for node in frontier:
                 expansions_examined += 1
                 layer_expansion_calls += 1
+                # An envelope that provably contains this anchor's whole
+                # reach bubble excludes nothing — drop it for the call, so
+                # the fetch keeps the qualification skip-marker and plain
+                # reachable SQL its presence would otherwise disable. The
+                # result set is identical by construction.
+                if _envelope_is_provably_loose(
+                    node.station, to_system_xyz, envelope_ly, bubble_reach_ly
+                ):
+                    node_envelope_xyz = None
+                    node_envelope_ly = None
+                    expansion_stats.loose_envelopes_dropped += 1
+                else:
+                    node_envelope_xyz = to_system_xyz
+                    node_envelope_ly = envelope_ly
                 children = best_open_ended_trades_from(
                     session,
                     node.station,
@@ -167,8 +190,8 @@ def _plan_multi_hop(
                     terminal_hop=False,
                     bubble_cache=bubble_cache,
                     reachable_memo=reachable_memo,
-                    destination_envelope_xyz=to_system_xyz,
-                    destination_envelope_ly=envelope_ly,
+                    destination_envelope_xyz=node_envelope_xyz,
+                    destination_envelope_ly=node_envelope_ly,
                     expansion_stats=expansion_stats,
                     station_cache=station_cache,
                     qualification=qualification,
@@ -355,6 +378,31 @@ def _plan_multi_hop(
         expansion_stats=expansion_stats,
         final_hop_stats=final_hop_stats,
     )
+
+
+def _envelope_is_provably_loose(
+    station: run_result.ResolvedStation,
+    envelope_xyz: tuple[float, float, float],
+    envelope_ly: float,
+    bubble_reach_ly: float,
+) -> bool:
+    """True when the destination envelope cannot exclude any reachable system.
+
+    The expansion bubble extends at most ``bubble_reach_ly`` (jumps-per ×
+    ly-per) from the anchor, so if the anchor sits within
+    ``envelope_ly - bubble_reach_ly`` of the envelope centre, the whole
+    bubble lies inside the envelope by the triangle inequality and the
+    filter excludes nothing. Conservative: False only ever means the
+    envelope stays on, which is always correct.
+    """
+
+    slack = envelope_ly - bubble_reach_ly
+    if slack < 0.0:
+        return False
+    dx = station.x - envelope_xyz[0]
+    dy = station.y - envelope_xyz[1]
+    dz = station.z - envelope_xyz[2]
+    return dx * dx + dy * dy + dz * dz <= slack * slack
 
 
 def best_open_ended_trades_from(
