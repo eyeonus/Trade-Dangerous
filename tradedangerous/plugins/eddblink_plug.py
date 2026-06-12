@@ -16,14 +16,14 @@ import requests
 import time
 import typing
 
-from sqlalchemy import delete, select, exists, text
+from sqlalchemy import delete, exists, func, insert, select, text
 
 from tradedangerous import plugins, transfers, TradeException
 from tradedangerous.db import import_csv as td_cache
 from tradedangerous.db import orm_models as SA, lifecycle
 from tradedangerous.db.utils import (
     begin_bulk_mode, end_bulk_mode,
-    get_import_batch_size, get_upsert_fn,
+    get_import_batch_size,
 )
 from tradedangerous.fs import file_line_count
 from tradedangerous.misc import progress as pbar
@@ -369,11 +369,17 @@ class ImportPlugin(plugins.ImportPluginBase):
     def importListings(self, listings_file):
         """
         Updates the market data (StationItem) using `listings_file`.
-        
-        Rules:
-          - If a row doesn't exist in DB → insert (copy CSV exactly).
-          - If it exists → update only when CSV.modified > DB.modified.
-          - If CSV.modified <= DB.modified → do nothing (no field changes).
+
+        Station snapshot write rule (docs/station_snapshot_write_rule.md):
+        a station's market arrives as a whole snapshot, never piecemeal,
+        so per station:
+          - If the database already holds a newer row for the station →
+            skip the WHOLE station (write nothing, delete nothing).
+          - Otherwise → delete every existing row for the station and
+            insert the snapshot's rows, all at the snapshot timestamp.
+        Per-row merging is forbidden: it leaves older catalogue extras
+        underneath fresher data, which is exactly the mixed-timestamp
+        fault this rule removes.
         """
         listings_path = Path(self.dataPath, listings_file).absolute()
         from_live = listings_path != Path(self.dataPath, self.listingsPath).absolute()
@@ -404,25 +410,22 @@ class ImportPlugin(plugins.ImportPluginBase):
             try:
                 commit_batch = get_import_batch_size(session, profile="eddblink")
                 execute_batch = commit_batch or 10000  # cap statement size even if single final commit
-                
-                # Upsert: keys + guarded fields (including from_live), guarded by 'modified'
+
                 table = SA.StationItem.__table__
-                key_cols = ("station_id", "item_id")
-                update_cols = (
-                    "demand_price", "demand_units", "demand_level",
-                    "supply_price", "supply_units", "supply_level",
-                    "from_live",
-                )
-                upsert = get_upsert_fn(
-                    session,
-                    table,
-                    key_cols=key_cols,
-                    update_cols=update_cols,
-                    modified_col="modified",
-                    always_update=(),   # IMPORTANT: no unconditional updates
-                )
-                
-                batch_rows = []
+
+                # The skip test needs each station's newest existing row.
+                # One GROUP BY scan up front beats ~100k per-station MAX()
+                # probes and is dialect-neutral. Updated in place as
+                # snapshots land so a station repeated later in the file
+                # compares against what was just written.
+                newest_existing = {
+                    int(sid): newest
+                    for sid, newest in session.execute(
+                        select(table.c.station_id, func.max(table.c.modified))
+                        .group_by(table.c.station_id)
+                    )
+                }
+
                 since_commit = 0
                 processed_rows = 0
                 
@@ -481,6 +484,76 @@ class ImportPlugin(plugins.ImportPluginBase):
                         f"expected {expect_headers}; got {headers}"
                     )
                 
+                # Snapshots are applied in batches: delete the batch's
+                # stations in one IN-list statement, insert their rows in
+                # one executemany. Group state accumulates the current
+                # station's rows until the file moves to the next station.
+                pending_station_ids = []
+                pending_station_set = set()
+                pending_rows = []
+
+                group_station_id = None
+                group_known = False
+                group_rows = {}   # item_id -> row dict; last occurrence wins
+                group_max_ts = 0
+
+                def flush_pending():
+                    nonlocal since_commit
+                    if not pending_station_ids:
+                        return
+                    session.execute(
+                        table.delete().where(
+                            table.c.station_id.in_(pending_station_ids)
+                        )
+                    )
+                    if pending_rows:
+                        session.execute(insert(table), pending_rows)
+                    since_commit += len(pending_rows)
+                    pending_station_ids.clear()
+                    pending_station_set.clear()
+                    pending_rows.clear()
+                    if commit_batch and since_commit >= commit_batch:
+                        session.commit()
+                        since_commit = 0
+
+                def close_group():
+                    nonlocal group_station_id, group_known, group_rows, group_max_ts
+                    station_id, known = group_station_id, group_known
+                    rows, max_ts = group_rows, group_max_ts
+                    group_station_id = None
+                    group_known = False
+                    group_rows = {}
+                    group_max_ts = 0
+                    if station_id is None or not known:
+                        return
+                    if not rows:
+                        # Every row in the snapshot was junk (zero-priced or
+                        # unknown items) — skip rather than wipe, mirroring
+                        # the spansh writer's caution about bad input.
+                        return
+                    if time_cutoff and max_ts < time_cutoff:
+                        return
+                    snapshot_ts = from_timestamp(max_ts, utc)
+                    newest = newest_existing.get(station_id)
+                    if newest is not None and newest > snapshot_ts:
+                        # Database already holds fresher data — the whole
+                        # station is skipped, per the write rule.
+                        return
+                    if station_id in pending_station_set:
+                        # Same station twice in one batch: flush so the
+                        # later snapshot's delete removes the earlier one's
+                        # rows instead of colliding with them.
+                        flush_pending()
+                    pending_station_ids.append(station_id)
+                    pending_station_set.add(station_id)
+                    for item_id in sorted(rows):
+                        row = rows[item_id]
+                        row["modified"] = snapshot_ts
+                        pending_rows.append(row)
+                    newest_existing[station_id] = snapshot_ts
+                    if len(pending_rows) >= execute_batch:
+                        flush_pending()
+
                 for listing in reader:
                     bump_progress()
                     try:
@@ -489,31 +562,33 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 listing[3] = listing[4] = listing[5] = "0"
                             if listing[7] == "0":
                                 listing[6] = listing[7] = listing[8] = "0"
-                        
-                        # Do the cheapest skip-check first
+
+                        station_id = int(listing[1])
+                        if station_id != group_station_id:
+                            close_group()
+                            group_station_id = station_id
+                            group_known = station_id in station_lookup
+                        if not group_known:
+                            continue
+
+                        # A zero-priced row is an untradeable listing — drop
+                        # it from the snapshot rather than store dead rows.
                         if listing[5] == "0" and listing[6] == "0":
                             continue
-                        
-                        # Cheap numeric condition
-                        listing_time = int(listing[9])
-                        if listing_time < time_cutoff:
-                            continue
-                        
-                        station_id = int(listing[1])
-                        if station_id not in station_lookup:
-                            continue
-                        
+
                         item_id = int(listing[2])
                         if item_id not in item_lookup:
                             continue  # skip unknown item IDs
-                        
-                        dt_listing_time = from_timestamp(listing_time, utc)
-                        
-                        row = {
+
+                        listing_time = int(listing[9])
+                        if listing_time > group_max_ts:
+                            group_max_ts = listing_time
+
+                        group_rows[item_id] = {
                             "station_id":   station_id,
                             "item_id":      item_id,
-                            "modified":     dt_listing_time,   # guard column
-                            "from_live":    from_live_val,     # copied exactly when updating/inserting
+                            "modified":     None,   # stamped with the snapshot timestamp at close
+                            "from_live":    from_live_val,
                             "supply_units": int(listing[3]),
                             "supply_level": int(listing[4]),
                             "supply_price": int(listing[5]),
@@ -521,25 +596,13 @@ class ImportPlugin(plugins.ImportPluginBase):
                             "demand_units": int(listing[7]),
                             "demand_level": int(listing[8]),
                         }
-                        batch_rows += [row]
-                        since_commit += 1
-                        
-                        if len(batch_rows) >= execute_batch:
-                            upsert(batch_rows)
-                            batch_rows[:] = []  # in-place clear without lookup
-                        
-                        if commit_batch and since_commit >= commit_batch:
-                            session.commit()
-                            since_commit = 0
-                    
+
                     except Exception as e:  # pylint: disable=broad-exception-caught
                         self.tdenv.WARN("Bad listing row (skipped): {}  error: {}", listing, e)
                         continue
-                
-                if batch_rows:
-                    upsert(batch_rows)
-                    batch_rows[:] = []  # in-place clear
-                
+
+                close_group()
+                flush_pending()
                 session.commit()
             
             finally:
