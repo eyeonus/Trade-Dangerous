@@ -245,6 +245,15 @@ Planned in session from a supplied seam analysis, no separate plan doc — each 
 | [twenty_fourth_slice_implementation_plan.md](twenty_fourth_slice_implementation_plan.md) | The approved plan, with the P1/P2/P3 probe results recorded in place and the data findings that settled the `--age` design. |
 | [twenty_fourth_slice_completion_report.md](twenty_fourth_slice_completion_report.md) | Proof of completion: the build, the exactness verification, run sets 3 and 4, variances from plan, and the import-path write-rule side quest. |
 
+### Slice 25 — Bound-Ordered Streaming Fetch and Beam-Width Sweep (Complete)
+**The open-ended candidate fetch streams station groups best-ceiling-first with a provable early stop — the tail is never read out of the database; onward viability becomes a per-station semi-join. Exact (17/17 + 8/8 routes byte-identical); open multi-hop −45–61% (worst shape 145.7s → 57.0s), fixed-terminal −29/−33%, one-hop ~10× planner-internal. The first end-to-end beam-width value/time sweep closed Part C: both widths stay 50 (`beam_width_analysis.md`).**
+
+| Document | Content |
+|----------|---------|
+| [twenty_fifth_slice_implementation_plan.md](twenty_fifth_slice_implementation_plan.md) | The approved plan with P1/P2 probe results, the Part B build record, and the Part C sweep decision recorded in place. |
+| [twenty_fifth_slice_completion_report.md](twenty_fifth_slice_completion_report.md) | Proof of completion: the streaming design, the seam-by-seam build and verification, run set 5, variances from plan, and the recorded levers (loose-envelope cache keys; the geometric fixed-vs-open crossover). |
+| [beam_width_analysis.md](beam_width_analysis.md) | The standalone beam-width analysis — kept outside the slice record deliberately; see Reference section below. |
+
 ---
 
 ## Reference and Technical Notes
@@ -260,6 +269,15 @@ and the candidate fetch dominates every shape.
 
 **Purpose:** Before/after comparison for future performance work. Routes drift
 with database refreshes; the volume/time relationships are the stable signal.
+
+### [beam_width_analysis.md](beam_width_analysis.md)
+The standalone beam-width value-versus-time analysis (2026-06-12): what the
+two beam constants do, the five-width sweep across three shapes, the
+staircase findings, and the decision that both widths stay at 50 (with the
+user-facing-lever idea recorded as considered and not adopted).
+
+**Purpose:** The durable record of why the beam is 50. Self-contained —
+read it before re-opening any beam-width discussion.
 
 ### [tuples.md](tuples.md)
 Filter semantics and design decisions:

@@ -1272,3 +1272,115 @@ started 2026-06-12 14:03:47
 
 real	1m10.462s
 ```
+
+---
+
+# Run set 5 — bound-ordered streaming with the provable early stop (2026-06-12)
+
+Conditions as run set 3 (open filters, no `--age`), run the same day as
+the old-code reference sweep so both sides share one database state. The
+"old" walls below are that same-day reference (the pre-change code run
+against identical data), not run set 3's — run set 3 predates a database
+rebuild, so its absolute walls are not comparable.
+
+The change measured: the open-ended candidate fetch streams station
+groups best-ceiling-first and the consumer stops reading at the first
+station whose ceiling cannot beat the kept-score floor (so the tail is
+never read off the cursor, converted, or paired); onward viability on
+non-terminal hops is answered per station from the opposite side's
+qualification temp instead of per row. All routes byte-identical to the
+old code — 8/8 here, 17/17 across the slice's full verification set.
+
+## Headline table
+
+| # | Shape | Jumps | Old wall | New wall | Δ |
+|---|---|---|---|---|---|
+| 1 | `--from sol --hops 3` | 1 | 13.8s | 7.6s | −45% |
+| 2 | `--from sol --hops 3` | 2 | 61.9s | 28.9s | −53% |
+| 3 | `--to lave --hops 3` | 1 | 4.7s | 4.0s | −15% |
+| 4 | `--to lave --hops 3` | 2 | 20.1s | 14.2s | −29% |
+| 5 | `--from sol --hops 6` | 1 | 31.6s | 15.9s | −50% |
+| 6 | `--from sol --hops 6` | 2 | 145.7s | 57.0s | −61% |
+| 7 | `--from sol --to lave --hops 6` | 1 | 11.8s | 8.4s | −29% |
+| 8 | `--from sol --to lave --hops 6` | 2 | 130.3s | 87.2s | −33% |
+
+One-hop open (not in the table: wall is startup-dominated): planner-
+internal time on the big-candidate shapes fell ~10× (641ms → ~60ms from
+Sol; 91,584 candidates fetched → 5 read).
+
+## What run set 5 establishes
+
+1. **The early stop fires almost everywhere and the skip rates carried
+   into production.** Worst shape (run 6): stops fired in 285 of 313
+   calls; 780k rows read against the old code's full candidate volume.
+   P1's simulated skip rates (~86–94% of rows) held within a few
+   points.
+2. **Open multi-hop halves or better; jump range pays the most.** The
+   j2 shapes drop 53–61% — bigger bubbles have longer ceiling tails,
+   so the stop removes more. j1 shapes drop 15–50% on the same
+   mechanism, scaled by bubble size.
+3. **Fixed-terminal improves a third, not a half, and stays the
+   slowest family.** Two structural reasons, both measured: the
+   destination envelope changes per layer, so the reachable-memo and
+   qualification bubble-skip reuse the open engine rides is disabled
+   (memo 104/159 hit/miss vs the open twin's 137/176; per-call fetch
+   268ms vs 165ms despite reading fewer rows — 534k vs 780k), and the
+   real-budget floor sits lower than the open engine's optimistic one,
+   so the stop bites later. Plus ~5× the jump-path time (10.3s vs
+   2.3s) and the close-on-destination final hop.
+4. **The fixed-vs-open crossover is geometric.** Probing sol→lave at
+   2/3/4 hops (jumps 2): fixed wins 12× at 2 hops (1.5s vs 17.6s, the
+   envelope taut from layer 1), break-even at 3 (25.4s vs 27.5s),
+   loses from 4 up (48.3s vs 37.8s). The destination constraint pays
+   while total reach is comparable to the separation; with slack, the
+   envelope spends the early layers excluding nothing while its
+   presence still disables cache reuse. Recorded lever: a layer whose
+   envelope exceeds its bubble constrains nothing and could be dropped
+   from that layer's cache keys, giving early layers the open engine's
+   reuse.
+
+## Per-run diagnostics (key lines)
+
+```text
+[1] --from sol --hops 3 (j1) — 7.55s
+  Total: 6626ms; fetch 6025ms, cargo 288ms, jump 8ms
+  Expansion: 163 calls, memo 104/59; Stream: 260423 rows read, 16099 stations, 139 stops
+  Qualification: 49916 stations, 300013 rows, 1239ms
+
+[2] --from sol --hops 3 --jumps 2 — 28.86s
+  Total: 27782ms; fetch 25491ms, cargo 546ms, jump 1023ms
+  Expansion: 163 calls, memo 81/82; Stream: 398093 rows read, 39252 stations, 139 stops
+  Qualification: 208178 stations, 1276471 rows, 5059ms
+
+[3] --to lave --hops 3 (j1) — 4.03s
+  Total: 3144ms; fetch 2776ms, cargo 218ms, jump 6ms
+  Expansion: 130 calls, memo 64/66; Stream: 197348 rows read, 7388 stations, 102 stops
+  Qualification: 23651 stations, 130472 rows, 537ms
+
+[4] --to lave --hops 3 --jumps 2 — 14.17s
+  Total: 13045ms; fetch 11827ms, cargo 428ms, jump 444ms
+  Expansion: 130 calls, memo 44/86; Stream: 264318 rows read, 14236 stations, 100 stops
+  Qualification: 154478 stations, 727075 rows, 2876ms
+
+[5] --from sol --hops 6 (j1) — 15.94s
+  Total: 14649ms; fetch 13204ms, cargo 704ms, jump 16ms
+  Expansion: 313 calls, memo 165/148; Stream: 571517 rows read, 37657 stations, 286 stops
+  Qualification: 87384 stations, 543545 rows, 2111ms
+
+[6] --from sol --hops 6 --jumps 2 — 57.03s
+  Total: 55685ms; fetch 50891ms, cargo 1006ms, jump 2260ms
+  Expansion: 313 calls, memo 137/176; Stream: 779794 rows read, 72001 stations, 285 stops
+  Qualification: 261241 stations, 1556208 rows, 9084ms
+
+[7] --from sol --to lave --hops 6 (j1) — 8.35s
+  Total: 7310ms; fetch 5848ms, cargo 345ms, jump 14ms
+  Expansion: 263 calls, memo 81/182; Stream: 193501 rows read, 13132 stations, 112 stops
+  Qualification: 39688 stations, 214266 rows, 1633ms
+  Final hop: 23 attempted, 23 reach destination, 372 market candidates, 23 viable
+
+[8] --from sol --to lave --hops 6 --jumps 2 — 87.15s
+  Total: 85689ms; fetch 70043ms, cargo 903ms, jump 10287ms
+  Expansion: 263 calls, memo 104/159; Stream: 534048 rows read, 52980 stations, 203 stops
+  Qualification: 234888 stations, 1389068 rows, 9481ms
+  Final hop: 50 attempted, 40 reach destination, 1269 market candidates, 40 viable
+```

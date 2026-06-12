@@ -274,6 +274,12 @@ unknown-pad station is admitted unless `--pad-size L` is set. Full reasoning in
   understood.
 - The `--ls-penalty` curve is **protected behaviour** — change only on an
   explicit contract change.
+- **Beam widths stay at 50** (both `_MULTIHOP_EXPANSION_WIDTH` and
+  `_MULTIHOP_FRONTIER_WIDTH`). Decided on the only end-to-end
+  value-versus-time sweep run to date; the analysis, the staircase findings,
+  and the rejected user-facing-width idea are recorded in
+  `beam_width_analysis.md`. Re-open only with a fresh sweep on then-current
+  data.
 
 ---
 
@@ -306,24 +312,27 @@ Agreed-but-unscheduled decisions and noted-for-later items:
   higher-scoring winners; mechanisms hold but current data/scorer don't make
   them change a winner. Re-evaluation triggers recorded in
   `fifth_slice_restructure_implementation_plan.md`.
-- **Shared expansion-cost floor** — **done**, both halves. The *cargo* half is
+- **Shared expansion-cost floor** — **done**, all layers. The *cargo* half is
   the Slice 22 pre-filter (skip solving pairs that cannot place). The *fetch*
   half landed in Slice 23: the open-ended candidate queries are narrowed in
   SQL by the fixed side's per-item price bounds, so open-side rows that could
-  never pair never leave the database (exact — candidates unchanged; the big
-  open multi-hop shape 159s → 83s). Slice 24 added the qualify-once layer:
+  never pair never leave the database. Slice 24 added the qualify-once layer:
   run-constant row predicates are answered once per station into run-scoped
-  temps (lazily, SQL-side), and with `--age` set a station-level fresh-set
-  cut means stale stations are never walked at all. Exact (run set 3:
-  16/16 baseline runs byte-identical); ~10% off open-filter wall, and `--age`
-  became a true cost lever (worst shape 124s open → 55s at `--age 3`, 38s at
-  `--age 1`; a realistic stacked-filter run lands ~27s). Residual,
-  deferred-not-dead: per-anchor cost is now dominated by Python materialising
-  the rows each query returns (~53% measured) — the named lever is
-  bound-ordered pairing with a provable early stop (return fewer rows);
-  evidence in the Slice 24 plan (P3) and `timing_baselines.md`. The
-  fixed-terminal envelope shapes benefit least from the cache and are now the
-  slowest shapes left. Performance only.
+  temps, and with `--age` set stale stations are never walked at all.
+  Slice 25 closed the remaining residual (per-anchor Python row
+  materialisation, ~53% measured): the open-ended fetch now streams station
+  groups best-ceiling-first and consumers stop reading at the first station
+  that provably cannot beat the kept set — the tail is never read off the
+  cursor; onward viability on intermediate hops is a per-station semi-join
+  against the opposite side's qualification temp instead of a per-row probe.
+  Exact at every layer (Slice 25: 17/17 verification routes plus run set 5's
+  8/8 byte-identical). Open multi-hop −45–61% wall (worst shape 145.7s →
+  57.0s), fixed-terminal −29/−33%, one-hop planner-internal ~10× on large
+  candidate sets. Remaining residual, performance only: the fixed-terminal
+  envelope family is the slowest left for measured structural reasons — the
+  per-layer envelope defeats memo/bubble-skip reuse even on layers where it
+  constrains nothing (the recorded lever: drop provably-loose envelopes from
+  those layers' cache keys) — see `timing_baselines.md` run set 5.
 - **`nav` / `olddata` rebuild** — parked for the main refactor's checkpoint L.
 - **Listener loose ends** — the 15A change is committed in the listener repo;
   the client path and a full spansh import are assumed-working pending a real
