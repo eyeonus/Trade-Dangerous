@@ -89,13 +89,13 @@ def validate_run_request(request: RunRequest) -> None:
     # --loop closes the route back on its own starting station. (--loop with
     # --to or --towards is rejected at the parser's mutually-exclusive group.)
     if request.loop:
-        # The galaxy-wide loop — --from omitted, every eligible origin
-        # considered — is contract behaviour but runs on its own search
-        # design; it stays gated until that engine lands.
+        # --loop requires a named --from. The galaxy-wide loop (--from
+        # omitted) was investigated and is not supported: seeding the search
+        # faithfully within the fixed beam width was not achievable at
+        # acceptable cost. See docs/Planner/unanchored_loop_investigation.md.
         if not request.from_text:
             raise UnsupportedRunShape(
-                "--loop without --from is not supported yet; name a "
-                "starting station or system.",
+                "--loop requires --from; name a starting station or system.",
                 option_name="--loop",
             )
         # A 1-hop loop would buy and sell at the same counter. --hops
