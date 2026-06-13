@@ -43,7 +43,7 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 | `--to` | `[done]` | Station or system; may be omitted (open destination). |
 | `--hops` | `[done]` | 1–25; an excessive count is rejected. |
 | `--towards` | `[done]` | Steers toward a target system; progress-first ranking, arrives and stops early. Requires `--from`; rejects `--to`. See Variations. |
-| `--loop` | `[todo]` | Gated. |
+| `--loop` | `[varied]` | Round trip back to the start; requires `--from` (station or system), `--hops ≥ 2`. The galaxy-wide loop (`--from` omitted) is not supported — a recorded decision. See Variations. |
 | `--via` | `[todo]` | Gated. |
 | `--avoid` | `[done]` | Excludes a commodity, system, or station; repeated / comma-separated, fuzzy-matched like the endpoints. Avoided commodity never bought; avoided station never a route station; avoided system also barred from jump-path transit (the permit case). Explicit `--from` exempt as origin. |
 | `--direct` | `[varied]` | Single direct hop between a fixed `--from` and `--to`; no jump/distance checks. Requires both endpoints; single-hop only; open-destination mode dropped. See Variations. |
@@ -114,7 +114,7 @@ separate semantics for the same option.
 
 | Spec section | Status | Note |
 |--------------|--------|------|
-| Early validation | `[done]` | One validator — the planner's `validate_run_request` on the `RunRequest`; the legacy command-layer checker was removed. Parser-level mutual exclusions (`--to`/`--towards`/`--loop`, `--direct`/`--hops`) stay at the parser. Some early-failure pairs (e.g. `--loop` with `--unique`) are moot while those options are gated. |
+| Early validation | `[done]` | One validator — the planner's `validate_run_request` on the `RunRequest`; the legacy command-layer checker was removed. Parser-level mutual exclusions (`--to`/`--towards`/`--loop`, `--direct`/`--hops`) stay at the parser. Some early-failure pairs (e.g. `--unique` with `--loop`) are moot while `--unique` is gated. |
 | Name and place resolution | `[done]` | Syntax picks the namespace: a bare name is a system, `/name` a station, `system/station` a scoped station — no cross-namespace fall-through; misses and candidate lists name a System or Station (never "place"). Partial matching (exact → prefix → substring, gathered against a normalised `lookup_name` superset) and duplicate-system `@N` coordinate disambiguation are active for `trade run`, through the shared `TradeORM` lookup. |
 | Origin selection | `[done]` | Station / system / omitted; `--start-jumps` expands origins from the anchor's empty-jump neighbourhood. |
 | Destination selection | `[done]` | Station / system / omitted; `--end-jumps` expands destinations from the anchor's empty-jump neighbourhood. |
@@ -127,17 +127,17 @@ separate semantics for the same option.
 | Credits, insurance, margin | `[done]` | |
 | Reachability | `[done]` | `--ly-per`, `--jumps-per`, same-system supercruise. `--direct` bypasses reachability for a fixed pair (see Variations). |
 | Route generation | `[done]` | |
-| Route ranking | `[done]` | Practical value with ls-penalty; `--to` honoured; `--towards` ranks progress-first (closest, then fewer hops, profit only breaking ties). The other shaping options (`--loop`/`--shorten`/`--via`/`--unique`) are gated. |
+| Route ranking | `[done]` | Practical value with ls-penalty; `--to` honoured; `--towards` ranks progress-first (closest, then fewer hops, profit only breaking ties). `--loop` closes the route on its own start station. The other shaping options (`--shorten`/`--via`/`--unique`) are gated. |
 | ls-penalty | `[done]` | Protected curve. |
 | towards mode | `[done]` | Progress-first per-hop ranking; arrives and stops early; mutually exclusive with `--to`. See Variations. |
-| loop routes | `[todo]` | |
+| loop routes | `[varied]` | Anchored loop built: closes on its own start station, requires `--from`, `--hops ≥ 2`, per-chain terminal rule on the fixed-terminal engine. The galaxy-wide loop (`--from` omitted) is not supported — a recorded decision. See Variations. |
 | shorten routes | `[todo]` | |
 | unique and loop interval | `[todo]` | |
 | Pruning controls | `[todo]` | |
 | Output contract | `[done]` | Default route output plus verbose per-hop / cumulative / jump-path detail. |
 | Checklist output | `[todo]` | |
 | Progress output | `[todo]` | |
-| Failure behaviour | `[varied]` | Distinct families implemented; affordability is folded into "no profitable trades" — see Variations. The via/towards/loop/unique no-route classes are moot (gated). Matrix endpoint shapes classify missing-data failures in aggregate on the no-route path, not per pair; in a rare cross-pair corner (one pair's source lacks data, a different pair's destination lacks data) the reported family is "no profitable trades" where per-pair probing named a side. |
+| Failure behaviour | `[varied]` | Distinct families implemented; affordability is folded into "no profitable trades" — see Variations. The loop and towards no-route classes are implemented (a route that cannot close back to its start, or cannot make forward progress, fails in the no-route family); the via/unique no-route classes are moot (gated). Matrix endpoint shapes classify missing-data failures in aggregate on the no-route path, not per pair; in a rare cross-pair corner (one pair's source lacks data, a different pair's destination lacks data) the reported family is "no profitable trades" where per-pair probing named a side. |
 | Data requirements | `[done]` | Database is the source of truth; only the needed scope is materialised. |
 | Performance contract | `[done]` | Early narrowing, filters pushed into SQL, materially faster than legacy. The real-budget shapes (fixed-terminal, one-hop open) additionally pre-filter cargo — a pair that cannot beat the kept set skips the branch-and-bound solve (exact; routes unchanged), solving best-first so the threshold rises fast. The open-ended candidate fetches are narrowed in SQL by the fixed endpoint's per-item price bounds, stream station groups best-ceiling-first, and stop reading at the first station that provably cannot beat the kept set — the tail is never read out of the database (exact; routes unchanged; open multi-hop −45–61% wall). |
 
@@ -197,6 +197,18 @@ Each of these is a chosen difference, not a gap. Do not revert without raising i
    preload-first pattern this rewrite removes, so it is deferred, not rebuilt.
    `--ly-per`/`--jumps-per` are tolerated but ignored; `--towards` and empty-jump
    positioning are rejected as contradictory.
+
+8. **`--loop` requires `--from`.** Spec §loop routes describes a round trip back
+   to the start and does not require a named origin; legacy supported the
+   galaxy-wide loop (`--from` omitted) by brute force over the preloaded galaxy.
+   The anchored loop (`--from` named) is built and behaves to spec: it closes on
+   its own start station via a per-chain terminal rule on the fixed-terminal
+   engine. The galaxy-wide loop is **not supported** — a recorded decision, not a
+   gap. Seeding it faithfully within the fixed beam width (which stays 50) was not
+   achievable at acceptable cost, and widening the frontier to compensate is
+   explicitly off the table. `--loop` without `--from` is rejected with a clear
+   message. See `docs/Planner/unanchored_loop_investigation.md` for the evidence
+   and the decision; reopening it would be a future slice.
 
 ---
 

@@ -256,6 +256,17 @@ Planned in session from a supplied seam analysis, no separate plan doc — each 
 
 ---
 
+### Slice 26 — `--loop` (Return to the Starting Station) (Complete)
+**Anchored round-trip routes delivered: a loop is a fixed-terminal route whose terminal is each chain's own origin (per-root terminal rule, per-root envelope anchor, `(root, destination_system)` frontier dedupe, partial-route suppression), plus a follow-up fix qualifying loop terminals as real sell-back destinations. The galaxy-wide loop (`--from` omitted) was investigated and decided against: a cheap seed rank cannot contain the best loops within the fixed beam width of 50 (P1), and an honest loop per admitted origin is cheap at 2 hops but explodes with depth (P2). `--loop` requires `--from`.**
+
+| Document | Content |
+|----------|---------|
+| [twenty_sixth_slice_implementation_plan.md](twenty_sixth_slice_implementation_plan.md) | The approved two-part plan; Part A (anchored) built, Part B (unanchored) carries the probe results and a not-built outcome banner. |
+| [twenty_sixth_slice_completion_report.md](twenty_sixth_slice_completion_report.md) | Proof of completion: the anchored loop build, the terminal-qualification fix, the unanchored decision, variances, housekeeping. |
+| [unanchored_loop_investigation.md](unanchored_loop_investigation.md) | The standalone record of the unanchored-loop investigation and decision — P1/P2 findings, the alternatives weighed, and the homework for any future reopen. |
+
+---
+
 ## Reference and Technical Notes
 
 ## Reference and Technical Notes

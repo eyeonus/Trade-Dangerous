@@ -287,16 +287,27 @@ unknown-pad station is admitted unless `--pad-size L` is set. Full reasoning in
   reports, or option lists. It reopens only if one of the specific triggers
   recorded in `fifth_slice_restructure_implementation_plan.md` actually
   fires, and the burden is on evidence that one has.
+- **The galaxy-wide `--loop` is not supported.** `--loop` requires a named
+  `--from`; the anchored loop is built and to spec. The unanchored loop
+  (`--from` omitted) was investigated to a conclusion and dropped: the galaxy's
+  loop origins could not be ranked or trimmed faithfully within the fixed beam
+  width (seed fidelity failed), and running every admitted origin honestly
+  explodes with depth (~45s at the default 2 hops, ~8 min at 4, hours at 6).
+  Widening the frontier to compensate is off the table by the beam-width
+  decision above. It is decided, not owed or deferred — do not list it as a gap.
+  Full evidence in `unanchored_loop_investigation.md`; reopening it is a future
+  slice, not a loose end.
 
 ---
 
 ## What's still owed
 
 The authoritative, option-by-option status lives in **`SPEC_STATUS.md`**. In
-short, the route shapes, empty-jump positioning, `--towards`, `--direct`, and
-`--avoid` are done; what remains is the rest of the modifier and display surface
-— `--via`, `--loop`, `--unique`, `--shorten`, `--loop-interval`, and the
-search/display controls
+short, the route shapes, empty-jump positioning, `--towards`, `--direct`,
+`--avoid`, and `--loop` (anchored; requires `--from` — the galaxy-wide loop is a
+closed decision, see Settled decisions) are done; what remains is the rest of the
+modifier and display surface — `--via`, `--unique`, `--shorten`,
+`--loop-interval`, and the search/display controls
 (`--routes > 1`, `--max-routes`, `--prune-*`, `--checklist`, `--x52-pro`). Three
 options (`--show-jumps`, `--summary`, `--progress`) parse without error but
 currently do nothing — see `SPEC_STATUS.md`.
