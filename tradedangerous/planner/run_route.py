@@ -59,10 +59,11 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
             )
         # Multi-hop endpoint dispatch, mirroring the single-hop dispatcher
         # above. Both endpoints set keeps the fixed-terminal planner (envelope,
-        # real budget); one endpoint set runs the single-anchor open engine
-        # keyed on which side the planner chooses; both omitted seeds that same
-        # open engine from a galaxy-wide set of origins.
-        elif request.from_text and request.to_text:
+        # real budget); --loop runs that same planner with each chain closing
+        # on its own origin; one endpoint set runs the single-anchor open
+        # engine keyed on which side the planner chooses; both omitted seeds
+        # that same open engine from a galaxy-wide set of origins.
+        elif (request.from_text and request.to_text) or request.loop:
             result = _plan_multi_hop(
                 session, request, started, validation_ms, bubble_cache
             )

@@ -120,6 +120,14 @@ class NoTowardsProgress(NoReachableRoute):
     """
 
 
+class NoLoopRoute(NoReachableRoute):
+    """No route closed the loop back to its starting station.
+
+    A subclass of NoReachableRoute so any handler catching the no-route family
+    catches this too; the distinct type lets callers name the loop origin.
+    """
+
+
 class NoProfitableTrades(PlannerFailure):
     """No profitable trades satisfy the request constraints."""
 

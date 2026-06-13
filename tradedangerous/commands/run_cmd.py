@@ -13,6 +13,7 @@ from .parsing import (
 from tradedangerous.planner.failures import (
     AmbiguousPlace,
     InvalidRunRequest,
+    NoLoopRoute,
     NoProfitableTrades,
     NoReachableRoute,
     NoTowardsProgress,
@@ -386,6 +387,18 @@ def _planner_result_message(exc, request) -> str:
             f"\n"
             f"Try increasing --hops or --jumps-per, widening --ly-per, or "
             f"relaxing filters so a trade toward the target can be found."
+        )
+
+    if isinstance(exc, NoLoopRoute):
+        # --loop: no route closed back to the start. The failure already names
+        # the origin and the hop count; add the levers that let a loop close.
+        # Checked before the shape-based branches below, which would otherwise
+        # claim a generic open-ended failure (--loop names --from but no --to).
+        return (
+            f"{exc.message}\n"
+            f"\n"
+            f"Try increasing --hops or --jumps-per, widening --ly-per, or "
+            f"relaxing filters so a round trip back to the start can be found."
         )
 
     from_named = bool(request.from_text)

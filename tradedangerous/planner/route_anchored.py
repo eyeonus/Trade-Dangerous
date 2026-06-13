@@ -44,6 +44,11 @@ def _plan_multi_hop(
     stations. (Open-ended multi-hop — one endpoint omitted — runs on the
     single-anchor engine instead; see plan_route's dispatch.)
 
+    --loop runs here too: it carries no --to, the destination side is the
+    origin endpoint's destination-eligible view, and each chain must close
+    on its own root station. Partial routes are suppressed for loops — an
+    unclosed loop is not a loop, so those sites raise NoLoopRoute instead.
+
     Beam frontier search: each hop layer keeps a bounded set of best-scoring
     partial routes; each surviving partial expands into the next layer via
     best_open_ended_trades_from, the combined layer is rescored, and the layer
@@ -66,9 +71,24 @@ def _plan_multi_hop(
     """
 
     # Endpoints were resolved once at dispatch; read the canonical DTOs.
+    # --loop carries no --to: the destination side is the origin endpoint's
+    # destination-eligible view, and each chain must close on its own root
+    # station (the terminal rule applied per node at the final hop below).
+    loop_mode = request.loop
     origin_endpoint = request.from_endpoint
-    destination_endpoint = request.to_endpoint
+    destination_endpoint = (
+        origin_endpoint if loop_mode else request.to_endpoint
+    )
     resolution_ms = 0.0
+
+    def _loop_failure() -> failures.NoLoopRoute:
+        label = origin_endpoint.original_text
+        return failures.NoLoopRoute(
+            f"No route closed the loop back to {label} within "
+            f"{request.hops} hops under the supplied constraints.",
+            option_name="--loop",
+            entity_name=label,
+        )
 
     station_filter_started = time.perf_counter()
     origin_stations = _stations_from_endpoint(
@@ -83,10 +103,34 @@ def _plan_multi_hop(
         request,
         role="destination",
     )
-    # Every --to station shares the same system, so any of them gives the
-    # envelope anchor coordinates.
-    anchor_station = destination_stations[0]
-    to_system_xyz = (anchor_station.x, anchor_station.y, anchor_station.z)
+    destination_by_id: dict[int, run_result.ResolvedStation] = {}
+    if loop_mode:
+        # A loop's terminal is its own origin, so an origin that is not also
+        # an eligible destination can never close — drop it before it spends
+        # frontier slots. The destination DTO map feeds the final hop.
+        destination_by_id = {
+            station.station_id: station for station in destination_stations
+        }
+        origin_stations = tuple(
+            station for station in origin_stations
+            if station.station_id in destination_by_id
+        )
+        if not origin_stations:
+            raise failures.NoLoopRoute(
+                f"No station at {origin_endpoint.original_text} is eligible "
+                "as both the start and the end of a loop under the supplied "
+                "constraints.",
+                option_name="--loop",
+                entity_name=origin_endpoint.original_text,
+            )
+        # The envelope anchor varies per chain root in loop mode; set per
+        # node in the expansion loop below.
+        to_system_xyz = None
+    else:
+        # Every --to station shares the same system, so any of them gives the
+        # envelope anchor coordinates.
+        anchor_station = destination_stations[0]
+        to_system_xyz = (anchor_station.x, anchor_station.y, anchor_station.z)
     station_filter_ms = _elapsed_ms(station_filter_started)
 
     base_trade_budget = (
@@ -167,19 +211,31 @@ def _plan_multi_hop(
             for node in frontier:
                 expansions_examined += 1
                 layer_expansion_calls += 1
+                # The remaining hops must be able to close on the terminal:
+                # the shared --to system, or in loop mode this chain's own
+                # root station (same geometry legacy used — distance home
+                # against remaining range).
+                if loop_mode:
+                    root_station = _root_node(node).station
+                    envelope_anchor_xyz = (
+                        root_station.x, root_station.y, root_station.z,
+                    )
+                else:
+                    envelope_anchor_xyz = to_system_xyz
                 # An envelope that provably contains this anchor's whole
                 # reach bubble excludes nothing — drop it for the call, so
                 # the fetch keeps the qualification skip-marker and plain
                 # reachable SQL its presence would otherwise disable. The
                 # result set is identical by construction.
                 if _envelope_is_provably_loose(
-                    node.station, to_system_xyz, envelope_ly, bubble_reach_ly
+                    node.station, envelope_anchor_xyz, envelope_ly,
+                    bubble_reach_ly,
                 ):
                     node_envelope_xyz = None
                     node_envelope_ly = None
                     expansion_stats.loose_envelopes_dropped += 1
                 else:
-                    node_envelope_xyz = to_system_xyz
+                    node_envelope_xyz = envelope_anchor_xyz
                     node_envelope_ly = envelope_ly
                 children = best_open_ended_trades_from(
                     session,
@@ -220,6 +276,10 @@ def _plan_multi_hop(
                     )
                 )
                 
+                # An unclosed loop is not a loop — no partial fallback for
+                # this shape, whatever the frontier holds.
+                if loop_mode:
+                    raise _loop_failure()
                 # No child survived this expansion layer. On the first layer
                 # that means no trade hop was ever completed, so this is still
                 # the normal no-result failure. On later layers, the current
@@ -265,13 +325,25 @@ def _plan_multi_hop(
                 key=lambda candidate: candidate.accumulated_practical_score,
                 reverse=True,
             )
-            seen_systems: set[int] = set()
+            # Loop chains with different roots carry different compulsory
+            # terminals, so they are not near-duplicates of each other —
+            # dedupe them per (root, system), exactly as chains aimed at
+            # different --to anchors would deserve their own slots. Without
+            # it a system --from's dominant origin starves every other
+            # origin's chains out of the beam.
+            seen_keys: set = set()
             deduped: list[_FrontierNode] = []
             for node in next_frontier:
-                system_id = node.station.system_id
-                if system_id in seen_systems:
+                if loop_mode:
+                    key = (
+                        _root_node(node).station.station_id,
+                        node.station.system_id,
+                    )
+                else:
+                    key = node.station.system_id
+                if key in seen_keys:
                     continue
-                seen_systems.add(system_id)
+                seen_keys.add(key)
                 deduped.append(node)
                 if len(deduped) >= _MULTIHOP_FRONTIER_WIDTH:
                     break
@@ -295,10 +367,18 @@ def _plan_multi_hop(
         finalists: list[_FrontierNode] = []
         for node in frontier:
             expansions_examined += 1
+            if loop_mode:
+                # The terminal rule: each chain closes on its own root.
+                root_station = _root_node(node).station
+                node_destinations = (
+                    destination_by_id[root_station.station_id],
+                )
+            else:
+                node_destinations = destination_stations
             trade = best_fixed_pair_trade_from(
                 session,
                 node.station,
-                destination_stations,
+                node_destinations,
                 request,
                 available_credits=node.available_credits,
                 bubble_cache=bubble_cache,
@@ -314,6 +394,10 @@ def _plan_multi_hop(
         final_hop_stats.elapsed_ms = final_hop_elapsed_ms
 
         if not finalists:
+            # An unclosed loop is not a loop — no partial fallback here
+            # either.
+            if loop_mode:
+                raise _loop_failure()
             # The final-hop collapse is the canonical partial-route case:
             # the route reached hop N-1 but could not complete the requested
             # terminal hop. Preserve the best completed frontier node as a
@@ -378,6 +462,19 @@ def _plan_multi_hop(
         expansion_stats=expansion_stats,
         final_hop_stats=final_hop_stats,
     )
+
+
+def _root_node(node: _FrontierNode) -> _FrontierNode:
+    """Walk a chain's parent links back to its hop-0 origin node.
+
+    Loop mode needs each chain's root for the terminal rule, the envelope
+    anchor, and the frontier dedupe key. Hops are capped at 25, so the walk
+    is trivial.
+    """
+
+    while node.parent is not None:
+        node = node.parent
+    return node
 
 
 def _envelope_is_provably_loose(

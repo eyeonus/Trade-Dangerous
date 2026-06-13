@@ -48,8 +48,15 @@ def validate_run_request(request: RunRequest) -> None:
     # guess which of two contradictory flags the commander meant. Options that
     # --direct merely makes moot (--ly-per, --jumps-per) are tolerated, so a
     # standard paste-in block is not punished for an irrelevant flag.
-    # (--direct with --loop is already rejected at the parser.)
     if request.direct:
+        if request.loop:
+            # Not covered by the parser's exclusion groups (--loop sits with
+            # --to/--towards, --direct with --hops), so the contradiction is
+            # rejected here with a message that names the real conflict.
+            raise ContradictoryOptions(
+                "--direct cannot be combined with --loop.",
+                option_name="--direct",
+            )
         if not request.from_text or not request.to_text:
             raise MissingRequiredInput(
                 "--direct needs both --from and --to.",
@@ -79,6 +86,40 @@ def validate_run_request(request: RunRequest) -> None:
             option_name="--towards",
         )
 
+    # --loop closes the route back on its own starting station. (--loop with
+    # --to or --towards is rejected at the parser's mutually-exclusive group.)
+    if request.loop:
+        # The galaxy-wide loop — --from omitted, every eligible origin
+        # considered — is contract behaviour but runs on its own search
+        # design; it stays gated until that engine lands.
+        if not request.from_text:
+            raise UnsupportedRunShape(
+                "--loop without --from is not supported yet; name a "
+                "starting station or system.",
+                option_name="--loop",
+            )
+        # A 1-hop loop would buy and sell at the same counter. --hops
+        # defaults to 2, so this only fires on an explicit --hops 1.
+        if request.hops < 2:
+            raise InvalidNumericOption(
+                "--loop needs --hops of at least 2.",
+                option_name="--loop",
+            )
+        # --start-jumps would reposition the commander to a better trade
+        # origin near the anchor before looping. But the loop's terminal set
+        # is the anchor's own stations, so a repositioned origin outside the
+        # anchor system can never close its loop and is silently dropped --
+        # the positioning expansion is cancelled, not honoured. Gate the pair
+        # until a positioning-aware loop terminal (close on the repositioned
+        # origin, show the empty leg) is built. (--end-jumps needs --to, which
+        # --loop forbids, so only --start-jumps is reachable here.)
+        if request.start_jumps:
+            raise UnsupportedRunShape(
+                "--loop with --start-jumps is not supported yet; the "
+                "repositioned origin cannot close its loop.",
+                option_name="--loop",
+            )
+
     if request.start_jumps and not request.from_text:
         raise MissingRequiredInput(
             "--start-jumps requires --from.",
@@ -92,7 +133,6 @@ def validate_run_request(request: RunRequest) -> None:
         )
 
     unsupported = (
-        ("--loop", request.loop),
         ("--via", bool(request.via)),
         ("--unique", request.unique),
         ("--loop-interval", request.loop_interval is not None),
