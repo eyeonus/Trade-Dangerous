@@ -1263,6 +1263,33 @@ class QualificationCache:
         self._fresh = None
 
 
+def _demand_viability_filters(item, request: RunRequest, cutoff) -> list:
+    """The bare 'this station has usable demand' row conditions.
+
+    Factored out so onward-viability and loop-root qualification share one
+    definition of meaningful demand and cannot drift: price positive, a
+    meaningful quantity, plus --demand / --age / --max-price. ``item`` is the
+    StationItem entity or alias the caller reads columns from.
+
+    These are the bare conditions only. They deliberately omit the avoided-
+    commodity exclusion and the bulk-sale-tax effective-demand floor: onward
+    viability does not need them, but loop-root qualification does and adds
+    them on top (see fetch_loop_closable_station_ids).
+    """
+
+    filters = [
+        item.demand_price > 0,
+        item.demand_units >= _MIN_MEANINGFUL_DEMAND,
+    ]
+    if request.min_demand is not None:
+        filters.append(item.demand_units >= request.min_demand)
+    if cutoff is not None:
+        filters.append(item.modified >= cutoff)
+    if request.max_price > 0:
+        filters.append(item.demand_price <= request.max_price)
+    return filters
+
+
 def _onward_viability_filter(request: RunRequest, cutoff, open_role: str, station_id_column):
     """Correlated EXISTS: the station stays viable for the *next* hop.
 
@@ -1279,16 +1306,7 @@ def _onward_viability_filter(request: RunRequest, cutoff, open_role: str, statio
     onward = aliased(StationItem)
     onward_filters = [onward.station_id == station_id_column]
     if open_role == "source":
-        onward_filters += [
-            onward.demand_price > 0,
-            onward.demand_units >= _MIN_MEANINGFUL_DEMAND,
-        ]
-        if request.min_demand is not None:
-            onward_filters.append(onward.demand_units >= request.min_demand)
-        if cutoff is not None:
-            onward_filters.append(onward.modified >= cutoff)
-        if request.max_price > 0:
-            onward_filters.append(onward.demand_price <= request.max_price)
+        onward_filters += _demand_viability_filters(onward, request, cutoff)
     else:
         onward_filters += [
             onward.supply_price > 0,
@@ -1307,6 +1325,69 @@ def _onward_viability_filter(request: RunRequest, cutoff, open_role: str, statio
                 onward.item_id.notin_(request.avoid_item_ids)
             )
     return select(literal(1)).where(and_(*onward_filters)).exists()
+
+
+def fetch_loop_closable_station_ids(
+    session: Session,
+    station_ids: tuple[int, ...],
+    request: RunRequest,
+) -> frozenset[int]:
+    """Return which of the given stations can receive a usable return trade.
+
+    A loop's terminal is its own origin, so a candidate root can only close the
+    loop if it is a genuine *destination*: it must demand at least one commodity
+    well enough to actually sell into. This qualifies roots before they seed the
+    bounded frontier, so a supply-only or otherwise-unclosable root never spends
+    a beam slot only to fail at the final hop.
+
+    "Usable demand" mirrors the destination side of fetch_station_pair_candidates
+    exactly:
+      - the shared meaningful-demand conditions (price, threshold, --demand,
+        --age, --max-price), via _demand_viability_filters;
+      - avoided commodities excluded -- a root whose only demand is for an
+        avoided item cannot be sold to;
+      - the bulk-sale-tax effective-demand floor -- a sensitive (Metals/
+        Minerals) commodity flooring to floor(demand * 0.25) == 0 sells no safe
+        quantity, so it does not count (raw demand must be >= 4).
+
+    It deliberately does NOT check gain-per-ton, credits, or source supply:
+    those depend on the eventual source of the return hop, which is unknown at
+    root-qualification time.
+
+    The id set is one system's stations (or a single fixed station) -- already
+    narrow -- so a parameterised IN (...) is correct and cheap here; this is not
+    a galaxy-scale id round-trip.
+    """
+
+    if not station_ids:
+        return frozenset()
+
+    cutoff = _age_cutoff(request.age_days)
+    sensitive_category_ids = _bulk_sale_tax_category_ids(session)
+
+    filters = [
+        StationItem.station_id.in_(station_ids),
+        *_demand_viability_filters(StationItem, request, cutoff),
+    ]
+    if request.avoid_item_ids:
+        filters.append(StationItem.item_id.notin_(request.avoid_item_ids))
+
+    stmt = select(StationItem.station_id)
+    if sensitive_category_ids:
+        # Bulk-sale-tax effective-demand floor. A sensitive commodity with raw
+        # demand 2 or 3 floors to floor(demand * 0.25) == 0 -- no safe quantity
+        # at the advertised price -- so require raw demand >= 4 for sensitive
+        # items; non-sensitive items keep the meaningful-demand threshold above.
+        # The Item join is only needed to read category_id for this test.
+        stmt = stmt.join(Item, Item.item_id == StationItem.item_id)
+        filters.append(
+            or_(
+                Item.category_id.notin_(sensitive_category_ids),
+                StationItem.demand_units >= 4,
+            )
+        )
+    stmt = stmt.where(and_(*filters)).distinct()
+    return frozenset(int(station_id) for station_id in session.scalars(stmt))
 
 
 def _build_open_fixed_bounds(

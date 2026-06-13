@@ -71,14 +71,11 @@ def _plan_multi_hop(
     """
 
     # Endpoints were resolved once at dispatch; read the canonical DTOs.
-    # --loop carries no --to: the destination side is the origin endpoint's
-    # destination-eligible view, and each chain must close on its own root
-    # station (the terminal rule applied per node at the final hop below).
+    # --loop carries no --to: each chain must close on its own root station, so
+    # every root has to be a genuine destination as well as a source (the
+    # terminal rule is applied per node at the final hop below).
     loop_mode = request.loop
     origin_endpoint = request.from_endpoint
-    destination_endpoint = (
-        origin_endpoint if loop_mode else request.to_endpoint
-    )
     resolution_ms = 0.0
 
     def _loop_failure() -> failures.NoLoopRoute:
@@ -97,23 +94,35 @@ def _plan_multi_hop(
         request,
         role="source",
     )
-    destination_stations = _stations_from_endpoint(
-        session,
-        destination_endpoint,
-        request,
-        role="destination",
-    )
     destination_by_id: dict[int, run_result.ResolvedStation] = {}
     if loop_mode:
-        # A loop's terminal is its own origin, so an origin that is not also
-        # an eligible destination can never close — drop it before it spends
-        # frontier slots. The destination DTO map feeds the final hop.
-        destination_by_id = {
-            station.station_id: station for station in destination_stations
-        }
-        origin_stations = tuple(
+        # A loop returns to where it started, so each root must be a valid
+        # *destination*, not merely a source. Two things disqualify a root, and
+        # both must be settled before the bounded (width-50) frontier is seeded
+        # so an unclosable root never crowds out one that could close:
+        #
+        #  1. Avoidance. The explicit-origin exemption lets the commander START
+        #     in an avoided place, but the loop's return is a later visit, so an
+        #     avoided station or system cannot be the terminal. Tested against
+        #     the original avoid sets (not the origin carve-out the source fetch
+        #     applies), so an avoided --from still cannot be returned to.
+        #  2. Usable demand. A root with no demand good enough to sell into can
+        #     never close. fetch_loop_closable_station_ids answers this with the
+        #     same row rules the final-hop destination uses (avoided commodities
+        #     and the bulk-sale-tax effective-demand floor included).
+        roots = tuple(
             station for station in origin_stations
-            if station.station_id in destination_by_id
+            if station.station_id not in request.avoid_station_ids
+            and station.system_id not in request.avoid_system_ids
+        )
+        demand_qualified = data_gateway.fetch_loop_closable_station_ids(
+            session,
+            tuple(station.station_id for station in roots),
+            request,
+        )
+        origin_stations = tuple(
+            station for station in roots
+            if station.station_id in demand_qualified
         )
         if not origin_stations:
             raise failures.NoLoopRoute(
@@ -123,10 +132,21 @@ def _plan_multi_hop(
                 option_name="--loop",
                 entity_name=origin_endpoint.original_text,
             )
-        # The envelope anchor varies per chain root in loop mode; set per
-        # node in the expansion loop below.
+        # Each surviving root is its own terminal; no separate destination
+        # expansion. The envelope anchor varies per chain root in loop mode and
+        # is set per node in the expansion loop below.
+        destination_by_id = {
+            station.station_id: station for station in origin_stations
+        }
         to_system_xyz = None
     else:
+        destination_endpoint = request.to_endpoint
+        destination_stations = _stations_from_endpoint(
+            session,
+            destination_endpoint,
+            request,
+            role="destination",
+        )
         # Every --to station shares the same system, so any of them gives the
         # envelope anchor coordinates.
         anchor_station = destination_stations[0]
