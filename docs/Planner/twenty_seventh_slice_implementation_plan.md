@@ -117,16 +117,41 @@ The frontier reserves capacity per **(satisfied mask, prospective-next-via, loop
 root)** rather than trimming purely by score. This stops a high-profit
 zero-progress state from consuming the whole beam (the starvation that, with the
 old policy, let the search wander without ever converging on the waypoint), and
-keeps chains heading toward **each** owed via alive. The mask space is `2^k` and
-next-via choices `≤ k`; vias are few (1–3), so this is bounded.
+keeps chains heading toward **each** owed via alive.
 
-### 4. Exact station via retention
+**Every order is explored, and the target is persistent state — not recomputed.**
+A retained chain at satisfaction mask `M` (owed set `O = full \ M`) is represented
+in **one lane per owed via**: `|O|` target-labelled lanes, each steering toward
+its own labelled via. So every possible next via is pursued in parallel; nearest
+is never the only one tried. The `next_via` label is **persistent search state on
+the chain** — set when the chain enters a lane and carried forward — it is *not*
+"recalculate the nearest unsatisfied via each layer", which would silently
+recreate greedy ordering. When a hop satisfies a via (its labelled target *or* any
+other via incidentally), the child's mask grows, its owed set shrinks, and it
+re-fans into a fresh lane per newly-owed via. The mask space is `2^k`, owed
+lanes `≤ k` per mask; with `k` bounded (see Search and correction bounds) this is
+bounded.
+
+### 4. Reserved retention — owed station vias *and* the terminal
 A station via's system is reached like any other, but **every station in that
 system ties on distance**, so the requested exact station can lose the profit
 tie-break and be trimmed before the arrival test sees it. The owner **explicitly
 retains** an owed station-via destination when its system is in reach (a reserved
 candidate slot / targeted fetch / priority ahead of ordinary system-distance
 ties). A post-trim station-id test alone is insufficient.
+
+**The same guarantee is required for the terminal**, because a finalist check is
+too late if the optimistic candidate trim already discarded the required terminal:
+- the exact `--to` station;
+- the eligible stations in a `--to` system;
+- the exact loop root.
+
+When a node is within terminal reach (mask full, or the terminal otherwise
+reachable this hop), the terminal stations are produced by a **targeted optimistic
+terminal expansion** (or carried as reserved terminal candidates) so they survive
+the top-K trim and reach the finalist filter. The full-mask + endpoint finalist
+test then runs against a candidate set that is guaranteed to contain the terminal
+when it was reachable.
 
 ### 5. Finalists and correction
 A finalist must carry the **full mask** AND satisfy the endpoint constraint (be at
@@ -136,14 +161,65 @@ best corrected satisfying route wins. No mid-route correction, no `PlannedRoute`
 → frontier-node conversion.
 
 ### 6. Proven non-binding optimistic credit
-"Optimistic = no branch-and-bound" holds only if the optimistic budget **cannot
-bind**. `_OPTIMISTIC_PRICE_PER_TON` is a fixed constant; under `--max-price 0` the
-configured price ceiling is removed and a market row can be arbitrarily expensive,
-so the constant is not a proof. The owner must make non-binding **explicit**:
-either a per-fetch budget derived from the candidates' own maximum buy price
-(`capacity × max_price + ε`, guaranteeing any single-commodity fill is
-affordable), or a deliberate no-credit-limit optimiser mode for the expansion
-pass. Relying on the observed constant is not acceptable.
+"Optimistic = no branch-and-bound" holds only if credit **cannot bind anywhere in
+the optimistic pass**. `_OPTIMISTIC_PRICE_PER_TON` is a fixed constant; under
+`--max-price 0` the configured price ceiling is removed and a market row can be
+arbitrarily expensive, so the constant is not a proof.
+
+Deriving a budget from the *fetched* candidates' maximum buy price is **circular
+and rejected**: the candidate fetch itself filters on `available_credits`, so the
+most expensive rows can be dropped before their prices are ever seen — the derived
+budget would then be too low and credit could still bind.
+
+The optimistic pass therefore runs in an explicit **no-affordability mode**
+threaded through **both** seams:
+- the **gateway** candidate fetch applies no `available_credits` filter (every
+  qualifying row is returned regardless of price);
+- the **cargo optimiser** applies no credit constraint (it fills capacity by the
+  greedy fast path, never entering credit-bound branch-and-bound).
+
+With no affordability filter at either seam, nothing binds whatever the prices,
+which is the proof. Real credits re-enter only in the end-to-end correction.
+Changing only the optimiser would be insufficient — the gateway filter would still
+hide expensive candidates.
+
+### 7. Search and correction bounds
+Defined so the cargo cost cannot merely move from expansion to correcting too many
+complete candidates. Starting values; tunable like the beam width, on evidence.
+
+- **Maximum canonical vias: 6.** Validation rejects more (`UnsupportedRunShape`).
+  The subset-state space is `2^k`; capping `k` keeps the mask space (≤ 64) and the
+  lane count bounded.
+- **Total frontier width: 50** (`_MULTIHOP_FRONTIER_WIDTH`, the planner-wide beam).
+- **Per-lane fairness.** Every active `(mask, next-via, root)` lane is reserved a
+  floor of `_VIA_LANE_FLOOR` slots (start 2) so no owed-via direction is starved;
+  the remainder of the 50 is filled by global optimistic score. If active lanes
+  exceed the width, lanes are admitted best-first by their top chain's optimistic
+  score — but for the frontier's **most-satisfied (fewest-owed) mask present**,
+  every owed-via lane is admitted first, so the leading edge never loses a
+  direction.
+- **Finalist width before correction: `_OPEN_SHAPE_CORRECTION_WIDTH`** complete
+  candidates, ranked by optimistic score (best first) so the strongest correct
+  first.
+- **Correction attempt cap: `_OPEN_SHAPE_CORRECTION_WIDTH`** (the existing
+  open-engine bound).
+- **Admissible optimistic-score early stop:** the existing rule — a corrected
+  score never exceeds its optimistic score, so once the best corrected route held
+  beats the next finalist's optimistic score, no lower finalist can win and
+  correction stops.
+
+### 8. Helper seams (extended, not reused as-is)
+Two open-engine helpers are **extended additively** — defaulting to today's
+behaviour so non-via callers stay byte-identical:
+- `best_open_ended_hop_candidates` gains an optional **via-steering target**
+  (centre coordinates + radius) for the envelope narrowing and the distance
+  ranking. Absent (the default), it behaves exactly as today; the via owner
+  supplies the per-lane `next_via` (or terminal) target. The reserved-retention of
+  an owed station via / terminal station is plumbed here too.
+- `_make_open_child` is extended to **propagate `via_satisfied`** — computing the
+  child's mask via `_via_satisfied_by()` from the child station — which needs the
+  request's via sets. Empty sets (non-via) leave the mask empty and behaviour
+  unchanged.
 
 ---
 
@@ -206,17 +282,24 @@ carriage stay; resolution and `NoViaRoute` + its CLI rendering stay.)
 
 ## Reuse / new / removed
 
-**Reused:** the mask state and helpers (`via_satisfied`, `_via_satisfied_by`,
-`_via_full_set`); the optimistic primitives (`best_open_ended_hop_candidates`,
-`_make_open_child`, `_correct_open_anchor_chain`); the distance/envelope geometry
-(`_distance_sq_to_target`, `_envelope_is_provably_loose`, `via_targets` coords);
-Step-1 plumbing (resolution, `RunRequest` fields, `NoViaRoute`,
-`_planner_result_message`).
+**Reused as-is:** the mask state and helpers (`via_satisfied`,
+`_via_satisfied_by`, `_via_full_set`); `_correct_open_anchor_chain`; the
+distance/envelope geometry (`_distance_sq_to_target`,
+`_envelope_is_provably_loose`, `via_targets` coords); Step-1 plumbing (resolution,
+`RunRequest` fields, `NoViaRoute`, `_planner_result_message`).
+
+**Reused but extended** (see Helper seams §8): `best_open_ended_hop_candidates`
+(optional via-steering target + reserved retention) and `_make_open_child`
+(propagate `via_satisfied`) — both additive, non-via callers byte-identical. The
+gateway candidate fetch and the cargo optimiser gain the no-affordability mode
+(§6).
 
 **New:** the `route_via` search owner (one hop clock, optimistic + mask + diversity
 + endpoint-finalist + end-to-end correction); the separate via steering target;
-the explicit (mask, next-via, root) diversity; exact-station retention; the
-derived/non-binding optimistic-credit mechanism; the corrected hop-count
+the explicit `(mask, next-via, root)` diversity with **persistent** per-via lanes
+and per-lane fairness; reserved retention of owed station vias **and** the
+terminal; the no-affordability optimistic mode (gateway + optimiser); the
+search/correction bounds incl. the max-canonical-via cap; the corrected hop-count
 validator; the dispatch branch (`request.via` ahead of the shape branches).
 
 **Removed:** the Step-2a exact-cargo via path in `route_anchored._plan_multi_hop`
@@ -288,8 +371,9 @@ the temp probe; the fixed nearest-first leg-ordering idea (never written as code
 
 1. **Step-1 corrections** (independent of search): rewrite `_validate_resolved_via`
    (both endpoints, loop, positioning; sound toward acceptance); canonicalise via
-   requirements; remove the temp probe; add the `--via`+`--towards` rejection and
-   reframe the `--direct`+`--via` rationale. Verify the Early-validation matrix.
+   requirements; cap canonical vias at 6; remove the temp probe; add the
+   `--via`+`--towards` rejection and reframe the `--direct`+`--via` rationale.
+   Verify the Early-validation matrix.
 2. **Roll back** the Step-2a exact-cargo via path in `route_anchored`; confirm the
    fixed-terminal engine byte-identical to pre-2a on the non-via baselines. (The
    mask state and helpers in `route_common` stay.)
