@@ -144,7 +144,7 @@ contain it were both judged not worth taking now:
   production engineering, with an uncertain ceiling (the CPU-bound beam work may
   not be shareable).
 
-The call (Tromador, to be discussed with eyeonus) was to **not support the
+The call — Tromador, agreed with eyeonus — was to **not support the
 unanchored loop**. The anchored loop ships; `--loop` without `--from` is rejected
 with a clear message pointing the user at `--from`.
 

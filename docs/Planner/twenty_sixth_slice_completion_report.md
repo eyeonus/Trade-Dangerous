@@ -84,7 +84,8 @@ widths stay at 50.
   per-origin cost grows ~5.2× per hop: `hops 4` is 8.3 min, `hops 6` projects to
   hours.
 
-The decision was to **not support the galaxy-wide loop**. `--loop` requires
+The decision — agreed with eyeonus — was to **not support the galaxy-wide
+loop**. `--loop` requires
 `--from`; the bare form is rejected with a clear message. The full evidence,
 the alternatives weighed, and the homework for any future reopen are in
 `unanchored_loop_investigation.md`. It is a settled decision, not a deferred

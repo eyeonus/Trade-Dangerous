@@ -294,7 +294,8 @@ unknown-pad station is admitted unless `--pad-size L` is set. Full reasoning in
   width (seed fidelity failed), and running every admitted origin honestly
   explodes with depth (~45s at the default 2 hops, ~8 min at 4, hours at 6).
   Widening the frontier to compensate is off the table by the beam-width
-  decision above. It is decided, not owed or deferred — do not list it as a gap.
+  decision above. It is decided — agreed with eyeonus — not owed or deferred;
+  do not list it as a gap.
   Full evidence in `unanchored_loop_investigation.md`; reopening it is a future
   slice, not a loose end.
 
