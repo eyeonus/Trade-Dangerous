@@ -518,35 +518,66 @@ def _resolve_named_endpoint(tdb, text, option_name):
 _MAX_CANONICAL_VIAS = 6
 
 
-def _endpoint_satisfies_via(endpoint, resolved_via, effective_systems):
-    """True if a fixed endpoint can itself satisfy one of the via places.
+def _endpoint_via_requirements(endpoint, resolved_via, effective_systems):
+    """The via requirements a fixed endpoint position could satisfy.
 
-    Lets the hop-count check credit a waypoint the route's pinned origin or
-    terminal already sits on. A station endpoint satisfies the via for its own
-    station id or its own system; a *system* endpoint — its position floats over
-    that system's stations — also satisfies a via station living in it, since the
-    search may land the endpoint on exactly that station.
+    Returns the set of requirement keys — ('system', id) or ('station', id) —
+    this pinned origin or terminal can stand in for, so the hop-count check can
+    credit a waypoint the route already visits at an endpoint. A station
+    endpoint is one fixed place: it covers its own station via, or its own system
+    via, and nothing else. A *system* endpoint floats over that system's
+    stations, so it covers the system via, or — when the system holds via
+    stations — any one of those stations the search might land it on. The caller
+    matches these across both endpoints so two endpoints on the same place are
+    not both credited for it.
     """
 
     if endpoint is None:
-        return False
+        return set()
     system = resolver.system_for_endpoint(endpoint)
     system_id = system.system_id if system is not None else None
     station_id = (
         endpoint.station.station_id
         if endpoint.station is not None else None
     )
-    if station_id is not None and station_id in resolved_via.station_ids:
-        return True
-    if system_id is not None and system_id in effective_systems:
-        return True
-    if (
-        station_id is None
-        and system_id is not None
-        and system_id in resolved_via.station_system_ids
-    ):
-        return True
-    return False
+    if station_id is not None:
+        # Pinned to one specific station: its own station via, else its system
+        # via — a single place stands in for at most one requirement.
+        if station_id in resolved_via.station_ids:
+            return {("station", station_id)}
+        if system_id is not None and system_id in effective_systems:
+            return {("system", system_id)}
+        return set()
+    if system_id is None:
+        return set()
+    # System endpoint: the search picks a station in this system, so it covers
+    # the system via, or any one of the via stations sitting in this system.
+    if system_id in effective_systems:
+        return {("system", system_id)}
+    return {
+        ("station", st)
+        for (st, parent) in resolved_via.station_systems
+        if parent == system_id
+    }
+
+
+def _credited_via_positions(origin_requirements, terminal_requirements):
+    """Distinct via requirements the pinned endpoints can jointly stand in for.
+
+    At most two pinned positions (origin and terminal), each able to cover one
+    requirement, so this is a two-node maximum matching: both count only when
+    they can cover two *different* requirements. Two endpoints whose only
+    reachable requirement is one and the same are credited once — the fix for an
+    origin and terminal that name the same waypoint.
+    """
+
+    if not origin_requirements and not terminal_requirements:
+        return 0
+    if not origin_requirements or not terminal_requirements:
+        return 1
+    if len(origin_requirements | terminal_requirements) >= 2:
+        return 2
+    return 1
 
 
 def _validate_resolved_via(
@@ -606,33 +637,38 @@ def _validate_resolved_via(
     #     bubble), leaves its position free and credits nothing: we never assume
     #     the route actually visits the named anchor.
     #
-    # The count is generous with credit and treats a position as pinned only
-    # when it provably is, so a satisfiable request is never rejected.
+    # Crediting counts *distinct* requirements: two endpoints on the same place
+    # (or the loop's repeated root) are one satisfaction chance, not two. A
+    # position counts as pinned only when it provably is. So the check rejects a
+    # provably impossible request, yet never a satisfiable one.
     effective_systems = resolved_via.system_ids - resolved_via.station_system_ids
     required = len(effective_systems) + len(resolved_via.station_ids)
 
     if loop:
         # A loop opens and closes on its own root: both ends pin to one place, so
-        # two positions are consumed and the root is credited at most once.
+        # two positions are consumed and the root is one satisfaction chance.
         pinned = 2
-        credited = (
-            1 if _endpoint_satisfies_via(
-                from_endpoint, resolved_via, effective_systems,
-            ) else 0
+        root_requirements = _endpoint_via_requirements(
+            from_endpoint, resolved_via, effective_systems,
         )
+        credited = 1 if root_requirements else 0
     else:
         origin_fixed = from_endpoint is not None and not start_jumps
         terminal_fixed = to_endpoint is not None and not end_jumps
         pinned = (1 if origin_fixed else 0) + (1 if terminal_fixed else 0)
-        credited = 0
-        if origin_fixed and _endpoint_satisfies_via(
-            from_endpoint, resolved_via, effective_systems,
-        ):
-            credited += 1
-        if terminal_fixed and _endpoint_satisfies_via(
-            to_endpoint, resolved_via, effective_systems,
-        ):
-            credited += 1
+        origin_requirements = (
+            _endpoint_via_requirements(
+                from_endpoint, resolved_via, effective_systems,
+            ) if origin_fixed else set()
+        )
+        terminal_requirements = (
+            _endpoint_via_requirements(
+                to_endpoint, resolved_via, effective_systems,
+            ) if terminal_fixed else set()
+        )
+        credited = _credited_via_positions(
+            origin_requirements, terminal_requirements,
+        )
 
     free_positions = (hops + 1) - pinned
     if required - credited > free_positions:

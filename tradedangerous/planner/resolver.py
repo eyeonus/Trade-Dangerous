@@ -95,6 +95,9 @@ class ResolvedVia:
     station via, ``station_system_ids`` also records the station's parent system,
     so dispatch can spot a via that clashes with an avoided system and collapse
     the "via a station and its own system" case when checking the hop count.
+    ``station_systems`` pairs each via station with its parent system, so the
+    hop-count check can tell which exact station a fixed system endpoint could
+    land on when it credits waypoints.
     ``targets`` carries each via's system coordinates for the envelope anchor.
     ``echoes`` carries (token, canonical_name) pairs for approximate matches, the
     same courtesy the endpoints and --avoid get.
@@ -103,6 +106,7 @@ class ResolvedVia:
     system_ids: frozenset[int] = frozenset()
     station_ids: frozenset[int] = frozenset()
     station_system_ids: frozenset[int] = frozenset()
+    station_systems: frozenset[tuple[int, int]] = frozenset()
     targets: tuple[ViaTarget, ...] = ()
     echoes: tuple[tuple[str, str], ...] = ()
 
@@ -289,6 +293,7 @@ def resolve_via_tokens(
     system_ids: set[int] = set()
     station_ids: set[int] = set()
     station_system_ids: set[int] = set()
+    station_systems: set[tuple[int, int]] = set()
     # Keyed by via tag so duplicate tokens that name the same place (e.g.
     # --via Lave --via Lave, or two spellings of one station) collapse to a
     # single target — the satisfaction mask and the steering lanes are per
@@ -306,6 +311,7 @@ def resolve_via_tokens(
         else:  # "station"
             station_ids.add(entity_id)
             station_system_ids.add(system_id)
+            station_systems.add((entity_id, system_id))
             tag = ("station", entity_id)
         targets[tag] = ViaTarget(tag=tag, x=pos[0], y=pos[1], z=pos[2])
         if echo is not None:
@@ -315,6 +321,7 @@ def resolve_via_tokens(
         system_ids=frozenset(system_ids),
         station_ids=frozenset(station_ids),
         station_system_ids=frozenset(station_system_ids),
+        station_systems=frozenset(station_systems),
         targets=tuple(targets.values()),
         echoes=tuple(echoes),
     )

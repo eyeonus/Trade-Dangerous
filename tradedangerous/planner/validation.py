@@ -77,8 +77,9 @@ def validate_run_request(request: RunRequest) -> None:
             # A chosen scope restriction for this slice, not a logical
             # impossibility: a direct hop's own origin or destination could in
             # principle satisfy a via. It is deferred because --direct throws
-            # away the reachability model the via search is built on.
-            raise ContradictoryOptions(
+            # away the reachability model the via search is built on — so it
+            # reads as an unsupported shape, not a contradiction.
+            raise UnsupportedRunShape(
                 "--direct cannot be combined with --via.",
                 option_name="--direct",
             )
