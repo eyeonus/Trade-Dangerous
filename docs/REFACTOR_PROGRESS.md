@@ -557,6 +557,8 @@ Finish the main command migration set without turning command migration into a g
 ### Goal
 Recover “load once, answer many questions” only where it belongs: GUI session scope.
 
+Stef random note to please remind him: Add copy from render.
+
 ### Acceptance criteria
 - repeated GUI actions are faster than cold CLI runs where appropriate
 - no aggressive stale-data bugs
