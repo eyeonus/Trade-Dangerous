@@ -1529,10 +1529,12 @@ def iter_open_ended_station_groups(
     *,
     open_role: str,
     available_credits: int,
+    unbounded_credits: bool = False,
     terminal_hop: bool = True,
     reachable_memo: dict | None = None,
     destination_envelope_xyz: tuple[float, float, float] | None = None,
     destination_envelope_ly: float | None = None,
+    restrict_open_station_ids: frozenset[int] | None = None,
     expansion_stats: ExpansionStats | None = None,
     precomputed_reachable_systems: tuple[ResolvedSystem, ...] | None = None,
     qualification: QualificationCache | None = None,
@@ -1576,7 +1578,11 @@ def iter_open_ended_station_groups(
     via the reachable temp, the credit cap on the buy side, the
     qualification temps for the run-constant predicates, the
     destination-envelope restriction, and empty-result classification left
-    to the caller.
+    to the caller. ``unbounded_credits`` drops the buy-side credit cap for the
+    no-affordability optimistic pass (the via search), so an expensive row is
+    not hidden before its price is seen. ``restrict_open_station_ids`` narrows
+    the open side to a given station set for the via search's targeted reserved
+    fetch (reachable intersected with the required stations).
     """
 
     fetch_started = time.perf_counter()
@@ -1614,11 +1620,14 @@ def iter_open_ended_station_groups(
             cutoff = _age_cutoff(request.age_days)
         sensitive_category_ids = _bulk_sale_tax_category_ids(session)
 
-        supply_filters = [
-            supply_station_filter,
-            StationItem.supply_price <= available_credits,
-            *_supply_constant_row_filters(request, cutoff),
-        ]
+        supply_filters = [supply_station_filter]
+        if not unbounded_credits:
+            # The buy side is capped by what the commander can afford. The
+            # no-affordability optimistic pass drops the cap so an expensive row
+            # (e.g. under --max-price 0) is still returned; real credits re-enter
+            # at the forward correction.
+            supply_filters.append(StationItem.supply_price <= available_credits)
+        supply_filters.extend(_supply_constant_row_filters(request, cutoff))
         demand_filters = [
             demand_station_filter,
             *_demand_constant_row_filters(request, cutoff),
@@ -1711,7 +1720,7 @@ def iter_open_ended_station_groups(
                     price_column = open_qual.c.demand_price
                     units_column = open_qual.c.demand_units
                 open_filters = [station_column.in_(reachable_query)]
-                if open_role == "source":
+                if open_role == "source" and not unbounded_credits:
                     open_filters.append(price_column <= available_credits)
             else:
                 open_entity = StationItem
@@ -1726,6 +1735,17 @@ def iter_open_ended_station_groups(
                     price_column = StationItem.demand_price
                     units_column = StationItem.demand_units
                     open_filters = list(demand_filters)
+
+            if restrict_open_station_ids is not None:
+                # Targeted reserved fetch: the via owner restricts the open side
+                # to the specific stations it must retain (an owed station via,
+                # the exact terminal, the loop root, or a --to system's eligible
+                # set). reachable ∩ required, so an out-of-range required station
+                # simply yields no candidate. Same qualification, cutoff and
+                # affordability rules as the ordinary stream.
+                open_filters.append(
+                    station_column.in_(restrict_open_station_ids)
+                )
 
             if not terminal_hop:
                 if qualification is not None:

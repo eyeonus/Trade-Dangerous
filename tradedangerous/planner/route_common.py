@@ -766,7 +766,7 @@ def _plan_open_anchor_route(
                     qualification=qualification,
                 )
                 for trade in children:
-                    child = _make_open_child(node, trade)
+                    child = _make_open_child(node, trade, request)
                     candidate_trade_count += 1
                     layer_children_generated += 1
                     if (
@@ -887,7 +887,7 @@ def _plan_open_anchor_route(
                 qualification=qualification,
             )
             for trade in children:
-                finalist_nodes.append(_make_open_child(node, trade))
+                finalist_nodes.append(_make_open_child(node, trade, request))
                 candidate_trade_count += 1
         # --towards: chains that reached the target before the final layer are
         # finished routes too. Fold them in so the winner selection ranks them
@@ -1023,6 +1023,11 @@ def best_open_ended_hop_candidates(
     expansion_stats: run_result.ExpansionStats | None = None,
     station_cache: dict[int, run_result.ResolvedStation] | None = None,
     qualification: data_gateway.QualificationCache | None = None,
+    via_steering_xyz: tuple[float, float, float] | None = None,
+    via_steering_ly: float | None = None,
+    no_affordability: bool = False,
+    required_station_ids: frozenset[int] = frozenset(),
+    terminal_system_station_ids: frozenset[int] = frozenset(),
 ) -> list[_HopCandidate]:
     """Return the top-K best optimistic single-hop trades on the open side.
 
@@ -1057,6 +1062,16 @@ def best_open_ended_hop_candidates(
     Each returned _HopCandidate carries the chosen open station in
     destination_station and the per-pair TradeCandidate tuple in hop_candidates
     for the forward credit-correction re-fit.
+
+    The via search drives the optional steering and reservation parameters, all
+    defaulting off so non-via callers stay byte-identical. ``via_steering_xyz``
+    /``via_steering_ly`` (supplied together) narrow the ordinary stream to the
+    owed waypoint's neighbourhood and switch ranking to distance-first; the
+    score-ceiling early stop is then unsound and is disabled, the same as
+    --towards. ``no_affordability`` runs the optimistic pass with no credit cap
+    at either seam. ``required_station_ids`` / ``terminal_system_station_ids``
+    are fetched directly and reserved past the top-K trim, so a station the
+    route must reach is never trimmed away.
     """
 
     helper_started = time.perf_counter()
@@ -1111,8 +1126,16 @@ def best_open_ended_hop_candidates(
     capacity_units = int(request.capacity_units or 0)
     penalty_percent = request.ls_penalty_percent
     anchor_is_destination = open_role == "source"
+    # Distance-first steering and --towards both make practical score a
+    # non-primary ranking key, so the score-ceiling early stop and the prune
+    # floor are unsound: a closer (steering) or more-forward (--towards) but
+    # lower-score station could be stopped out before it is ever read. Both
+    # disable the threshold; the steering envelope is then the only spatial
+    # bound, and the no-affordability solve keeps each kept pair cheap.
+    steering = via_steering_xyz is not None
     threshold = _KeptScoreThreshold(
-        top_k, enabled=request.towards_target is None
+        top_k,
+        enabled=request.towards_target is None and not steering,
     )
     # The stop converts the kept-score floor to raw profit at the most
     # permissive destination the stream could still produce: the anchor's
@@ -1129,12 +1152,167 @@ def best_open_ended_hop_candidates(
         request,
         open_role=open_role,
         available_credits=optimistic_credits,
+        unbounded_credits=no_affordability,
         terminal_hop=terminal_hop,
         reachable_memo=reachable_memo,
+        destination_envelope_xyz=via_steering_xyz,
+        destination_envelope_ly=via_steering_ly,
         expansion_stats=expansion_stats,
         precomputed_reachable_systems=precomputed_reachable,
         qualification=qualification,
     )
+
+    def _consume_group(
+        open_station_id, station_candidates, dest, *, use_threshold,
+    ):
+        # Build the scored entries for one open station group, exactly as the
+        # ordinary stream always has, so the targeted reserved fetch produces
+        # byte-identical candidates. use_threshold=False (the reserved fetch)
+        # skips the prune floor and the kept-score offer, since a required
+        # station must be retained whatever its score.
+        hydrate_started = time.perf_counter()
+        open_station = data_gateway.fetch_stations_by_id(
+            session,
+            (open_station_id,),
+            cache=station_cache,
+        ).get(open_station_id)
+        if expansion_stats is not None:
+            expansion_stats.fetch_ms += _elapsed_ms(hydrate_started)
+            expansion_stats.stream_stations_read += 1
+            expansion_stats.candidate_rows += len(station_candidates)
+        if open_station is None:
+            # An open station that lost its DTO during the fetch — defensive
+            # skip rather than a KeyError.
+            return
+        # ls-penalty rides on the hop's destination: the anchor when the open
+        # side is the source, the chosen station when it is the destination.
+        destination_distance_ls = (
+            anchor_station.ls_from_star
+            if anchor_is_destination
+            else open_station.ls_from_star
+        )
+        # A group spans several pairs only when the fixed endpoint has several
+        # stations; solve them best-first by the same cheap optimistic key.
+        grouped_pairs = _group_pairs(station_candidates)
+        if expansion_stats is not None:
+            expansion_stats.grouped_pairs += len(grouped_pairs)
+        ordered_pairs = sorted(
+            grouped_pairs.items(),
+            key=lambda item: cargo_order_key(
+                item[1],
+                destination_distance_ls,
+                capacity_units,
+                penalty_percent,
+            ),
+            reverse=True,
+        )
+        for pair_key, pair_candidates in ordered_pairs:
+            if expansion_stats is not None:
+                expansion_stats.cargo_calls += 1
+            prune_floor = (
+                cargo_prune_floor(
+                    threshold.current(),
+                    destination_distance_ls,
+                    penalty_percent,
+                )
+                if use_threshold
+                else None
+            )
+            cargo_started = time.perf_counter()
+            try:
+                cargo = optimise_cargo(
+                    pair_candidates,
+                    capacity_units=capacity_units,
+                    available_credits=optimistic_credits,
+                    cargo_limit_per_item=request.cargo_limit_per_item,
+                    prune_below_raw=prune_floor,
+                    ignore_credits=no_affordability,
+                )
+            except failures.NoProfitableTrades:
+                continue
+            finally:
+                if expansion_stats is not None:
+                    expansion_stats.cargo_ms += _elapsed_ms(cargo_started)
+            if cargo is None:
+                # Pruned: the pair's ceiling cannot beat the kept top-K.
+                continue
+            practical_score = score_with_destination_penalty(
+                cargo.total_profit,
+                destination_distance_ls=destination_distance_ls,
+                penalty_percent=penalty_percent,
+            )
+            if use_threshold:
+                threshold.offer(practical_score)
+            dest.append(
+                (
+                    practical_score,
+                    open_station,
+                    cargo,
+                    pair_candidates,
+                    # Equal-rank tie-break key: the unstreamed fetch ordered
+                    # pairs by their best candidate, so the reconstruction is
+                    # (best ppu desc, item name) with the pair key keeping it
+                    # deterministic.
+                    (
+                        -pair_candidates[0].profit_per_unit,
+                        pair_candidates[0].item_name,
+                        pair_key,
+                    ),
+                )
+            )
+
+    def _materialise_hop_candidates(entries, *, cap):
+        # Plan each survivor's jump path (anchored on the fixed endpoint so its
+        # bubble builds once) and skip the rare unreachable one. cap=None builds
+        # every entry — the steering / reserved set is already sized; an int
+        # fills up to cap, skipping unreachable, as the ordinary path has.
+        built: list[_HopCandidate] = []
+        for practical_score, open_station, cargo, pair_candidates, _ in entries:
+            if cap is not None and len(built) >= cap:
+                break
+            open_system = _system_from_station(open_station)
+            jump_started = time.perf_counter()
+            try:
+                # Anchor reachability on the fixed endpoint so its bubble is
+                # built once and reused; plan_jump_path returns anchor -> open.
+                jump_path = plan_jump_path(
+                    anchor_system,
+                    open_system,
+                    max_jumps_per_hop=int(request.max_jumps_per_hop or 0),
+                    max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
+                    session=session,
+                    bubble_cache=bubble_cache,
+                    avoid_system_ids=request.avoid_system_ids,
+                )
+            except failures.NoReachableRoute:
+                # The reachable subquery already filtered to in-range systems,
+                # so this is a corner case — fall through to the next candidate.
+                continue
+            finally:
+                if expansion_stats is not None:
+                    expansion_stats.jump_ms += _elapsed_ms(jump_started)
+            # Store the hop in source -> destination flight order. For an open
+            # source the anchor is the destination, so anchor -> open is
+            # destination -> source and is reversed; for an open destination it
+            # is already source -> destination.
+            hop_jump_path = (
+                _reverse_jump_path(jump_path)
+                if open_role == "source"
+                else jump_path
+            )
+            built.append(
+                _HopCandidate(
+                    # destination_station carries the chosen OPEN station — the
+                    # station the chain reaches at this node.
+                    destination_station=open_station,
+                    cargo=cargo,
+                    jump_path=hop_jump_path,
+                    practical_score=practical_score,
+                    raw_profit=cargo.total_profit,
+                    hop_candidates=pair_candidates,
+                )
+            )
+        return built
 
     scored: list[
         tuple[
@@ -1161,155 +1339,110 @@ def best_open_ended_hop_candidates(
                     if expansion_stats is not None:
                         expansion_stats.stream_stops += 1
                     break
-            hydrate_started = time.perf_counter()
-            open_station = data_gateway.fetch_stations_by_id(
-                session,
-                (open_station_id,),
-                cache=station_cache,
-            ).get(open_station_id)
-            if expansion_stats is not None:
-                expansion_stats.fetch_ms += _elapsed_ms(hydrate_started)
-                expansion_stats.stream_stations_read += 1
-                expansion_stats.candidate_rows += len(station_candidates)
-            if open_station is None:
-                # An open station that lost its DTO during the fetch —
-                # defensive skip rather than a KeyError.
-                continue
-            # ls-penalty rides on the hop's destination: the anchor when the
-            # open side is the source, the chosen station when it is the
-            # destination.
-            destination_distance_ls = (
-                anchor_station.ls_from_star
-                if anchor_is_destination
-                else open_station.ls_from_star
+            _consume_group(
+                open_station_id, station_candidates, scored,
+                use_threshold=True,
             )
-            # A group spans several pairs only when the fixed endpoint has
-            # several stations; solve them best-first by the same cheap
-            # optimistic key as before.
-            grouped_pairs = _group_pairs(station_candidates)
-            if expansion_stats is not None:
-                expansion_stats.grouped_pairs += len(grouped_pairs)
-            ordered_pairs = sorted(
-                grouped_pairs.items(),
-                key=lambda item: cargo_order_key(
-                    item[1],
-                    destination_distance_ls,
-                    capacity_units,
-                    penalty_percent,
-                ),
-                reverse=True,
-            )
-            for pair_key, pair_candidates in ordered_pairs:
-                if expansion_stats is not None:
-                    expansion_stats.cargo_calls += 1
-                prune_floor = cargo_prune_floor(
-                    threshold.current(),
-                    destination_distance_ls,
-                    penalty_percent,
-                )
-                cargo_started = time.perf_counter()
-                try:
-                    cargo = optimise_cargo(
-                        pair_candidates,
-                        capacity_units=capacity_units,
-                        available_credits=optimistic_credits,
-                        cargo_limit_per_item=request.cargo_limit_per_item,
-                        prune_below_raw=prune_floor,
-                    )
-                except failures.NoProfitableTrades:
-                    continue
-                finally:
-                    if expansion_stats is not None:
-                        expansion_stats.cargo_ms += _elapsed_ms(cargo_started)
-                if cargo is None:
-                    # Pruned: the pair's ceiling cannot beat the kept top-K.
-                    continue
-                practical_score = score_with_destination_penalty(
-                    cargo.total_profit,
-                    destination_distance_ls=destination_distance_ls,
-                    penalty_percent=penalty_percent,
-                )
-                threshold.offer(practical_score)
-                scored.append(
-                    (
-                        practical_score,
-                        open_station,
-                        cargo,
-                        pair_candidates,
-                        # Equal-rank tie-break key: the unstreamed fetch
-                        # ordered pairs by their best candidate, so the
-                        # reconstruction is (best ppu desc, item name) with
-                        # the pair key keeping it deterministic.
-                        (
-                            -pair_candidates[0].profit_per_unit,
-                            pair_candidates[0].item_name,
-                            pair_key,
-                        ),
-                    )
-                )
     finally:
         group_iter.close()
 
-    if not scored:
+    # Targeted reserved fetch: a station the owner must retain (an owed station
+    # via, the exact terminal, the loop root, or a --to system's eligible set)
+    # can lose the distance or score trim, so fetch those stations directly
+    # under the same rules — no envelope, no early stop, no prune. Same anchor
+    # and reachable temp as the ordinary stream, so the reachable set is reused,
+    # not rebuilt.
+    reserved_pool: list = []
+    reserve_ids = required_station_ids | terminal_system_station_ids
+    if reserve_ids:
+        reserved_iter = data_gateway.iter_open_ended_station_groups(
+            session,
+            (anchor_station.station_id,),
+            anchor_system,
+            request,
+            open_role=open_role,
+            available_credits=optimistic_credits,
+            unbounded_credits=no_affordability,
+            terminal_hop=terminal_hop,
+            reachable_memo=reachable_memo,
+            restrict_open_station_ids=frozenset(reserve_ids),
+            expansion_stats=expansion_stats,
+            precomputed_reachable_systems=precomputed_reachable,
+            qualification=qualification,
+        )
+        try:
+            for open_station_id, _ceiling, station_candidates in reserved_iter:
+                _consume_group(
+                    open_station_id, station_candidates, reserved_pool,
+                    use_threshold=False,
+                )
+        finally:
+            reserved_iter.close()
+
+    if not scored and not reserved_pool:
         if expansion_stats is not None:
             expansion_stats.elapsed_ms += _elapsed_ms(helper_started)
         return []
 
-    # Order by the reconstructed pair key first, then stable-sort by progress
-    # rank, so equal-rank candidates resolve by best-pair order as the
-    # unstreamed fetch's first-appearance order did.
-    scored.sort(key=lambda item: item[4])
-    scored.sort(
-        key=lambda item: _candidate_progress_rank(item, request),
-        reverse=True,
-    )
+    # Rank the ordinary envelope pool. Steering makes distance the primary key
+    # (closest to the owed via first, score breaking ties); otherwise the
+    # established progress rank applies, pair key first so equal-rank candidates
+    # resolve by best-pair order as the unstreamed fetch's first-appearance
+    # order did.
+    if steering:
+        centre_x, centre_y, centre_z = via_steering_xyz
 
-    hop_candidates: list[_HopCandidate] = []
-    for practical_score, open_station, cargo, pair_candidates, _ in scored:
-        if len(hop_candidates) >= top_k:
-            break
-        open_system = _system_from_station(open_station)
-        jump_started = time.perf_counter()
-        try:
-            # Anchor reachability on the fixed endpoint so its bubble is built
-            # once and reused across every candidate; plan_jump_path returns
-            # the path anchor -> open.
-            jump_path = plan_jump_path(
-                anchor_system,
-                open_system,
-                max_jumps_per_hop=int(request.max_jumps_per_hop or 0),
-                max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
-                session=session,
-                bubble_cache=bubble_cache,
-                avoid_system_ids=request.avoid_system_ids,
+        def _distance_first_key(item):
+            station = item[1]
+            distance_sq = (
+                (station.x - centre_x) ** 2
+                + (station.y - centre_y) ** 2
+                + (station.z - centre_z) ** 2
             )
-        except failures.NoReachableRoute:
-            # The reachable subquery already filtered to in-range systems, so
-            # this is a corner case — fall through to the next-best candidate.
-            continue
-        finally:
-            if expansion_stats is not None:
-                expansion_stats.jump_ms += _elapsed_ms(jump_started)
-        # Store the hop in source -> destination flight order. For an open
-        # source the anchor is the destination, so anchor -> open is
-        # destination -> source and is reversed; for an open destination
-        # anchor -> open is already source -> destination.
-        hop_jump_path = (
-            _reverse_jump_path(jump_path)
-            if open_role == "source"
-            else jump_path
+            return (distance_sq, -item[0])
+
+        ordinary_ranked = sorted(scored, key=_distance_first_key)
+    else:
+        ordinary_ranked = sorted(scored, key=lambda item: item[4])
+        ordinary_ranked.sort(
+            key=lambda item: _candidate_progress_rank(item, request),
+            reverse=True,
         )
-        hop_candidates.append(
-            _HopCandidate(
-                # destination_station carries the chosen OPEN station — the
-                # station the chain reaches at this node.
-                destination_station=open_station,
-                cargo=cargo,
-                jump_path=hop_jump_path,
-                practical_score=practical_score,
-                raw_profit=cargo.total_profit,
-                hop_candidates=pair_candidates,
+
+    if steering or reserve_ids:
+        # Steering / reservation path: take top_k ordinary by rank, hold one
+        # slot for the ordinary pool's score leader so a strong trade is not
+        # tunnelled past, then union the reserved stations past the cut.
+        selected = ordinary_ranked[:top_k]
+        if steering and top_k >= 2 and len(ordinary_ranked) > top_k:
+            leader_index = max(
+                range(len(ordinary_ranked)),
+                key=lambda i: ordinary_ranked[i][0],
             )
+            if leader_index >= top_k:
+                # The score leader missed the distance cut: occupy the lowest
+                # distance-ranked slot with it rather than adding a slot.
+                selected = (
+                    ordinary_ranked[: top_k - 1]
+                    + [ordinary_ranked[leader_index]]
+                )
+        reserved_selected = _select_reserved(
+            reserved_pool,
+            required_station_ids,
+            terminal_system_station_ids,
+        )
+        selected_keys = {
+            (entry[1].station_id, entry[4][2]) for entry in selected
+        }
+        for entry in reserved_selected:
+            key = (entry[1].station_id, entry[4][2])
+            if key not in selected_keys:
+                selected.append(entry)
+                selected_keys.add(key)
+        hop_candidates = _materialise_hop_candidates(selected, cap=None)
+    else:
+        hop_candidates = _materialise_hop_candidates(
+            ordinary_ranked, cap=top_k,
         )
 
     if expansion_stats is not None:
@@ -1339,9 +1472,51 @@ def _reverse_jump_path(path: run_result.JumpPath) -> run_result.JumpPath:
     )
 
 
+def _select_reserved(
+    reserved_pool,
+    required_station_ids,
+    terminal_system_station_ids,
+):
+    """Pick the candidates to reserve from the targeted fetch pool.
+
+    Each exact required station — an owed station via, the exact --to station,
+    the loop root — reserves its single best-scoring entry. A --to system's
+    eligible terminal set reserves only the one best entry across the whole set,
+    so a large terminal system cannot inflate the per-node fan-out. Returns the
+    chosen scored entries; the caller dedupes them against the ordinary
+    selection by (open station, pair).
+    """
+
+    best_by_station: dict[int, tuple] = {}
+    for entry in reserved_pool:
+        station_id = entry[1].station_id
+        current = best_by_station.get(station_id)
+        if current is None or entry[0] > current[0]:
+            best_by_station[station_id] = entry
+
+    selected = []
+    for station_id in required_station_ids:
+        entry = best_by_station.get(station_id)
+        if entry is not None:
+            selected.append(entry)
+
+    terminal_best = None
+    for station_id in terminal_system_station_ids:
+        entry = best_by_station.get(station_id)
+        if entry is not None and (
+            terminal_best is None or entry[0] > terminal_best[0]
+        ):
+            terminal_best = entry
+    if terminal_best is not None:
+        selected.append(terminal_best)
+
+    return selected
+
+
 def _make_open_child(
     parent: _FrontierNode,
     trade: _HopCandidate,
+    request: RunRequest,
 ) -> _FrontierNode:
     """Extend an open-anchor chain by one hop toward the open endpoint.
 
@@ -1352,6 +1527,10 @@ def _make_open_child(
     stands at the chosen open station; its parent is the node we expanded.
     Credits are not propagated here — expansion is credit-optimistic and the
     real budget is applied by the forward credit-correction pass.
+
+    The via-satisfaction mask rolls forward: the child adds whatever vias its
+    open station stands on to the parent's set. Empty for non-via runs, so the
+    field stays an inert marker there.
     """
 
     new_profit = parent.accumulated_raw_profit + trade.raw_profit
@@ -1368,6 +1547,9 @@ def _make_open_child(
         hop_practical_score=trade.practical_score,
         hop_raw_profit=trade.raw_profit,
         hop_candidates=trade.hop_candidates,
+        via_satisfied=parent.via_satisfied | _via_satisfied_by(
+            trade.destination_station, request,
+        ),
     )
 
 

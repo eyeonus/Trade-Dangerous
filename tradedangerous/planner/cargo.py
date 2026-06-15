@@ -67,6 +67,7 @@ def optimise_cargo(
     available_credits: int,
     cargo_limit_per_item: int = 0,
     prune_below_raw: float | None = None,
+    ignore_credits: bool = False,
 ) -> CargoPlan | None:
     """Time-wrapped entry point for the cargo optimiser.
 
@@ -75,6 +76,8 @@ def optimise_cargo(
     shape without each engine timing its own calls. ``prune_below_raw`` is
     passed through: when the pair cannot beat the caller's kept threshold the
     delegate returns None, and that None is returned here unchanged.
+    ``ignore_credits`` drops the credit constraint entirely for the
+    no-affordability optimistic pass — see _optimise_cargo.
     """
 
     started = time.perf_counter()
@@ -85,6 +88,7 @@ def optimise_cargo(
             available_credits=available_credits,
             cargo_limit_per_item=cargo_limit_per_item,
             prune_below_raw=prune_below_raw,
+            ignore_credits=ignore_credits,
         )
     finally:
         _cargo_path_counts["ms"] += (time.perf_counter() - started) * 1000.0
@@ -97,6 +101,7 @@ def _optimise_cargo(
     available_credits: int,
     cargo_limit_per_item: int = 0,
     prune_below_raw: float | None = None,
+    ignore_credits: bool = False,
 ) -> CargoPlan | None:
     """Return an optimal cargo plan for one hop, or None when pre-empted.
 
@@ -109,6 +114,11 @@ def _optimise_cargo(
     caller is already keeping, so the full solve is skipped and None is
     returned. None is distinct from the NoProfitableTrades raise, which means no
     viable plan exists at all.
+
+    ``ignore_credits`` drops the credit constraint: quantities are bounded by
+    capacity, supply and demand only, and the greedy capacity fill runs. The via
+    search uses it so the optimistic pass cannot fall into branch-and-bound even
+    under --max-price 0, where no fixed budget could prove credits non-binding.
     """
 
     bounded = _build_bounded_candidates(
@@ -116,6 +126,7 @@ def _optimise_cargo(
         capacity_units=capacity_units,
         available_credits=available_credits,
         cargo_limit_per_item=cargo_limit_per_item,
+        ignore_credits=ignore_credits,
     )
     if not bounded:
         raise NoProfitableTrades("No viable cargo plan was available.")
@@ -289,7 +300,9 @@ def _optimise_cargo(
             _cargo_path_counts["pruned"] += 1
             return None
 
-    if _credit_cannot_bind(bounded, capacity_units, available_credits):
+    if ignore_credits or _credit_cannot_bind(
+        bounded, capacity_units, available_credits
+    ):
         # Exact greedy fast path. With unit cargo weights and a budget that
         # cannot bind, taking the highest profit-per-unit candidates first up to
         # capacity is optimal — the same answer branch-and-bound reaches, but
@@ -376,6 +389,7 @@ def _build_bounded_candidates(
     capacity_units: int,
     available_credits: int,
     cargo_limit_per_item: int,
+    ignore_credits: bool = False,
 ) -> list[_BoundedCandidate]:
     bounded = []
 
@@ -383,12 +397,17 @@ def _build_bounded_candidates(
         if trade.profit_per_unit <= 0 or trade.buy_price <= 0:
             continue
 
-        max_quantity = min(
+        caps = [
             trade.source_supply_units,
             trade.effective_destination_demand_units,
             capacity_units,
-            available_credits // trade.buy_price,
-        )
+        ]
+        if not ignore_credits:
+            # The credit cap: no more than the budget can buy. Dropped in the
+            # no-affordability pass so the fill is capacity-bound only and
+            # credits provably cannot bind, whatever the prices.
+            caps.append(available_credits // trade.buy_price)
+        max_quantity = min(caps)
         if cargo_limit_per_item > 0:
             max_quantity = min(max_quantity, cargo_limit_per_item)
 
