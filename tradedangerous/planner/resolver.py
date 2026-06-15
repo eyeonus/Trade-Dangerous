@@ -70,6 +70,43 @@ class ResolvedAvoid:
     echoes: tuple[tuple[str, str], ...] = ()
 
 
+@dataclass(frozen=True, slots=True)
+class ViaTarget:
+    """One via place plus the system coordinates to steer toward.
+
+    ``tag`` is the ('system', id) / ('station', id) marker the satisfied-set
+    uses, so a node knows which target it still owes. The coordinates are the
+    via's *system* position — for both a system via and a station via, since
+    jumps are system-to-system — and let the engine anchor its candidate
+    envelope on the owed waypoint.
+    """
+
+    tag: tuple[str, int]
+    x: float
+    y: float
+    z: float
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedVia:
+    """Resolved --via tokens: the systems and stations to route through.
+
+    A via names a system or a station, never a commodity (unlike --avoid). For a
+    station via, ``station_system_ids`` also records the station's parent system,
+    so dispatch can spot a via that clashes with an avoided system and collapse
+    the "via a station and its own system" case when checking the hop count.
+    ``targets`` carries each via's system coordinates for the envelope anchor.
+    ``echoes`` carries (token, canonical_name) pairs for approximate matches, the
+    same courtesy the endpoints and --avoid get.
+    """
+
+    system_ids: frozenset[int] = frozenset()
+    station_ids: frozenset[int] = frozenset()
+    station_system_ids: frozenset[int] = frozenset()
+    targets: tuple[ViaTarget, ...] = ()
+    echoes: tuple[tuple[str, str], ...] = ()
+
+
 def parse_endpoint_reference(text: str, *, option_name: str) -> EndpointReference:
     """Split an endpoint into its (system, station) parts.
 
@@ -230,6 +267,97 @@ def resolve_avoid_tokens(
         item_ids=frozenset(item_ids),
         echoes=tuple(echoes),
     )
+
+
+def resolve_via_tokens(
+    orm_db: "TradeORM",
+    tokens: tuple[str, ...],
+    *,
+    option_name: str = "--via",
+) -> ResolvedVia:
+    """Resolve --via tokens into the system and station id sets to route through.
+
+    Tokens arrive repeated and/or comma-separated; both are flattened. Syntax
+    picks the namespace exactly as the endpoints do: a bare name is a system, a
+    slashed name is a station (and ``system/`` is a system). A via never names a
+    commodity, so every token goes through the shared place lookup — there is no
+    bare-commodity fall-through that --avoid has. A token that resolves to
+    nothing raises UnknownPlace; an ambiguous name or a bad @N index propagates
+    with the lookup's own message. No ORM object leaves this module.
+    """
+
+    system_ids: set[int] = set()
+    station_ids: set[int] = set()
+    station_system_ids: set[int] = set()
+    # Keyed by via tag so duplicate tokens that name the same place (e.g.
+    # --via Lave --via Lave, or two spellings of one station) collapse to a
+    # single target — the satisfaction mask and the steering lanes are per
+    # distinct place, so a duplicate must not become a second target.
+    targets: dict[tuple, ViaTarget] = {}
+    echoes: list[tuple[str, str]] = []
+
+    for token in _split_avoid_tokens(tokens):
+        kind, entity_id, system_id, pos, echo = _resolve_via_token(
+            orm_db, token, option_name=option_name,
+        )
+        if kind == "system":
+            system_ids.add(entity_id)
+            tag = ("system", entity_id)
+        else:  # "station"
+            station_ids.add(entity_id)
+            station_system_ids.add(system_id)
+            tag = ("station", entity_id)
+        targets[tag] = ViaTarget(tag=tag, x=pos[0], y=pos[1], z=pos[2])
+        if echo is not None:
+            echoes.append((token, echo))
+
+    return ResolvedVia(
+        system_ids=frozenset(system_ids),
+        station_ids=frozenset(station_ids),
+        station_system_ids=frozenset(station_system_ids),
+        targets=tuple(targets.values()),
+        echoes=tuple(echoes),
+    )
+
+
+def _resolve_via_token(
+    orm_db: "TradeORM",
+    token: str,
+    *,
+    option_name: str,
+) -> tuple[str, int, int | None, tuple[float, float, float], str | None]:
+    """Resolve one via token to a (kind, id, system_id, pos, echo) tuple.
+
+    ``kind`` is "system" or "station"; ``system_id`` is the station's parent
+    system for a station via (None for a system via); ``pos`` is that system's
+    coordinates to steer toward; ``echo`` is the canonical name when the match
+    was approximate, else None.
+    """
+
+    try:
+        place = orm_db.lookup_place(token)
+    except LookupError as exc:
+        raise UnknownPlace(
+            f"{option_name}: {exc}",
+            option_name=option_name,
+            entity_name=token,
+        ) from exc
+
+    approximate = _was_approximate(token, place, option_name=option_name)
+    if isinstance(place, Station):
+        echo = place.dbname() if approximate else None
+        system = place.system
+        pos = (float(system.pos_x), float(system.pos_y), float(system.pos_z))
+        return (
+            "station",
+            int(place.station_id),
+            int(system.system_id),
+            pos,
+            echo,
+        )
+    echo = str(place.name) if approximate else None
+    pos = (float(place.pos_x), float(place.pos_y), float(place.pos_z))
+    return "system", int(place.system_id), None, pos, echo
 
 
 def _split_avoid_tokens(tokens: tuple[str, ...]) -> list[str]:

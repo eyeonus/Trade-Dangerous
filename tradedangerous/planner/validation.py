@@ -73,6 +73,15 @@ def validate_run_request(request: RunRequest) -> None:
                 "--end-jumps.",
                 option_name="--direct",
             )
+        if request.via:
+            # A chosen scope restriction for this slice, not a logical
+            # impossibility: a direct hop's own origin or destination could in
+            # principle satisfy a via. It is deferred because --direct throws
+            # away the reachability model the via search is built on.
+            raise ContradictoryOptions(
+                "--direct cannot be combined with --via.",
+                option_name="--direct",
+            )
 
     # Steering and positioning options each need a companion endpoint to act
     # on. --towards steers an open route toward a target, so it needs a fixed
@@ -132,8 +141,34 @@ def validate_run_request(request: RunRequest) -> None:
             option_name="--end-jumps",
         )
 
+    # --via routes through one or more named waypoints. It needs at least one
+    # anchored endpoint to hang the search on: --from, --to, or both (--loop
+    # supplies its own --from). The no-anchor case is rejected — with both ends
+    # free it is unbounded the way the unanchored loop was, and redundant
+    # besides: the cheapest way to "include" a place is to start or finish
+    # there, so it asks for nothing a plain --from / --to would not.
+    if request.via and not request.from_text and not request.to_text:
+        raise MissingRequiredInput(
+            "--via requires --from or --to; a via cannot anchor a route "
+            "by itself.",
+            option_name="--via",
+        )
+
+    # --via and --towards are two steering constraints at once: --towards drives
+    # every hop strictly closer to a target, --via forces the route through named
+    # waypoints (which a via may sit sideways or temporarily outward of). Serving
+    # both needs a deliberate joint search policy, so the combination is deferred
+    # this slice rather than guessed at. (--towards needs --from and excludes
+    # --to, both handled above / at the parser.)
+    if request.via and request.towards_text:
+        raise UnsupportedRunShape(
+            "--via cannot be combined with --towards: steering toward a target "
+            "and routing through waypoints together need a joint search policy "
+            "that is not yet built.",
+            option_name="--via",
+        )
+
     unsupported = (
-        ("--via", bool(request.via)),
         ("--unique", request.unique),
         ("--loop-interval", request.loop_interval is not None),
         ("--shorten", request.shorten),

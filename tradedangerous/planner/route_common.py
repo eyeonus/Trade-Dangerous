@@ -49,6 +49,12 @@ class _FrontierNode:
     # correction pass can re-fit cargo against the real running budget. None on
     # the forward path.
     hop_candidates: tuple[run_result.TradeCandidate, ...] | None = None
+    # --via tracking: the via places this chain has visited so far, each tagged
+    # ('system', id) / ('station', id). Empty for non-via runs, so it is an
+    # inert marker there — it never changes the dedupe key or any comparison.
+    # Carried so the beam can keep chains that have satisfied different vias from
+    # crowding one another out, and accept only a chain that has visited them all.
+    via_satisfied: frozenset = frozenset()
 
 
 @dataclass(frozen=True, slots=True)
@@ -319,6 +325,41 @@ def _candidate_progress_rank(scored_item: tuple, request: RunRequest) -> tuple:
     return (-_distance_sq_to_target(open_station, target), practical_score)
 
 
+def _via_satisfied_by(
+    station: run_result.ResolvedStation,
+    request: RunRequest,
+) -> frozenset:
+    """Return the via places a single station visit satisfies.
+
+    A via place is tagged ('system', id) or ('station', id) so the system and
+    station id spaces never collide. A station satisfies the via for its own
+    system and the via for itself, each when that place was named. Returns the
+    empty set when no via was requested, so non-via runs carry an inert marker.
+    """
+
+    if not request.via_system_ids and not request.via_station_ids:
+        return frozenset()
+    satisfied = set()
+    if station.system_id in request.via_system_ids:
+        satisfied.add(("system", station.system_id))
+    if station.station_id in request.via_station_ids:
+        satisfied.add(("station", station.station_id))
+    return frozenset(satisfied)
+
+
+def _via_full_set(request: RunRequest) -> frozenset:
+    """The complete set of via places a finished route must have visited.
+
+    Empty when no --via was requested, so "every via satisfied" is trivially
+    true and the non-via path is unaffected.
+    """
+
+    return frozenset(
+        [("system", s) for s in request.via_system_ids]
+        + [("station", t) for t in request.via_station_ids]
+    )
+
+
 def _make_child_node(
     parent: _FrontierNode,
     trade: _HopCandidate,
@@ -349,6 +390,9 @@ def _make_child_node(
         hop_jump_path=trade.jump_path,
         hop_practical_score=trade.practical_score,
         hop_raw_profit=trade.raw_profit,
+        via_satisfied=parent.via_satisfied | _via_satisfied_by(
+            trade.destination_station, request,
+        ),
     )
 
 

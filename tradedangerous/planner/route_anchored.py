@@ -231,32 +231,35 @@ def _plan_multi_hop(
             for node in frontier:
                 expansions_examined += 1
                 layer_expansion_calls += 1
-                # The remaining hops must be able to close on the terminal:
-                # the shared --to system, or in loop mode this chain's own
-                # root station (same geometry legacy used — distance home
-                # against remaining range).
+                # Pick this node's envelope anchor and radius, then run the
+                # shared loose-drop check on it.
                 if loop_mode:
+                    # The remaining hops must close on this chain's own root
+                    # station (same geometry legacy used — distance home
+                    # against remaining range).
                     root_station = _root_node(node).station
-                    envelope_anchor_xyz = (
+                    anchor_xyz = (
                         root_station.x, root_station.y, root_station.z,
                     )
+                    anchor_ly = envelope_ly
                 else:
-                    envelope_anchor_xyz = to_system_xyz
-                # An envelope that provably contains this anchor's whole
-                # reach bubble excludes nothing — drop it for the call, so
-                # the fetch keeps the qualification skip-marker and plain
-                # reachable SQL its presence would otherwise disable. The
-                # result set is identical by construction.
+                    # The remaining hops must close on the shared --to system.
+                    anchor_xyz = to_system_xyz
+                    anchor_ly = envelope_ly
+                # An envelope that provably contains this anchor's whole reach
+                # bubble excludes nothing — drop it for the call, so the fetch
+                # keeps the qualification skip-marker and plain reachable SQL its
+                # presence would otherwise disable. The result set is identical
+                # by construction.
                 if _envelope_is_provably_loose(
-                    node.station, envelope_anchor_xyz, envelope_ly,
-                    bubble_reach_ly,
+                    node.station, anchor_xyz, anchor_ly, bubble_reach_ly,
                 ):
                     node_envelope_xyz = None
                     node_envelope_ly = None
                     expansion_stats.loose_envelopes_dropped += 1
                 else:
-                    node_envelope_xyz = envelope_anchor_xyz
-                    node_envelope_ly = envelope_ly
+                    node_envelope_xyz = anchor_xyz
+                    node_envelope_ly = anchor_ly
                 children = best_open_ended_trades_from(
                     session,
                     node.station,

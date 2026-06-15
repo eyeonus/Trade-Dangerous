@@ -191,7 +191,7 @@ complete candidates. Starting values; tunable like the beam width, on evidence.
   The subset-state space is `2^k`; capping `k` keeps the mask space (≤ 64) and the
   lane count bounded.
 - **Total frontier width: 50** (`_MULTIHOP_FRONTIER_WIDTH`, the planner-wide beam).
-- **Per-lane fairness.** Every active `(mask, next-via, root)` lane is reserved a
+- **Per-lane fairness.** Every admitted `(mask, next-via, root)` lane is reserved a
   floor of `_VIA_LANE_FLOOR` slots (start 2) so no owed-via direction is starved;
   the remainder of the 50 is filled by global optimistic score. If active lanes
   exceed the width, lanes are admitted best-first by their top chain's optimistic

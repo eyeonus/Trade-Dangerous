@@ -128,6 +128,14 @@ class NoLoopRoute(NoReachableRoute):
     """
 
 
+class NoViaRoute(NoReachableRoute):
+    """No route visited every --via waypoint under the supplied constraints.
+
+    A subclass of NoReachableRoute so any handler catching the no-route family
+    catches this too; the distinct type lets callers name the --via option.
+    """
+
+
 class NoProfitableTrades(PlannerFailure):
     """No profitable trades satisfy the request constraints."""
 

@@ -17,9 +17,11 @@ from tradedangerous.planner.failures import (
     NoProfitableTrades,
     NoReachableRoute,
     NoTowardsProgress,
+    NoViaRoute,
     PlannerFailure,
     StationHasNoUsablePriceData,
     UnknownPlace,
+    UnsupportedRunShape,
 )
 from tradedangerous.planner import resolver
 from tradedangerous.planner.render_text import render_run_result
@@ -401,6 +403,19 @@ def _planner_result_message(exc, request) -> str:
             f"relaxing filters so a round trip back to the start can be found."
         )
 
+    if isinstance(exc, NoViaRoute):
+        # --via: the search completed no route through every requested
+        # waypoint. The failure already names --via and the binding
+        # constraints; add the levers that let a via-passing route through.
+        # Checked before the shape-based branches below, which would otherwise
+        # report a generic endpoint failure that never mentions the waypoint.
+        return (
+            f"{exc.message}\n"
+            f"\n"
+            f"Try increasing --hops or --jumps-per, widening --ly-per, or "
+            f"relaxing filters so a route through the waypoint can be found."
+        )
+
     from_named = bool(request.from_text)
     to_named = bool(request.to_text)
     from_label = _endpoint_display(request.from_endpoint, request.from_text)
@@ -494,6 +509,139 @@ def _resolve_named_endpoint(tdb, text, option_name):
     return endpoint
 
 
+# Cap on the number of distinct via places. The satisfaction mask carries one
+# bit per place (see planner._via_full_set), so k places give a 2**k mask space
+# and up to k owed-via search lanes per mask; capping k keeps both bounded. Six
+# is the starting limit, tunable on evidence like the beam width. A station and
+# its own system count as two places (two bits) even though one visit covers
+# both.
+_MAX_CANONICAL_VIAS = 6
+
+
+def _endpoint_satisfies_via(endpoint, resolved_via, effective_systems):
+    """True if a fixed endpoint can itself satisfy one of the via places.
+
+    Lets the hop-count check credit a waypoint the route's pinned origin or
+    terminal already sits on. A station endpoint satisfies the via for its own
+    station id or its own system; a *system* endpoint — its position floats over
+    that system's stations — also satisfies a via station living in it, since the
+    search may land the endpoint on exactly that station.
+    """
+
+    if endpoint is None:
+        return False
+    system = resolver.system_for_endpoint(endpoint)
+    system_id = system.system_id if system is not None else None
+    station_id = (
+        endpoint.station.station_id
+        if endpoint.station is not None else None
+    )
+    if station_id is not None and station_id in resolved_via.station_ids:
+        return True
+    if system_id is not None and system_id in effective_systems:
+        return True
+    if (
+        station_id is None
+        and system_id is not None
+        and system_id in resolved_via.station_system_ids
+    ):
+        return True
+    return False
+
+
+def _validate_resolved_via(
+    resolved_via,
+    avoid_system_ids,
+    avoid_station_ids,
+    from_endpoint,
+    to_endpoint,
+    *,
+    loop,
+    start_jumps,
+    end_jumps,
+    hops,
+):
+    """Reject a --via that is unsupported, clashes with --avoid, or cannot fit.
+
+    Runs at the dispatch resolve site because every check needs resolved ids.
+    The route search is the authoritative feasibility check, so the hop-count
+    test here is deliberately *sound toward acceptance*: it rejects only the
+    clear-cut impossible cases and never a request the search could satisfy.
+    """
+
+    # Too many waypoints. Search cost scales with the place count (one mask bit
+    # each), so cap it up front rather than let a huge --via list explode the
+    # frontier.
+    total_vias = len(resolved_via.system_ids) + len(resolved_via.station_ids)
+    if total_vias > _MAX_CANONICAL_VIAS:
+        raise UnsupportedRunShape(
+            f"--via accepts at most {_MAX_CANONICAL_VIAS} waypoints; "
+            f"{total_vias} were given.",
+            option_name="--via",
+        )
+
+    # Conflict: a via place — or, for a via station, its system — is also
+    # avoided. An avoided system bars the whole system from transit, so a via
+    # station inside it could never be reached.
+    if (
+        resolved_via.system_ids & avoid_system_ids
+        or resolved_via.station_ids & avoid_station_ids
+        or resolved_via.station_system_ids & avoid_system_ids
+    ):
+        raise CommandLineError(
+            "--via and --avoid name the same place (or its system); a route "
+            "cannot both visit and avoid it."
+        )
+
+    # Hop-count feasibility, by counting route positions. An N-hop route visits
+    # N+1 stations (positions 0..N). A position is *pinned* when forced to a
+    # specific place and so cannot be freely chosen to hit a waypoint; the rest
+    # are *free*, and each still-owed via needs one free position.
+    #
+    #   - A fixed, non-positioning --from pins position 0; --to pins position N;
+    #     a loop pins both ends to its own root. A pinned endpoint can itself be
+    #     a waypoint, which credits that via.
+    #   - An omitted endpoint, or a positioning anchor (--start-jumps /
+    #     --end-jumps, where the real endpoint is some other station in the
+    #     bubble), leaves its position free and credits nothing: we never assume
+    #     the route actually visits the named anchor.
+    #
+    # The count is generous with credit and treats a position as pinned only
+    # when it provably is, so a satisfiable request is never rejected.
+    effective_systems = resolved_via.system_ids - resolved_via.station_system_ids
+    required = len(effective_systems) + len(resolved_via.station_ids)
+
+    if loop:
+        # A loop opens and closes on its own root: both ends pin to one place, so
+        # two positions are consumed and the root is credited at most once.
+        pinned = 2
+        credited = (
+            1 if _endpoint_satisfies_via(
+                from_endpoint, resolved_via, effective_systems,
+            ) else 0
+        )
+    else:
+        origin_fixed = from_endpoint is not None and not start_jumps
+        terminal_fixed = to_endpoint is not None and not end_jumps
+        pinned = (1 if origin_fixed else 0) + (1 if terminal_fixed else 0)
+        credited = 0
+        if origin_fixed and _endpoint_satisfies_via(
+            from_endpoint, resolved_via, effective_systems,
+        ):
+            credited += 1
+        if terminal_fixed and _endpoint_satisfies_via(
+            to_endpoint, resolved_via, effective_systems,
+        ):
+            credited += 1
+
+    free_positions = (hops + 1) - pinned
+    if required - credited > free_positions:
+        raise CommandLineError(
+            "--via needs more hops: the requested vias cannot all be visited "
+            f"within --hops {hops}."
+        )
+
+
 def _resolve_request_endpoints(request, tdb):
     """Resolve --from / --to / --towards once and carry the results on the request.
 
@@ -539,6 +687,36 @@ def _resolve_request_endpoints(request, tdb):
         updates["avoid_item_ids"] = resolved_avoid.item_ids
         for token, canonical in resolved_avoid.echoes:
             print(f"--avoid {token} resolved as {canonical}", flush=True)
+
+    if request.via:
+        # Resolve every --via token once here, into the system / station id sets
+        # the planner steers through. Systems and stations only (a via never
+        # names a commodity), fuzzy-matched, repeated / comma-separated — the
+        # same resolution courtesy as --avoid and the endpoints.
+        try:
+            resolved_via = resolver.resolve_via_tokens(tdb, request.via)
+        except UnknownPlace as exc:
+            raise CommandLineError(exc.message) from exc
+        updates["via_system_ids"] = resolved_via.system_ids
+        updates["via_station_ids"] = resolved_via.station_ids
+        updates["via_targets"] = resolved_via.targets
+        for token, canonical in resolved_via.echoes:
+            print(f"--via {token} resolved as {canonical}", flush=True)
+        # Conflict and hop-count checks read whatever --avoid, --from and --to
+        # resolved to (their request defaults when those options are absent),
+        # plus the loop / positioning flags that decide which route positions
+        # are pinned.
+        _validate_resolved_via(
+            resolved_via,
+            updates.get("avoid_system_ids", request.avoid_system_ids),
+            updates.get("avoid_station_ids", request.avoid_station_ids),
+            updates.get("from_endpoint", request.from_endpoint),
+            updates.get("to_endpoint", request.to_endpoint),
+            loop=request.loop,
+            start_jumps=request.start_jumps,
+            end_jumps=request.end_jumps,
+            hops=request.hops,
+        )
 
     if not updates:
         return request

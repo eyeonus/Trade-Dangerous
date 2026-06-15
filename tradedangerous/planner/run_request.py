@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .resolver import ResolvedEndpoint
+    from .resolver import ResolvedEndpoint, ViaTarget
     from .run_result import ResolvedSystem
 
 
@@ -75,6 +75,18 @@ class RunRequest:
     avoid_system_ids: frozenset[int] = frozenset()
     avoid_station_ids: frozenset[int] = frozenset()
     avoid_item_ids: frozenset[int] = frozenset()
+    # Resolved --via tokens, filled once at dispatch from `via` via the shared
+    # TradeORM lookup. A via names a system or a station (never a commodity);
+    # the planner steers the route through these places. Empty sets (the
+    # default) mean no via was requested, so every existing call path is
+    # unchanged when --via is absent.
+    via_system_ids: frozenset[int] = frozenset()
+    via_station_ids: frozenset[int] = frozenset()
+    # System coordinates of each via place, filled at dispatch. The engine
+    # anchors its candidate envelope on the owed via(s) while any remain, so a
+    # chain heading for an off-axis waypoint is not pruned by an envelope still
+    # pointed at --to.
+    via_targets: tuple[ViaTarget, ...] = ()
     unique: bool = False
     loop_interval: int | None = None
     shorten: bool = False
