@@ -1401,3 +1401,108 @@ Sol; 91,584 candidates fetched → 5 read).
   Qualification: 234888 stations, 1389068 rows, 9481ms
   Final hop: 50 attempted, 40 reach destination, 1269 market candidates, 40 viable
 ```
+
+# --via baselines and the credit-bound fixed-terminal twin (2026-06-16)
+
+First recorded `--via` figures, alongside the no-via twin of the same
+shape. Both run at **tight credits — `--credits 5000000`** — distinct
+from the `--credits 200000000` used everywhere above, so do not compare
+their wall-clocks against the loose-credit sets. The point of this pair
+is the *engine split*, not the digits.
+
+## Conditions
+
+- **Date:** 2026-06-16
+- **Machine:** Zen (i9-13900K, 64 GB, WSL2 Ubuntu, SQLite on NVMe)
+- **Code state:** the `--via` lane-diversity owner with the
+  FIXED_TERMINAL progress-retention trim (the terminal lane reserves a
+  slot for the chain nearest the destination, so progress is not crowded
+  out by a profitable chain idling on the last waypoint).
+- **Common arguments:** `--capacity 720 --credits 5000000 --ly-per 30
+  --jumps-per 2 --fc n`
+- **Wall** is the diagnostics `Total`; no `time` wrapper was used.
+- **Caveat:** the `--via` run was captured with the temporary per-layer
+  diagnostics still present in `route_via.py`. Their overhead is
+  negligible against a 129s run, but a later clean re-run may land a
+  touch lower.
+
+## Headline table
+
+| Shape | Wall | Fetch | Cargo | Jump | Cand. rows | Pairs | b&b | Profit |
+|-------|------|-------|-------|------|-----------|-------|-----|--------|
+| `--from sol --to achenar --hops 8 --via lave` | 129.3s | 96.6s | 22.5s | 1.1s | 7,915,678 | 811,353 | 3 | 39,539,596 |
+| `--from sol --to achenar --hops 8` (no via) | 350.3s | 74.6s | 262.3s | 8.9s | 740,360 | 75,314 | 6,677 | 105,181,521 |
+
+Both reach Achenar in 8 hops, ending at the same station. The via route
+visits Lave at hop 3.
+
+## What this pair establishes
+
+**First credit-bound baseline — cargo dominates, not fetch.** Every run
+above is fetch-bound. The no-via twin inverts it: **262 of its 350
+seconds are cargo**. With only 5M credits the budget binds hard against
+720t of cargo, so the fixed-terminal real-budget engine falls to
+branch-and-bound — 6,677 b&b solves. This is the first recorded case of
+the b&b path firing at scale.
+
+**The b&b cost is front-loaded.** No-via layer times run 155s, 135s,
+25s, 11s, 8s, 5s, 8s — the first two layers carry ~83% of the run. With
+little starting capital the credit constraint binds on nearly every
+pair, so b&b fires everywhere; once the chain is rich (layer 3 on) the
+constraint stops binding and cargo drops back to fast-path. Tight
+credits tax the opening layers, not the route evenly.
+
+**`--via` sidesteps the blow-up.** The via twin is fetch-bound again
+(96.6s of 129.3s) with only 3 b&b solves — and those are in the finalist
+correction, not the search. The optimistic backbone never runs b&b
+in-search, so it is ~2.7× faster wall-clock on the same shape, traded
+for optimistic-then-corrected exactness. Its layer times are flat
+(10–26s), no front-load.
+
+**A before-`--unique` marker.** The no-via 105M route is a three-times
+repeated LP 932-12 ⇄ Lai ping-pong. `--unique` will ban exactly that, so
+this is the reference point for what suppressing revisits costs on this
+shape.
+
+## Per-run diagnostics (verbatim)
+
+### `--from sol --to achenar --hops 8 --jumps-per 2 --via lave --fc n`
+
+```text
+Route: Sol/Burnell Station -> Achenar/Stronghold Carrier, profit 39539596 cr
+Total: 129312ms (resolution 0ms, station-filter 6ms, search 129147ms)
+Expansion: 413 calls, memo 258/157 hit/miss, 7915678 candidate rows, 811353 pairs, 811353 cargo calls, 19386 children, 127793ms
+Expansion phases: fetch 96601ms, cargo 22545ms, jump 1112ms
+Qualification: 224817 stations, 1554950 rows cached, 14359ms
+Stream: 7922380 rows read, 811353 stations consumed, 7 early stops
+Cargo: 811206 fast-path, 3 branch-and-bound, 152 pruned, 22334ms
+Correction: 1 finalists, 1 attempted, 1 corrected, 8 cargo calls (5 fast-path, 3 b&b), 70ms
+Layer 1: 63 in, 63 calls, 2100 children, kept 50 (10845ms)
+Layer 2: 50 in, 50 calls, 2500 children, kept 50 (25630ms)
+Layer 3: 50 in, 50 calls, 2500 children, kept 50 (24828ms)
+Layer 4: 50 in, 50 calls, 2500 children, kept 50 (19243ms)
+Layer 5: 50 in, 50 calls, 2500 children, kept 50 (14984ms)
+Layer 6: 50 in, 50 calls, 2450 children, kept 50 (17813ms)
+Layer 7: 50 in, 50 calls, 2385 children, kept 50 (8778ms)
+```
+
+### `--from sol --to achenar --hops 8 --jumps-per 2 --fc n` (no via)
+
+```text
+Route: Sol/Mendy Excavation Site -> Achenar/Stronghold Carrier, profit 105181521 cr
+Total: 350319ms (resolution 0ms, station-filter 2ms, search 350240ms)
+Expansion: 363 calls, memo 236/127 hit/miss, 740360 candidate rows, 75314 pairs, 75314 cargo calls, 16041 children, 347095ms
+Expansion phases: fetch 74595ms, cargo 262304ms, jump 8920ms
+Qualification: 230352 stations, 1602392 rows cached, 8291ms
+Stream: 1036338 rows read, 75314 stations consumed, 314 early stops
+Envelope: dropped as provably loose on 238 of 363 expansion calls
+Cargo: 24731 fast-path, 6677 branch-and-bound, 44286 pruned, 262277ms
+Layer 1: 63 in, 63 calls, 2100 children, kept 50 (155383ms)
+Layer 2: 50 in, 50 calls, 2500 children, kept 50 (135111ms)
+Layer 3: 50 in, 50 calls, 2500 children, kept 50 (25199ms)
+Layer 4: 50 in, 50 calls, 2500 children, kept 50 (11006ms)
+Layer 5: 50 in, 50 calls, 2500 children, kept 50 (7842ms)
+Layer 6: 50 in, 50 calls, 2369 children, kept 50 (4899ms)
+Layer 7: 50 in, 50 calls, 1572 children, kept 50 (7705ms)
+Final hop: 50 attempted, 34 reach destination, 2967 market candidates, 34 viable, 3094ms
+```
