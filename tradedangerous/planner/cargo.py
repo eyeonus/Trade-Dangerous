@@ -191,6 +191,14 @@ def _optimise_cargo(
             cap_bound += quantity * candidate.trade.profit_per_unit
             capacity -= quantity
 
+        if ignore_credits:
+            # No-affordability pass: credit must not bind anywhere, the prune
+            # bound included. Capacity-only is still an admissible over-estimate
+            # (dropping the credit constraint can only raise the optimum), so the
+            # prune stays sound without a finite credit ceiling that --max-price
+            # 0 could trip into pruning a valid expensive candidate.
+            return current_profit + cap_bound
+
         # Credit relaxation: fractional knapsack on the budget, greedy by
         # profit-per-credit. Allowing the last item to be taken fractionally is
         # what makes this an over-estimate rather than a feasible value.

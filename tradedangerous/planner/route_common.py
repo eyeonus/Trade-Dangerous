@@ -1036,8 +1036,9 @@ def best_open_ended_hop_candidates(
     expansion_stats: run_result.ExpansionStats | None = None,
     station_cache: dict[int, run_result.ResolvedStation] | None = None,
     qualification: data_gateway.QualificationCache | None = None,
-    via_steering_xyz: tuple[float, float, float] | None = None,
-    via_steering_ly: float | None = None,
+    envelope_xyz: tuple[float, float, float] | None = None,
+    envelope_ly: float | None = None,
+    distance_first: bool = False,
     no_affordability: bool = False,
     required_station_ids: frozenset[int] = frozenset(),
     terminal_system_station_ids: frozenset[int] = frozenset(),
@@ -1077,14 +1078,17 @@ def best_open_ended_hop_candidates(
     for the forward credit-correction re-fit.
 
     The via search drives the optional steering and reservation parameters, all
-    defaulting off so non-via callers stay byte-identical. ``via_steering_xyz``
-    /``via_steering_ly`` (supplied together) narrow the ordinary stream to the
-    owed waypoint's neighbourhood and switch ranking to distance-first; the
-    score-ceiling early stop is then unsound and is disabled, the same as
-    --towards. ``no_affordability`` runs the optimistic pass with no credit cap
-    at either seam. ``required_station_ids`` / ``terminal_system_station_ids``
-    are fetched directly and reserved past the top-K trim, so a station the
-    route must reach is never trimmed away.
+    defaulting off so non-via callers stay byte-identical. ``envelope_xyz`` /
+    ``envelope_ly`` (supplied together) are a *feasibility bound* — they narrow
+    the ordinary stream to a target's neighbourhood — and are kept separate from
+    the ranking. ``distance_first`` is the *steering heuristic*: rank by closeness
+    to the envelope centre and disable the score-ceiling early stop (unsound once
+    distance leads, the same as --towards). A VIA lane sets both; a terminal lane
+    sets only the envelope, so it keeps score-first ranking and the early stop
+    while still bounded toward the terminal. ``no_affordability`` runs the
+    optimistic pass with no credit cap at either seam. ``required_station_ids`` /
+    ``terminal_system_station_ids`` are fetched directly and reserved past the
+    top-K trim, so a station the route must reach is never trimmed away.
     """
 
     helper_started = time.perf_counter()
@@ -1139,13 +1143,14 @@ def best_open_ended_hop_candidates(
     capacity_units = int(request.capacity_units or 0)
     penalty_percent = request.ls_penalty_percent
     anchor_is_destination = open_role == "source"
-    # Distance-first steering and --towards both make practical score a
+    # Distance-first ranking and --towards both make practical score a
     # non-primary ranking key, so the score-ceiling early stop and the prune
-    # floor are unsound: a closer (steering) or more-forward (--towards) but
-    # lower-score station could be stopped out before it is ever read. Both
-    # disable the threshold; the steering envelope is then the only spatial
-    # bound, and the no-affordability solve keeps each kept pair cheap.
-    steering = via_steering_xyz is not None
+    # floor are unsound: a closer (distance-first) or more-forward (--towards)
+    # but lower-score station could be stopped out before it is ever read. Both
+    # disable the threshold. A terminal-envelope lane keeps score-first ranking,
+    # so it keeps the early stop — its envelope is a feasibility bound only, not
+    # a ranking signal.
+    steering = distance_first
     threshold = _KeptScoreThreshold(
         top_k,
         enabled=request.towards_target is None and not steering,
@@ -1168,8 +1173,8 @@ def best_open_ended_hop_candidates(
         unbounded_credits=no_affordability,
         terminal_hop=terminal_hop,
         reachable_memo=reachable_memo,
-        destination_envelope_xyz=via_steering_xyz,
-        destination_envelope_ly=via_steering_ly,
+        destination_envelope_xyz=envelope_xyz,
+        destination_envelope_ly=envelope_ly,
         expansion_stats=expansion_stats,
         precomputed_reachable_systems=precomputed_reachable,
         qualification=qualification,
@@ -1403,7 +1408,7 @@ def best_open_ended_hop_candidates(
     # resolve by best-pair order as the unstreamed fetch's first-appearance
     # order did.
     if steering:
-        centre_x, centre_y, centre_z = via_steering_xyz
+        centre_x, centre_y, centre_z = envelope_xyz
 
         def _distance_first_key(item):
             station = item[1]

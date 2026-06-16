@@ -201,11 +201,84 @@ def _lane_sort_key(lane_key: tuple) -> tuple:
     )
 
 
+def _terminal_progress_distance(
+    node: _FrontierNode,
+    terminal_xyz: tuple | None,
+    *,
+    loop_mode: bool,
+) -> float | None:
+    """Squared distance from a chain's station to the close it steers for.
+
+    For a fixed --to the reference is the terminal coordinate; for a loop it is
+    the chain's own root, which it must return to. Squared distance is enough —
+    it is only ever compared, never reported. None when no reference applies.
+    """
+
+    if loop_mode:
+        ref = _root_node(node).station
+        rx, ry, rz = ref.x, ref.y, ref.z
+    elif terminal_xyz is not None:
+        rx, ry, rz = terminal_xyz
+    else:
+        return None
+    sx, sy, sz = node.station.x, node.station.y, node.station.z
+    return (sx - rx) ** 2 + (sy - ry) ** 2 + (sz - rz) ** 2
+
+
+def _terminal_floor_picks(
+    members: list[_LaneEntry],
+    take: int,
+    terminal_xyz: tuple | None,
+    *,
+    loop_mode: bool,
+) -> tuple[list[_LaneEntry], list[_LaneEntry]]:
+    """Floor reservation for a FIXED_TERMINAL lane: score, then progress.
+
+    ``members`` arrive sorted by score, descending. The first reserved slot goes
+    to the score leader, so the terminal run can still take a profitable detour;
+    the second goes to the chain nearest the terminal/root, so a high-profit
+    chain idling on the final waypoint cannot crowd out the one actually closing
+    on the destination. Any further floor slots fall back to score order. Returns
+    (picked, leftover).
+    """
+
+    if take <= 0:
+        return [], list(members)
+    chosen: list[int] = [0]                       # score leader
+    if take >= 2 and len(members) >= 2:
+        nearest_i = None
+        nearest_d = None
+        for i in range(1, len(members)):
+            dist = _terminal_progress_distance(
+                members[i].node, terminal_xyz, loop_mode=loop_mode,
+            )
+            if dist is None:
+                continue
+            if nearest_d is None or dist < nearest_d:
+                nearest_d, nearest_i = dist, i
+        if nearest_i is not None:
+            chosen.append(nearest_i)
+    # Any floor slots beyond those two fall back to score order, and members are
+    # already score-sorted, so the lowest not-yet-chosen index is next by score.
+    for i in range(len(members)):
+        if len(chosen) >= take:
+            break
+        if i not in chosen:
+            chosen.append(i)
+    chosen_set = set(chosen)
+    picked = [members[i] for i in chosen]
+    leftover = [
+        members[i] for i in range(len(members)) if i not in chosen_set
+    ]
+    return picked, leftover
+
+
 def _trim_frontier(
     entries: list[_LaneEntry],
     full_mask: frozenset,
     *,
     loop_mode: bool,
+    terminal_xyz: tuple | None = None,
     width: int = _MULTIHOP_FRONTIER_WIDTH,
     floor: int = _VIA_LANE_FLOOR,
 ) -> list[_LaneEntry]:
@@ -214,11 +287,18 @@ def _trim_frontier(
     1. Coalesce by (station, mask, lane, root): keep the best-scoring chain per
        identity.
     2. Group the survivors into lanes by (mask, lane, root); sort each by score.
-    3. Leading edge first: every lane whose mask owes the fewest vias present is
-       admitted before any less-complete lane, so the front never loses a
-       direction. Remaining lanes are admitted by their top chain's score.
+    3. Leading edge first: lanes whose mask owes the fewest vias are admitted
+       before any less-complete lane, so the front never loses ground. Within
+       the leading edge, coverage beats depth — every distinct (mask,
+       lane_target) direction gets its best root admitted before any direction
+       gets a second root, so a waypoint direction is never starved by another
+       direction's root fan-out (the loop / system-origin case). Remaining
+       lanes follow by score.
     4. Each admitted lane is reserved up to ``floor`` slots; the rest of the
-       beam is filled globally by optimistic score across admitted lanes.
+       beam is filled globally by optimistic score across admitted lanes. The
+       terminal lane splits its reservation between its score leader and the
+       chain nearest the terminal/root, so progress to the destination is never
+       crowded out by a profitable chain idling on the final waypoint.
 
     Admission is deterministic: ties resolve by `_lane_sort_key`, never by dict
     iteration order, so which via order survives a crowded beam is reproducible
@@ -247,30 +327,90 @@ def _trim_frontier(
             reverse=True,
         )
 
-    # 3. Admission order: leading edge (fewest owed vias) first, then by the
-    #    lane's top score, deterministic tie-break last.
+    # 3. Admission order. The leading edge (fewest owed vias) is admitted first.
+    #    Within it, coverage comes before depth: every distinct (mask,
+    #    lane_target) direction contributes its best root before any direction
+    #    contributes a second, so root fan-out in one direction cannot starve
+    #    another owed-via direction. Less-complete lanes follow by score. Ties
+    #    resolve by _lane_sort_key, never by dict iteration order.
     min_owed = min(len(full_mask - lane_key[0]) for lane_key in lanes)
 
-    def _admission_key(item: tuple) -> tuple:
-        lane_key, members = item
-        leading = len(full_mask - lane_key[0]) == min_owed
-        top_score = members[0].node.accumulated_practical_score
-        return (not leading, -top_score, _lane_sort_key(lane_key))
+    def _lane_score(members: list[_LaneEntry]) -> float:
+        return members[0].node.accumulated_practical_score
 
-    ordered_lanes = sorted(lanes.items(), key=_admission_key)
+    # Leading-edge lanes grouped by direction (mask, lane_target) with the root
+    # dropped, so the roots of one direction compete with each other rather than
+    # with other directions. Less-complete lanes go straight to the trailing set.
+    directions: dict[tuple, list[tuple]] = {}
+    trailing: list[tuple] = []
+    for lane_key, members in lanes.items():
+        if len(full_mask - lane_key[0]) == min_owed:
+            directions.setdefault(
+                (lane_key[0], lane_key[1]), []
+            ).append((lane_key, members))
+        else:
+            trailing.append((lane_key, members))
+
+    for direction_lanes in directions.values():
+        direction_lanes.sort(
+            key=lambda item: (-_lane_score(item[1]), _lane_sort_key(item[0]))
+        )
+
+    # Directions ordered by their best root's score; a None root in the synthetic
+    # key gives a deterministic, root-independent tie-break between directions.
+    direction_order = sorted(
+        directions,
+        key=lambda d: (
+            -_lane_score(directions[d][0][1]),
+            _lane_sort_key((d[0], d[1], None)),
+        ),
+    )
+
+    # Round-robin by depth: rank 0 takes every direction's best root, rank 1
+    # every direction's second root, and so on — so a direction's second root
+    # never precedes another direction's first.
+    leading: list[tuple] = []
+    depth = max((len(roots) for roots in directions.values()), default=0)
+    for rank in range(depth):
+        rank_lanes = [
+            directions[d][rank]
+            for d in direction_order
+            if rank < len(directions[d])
+        ]
+        rank_lanes.sort(
+            key=lambda item: (-_lane_score(item[1]), _lane_sort_key(item[0]))
+        )
+        leading.extend(rank_lanes)
+
+    trailing.sort(
+        key=lambda item: (-_lane_score(item[1]), _lane_sort_key(item[0]))
+    )
+    ordered_lanes = leading + trailing
 
     # 4. Reserve the floor per admitted lane, then fill the remainder globally.
+    #    A FIXED_TERMINAL lane splits its floor between its score leader and the
+    #    chain nearest the terminal/root, so a high-profit chain idling on the
+    #    last waypoint cannot crowd out the one closing on the destination. Every
+    #    other lane reserves its floor by score, unchanged.
     selected: list[_LaneEntry] = []
     leftover: list[_LaneEntry] = []
     remaining = width
-    for _lane_key_value, members in ordered_lanes:
+    for lane_key_value, members in ordered_lanes:
         if remaining <= 0:
             leftover.extend(members)
             continue
         take = min(floor, len(members), remaining)
-        selected.extend(members[:take])
-        leftover.extend(members[take:])
-        remaining -= take
+        if lane_key_value[1].mode is _LaneMode.FIXED_TERMINAL:
+            picked, lane_leftover = _terminal_floor_picks(
+                members, take, terminal_xyz, loop_mode=loop_mode,
+            )
+            selected.extend(picked)
+            leftover.extend(lane_leftover)
+            remaining -= len(picked)
+        else:
+            selected.extend(members[:take])
+            leftover.extend(members[take:])
+            remaining -= take
 
     if remaining > 0 and leftover:
         leftover.sort(
@@ -302,31 +442,47 @@ def _lane_steering(
     envelope_ly: float,
     final_layer: bool,
 ):
-    """Steering and reservation inputs for one lane's expansion.
+    """Envelope, ranking and reservation inputs for one lane's expansion.
 
-    Returns (steering_xyz, steering_ly, required_station_ids,
-    terminal_system_station_ids) for the seam primitive.
+    Returns (envelope_xyz, envelope_ly, distance_first, required_station_ids,
+    terminal_system_station_ids) for the seam primitive. The envelope is a
+    feasibility bound; distance_first is the ranking heuristic, on only while a
+    waypoint is still owed.
 
-      VIA(tag)          — steer toward the waypoint's system; reserve the exact
-                          station lane-locally when the via names a station.
-      FIXED_TERMINAL    — steer toward the fixed --to (or the chain's own loop
-                          root); reserve the terminal only on the final layer,
-                          since landing there earlier is the wrong hop count.
-      OPEN_CONTINUATION — no steering; ordinary open-ended ranking.
+      VIA(tag)          — envelope toward the owed waypoint AND distance-first
+                          ranking, to actively preserve progress to the via;
+                          reserve the exact station when the via names one.
+      FIXED_TERMINAL    — envelope toward the fixed --to (or the chain's own
+                          loop root) but score-first ranking, so the terminal
+                          run can take profitable detours and fill the hop
+                          budget rather than beelining and arriving early;
+                          reserve the terminal only on the final layer.
+      OPEN_CONTINUATION — no envelope, no distance-first; ordinary open ranking.
     """
 
     target = entry.target
     if target.mode is _LaneMode.VIA:
         # An exact station via is reserved past the trim; a system via is met by
-        # any station in it, so the envelope alone steers there.
+        # any station in it, so the envelope alone steers there. Distance-first
+        # keeps the chain making progress toward the owed waypoint.
         required = (
             frozenset({target.via_tag[1]})
             if target.via_tag[0] == "station"
             else frozenset()
         )
-        return via_pos.get(target.via_tag), envelope_ly, required, frozenset()
+        return (
+            via_pos.get(target.via_tag),
+            envelope_ly,
+            True,
+            required,
+            frozenset(),
+        )
 
     if target.mode is _LaneMode.FIXED_TERMINAL:
+        # Vias done — an ordinary terminal-closing run. Keep the envelope as a
+        # feasibility bound, but rank by score so the chain can detour for
+        # profit and fill the remaining hops, the way the non-via fixed-terminal
+        # planner does, instead of beelining the terminal and arriving early.
         if loop_mode:
             root_station = _root_node(entry.node).station
             xyz = (root_station.x, root_station.y, root_station.z)
@@ -334,12 +490,12 @@ def _lane_steering(
                 frozenset({root_station.station_id})
                 if final_layer else frozenset()
             )
-            return xyz, envelope_ly, required, frozenset()
+            return xyz, envelope_ly, False, required, frozenset()
         required = terminal_exact_ids if final_layer else frozenset()
         term_sys = terminal_system_ids if final_layer else frozenset()
-        return terminal_xyz, envelope_ly, required, term_sys
+        return terminal_xyz, envelope_ly, False, required, term_sys
 
-    return None, None, frozenset(), frozenset()
+    return None, None, False, frozenset(), frozenset()
 
 
 def _at_endpoint(
@@ -402,6 +558,34 @@ def _plan_via_route(
     seed_stations = _stations_from_endpoint(
         session, anchor_endpoint, request, role=anchor_role,
     )
+
+    if loop_mode:
+        # A loop closes on its own root, so every seed station must also be a
+        # valid *destination* — settled before the bounded frontier is seeded so
+        # an unclosable root never crowds a closable one out of the beam. Drop
+        # avoided roots (the --from origin carve-out lets the commander start in
+        # an avoided place, but the loop returns there, so it cannot be the
+        # terminal), then keep only roots with usable return demand.
+        roots = tuple(
+            station for station in seed_stations
+            if station.station_id not in request.avoid_station_ids
+            and station.system_id not in request.avoid_system_ids
+        )
+        closable = data_gateway.fetch_loop_closable_station_ids(
+            session,
+            tuple(station.station_id for station in roots),
+            request,
+        )
+        seed_stations = [
+            station for station in roots
+            if station.station_id in closable
+        ]
+        if not seed_stations:
+            raise failures.NoViaRoute(
+                "No starting station can both open and close a loop through "
+                "every --via waypoint under the supplied constraints.",
+                option_name="--via",
+            )
 
     # A fixed --to (not a loop) supplies the terminal the route must finish at:
     # the eligible Y stations for the endpoint check, the exact station to
@@ -479,7 +663,9 @@ def _plan_via_route(
     correction_stats = run_result.CorrectionStats()
 
     def _expand(entry, envelope_ly, *, terminal_hop, final_layer):
-        steer_xyz, steer_ly, required_ids, term_sys = _lane_steering(
+        (
+            env_xyz, env_ly, distance_first, required_ids, term_sys,
+        ) = _lane_steering(
             entry,
             loop_mode=loop_mode,
             via_pos=via_pos,
@@ -502,8 +688,9 @@ def _plan_via_route(
             expansion_stats=expansion_stats,
             station_cache=station_cache,
             qualification=qualification,
-            via_steering_xyz=steer_xyz,
-            via_steering_ly=steer_ly,
+            envelope_xyz=env_xyz,
+            envelope_ly=env_ly,
+            distance_first=distance_first,
             no_affordability=True,
             required_station_ids=required_ids,
             terminal_system_station_ids=term_sys,
@@ -556,6 +743,7 @@ def _plan_via_route(
 
             frontier = _trim_frontier(
                 next_entries, full_mask, loop_mode=loop_mode,
+                terminal_xyz=terminal_xyz,
             )
             frontier_widths.append(len(frontier))
             layer_stats.append(
