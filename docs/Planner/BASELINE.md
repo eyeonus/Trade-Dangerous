@@ -42,6 +42,7 @@ shape:
 | `route_anchored.py` | Fully-anchored multi-hop (`--from X --to Y`). |
 | `route_single_anchor.py` | Part-anchored multi-hop front (one open end). |
 | `route_unanchored.py` | Fully-unanchored multi-hop (both endpoints omitted). |
+| `route_via.py` | Waypoint routing (`--via`) — lane-diversity owner over the open-anchor engine. |
 | `route_common.py` | Frontier/beam machinery, the shared open-anchor expansion engine, generic helpers. |
 
 Supporting modules: `data_gateway.py` (all SQL/candidate queries),
@@ -185,6 +186,18 @@ Do unify the contract.
   from every jump path — the permit case, since a permit-locked system cannot be
   entered even in transit. The explicit `--from` is exempt as the origin: you may
   start in an avoided system, but the route never returns to it.
+- **`--via`** — forces the route through one or more named waypoints
+  (systems or stations), in any order; every waypoint must be visited or
+  the run fails (no partial-via route). Tokens resolve once at dispatch,
+  fuzzy-matched like the endpoints, at most six. Works on every shape —
+  fixed-terminal, single-anchor open, and loop — and requires an anchor
+  (`--from`/`--to`); a fully-unanchored via is rejected. Built on the
+  credit-optimistic engine with a per-chain satisfied-via mask on a
+  lane-diversity frontier (one search lane per owed waypoint), so every
+  visit order is explored and no high-profit lane starves a waypoint. The
+  terminal lane reserves a slot for the chain nearest the destination, so
+  the route closes on a distant `--to` rather than stalling on the last
+  waypoint.
 
 ### Legacy retired
 
@@ -305,9 +318,10 @@ unknown-pad station is admitted unless `--pad-size L` is set. Full reasoning in
 
 The authoritative, option-by-option status lives in **`SPEC_STATUS.md`**. In
 short, the route shapes, empty-jump positioning, `--towards`, `--direct`,
-`--avoid`, and `--loop` (anchored; requires `--from` — the galaxy-wide loop is a
-closed decision, see Settled decisions) are done; what remains is the rest of the
-modifier and display surface — `--via`, `--unique`, `--shorten`,
+`--avoid`, `--via` (requires an anchor — a chosen variation), and `--loop`
+(anchored; requires `--from` — the galaxy-wide loop is a closed decision, see
+Settled decisions) are done; what remains is the rest of the
+modifier and display surface — `--unique`, `--shorten`,
 `--loop-interval`, and the search/display controls
 (`--routes > 1`, `--max-routes`, `--prune-*`, `--checklist`, `--x52-pro`). Three
 options (`--show-jumps`, `--summary`, `--progress`) parse without error but

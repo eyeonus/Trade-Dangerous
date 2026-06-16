@@ -267,6 +267,16 @@ Planned in session from a supplied seam analysis, no separate plan doc — each 
 
 ---
 
+### Slice 27 — `--via` (Route Through Waypoints) (Complete)
+**Routes through one or more named waypoints in any order, every shape (fixed-terminal, single-anchor open, loop); every waypoint visited or the run fails. Requires an anchor (`--from`/`--to`) — a chosen variation, the spec sets none — capped at six. Built on the credit-optimistic open-anchor engine with a per-chain satisfied-via mask on a lane-diversity frontier (one search lane per owed waypoint), so every visit order is explored and no high-profit lane starves a waypoint. The committed leg-stitching design was withdrawn after audit and the slice rebuilt on the mask state. The terminal lane reserves a slot for the chain nearest the destination, so a distant `--to` closes instead of the route stalling on the last waypoint.**
+
+| Document | Content |
+|----------|---------|
+| [twenty_seventh_slice_implementation_plan.md](twenty_seventh_slice_implementation_plan.md) | The plan, revised after audit: the withdrawn leg-stitching design, the retained satisfied-via state model, and the credit-optimistic expansion plus lane-diversity frontier that replaced the expensive policy. |
+| [twenty_seventh_slice_completion_report.md](twenty_seventh_slice_completion_report.md) | Proof of completion: resolution and validation, the via search owner, every shape, the terminal-phase progress-retention fix diagnosed by instrumentation, variances, housekeeping. |
+
+---
+
 ## Reference and Technical Notes
 
 ## Reference and Technical Notes

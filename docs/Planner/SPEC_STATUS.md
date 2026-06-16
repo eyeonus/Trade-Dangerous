@@ -44,7 +44,7 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 | `--hops` | `[done]` | 1–25; an excessive count is rejected. |
 | `--towards` | `[done]` | Steers toward a target system; progress-first ranking, arrives and stops early. Requires `--from`; rejects `--to`. See Variations. |
 | `--loop` | `[varied]` | Round trip back to the start; requires `--from` (station or system), `--hops ≥ 2`. The galaxy-wide loop (`--from` omitted) is not supported — a recorded decision. See Variations. |
-| `--via` | `[todo]` | Gated. |
+| `--via` | `[varied]` | Routes through one or more waypoints (systems or stations), any order, every route shape (fixed-terminal, single-anchor open, loop). At most six; requires an anchor (`--from`/`--to`) — a chosen variation. No partial-via routes. See Variations. |
 | `--avoid` | `[done]` | Excludes a commodity, system, or station; repeated / comma-separated, fuzzy-matched like the endpoints. Avoided commodity never bought; avoided station never a route station; avoided system also barred from jump-path transit (the permit case). Explicit `--from` exempt as origin. |
 | `--direct` | `[varied]` | Single direct hop between a fixed `--from` and `--to`; no jump/distance checks. Requires both endpoints; single-hop only; open-destination mode dropped. See Variations. |
 | `--shorten` | `[todo]` | Gated. |
@@ -119,7 +119,7 @@ separate semantics for the same option.
 | Origin selection | `[done]` | Station / system / omitted; `--start-jumps` expands origins from the anchor's empty-jump neighbourhood. |
 | Destination selection | `[done]` | Station / system / omitted; `--end-jumps` expands destinations from the anchor's empty-jump neighbourhood. |
 | Avoid semantics | `[done]` | Commodity / system / station exclusion; avoided systems barred from transit; explicit `--from` origin exempt. Namespace by syntax (bare = system or commodity, slash = place), resolved precision-first with a place winning a same-tier tie. |
-| Via semantics | `[todo]` | `--via` gated. |
+| Via semantics | `[varied]` | Built: every named waypoint visited (any order), every route shape, no partial-via route. Requires an anchor — a chosen variation. See Variations. |
 | Station eligibility | `[done]` | All implemented filters applied SQL-side. |
 | Market-data eligibility | `[varied]` | To spec, plus `_MIN_MEANINGFUL_DEMAND = 2` — see Variations. |
 | Trade candidate generation | `[done]` | |
@@ -127,7 +127,7 @@ separate semantics for the same option.
 | Credits, insurance, margin | `[done]` | |
 | Reachability | `[done]` | `--ly-per`, `--jumps-per`, same-system supercruise. `--direct` bypasses reachability for a fixed pair (see Variations). |
 | Route generation | `[done]` | |
-| Route ranking | `[done]` | Practical value with ls-penalty; `--to` honoured; `--towards` ranks progress-first (closest, then fewer hops, profit only breaking ties). `--loop` closes the route on its own start station. The other shaping options (`--shorten`/`--via`/`--unique`) are gated. |
+| Route ranking | `[done]` | Practical value with ls-penalty; `--to` honoured; `--towards` ranks progress-first (closest, then fewer hops, profit only breaking ties). `--loop` closes the route on its own start station. `--via` carries the full waypoint mask — a route missing a waypoint never outranks one satisfying it, and satisfying routes rank by profit. The remaining shaping options (`--shorten`/`--unique`) are gated. |
 | ls-penalty | `[done]` | Protected curve. |
 | towards mode | `[done]` | Progress-first per-hop ranking; arrives and stops early; mutually exclusive with `--to`. See Variations. |
 | loop routes | `[varied]` | Anchored loop built: closes on its own start station, requires `--from`, `--hops ≥ 2`, per-chain terminal rule on the fixed-terminal engine. The galaxy-wide loop (`--from` omitted) is not supported — a recorded decision. See Variations. |
@@ -137,7 +137,7 @@ separate semantics for the same option.
 | Output contract | `[done]` | Default route output plus verbose per-hop / cumulative / jump-path detail. |
 | Checklist output | `[todo]` | |
 | Progress output | `[todo]` | |
-| Failure behaviour | `[varied]` | Distinct families implemented; affordability is folded into "no profitable trades" — see Variations. The loop and towards no-route classes are implemented (a route that cannot close back to its start, or cannot make forward progress, fails in the no-route family); the via/unique no-route classes are moot (gated). Matrix endpoint shapes classify missing-data failures in aggregate on the no-route path, not per pair; in a rare cross-pair corner (one pair's source lacks data, a different pair's destination lacks data) the reported family is "no profitable trades" where per-pair probing named a side. |
+| Failure behaviour | `[varied]` | Distinct families implemented; affordability is folded into "no profitable trades" — see Variations. The loop, towards, and via no-route classes are implemented (a route that cannot close back to its start, cannot make forward progress, or cannot visit every waypoint and reach the endpoint, fails in the no-route family); the unique no-route class is moot (gated). Matrix endpoint shapes classify missing-data failures in aggregate on the no-route path, not per pair; in a rare cross-pair corner (one pair's source lacks data, a different pair's destination lacks data) the reported family is "no profitable trades" where per-pair probing named a side. |
 | Data requirements | `[done]` | Database is the source of truth; only the needed scope is materialised. |
 | Performance contract | `[done]` | Early narrowing, filters pushed into SQL, materially faster than legacy. The real-budget shapes (fixed-terminal, one-hop open) additionally pre-filter cargo — a pair that cannot beat the kept set skips the branch-and-bound solve (exact; routes unchanged), solving best-first so the threshold rises fast. The open-ended candidate fetches are narrowed in SQL by the fixed endpoint's per-item price bounds, stream station groups best-ceiling-first, and stop reading at the first station that provably cannot beat the kept set — the tail is never read out of the database (exact; routes unchanged; open multi-hop −45–61% wall). |
 
@@ -209,6 +209,14 @@ Each of these is a chosen difference, not a gap. Do not revert without raising i
    explicitly off the table. `--loop` without `--from` is rejected with a clear
    message. See `docs/Planner/unanchored_loop_investigation.md` for the evidence
    and the decision; reopening it would be a future slice.
+
+9. **`--via` requires an anchor.** Spec §Via semantics sets no anchoring
+   requirement. We require at least one of `--from` / `--to`: a
+   fully-unanchored via is unbounded, and with both ends free the
+   cheapest way to "include" a place is to start or finish there. The via
+   itself is otherwise to spec — every named waypoint visited in any
+   order, no partial-via route — with a six-waypoint cap that keeps the
+   satisfaction mask and the per-mask search lanes bounded.
 
 ---
 
