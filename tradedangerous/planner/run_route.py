@@ -23,6 +23,7 @@ from .route_onehop import (
 )
 from .route_single_anchor import _plan_open_anchor_multi_hop
 from .route_unanchored import _plan_unanchored_multi_hop
+from .route_via import _plan_via_route
 from .run_request import RunRequest
 from .validation import validate_run_request
 
@@ -53,7 +54,15 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
     bubble_cache: dict[int, object] = {}
 
     try:
-        if request.hops == 1:
+        # --via routes through named waypoints with its own lane-diversity
+        # owner, ahead of the ordinary shape dispatch. It requires --from or
+        # --to (validation rejects a fully-unanchored via), and handles every
+        # via shape — fixed-terminal, single-anchor open, and loop — itself.
+        if request.via_system_ids or request.via_station_ids:
+            result = _plan_via_route(
+                session, request, started, validation_ms, bubble_cache
+            )
+        elif request.hops == 1:
             result = _plan_single_hop(
                 session, request, started, validation_ms, bubble_cache
             )

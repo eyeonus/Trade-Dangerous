@@ -360,6 +360,19 @@ def _via_full_set(request: RunRequest) -> frozenset:
     )
 
 
+def _root_node(node: _FrontierNode) -> _FrontierNode:
+    """Walk a chain's parent links back to its hop-0 origin node.
+
+    Loop and via routes need each chain's root for the terminal rule, the
+    envelope anchor, and the frontier dedupe / lane keys. Hops are capped at 25,
+    so the walk is trivial.
+    """
+
+    while node.parent is not None:
+        node = node.parent
+    return node
+
+
 def _make_child_node(
     parent: _FrontierNode,
     trade: _HopCandidate,

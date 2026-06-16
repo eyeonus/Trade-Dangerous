@@ -24,6 +24,7 @@ from .route_common import (
     _make_child_node,
     _multihop_result,
     _reconstruct_route,
+    _root_node,
     _stations_from_endpoint,
     _system_from_station,
     cargo_prune_floor,
@@ -485,19 +486,6 @@ def _plan_multi_hop(
         expansion_stats=expansion_stats,
         final_hop_stats=final_hop_stats,
     )
-
-
-def _root_node(node: _FrontierNode) -> _FrontierNode:
-    """Walk a chain's parent links back to its hop-0 origin node.
-
-    Loop mode needs each chain's root for the terminal rule, the envelope
-    anchor, and the frontier dedupe key. Hops are capped at 25, so the walk
-    is trivial.
-    """
-
-    while node.parent is not None:
-        node = node.parent
-    return node
 
 
 def _envelope_is_provably_loose(
