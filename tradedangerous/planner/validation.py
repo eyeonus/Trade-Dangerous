@@ -130,6 +130,37 @@ def validate_run_request(request: RunRequest) -> None:
                 option_name="--loop",
             )
 
+    # --unique and --loop-interval are one no-revisit constraint at two
+    # strengths, so their validation lives together:
+    #  - --loop returns the route to its own start, which is a revisit, so it
+    #    cannot be combined with --unique (a spec early failure).
+    #  - --unique forbids every revisit, so a supplied --loop-interval would be
+    #    inert under it; reject rather than silently drop the user's interval.
+    #  - --loop-interval 1 is the default "every hop" behaviour, so 2 is the
+    #    minimum the spec allows.
+    # --loop *with* --loop-interval is deliberately allowed: a minimum gap
+    # before the route returns to its start. Whether the hop count can satisfy
+    # the gap surfaces later as a no-route failure, not here.
+    if request.loop and request.unique:
+        raise ContradictoryOptions(
+            "--loop cannot be combined with --unique: a loop returns to its "
+            "starting station, which --unique forbids.",
+            option_name="--unique",
+        )
+
+    if request.unique and request.loop_interval is not None:
+        raise ContradictoryOptions(
+            "--unique already forbids all station revisits; do not combine "
+            "it with --loop-interval.",
+            option_name="--unique",
+        )
+
+    if request.loop_interval is not None and request.loop_interval < 2:
+        raise InvalidNumericOption(
+            "--loop-interval must be at least 2; 1 is the default behaviour.",
+            option_name="--loop-interval",
+        )
+
     if request.start_jumps and not request.from_text:
         raise MissingRequiredInput(
             "--start-jumps requires --from.",
@@ -170,8 +201,6 @@ def validate_run_request(request: RunRequest) -> None:
         )
 
     unsupported = (
-        ("--unique", request.unique),
-        ("--loop-interval", request.loop_interval is not None),
         ("--shorten", request.shorten),
         ("--checklist", request.checklist),
         ("--x52-pro", request.x52_pro),
