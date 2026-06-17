@@ -893,6 +893,9 @@ def _plan_open_anchor_route(
                     expansion_stats=expansion_stats,
                     station_cache=station_cache,
                     qualification=qualification,
+                    forbidden_station_ids=_revisit_forbidden(
+                        node, request, backward=open_role == "source",
+                    ),
                 )
                 for trade in children:
                     child = _make_open_child(node, trade, request, open_role=open_role)
@@ -958,17 +961,29 @@ def _plan_open_anchor_route(
                 )
 
             # Per-station coalescing: keep the best optimistic chain per emerged
-            # open station, then trim to the frontier width by score.
-            best_by_station: dict[int, _FrontierNode] = {}
+            # open station, then trim to the frontier width by score. Under a
+            # revisit rule, two chains at one station with different histories
+            # are different states — one may still complete the route where the
+            # other cannot — so the key gains the history fragment to keep them
+            # apart rather than coalescing the completable chain away.
+            revisit_on = _revisit_active(request)
+            best_by_station: dict[object, _FrontierNode] = {}
             for node in next_frontier:
-                station_id = node.station.station_id
-                existing = best_by_station.get(station_id)
+                coalesce_key: object = node.station.station_id
+                if revisit_on:
+                    coalesce_key = (
+                        coalesce_key,
+                        _revisit_key(
+                            node, request, backward=open_role == "source",
+                        ),
+                    )
+                existing = best_by_station.get(coalesce_key)
                 if (
                     existing is None
                     or node.accumulated_practical_score
                     > existing.accumulated_practical_score
                 ):
-                    best_by_station[station_id] = node
+                    best_by_station[coalesce_key] = node
             coalesced = sorted(
                 best_by_station.values(),
                 key=lambda candidate: _node_progress_rank(candidate, request),
@@ -1014,6 +1029,9 @@ def _plan_open_anchor_route(
                 expansion_stats=expansion_stats,
                 station_cache=station_cache,
                 qualification=qualification,
+                forbidden_station_ids=_revisit_forbidden(
+                    node, request, backward=open_role == "source",
+                ),
             )
             for trade in children:
                 finalist_nodes.append(_make_open_child(node, trade, request, open_role=open_role))
@@ -1158,6 +1176,7 @@ def best_open_ended_hop_candidates(
     no_affordability: bool = False,
     required_station_ids: frozenset[int] = frozenset(),
     terminal_system_station_ids: frozenset[int] = frozenset(),
+    forbidden_station_ids: frozenset[int] = frozenset(),
 ) -> list[_HopCandidate]:
     """Return the top-K best optimistic single-hop trades on the open side.
 
@@ -1299,6 +1318,13 @@ def best_open_ended_hop_candidates(
     def _consume_group(
         open_station_id, station_candidates, dest, *, use_threshold,
     ):
+        if open_station_id in forbidden_station_ids:
+            # The expanding chain has already visited this open station (or
+            # within the loop-interval window): a revisit the rule forbids.
+            # Skip before hydrate/score so it never consumes a top-K slot or
+            # raises the kept-score floor — and so a reserved must-reach station
+            # that is also forbidden is not force-retained past the rule.
+            return
         # Build the scored entries for one open station group, exactly as the
         # ordinary stream always has, so the targeted reserved fetch produces
         # byte-identical candidates. use_threshold=False (the reserved fetch)
