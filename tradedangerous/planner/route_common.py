@@ -420,6 +420,66 @@ def _revisit_roll(
     return (*parent_order, station_id)
 
 
+def _revisit_forbidden(
+    node: _FrontierNode,
+    request: RunRequest,
+    *,
+    backward: bool,
+) -> frozenset[int]:
+    """Station ids this chain's next hop may not land on under the revisit rule.
+
+    --unique forbids every station already visited. --loop-interval N forbids
+    only the stations within the last N-1 hops — the recency window — taken from
+    the route-order end the next hop attaches to: the tail for forward growth,
+    the head for backward open-origin growth. Empty (a no-op) when no rule is
+    in force.
+    """
+
+    if request.unique:
+        return frozenset(node.visited_order)
+    interval = request.loop_interval
+    if interval is not None:
+        window = interval - 1
+        recent = (
+            node.visited_order[:window] if backward
+            else node.visited_order[-window:]
+        )
+        return frozenset(recent)
+    return frozenset()
+
+
+def _revisit_key(
+    node: _FrontierNode,
+    request: RunRequest,
+    *,
+    backward: bool,
+) -> tuple:
+    """Trim-key fragment distinguishing chains by the history that matters for
+    future feasibility under the revisit rule.
+
+    --unique: the whole visited set, sorted to a canonical tuple — membership is
+    all that matters, so two chains with the same set in a different visit order
+    coalesce. --loop-interval N: the route-order recency window (the last N-1
+    stations at the end the next hop attaches to), kept in order — the window
+    slides as the chain grows, so two chains with the same window set in a
+    different order are different states and must not coalesce. A canonical
+    value either way, never a raw frozenset, so it is safe in a deterministic
+    tie-break. Empty (inert) when no rule is in force.
+    """
+
+    if request.unique:
+        return tuple(sorted(node.visited_order))
+    interval = request.loop_interval
+    if interval is not None:
+        window = interval - 1
+        recent = (
+            node.visited_order[:window] if backward
+            else node.visited_order[-window:]
+        )
+        return tuple(recent)
+    return ()
+
+
 def _make_child_node(
     parent: _FrontierNode,
     trade: _HopCandidate,

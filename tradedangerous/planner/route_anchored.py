@@ -24,6 +24,9 @@ from .route_common import (
     _make_child_node,
     _multihop_result,
     _reconstruct_route,
+    _revisit_active,
+    _revisit_forbidden,
+    _revisit_key,
     _revisit_seed,
     _root_node,
     _stations_from_endpoint,
@@ -277,6 +280,9 @@ def _plan_multi_hop(
                     expansion_stats=expansion_stats,
                     station_cache=station_cache,
                     qualification=qualification,
+                    forbidden_station_ids=_revisit_forbidden(
+                        node, request, backward=False,
+                    ),
                 )
                 for trade in children:
                     next_frontier.append(
@@ -357,6 +363,7 @@ def _plan_multi_hop(
             # different --to anchors would deserve their own slots. Without
             # it a system --from's dominant origin starves every other
             # origin's chains out of the beam.
+            revisit_on = _revisit_active(request)
             seen_keys: set = set()
             deduped: list[_FrontierNode] = []
             for node in next_frontier:
@@ -367,6 +374,13 @@ def _plan_multi_hop(
                     )
                 else:
                     key = node.station.system_id
+                if revisit_on:
+                    # Two chains at one system with different visited histories
+                    # are different states under --unique / --loop-interval: one
+                    # may still finish the route where the other cannot. Keep
+                    # them distinct so the per-system dedupe cannot drop the only
+                    # chain that can complete.
+                    key = (key, _revisit_key(node, request, backward=False))
                 if key in seen_keys:
                     continue
                 seen_keys.add(key)
@@ -409,6 +423,9 @@ def _plan_multi_hop(
                 available_credits=node.available_credits,
                 bubble_cache=bubble_cache,
                 final_hop_stats=final_hop_stats,
+                forbidden_station_ids=_revisit_forbidden(
+                    node, request, backward=False,
+                ),
             )
             if trade is not None:
                 finalists.append(
@@ -530,6 +547,7 @@ def best_open_ended_trades_from(
     expansion_stats: run_result.ExpansionStats | None = None,
     station_cache: dict[int, run_result.ResolvedStation] | None = None,
     qualification: data_gateway.QualificationCache | None = None,
+    forbidden_station_ids: frozenset[int] = frozenset(),
 ) -> list[_HopCandidate]:
     """Return the top-K best forward trades from a single source station.
 
@@ -617,6 +635,13 @@ def best_open_ended_trades_from(
                     if expansion_stats is not None:
                         expansion_stats.stream_stops += 1
                     break
+            if station_id in forbidden_station_ids:
+                # The expanding chain has already visited this station (or
+                # within the loop-interval window): a revisit the rule forbids.
+                # Skip it before it can consume a top-K slot or raise the kept-
+                # score floor, so legal continuations lower in the stream are
+                # still read rather than starved by an illegal high scorer.
+                continue
             hydrate_started = time.perf_counter()
             destination_station = data_gateway.fetch_stations_by_id(
                 session,
@@ -734,6 +759,7 @@ def best_fixed_pair_trade_from(
     available_credits: int,
     bubble_cache: dict[int, object],
     final_hop_stats: run_result.FinalHopStats | None = None,
+    forbidden_station_ids: frozenset[int] = frozenset(),
 ) -> _HopCandidate | None:
     """Return the single best fixed-pair trade from one source to any of the
     given destinations, or None if no viable trade exists.
@@ -758,6 +784,10 @@ def best_fixed_pair_trade_from(
     saw_viable_cargo = False
     for destination in destination_stations:
         if destination.station_id == source_station.station_id:
+            continue
+        if destination.station_id in forbidden_station_ids:
+            # An already-visited terminal would revisit a station the rule
+            # forbids; another --to station may still complete the route.
             continue
         try:
             jump_path = plan_jump_path(
