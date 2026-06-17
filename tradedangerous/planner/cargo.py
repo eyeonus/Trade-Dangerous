@@ -45,13 +45,27 @@ def cargo_time_ms() -> float:
     return _cargo_path_counts["ms"]
 
 
-# Hard ceiling on branch-and-bound node visits per optimise_cargo call. A
-# seeded, tightly-bounded search settles real cargo problems in far fewer
-# nodes than this; the cap exists only so an adversarial commodity mix can
-# never hang the planner. If it is ever hit the search returns the best
-# feasible plan found so far (always at least the greedy seed), so the result
-# stays valid — at worst slightly under-optimal on a pathological instance.
-_SEARCH_NODE_LIMIT = 100_000
+# Branch-and-bound stops on two conditions, whichever fires first.
+#
+# Primary stop — no improvement for a while: the search records the node at
+# which it last bettered its incumbent, and gives up once it has gone
+# _SEARCH_NO_IMPROVEMENT_LIMIT nodes with no further improvement. A seeded,
+# tightly-bounded search reaches the optimum early, then only *proves* that
+# nothing better exists — wasted work for us. So we stop, confident in the
+# incumbent, rather than pay to prove it optimal. On large holds (the
+# branching factor is the hold size) that proof otherwise grinds for tens of
+# thousands of nodes per solve, and there is one solve per candidate pair.
+#
+# Outer fuse — _SEARCH_NODE_LIMIT: a hard ceiling so a pathological mix can
+# never hang the planner. Sized well above where real answers settle, not a
+# tuning value; the no-improvement stop is what ends a normal search.
+#
+# Either stop returns the best feasible plan found so far (always at least
+# the greedy seed), so the result stays valid — at worst slightly under-
+# optimal on a pathological instance. Both are levers, tunable on evidence
+# like the beam width.
+_SEARCH_NO_IMPROVEMENT_LIMIT = 500
+_SEARCH_NODE_LIMIT = 2_000
 
 
 @dataclass(frozen=True, slots=True)
@@ -154,6 +168,7 @@ def _optimise_cargo(
     best_profit = 0
     best_cost = 0
     visited = 0
+    last_improve_at = 0
 
     def optimistic_upper_bound(
         index: int,
@@ -225,12 +240,15 @@ def _optimise_cargo(
         current_profit: int,
         current_cost: int,
     ) -> None:
-        nonlocal best_cost, best_profit, best_quantities, visited
+        nonlocal best_cost, best_profit, best_quantities
+        nonlocal visited, last_improve_at
 
-        # Safety cap: bail out of an over-large search, keeping the best
-        # feasible plan found so far. Never reached for realistic cargo
-        # problems once the incumbent is seeded.
         visited += 1
+        # Confident stop: give up once we've gone this many nodes without
+        # bettering the incumbent, rather than keep proving it optimal.
+        if visited - last_improve_at > _SEARCH_NO_IMPROVEMENT_LIMIT:
+            return
+        # Outer fuse so a pathological mix can never hang the planner.
         if visited > _SEARCH_NODE_LIMIT:
             return
 
@@ -239,6 +257,7 @@ def _optimise_cargo(
                 best_profit = current_profit
                 best_cost = current_cost
                 best_quantities = current_quantities.copy()
+                last_improve_at = visited
             return
 
         if (
