@@ -845,4 +845,7 @@ def render(results, cmdenv, tdb):
     # run leaves results.data empty — its guidance was already printed — so
     # there is nothing further to show.
     if isinstance(results.data, RunResult):
-        cmdenv.console.print(render_run_result(results.data), highlight=False)
+        cmdenv.console.print(
+            render_run_result(results.data, debug=cmdenv.debug),
+            highlight=False,
+        )

@@ -12,8 +12,13 @@ from .run_result import (
 )
 
 
-def render_run_result(result: RunResult) -> str:
-    """Render route results as human-readable trade instructions."""
+def render_run_result(result: RunResult, *, debug: int = 0) -> str:
+    """Render route results as human-readable trade instructions.
+
+    The diagnostics block is debug output, not normal or verbose output, so it
+    is emitted only at debug level 2 and up (``-ww``). ``debug`` defaults to 0,
+    so a caller that does not pass it gets a clean, diagnostics-free render.
+    """
 
     lines: list[str] = []
 
@@ -33,10 +38,11 @@ def render_run_result(result: RunResult) -> str:
         if route_index < len(result.routes):
             lines.append("")
 
-    # Multi-hop diagnostic summary, appended after the route. Single-hop
-    # diagnostics are not surfaced here; the multi-hop fields stay at their
-    # defaults for any single-hop run and the block is skipped.
-    lines.extend(_render_multihop_diagnostics(result.diagnostics))
+    # Diagnostics are debug output: noisy, useful in development, not for the
+    # ordinary user. Gate them behind -ww (debug level 2) and up. Both single-
+    # and multi-hop runs route their instrumentation through the same helper.
+    if debug >= 2:
+        lines.extend(_render_multihop_diagnostics(result.diagnostics))
 
     return "\n".join(lines)
 
