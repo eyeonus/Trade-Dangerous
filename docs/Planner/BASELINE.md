@@ -147,7 +147,10 @@ Do unify the contract.
   kept skips the solve, and pairs are solved best-first so the threshold rises
   fast. Exact (routes unchanged); it is what makes the real-budget shapes
   (fixed-terminal, one-hop open) fast — the fixed-terminal Sol→Lave run dropped
-  285s → 46s, the one-hop open from Sol 8m40 → ~5s.
+  285s → 46s, the one-hop open from Sol 8m40 → ~5s. Under tight credits the
+  branch-and-bound no longer grinds to *prove* optimality: it stops 500 nodes
+  after its last improvement, with a 2,000-node fuse as the backstop — exact on
+  every shape tested (Slice 28).
 - **Bulk-sale-tax cap** — Metals/Minerals destination quantity capped at
   `floor(demand * 0.25)` to avoid the in-game bulk-sale price penalty.
 - **`--max-price`** — absolute commodity-price cap (default 1,500,000 cr/t),
@@ -155,7 +158,9 @@ Do unify the contract.
 - **`--ls-penalty`** — the protected travel-time curve (defined in the spec,
   implemented in `score.py`). Untouched.
 - **Route output** — expanded plain-text per-hop and cumulative figures for
-  manual audit; partial-route warnings; the bulk-tax cap note.
+  manual audit; partial-route warnings; the bulk-tax cap note. The diagnostics
+  block (timings, counters, per-layer breakdown) is debug output, shown only at
+  `-ww` (debug level 2); normal output is clean (Slice 28).
 - **`--jumps-per` keyed default** — omitted `--jumps-per` defaults to 2 when
   `--ly-per <= 12.5`, otherwise 1.
 - **Empty-jump positioning** (`--start-jumps` / `--end-jumps`) — a named
@@ -361,9 +366,17 @@ Agreed-but-unscheduled decisions and noted-for-later items:
   −3.4% on the worst fixed-terminal shape (85.9s → 83.0s). Fixed-terminal
   remains the slowest family for structural reasons only (rows genuinely
   read under the real-budget floor, ~5× jump-path time, the final-hop
-  close on the destination — the price of guaranteeing arrival). **The
-  performance ledger is closed**: no lever is recorded, no performance
-  work is owed. See `timing_baselines.md` run set 5, finding 5.
+  close on the destination — the price of guaranteeing arrival). That
+  ledger covered the **loose-credit, fetch-bound** shapes. Slice 28
+  reopened it for the **credit-bound** case: under tight credits the cargo
+  branch-and-bound ground to its 100,000-node fuse *proving* an optimum it
+  found within ~25 nodes (one solve per pair, so the cost was
+  multiplicative). A confident-stop — stop after 500 nodes with no
+  improvement — plus a far lower fuse (→ 2,000) cut it: routes unchanged,
+  the slow fixed-terminal shapes ~3.6× faster (sol→achenar h8 at 5M:
+  354s → ~99s, cargo 264s → 6.7s). See `timing_baselines.md` run set 5
+  (loose-credit) and `twenty_eighth_slice_completion_report.md` /
+  `exactness_study.md` (credit-bound).
 - **`nav` / `olddata` rebuild** — parked for the main refactor's checkpoint L.
 - **Listener loose ends** — the 15A change is committed in the listener repo;
   the client path and a full spansh import are assumed-working pending a real

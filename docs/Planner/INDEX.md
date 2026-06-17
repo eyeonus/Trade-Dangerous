@@ -277,6 +277,15 @@ Planned in session from a supplied seam analysis, no separate plan doc — each 
 
 ---
 
+### Slice 28 — Cargo Search Confident-Stop and Diagnostics Gating (Complete)
+**The cargo branch-and-bound now stops when *confident*, not when it has *proved* the optimum: a no-improvement early stop (bail 500 nodes after the last improvement) plus a far lower outer fuse (100,000 → 2,000). The fuse had become the operating point — under tight credits the search ground to it proving an optimum it found within ~25 nodes, one solve per candidate pair (so the cost was multiplicative). Routes unchanged across every shape tested; the slow fixed-terminal shapes ~3.6× faster (sol→achenar h8 at 5M: 354s → ~99s, cargo 264s → 6.7s). The slow path stays — on big holds it beats its greedy seed ~11% per solve — it just stops grinding once it has the answer. Also: the route diagnostics block is gated behind `-ww` (debug level 2), so normal output is clean. Planned in-conversation; evidence in `exactness_study.md`.**
+
+| Document | Content |
+|----------|---------|
+| [twenty_eighth_slice_completion_report.md](twenty_eighth_slice_completion_report.md) | Proof of completion: the confident-stop mechanism and the fuse drop; the study evidence (optimum by ~25 nodes, cap-invariant routes, the ~11% per-solve gap, the front-loaded fixed tax); verification across hops/credits/endpoints; the diagnostics single-output-path audit and the `-ww` gating. |
+
+---
+
 ## Reference and Technical Notes
 
 ## Reference and Technical Notes
