@@ -24,6 +24,7 @@ from .route_common import (
     _make_child_node,
     _multihop_result,
     _reconstruct_route,
+    _revisit_seed,
     _root_node,
     _stations_from_endpoint,
     _system_from_station,
@@ -170,6 +171,7 @@ def _plan_multi_hop(
             hop_jump_path=None,
             hop_practical_score=0.0,
             hop_raw_profit=0,
+            visited_order=_revisit_seed(station.station_id, request),
         )
         for station in origin_stations
     ]

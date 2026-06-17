@@ -39,6 +39,7 @@ from .route_common import (
     _make_open_child,
     _multihop_result,
     _node_progress_rank,
+    _revisit_seed,
     _root_node,
     _route_progress_rank,
     _stations_from_endpoint,
@@ -645,6 +646,7 @@ def _plan_via_route(
             hop_raw_profit=0,
             hop_candidates=None,
             via_satisfied=_via_satisfied_by(station, request),
+            visited_order=_revisit_seed(station.station_id, request),
         )
         for target in _lane_targets_for(
             node.via_satisfied, full_mask, fixed_terminal=fixed_terminal,
@@ -712,7 +714,7 @@ def _plan_via_route(
                 for trade in _expand(
                     entry, envelope_ly, terminal_hop=False, final_layer=False,
                 ):
-                    child = _make_open_child(entry.node, trade, request)
+                    child = _make_open_child(entry.node, trade, request, open_role=open_role)
                     candidate_trade_count += 1
                     layer_children_generated += 1
                     next_entries.extend(
@@ -767,7 +769,7 @@ def _plan_via_route(
             for trade in _expand(
                 entry, final_envelope_ly, terminal_hop=True, final_layer=True,
             ):
-                node = _make_open_child(entry.node, trade, request)
+                node = _make_open_child(entry.node, trade, request, open_role=open_role)
                 candidate_trade_count += 1
                 if node.via_satisfied == full_mask and _at_endpoint(
                     node,

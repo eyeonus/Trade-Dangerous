@@ -15,6 +15,7 @@ from .route_common import (
     _MULTIHOP_FRONTIER_WIDTH,
     _elapsed_ms,
     _plan_open_anchor_route,
+    _revisit_seed,
 )
 
 
@@ -103,6 +104,7 @@ def _plan_unanchored_multi_hop(
             hop_practical_score=0.0,
             hop_raw_profit=0,
             hop_candidates=None,
+            visited_order=_revisit_seed(source_id, request),
         )
         for source_id in seed_sources
     ]

@@ -55,6 +55,13 @@ class _FrontierNode:
     # Carried so the beam can keep chains that have satisfied different vias from
     # crowding one another out, and accept only a chain that has visited them all.
     via_satisfied: frozenset = frozenset()
+    # --unique / --loop-interval tracking: the station ids this chain has
+    # visited, in route order (origin first). Empty for runs with no revisit
+    # rule, so it is an inert marker there — it never enters a key or a
+    # comparison unless a revisit rule is set. Stored in route order, not
+    # search-construction order, because --loop-interval reads a recency
+    # window; see _revisit_roll for the orientation that guarantees this.
+    visited_order: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -373,6 +380,46 @@ def _root_node(node: _FrontierNode) -> _FrontierNode:
     return node
 
 
+def _revisit_active(request: RunRequest) -> bool:
+    """Whether a no-revisit rule (--unique / --loop-interval) is in force.
+
+    When neither is set, chain history stays empty and inert, so runs without a
+    revisit rule carry no extra state and behave exactly as before.
+    """
+
+    return request.unique or request.loop_interval is not None
+
+
+def _revisit_seed(station_id: int, request: RunRequest) -> tuple[int, ...]:
+    """Hop-0 chain history: the origin station when a revisit rule is in force,
+    empty otherwise. The origin counts as visited — --unique forbids returning
+    to it, and a loop's close is gated against it.
+    """
+
+    return (station_id,) if _revisit_active(request) else ()
+
+
+def _revisit_roll(
+    parent_order: tuple[int, ...],
+    station_id: int,
+    *,
+    backward: bool,
+) -> tuple[int, ...]:
+    """Extend a chain's route-order station history by one hop.
+
+    Forward growth appends — the new station is the latest in route order.
+    Backward open-origin growth prepends — the new station is an earlier
+    predecessor, reached by walking the chain back from the fixed destination.
+    --unique reads only membership (order-blind), but --loop-interval reads the
+    recency window, so the stored order must be true route order, not the order
+    the search happened to build the chain in.
+    """
+
+    if backward:
+        return (station_id, *parent_order)
+    return (*parent_order, station_id)
+
+
 def _make_child_node(
     parent: _FrontierNode,
     trade: _HopCandidate,
@@ -392,6 +439,14 @@ def _make_child_node(
     new_score = parent.accumulated_practical_score + trade.practical_score
     trusted_profit = int((1.0 - request.margin) * new_profit)
     new_credits = base_trade_budget + trusted_profit
+    # Forward growth: the new station is the latest in route order, so append.
+    visited_order = parent.visited_order
+    if _revisit_active(request):
+        visited_order = _revisit_roll(
+            parent.visited_order,
+            trade.destination_station.station_id,
+            backward=False,
+        )
     return _FrontierNode(
         station=trade.destination_station,
         parent=parent,
@@ -406,6 +461,7 @@ def _make_child_node(
         via_satisfied=parent.via_satisfied | _via_satisfied_by(
             trade.destination_station, request,
         ),
+        visited_order=visited_order,
     )
 
 
@@ -779,7 +835,7 @@ def _plan_open_anchor_route(
                     qualification=qualification,
                 )
                 for trade in children:
-                    child = _make_open_child(node, trade, request)
+                    child = _make_open_child(node, trade, request, open_role=open_role)
                     candidate_trade_count += 1
                     layer_children_generated += 1
                     if (
@@ -900,7 +956,7 @@ def _plan_open_anchor_route(
                 qualification=qualification,
             )
             for trade in children:
-                finalist_nodes.append(_make_open_child(node, trade, request))
+                finalist_nodes.append(_make_open_child(node, trade, request, open_role=open_role))
                 candidate_trade_count += 1
         # --towards: chains that reached the target before the final layer are
         # finished routes too. Fold them in so the winner selection ranks them
@@ -1535,6 +1591,8 @@ def _make_open_child(
     parent: _FrontierNode,
     trade: _HopCandidate,
     request: RunRequest,
+    *,
+    open_role: str,
 ) -> _FrontierNode:
     """Extend an open-anchor chain by one hop toward the open endpoint.
 
@@ -1553,6 +1611,17 @@ def _make_open_child(
 
     new_profit = parent.accumulated_raw_profit + trade.raw_profit
     new_score = parent.accumulated_practical_score + trade.practical_score
+    # Open growth orientation: an open-origin / to-only search (open_role
+    # "source") grows the chain backward from the fixed destination, so the new
+    # station is an earlier predecessor and must prepend; a forward open
+    # destination appends. Inert unless a revisit rule is set.
+    visited_order = parent.visited_order
+    if _revisit_active(request):
+        visited_order = _revisit_roll(
+            parent.visited_order,
+            trade.destination_station.station_id,
+            backward=open_role == "source",
+        )
     return _FrontierNode(
         station=trade.destination_station,
         parent=parent,
@@ -1568,6 +1637,7 @@ def _make_open_child(
         via_satisfied=parent.via_satisfied | _via_satisfied_by(
             trade.destination_station, request,
         ),
+        visited_order=visited_order,
     )
 
 

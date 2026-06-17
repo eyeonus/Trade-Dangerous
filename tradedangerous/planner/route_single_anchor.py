@@ -13,6 +13,7 @@ from .route_common import (
     _FrontierNode,
     _elapsed_ms,
     _plan_open_anchor_route,
+    _revisit_seed,
     _stations_from_endpoint,
 )
 
@@ -78,6 +79,7 @@ def _plan_open_anchor_multi_hop(
             hop_practical_score=0.0,
             hop_raw_profit=0,
             hop_candidates=None,
+            visited_order=_revisit_seed(station.station_id, request),
         )
         for station in anchor_stations
     ]
