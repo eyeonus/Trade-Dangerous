@@ -88,9 +88,14 @@ rather than *reserve*.
 | `best_open_ended_trades_from` | `route_anchored.py:516` | fixed-terminal intermediate hops |
 | `best_fixed_pair_trade_from` | `route_anchored.py:726` | fixed-terminal final hop, vs the fixed Y |
 
-The fixed-Y case is trivial (Y is a single station — legal or not), but it
-**must** still be checked, or `--unique` could "complete" a route onto an
-already-visited terminal.
+The final hop's destination is **not** generally a single station: a `--to`
+system endpoint expands to many eligible destination stations, and `--end-jumps`
+positioning also produces an endpoint station set (`_stations_from_endpoint()`
+returns a tuple for a fixed station but fetches eligible stations for a system
+endpoint). So `best_fixed_pair_trade_from` must apply the forbidden-station
+check **per candidate destination station**. If every destination station is
+forbidden under the revisit rule, that final-hop attempt is revisit-blocked —
+otherwise `--unique` could "complete" a route onto an already-visited terminal.
 
 ### 3.2 Child construction — roll history forward, orientation-aware
 
