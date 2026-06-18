@@ -294,6 +294,13 @@ Planned in session from a supplied seam analysis, no separate plan doc — each 
 | [twenty_ninth_slice_implementation_plan.md](twenty_ninth_slice_implementation_plan.md) | The plan, revised after an audit pass: the in-helper filter (not caller-side), the route-order orientation rule, the per-(station, history) trim keys, the failure classification, and the reject-redundant decision. |
 | [twenty_ninth_slice_completion_report.md](twenty_ninth_slice_completion_report.md) | Proof of completion: the six-commit build, the contract reading (gap `< N`, N=2 inert), the mechanism and the two enforcement seams, validation, the per-layer skip-delta failure classification, and the live verification. |
 
+### Slice 30 — `--shorten` (Built, Found Inert, Removed)
+**Implemented per the audited plan on both fixed-`--to` engines (rank arriving routes by practical score per hop, the legacy metric), then stripped. The per-hop ranking is inert on current data — a longer route's accumulated profit keeps its per-hop value competitive, so nothing ever shortens, not even a 25-hop route. The only metric that reliably shortens needs a profit-tolerance constant the contract does not define. Decided with eyeonus to remove the option rather than ship a flag that silently no-ops; `trade run` now rejects `--shorten` as an unknown option. Recorded in `SPEC_STATUS.md` (Variations) and `BASELINE.md` (Settled decisions).**
+
+| Document | Content |
+|----------|---------|
+| [thirtieth_slice_implementation_plan.md](thirtieth_slice_implementation_plan.md) | The audited design + investigation record (carries an OUTCOME banner): the per-hop metric, the fixed-terminal and open-origin harvests, the audit's two blockers, and the resolved decisions. The feature is not in the code — see the banner. |
+
 ---
 
 ## Reference and Technical Notes

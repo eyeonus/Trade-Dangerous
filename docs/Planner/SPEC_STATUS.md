@@ -19,6 +19,7 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 [done]    built, to spec
 [varied]  built, deliberately different from spec — see the note
 [todo]    in the spec, not yet built (gated in validation, or parses but inert)
+[removed] in the spec, deliberately not offered — a recorded decision (see the note)
 ```
 
 ---
@@ -47,7 +48,7 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 | `--via` | `[varied]` | Routes through one or more waypoints (systems or stations), any order, every route shape (fixed-terminal, single-anchor open, loop). At most six; requires an anchor (`--from`/`--to`) — a chosen variation. No partial-via routes. See Variations. |
 | `--avoid` | `[done]` | Excludes a commodity, system, or station; repeated / comma-separated, fuzzy-matched like the endpoints. Avoided commodity never bought; avoided station never a route station; avoided system also barred from jump-path transit (the permit case). Explicit `--from` exempt as origin. |
 | `--direct` | `[varied]` | Single direct hop between a fixed `--from` and `--to`; no jump/distance checks. Requires both endpoints; single-hop only; open-destination mode dropped. See Variations. |
-| `--shorten` | `[todo]` | Gated. |
+| `--shorten` | `[removed]` | Removed from the command — `trade run` rejects it as an unknown option. Built (per-hop ranking), found inert on current data, then stripped (agreed with eyeonus). See Variations. |
 | `--unique` | `[done]` | Forbids visiting a station more than once; enforced on every multi-hop engine via a per-chain visited-history. Excludes `--loop` and `--loop-interval` (reject-redundant). |
 | `--loop-interval` | `[done]` | Forbids revisiting a station until `N` hops have passed (gap `< N`; `N ≥ 2`, with `N=2` inert and `N=3` the first to bite). Allowed with `--loop`. The unbounded form is `--unique`. |
 
@@ -127,11 +128,11 @@ separate semantics for the same option.
 | Credits, insurance, margin | `[done]` | |
 | Reachability | `[done]` | `--ly-per`, `--jumps-per`, same-system supercruise. `--direct` bypasses reachability for a fixed pair (see Variations). |
 | Route generation | `[done]` | |
-| Route ranking | `[done]` | Practical value with ls-penalty; `--to` honoured; `--towards` ranks progress-first (closest, then fewer hops, profit only breaking ties). `--loop` closes the route on its own start station. `--via` carries the full waypoint mask — a route missing a waypoint never outranks one satisfying it, and satisfying routes rank by profit. The remaining shaping options (`--shorten`/`--unique`) are gated. |
+| Route ranking | `[done]` | Practical value with ls-penalty; `--to` honoured; `--towards` ranks progress-first (closest, then fewer hops, profit only breaking ties). `--loop` closes the route on its own start station. `--via` carries the full waypoint mask — a route missing a waypoint never outranks one satisfying it, and satisfying routes rank by profit. `--shorten` was removed (see Variations). |
 | ls-penalty | `[done]` | Protected curve. |
 | towards mode | `[done]` | Progress-first per-hop ranking; arrives and stops early; mutually exclusive with `--to`. See Variations. |
 | loop routes | `[varied]` | Anchored loop built: closes on its own start station, requires `--from`, `--hops ≥ 2`, per-chain terminal rule on the fixed-terminal engine. The galaxy-wide loop (`--from` omitted) is not supported — a recorded decision. See Variations. |
-| shorten routes | `[todo]` | |
+| shorten routes | `[removed]` | Built then removed — the per-hop ranking is inert on current data. See Variations. |
 | unique and loop interval | `[done]` | Built on every multi-hop engine: an in-helper forbidden-station filter plus a history-aware frontier trim key, orientation-aware for the backward open-origin / `--via` to-only search. `--unique` is the unbounded `--loop-interval`. |
 | Pruning controls | `[todo]` | |
 | Output contract | `[done]` | Default route output plus verbose per-hop / cumulative / jump-path detail. |
@@ -217,6 +218,19 @@ Each of these is a chosen difference, not a gap. Do not revert without raising i
    itself is otherwise to spec — every named waypoint visited in any
    order, no partial-via route — with a six-waypoint cap that keeps the
    satisfaction mask and the per-mask search lanes bounded.
+
+10. **`--shorten` removed.** Spec §shorten routes defines it (prefer reaching
+    `--to` in fewer hops at comparable value). It was built on both fixed-`--to`
+    engines, ranking arriving routes by practical score *per hop* (the legacy
+    metric). On current data that ranking is inert: a longer route's accumulated
+    profit keeps its per-hop value competitive, so nothing ever shortens — not
+    even a 25-hop route. The only metric that reliably shortens needs a
+    profit-tolerance constant the contract does not define. Decided with eyeonus
+    to strip it rather than ship a flag that silently no-ops, so the option is
+    removed from the command (rejected as an unknown option), not gated. The
+    build is kept as the design + investigation record in
+    `thirtieth_slice_implementation_plan.md`; revisit only if real demand and a
+    sound metric appear.
 
 ---
 

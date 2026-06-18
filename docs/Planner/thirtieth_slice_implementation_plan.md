@@ -6,6 +6,18 @@ result, judged per hop. It is a fixed-`--to` feature only. The audit's two
 blockers (open-origin harvesting, early-collapse failure ordering) are folded in;
 see §10 for the resolved decisions.*
 
+> **OUTCOME — built, found inert, removed (agreed with eyeonus).** `--shorten`
+> was implemented per this plan on both fixed-`--to` engines, then stripped. On
+> current data the per-hop ranking is inert: a longer route's accumulated profit
+> keeps its per-hop value competitive, so nothing ever shortens — not even a
+> 25-hop route. The only metric that reliably shortens needs a profit-tolerance
+> constant the contract does not define, so shipping the per-hop version would
+> mean a flag that silently no-ops. The option is **removed from the command**
+> (`trade run` rejects it as an unknown option), not gated. This plan stands as
+> the design and investigation record; the decision is also recorded in
+> `SPEC_STATUS.md` (Variations) and `BASELINE.md` (Settled decisions). Revisit
+> only on real demand and a sound metric.
+
 ---
 
 ## 1. What the contract asks

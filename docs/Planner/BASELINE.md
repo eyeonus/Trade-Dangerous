@@ -330,6 +330,16 @@ unknown-pad station is admitted unless `--pad-size L` is set. Full reasoning in
   do not list it as a gap.
   Full evidence in `unanchored_loop_investigation.md`; reopening it is a future
   slice, not a loose end.
+- **`--shorten` is removed, not gated.** It was built on both fixed-`--to`
+  engines (rank arriving routes by practical score per hop, the legacy metric)
+  and found inert on current data: a longer route's accumulated profit keeps its
+  per-hop value competitive, so nothing ever shortens — not even a 25-hop route.
+  The only metric that reliably shortens needs a profit-tolerance constant the
+  contract does not define. Decided with eyeonus to strip the option rather than
+  ship a flag that no-ops; `trade run` now rejects `--shorten` as an unknown
+  option. The design + investigation is kept in
+  `thirtieth_slice_implementation_plan.md`. Do not list it as owed; revisit only
+  on real demand and a sound metric.
 
 ---
 
@@ -339,8 +349,8 @@ The authoritative, option-by-option status lives in **`SPEC_STATUS.md`**. In
 short, the route shapes, empty-jump positioning, `--towards`, `--direct`,
 `--avoid`, `--via` (requires an anchor — a chosen variation), `--loop`
 (anchored; requires `--from` — the galaxy-wide loop is a closed decision, see
-Settled decisions), `--unique`, and `--loop-interval` are done; what remains is
-the rest of the modifier and display surface — `--shorten` and the
+Settled decisions), `--unique`, and `--loop-interval` are done; `--shorten` was
+removed (a recorded decision — see Settled decisions). What remains is the
 search/display controls
 (`--routes > 1`, `--max-routes`, `--prune-*`, `--checklist`, `--x52-pro`). Three
 options (`--show-jumps`, `--summary`, `--progress`) parse without error but
