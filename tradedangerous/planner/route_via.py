@@ -39,6 +39,9 @@ from .route_common import (
     _make_open_child,
     _multihop_result,
     _node_progress_rank,
+    _revisit_active,
+    _revisit_forbidden,
+    _revisit_key,
     _revisit_seed,
     _root_node,
     _route_progress_rank,
@@ -156,22 +159,30 @@ def _lane_root(node: _FrontierNode, *, loop_mode: bool) -> int | None:
     return _root_node(node).station.station_id
 
 
-def _coalesce_key(entry: _LaneEntry, *, loop_mode: bool) -> tuple:
+def _coalesce_key(
+    entry: _LaneEntry, *, loop_mode: bool, request: RunRequest, backward: bool,
+) -> tuple:
     """Identity for per-(station, mask, lane, root) coalescing.
 
     Two chains arriving at the same station with the same mask, the same lane
     target and the same root are interchangeable for expansion — keep only the
     higher-scoring one. The lane target is part of the identity: two chains at
     one station with one mask but pursuing different next vias are different
-    states and must not be coalesced into one.
+    states and must not be coalesced into one. Under a revisit rule the visited
+    history joins the identity too, exactly as on the other engines: two chains
+    alike but for where they have been are different search states, and merging
+    them could drop the only one that can still complete the route.
     """
 
-    return (
+    base = (
         entry.node.station.station_id,
         entry.node.via_satisfied,
         entry.target,
         _lane_root(entry.node, loop_mode=loop_mode),
     )
+    if _revisit_active(request):
+        return base + (_revisit_key(entry.node, request, backward=backward),)
+    return base
 
 
 def _lane_key(entry: _LaneEntry, *, loop_mode: bool) -> tuple:
@@ -279,6 +290,8 @@ def _trim_frontier(
     full_mask: frozenset,
     *,
     loop_mode: bool,
+    request: RunRequest,
+    backward: bool,
     terminal_xyz: tuple | None = None,
     width: int = _MULTIHOP_FRONTIER_WIDTH,
     floor: int = _VIA_LANE_FLOOR,
@@ -309,7 +322,9 @@ def _trim_frontier(
     # 1. Coalesce.
     best: dict[tuple, _LaneEntry] = {}
     for entry in entries:
-        key = _coalesce_key(entry, loop_mode=loop_mode)
+        key = _coalesce_key(
+            entry, loop_mode=loop_mode, request=request, backward=backward,
+        )
         current = best.get(key)
         if (
             current is None
@@ -696,6 +711,9 @@ def _plan_via_route(
             no_affordability=True,
             required_station_ids=required_ids,
             terminal_system_station_ids=term_sys,
+            forbidden_station_ids=_revisit_forbidden(
+                entry.node, request, backward=open_role == "source",
+            ),
         )
 
     try:
@@ -745,6 +763,7 @@ def _plan_via_route(
 
             frontier = _trim_frontier(
                 next_entries, full_mask, loop_mode=loop_mode,
+                request=request, backward=open_role == "source",
                 terminal_xyz=terminal_xyz,
             )
             frontier_widths.append(len(frontier))
