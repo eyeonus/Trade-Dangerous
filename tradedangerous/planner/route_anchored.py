@@ -431,6 +431,7 @@ def _plan_multi_hop(
                 request,
                 available_credits=node.available_credits,
                 bubble_cache=bubble_cache,
+                expansion_stats=expansion_stats,
                 final_hop_stats=final_hop_stats,
                 forbidden_station_ids=_revisit_forbidden(
                     node, request, backward=False,
@@ -771,6 +772,7 @@ def best_fixed_pair_trade_from(
     *,
     available_credits: int,
     bubble_cache: dict[int, object],
+    expansion_stats: run_result.ExpansionStats | None = None,
     final_hop_stats: run_result.FinalHopStats | None = None,
     forbidden_station_ids: frozenset[int] = frozenset(),
 ) -> _HopCandidate | None:
@@ -801,6 +803,10 @@ def best_fixed_pair_trade_from(
         if destination.station_id in forbidden_station_ids:
             # An already-visited terminal would revisit a station the rule
             # forbids; another --to station may still complete the route.
+            # Count it so a final hop that collapses solely on revisit-blocked
+            # terminals is classified as NoUniqueRoute, not the generic failure.
+            if expansion_stats is not None:
+                expansion_stats.revisit_skips += 1
             continue
         try:
             jump_path = plan_jump_path(
