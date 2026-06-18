@@ -1251,21 +1251,6 @@ class RunWorkspace(DraftValueHelper):
                         event.value,
                     ),
                 ).tooltip('Show detail of jumps between hops.')
-                ui.checkbox(
-                    'Shorten',
-                    value=self._bool_value(
-                        self.draft.advanced_values,
-                        'shorten',
-                    ),
-                    on_change=lambda event: self._set_bool(
-                        self.draft.advanced_values,
-                        'shorten',
-                        event.value,
-                    ),
-                ).tooltip(
-                    'Requires To. Find the shortest route with the best gain '
-                    'per ton.'
-                )
 
     def _build_extended_market_section(self) -> None:
         with ui.column().classes('w-full gap-3'):

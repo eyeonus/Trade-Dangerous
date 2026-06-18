@@ -201,7 +201,6 @@ def validate_run_request(request: RunRequest) -> None:
         )
 
     unsupported = (
-        ("--shorten", request.shorten),
         ("--checklist", request.checklist),
         ("--x52-pro", request.x52_pro),
     )

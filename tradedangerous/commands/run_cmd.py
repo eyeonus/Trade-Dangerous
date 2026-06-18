@@ -325,10 +325,6 @@ switches = [
         help = 'Summary layout of route instructions.',
         action = 'store_true',
     ),
-    ParseArgument('--shorten',
-        help = '(Requires --to) Find the shortest route with the best gpt.',
-        action = 'store_true',
-    ),
 ]
 
 

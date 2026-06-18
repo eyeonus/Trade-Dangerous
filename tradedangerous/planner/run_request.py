@@ -89,7 +89,6 @@ class RunRequest:
     via_targets: tuple[ViaTarget, ...] = ()
     unique: bool = False
     loop_interval: int | None = None
-    shorten: bool = False
     routes: int = 1
     checklist: bool = False
     x52_pro: bool = False
@@ -157,7 +156,6 @@ def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
         avoid=tuple(getattr(cmdenv, "avoid", None) or ()),
         unique=getattr(cmdenv, "unique", False),
         loop_interval=getattr(cmdenv, "loopInt", None),
-        shorten=getattr(cmdenv, "shorten", False),
         routes=getattr(cmdenv, "routes", 1),
         checklist=getattr(cmdenv, "checklist", False),
         x52_pro=getattr(cmdenv, "x52pro", False),

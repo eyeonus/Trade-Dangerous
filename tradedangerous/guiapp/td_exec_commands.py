@@ -81,7 +81,6 @@ def build_run_argv(
     append_option(argv, '--supply', resolved.get('supply'))
     append_option(argv, '--demand', resolved.get('demand'))
     append_flag(argv, '--summary', resolved.get('summary'))
-    append_flag(argv, '--shorten', resolved.get('shorten'))
     return argv
 
 def build_buy_argv(
