@@ -136,6 +136,15 @@ class NoViaRoute(NoReachableRoute):
     """
 
 
+class NoUniqueRoute(NoReachableRoute):
+    """No route satisfied the no-revisit rule (--unique / --loop-interval).
+
+    A subclass of NoReachableRoute so any handler catching the no-route family
+    catches this too; the distinct type lets the message name the revisit option
+    as the lever to relax.
+    """
+
+
 class NoProfitableTrades(PlannerFailure):
     """No profitable trades satisfy the request constraints."""
 

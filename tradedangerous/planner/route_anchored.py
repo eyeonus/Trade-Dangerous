@@ -23,6 +23,7 @@ from .route_common import (
     _group_pairs,
     _make_child_node,
     _multihop_result,
+    _no_revisit_route_failure,
     _reconstruct_route,
     _revisit_active,
     _revisit_forbidden,
@@ -234,6 +235,7 @@ def _plan_multi_hop(
             layer_expansion_calls = 0
             layer_children_generated = 0
             next_frontier: list[_FrontierNode] = []
+            revisit_skips_before = expansion_stats.revisit_skips
             for node in frontier:
                 expansions_examined += 1
                 layer_expansion_calls += 1
@@ -312,6 +314,12 @@ def _plan_multi_hop(
                 # this shape, whatever the frontier holds.
                 if loop_mode:
                     raise _loop_failure()
+                # A revisit rule emptied this layer — candidates existed but the
+                # rule forbade every continuation: the spec's "unique route
+                # impossible" case. Fail clearly rather than fall back to a
+                # shorter partial that ignores the requested length.
+                if _revisit_active(request) and expansion_stats.revisit_skips > revisit_skips_before:
+                    raise _no_revisit_route_failure(request)
                 # No child survived this expansion layer. On the first layer
                 # that means no trade hop was ever completed, so this is still
                 # the normal no-result failure. On later layers, the current
@@ -405,6 +413,7 @@ def _plan_multi_hop(
         # there is no onward-viability check to apply.
         final_hop_started = time.perf_counter()
         finalists: list[_FrontierNode] = []
+        final_revisit_skips_before = expansion_stats.revisit_skips
         for node in frontier:
             expansions_examined += 1
             if loop_mode:
@@ -441,6 +450,8 @@ def _plan_multi_hop(
             # either.
             if loop_mode:
                 raise _loop_failure()
+            if _revisit_active(request) and expansion_stats.revisit_skips > final_revisit_skips_before:
+                raise _no_revisit_route_failure(request)
             # The final-hop collapse is the canonical partial-route case:
             # the route reached hop N-1 but could not complete the requested
             # terminal hop. Preserve the best completed frontier node as a
@@ -641,6 +652,8 @@ def best_open_ended_trades_from(
                 # Skip it before it can consume a top-K slot or raise the kept-
                 # score floor, so legal continuations lower in the stream are
                 # still read rather than starved by an illegal high scorer.
+                if expansion_stats is not None:
+                    expansion_stats.revisit_skips += 1
                 continue
             hydrate_started = time.perf_counter()
             destination_station = data_gateway.fetch_stations_by_id(

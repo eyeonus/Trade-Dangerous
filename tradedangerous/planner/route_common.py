@@ -480,6 +480,30 @@ def _revisit_key(
     return ()
 
 
+def _no_revisit_route_failure(request: RunRequest) -> failures.NoUniqueRoute:
+    """Build the no-route failure for an unsatisfiable revisit constraint.
+
+    Raised in place of the generic no-route failures when a multi-hop search
+    collapsed and at least one candidate was skipped for the revisit rule, so
+    the message names the lever (--unique / --loop-interval) to relax.
+    """
+
+    if request.unique:
+        option = "--unique"
+        detail = "without revisiting a station"
+    else:
+        option = "--loop-interval"
+        detail = (
+            "without revisiting a station within "
+            f"{request.loop_interval} hops"
+        )
+    return failures.NoUniqueRoute(
+        f"No {request.hops}-hop route could be completed {detail}. "
+        f"Relax {option} or reduce --hops.",
+        option_name=option,
+    )
+
+
 def _make_child_node(
     parent: _FrontierNode,
     trade: _HopCandidate,
@@ -877,6 +901,7 @@ def _plan_open_anchor_route(
             layer_expansion_calls = 0
             layer_children_generated = 0
             next_frontier: list[_FrontierNode] = []
+            revisit_skips_before = expansion_stats.revisit_skips
             for node in frontier:
                 expansions_examined += 1
                 layer_expansion_calls += 1
@@ -925,6 +950,8 @@ def _plan_open_anchor_route(
                         elapsed_ms=layer_elapsed_ms,
                     )
                 )
+                if _revisit_active(request) and expansion_stats.revisit_skips > revisit_skips_before:
+                    raise _no_revisit_route_failure(request)
                 # No station extended the chain this layer. The current frontier
                 # already holds completed shorter chains; return the best one
                 # that survives credit correction as a partial route.
@@ -1014,6 +1041,7 @@ def _plan_open_anchor_route(
         # cargo calls.
         final_hop_started = time.perf_counter()
         finalist_nodes: list[_FrontierNode] = []
+        final_revisit_skips_before = expansion_stats.revisit_skips
         for node in frontier:
             expansions_examined += 1
             children = best_open_ended_hop_candidates(
@@ -1090,6 +1118,8 @@ def _plan_open_anchor_route(
                 best_route = corrected
 
         if best_route is None:
+            if _revisit_active(request) and expansion_stats.revisit_skips > final_revisit_skips_before:
+                raise _no_revisit_route_failure(request)
             # No finalist completed N hops under the real budget. Fall back to
             # the best completed shorter chain that survives correction.
             partial = _best_open_anchor_partial(
@@ -1324,6 +1354,8 @@ def best_open_ended_hop_candidates(
             # Skip before hydrate/score so it never consumes a top-K slot or
             # raises the kept-score floor — and so a reserved must-reach station
             # that is also forbidden is not force-retained past the rule.
+            if expansion_stats is not None:
+                expansion_stats.revisit_skips += 1
             return
         # Build the scored entries for one open station group, exactly as the
         # ordinary stream always has, so the targeted reserved fetch produces

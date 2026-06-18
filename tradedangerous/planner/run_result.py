@@ -195,6 +195,11 @@ class ExpansionStats:
     # and plain reachable SQL its presence would otherwise disable.
     # Always zero on shapes that carry no destination envelope.
     loose_envelopes_dropped: int = 0
+    # No-revisit rule (--unique / --loop-interval): open stations skipped
+    # because the expanding chain has already visited them (or within the
+    # loop-interval window). Non-zero only when a revisit rule is active; lets a
+    # collapsed search name the rule as the cause rather than failing generic.
+    revisit_skips: int = 0
 
 
 @dataclass(slots=True)
