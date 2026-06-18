@@ -293,9 +293,10 @@ Interactions, stated:
 
 ## 7. What this does NOT touch
 
-- **No SQL / candidate-fetch change.** `--shorten` is a search-time selection
-  rule over routes already fetched; it changes which *completed routes* compete,
-  not which rows are read.
+- **No SQL or candidate-fetch function changes are expected.** `--shorten` adds
+  gated harvest calls and changes which completed routes enter final selection;
+  under shorten those extra harvest calls may read additional terminal
+  candidates.
 - **No cargo-optimiser change.**
 - **No `score.py` / ls-penalty change** — the per-hop normalisation divides the
   existing practical score; the curve is untouched.
