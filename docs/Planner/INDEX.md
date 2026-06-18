@@ -286,6 +286,16 @@ Planned in session from a supplied seam analysis, no separate plan doc — each 
 
 ---
 
+### Slice 29 — `--unique` and `--loop-interval` (No-Revisit Route Constraints) (Complete)
+**The two no-revisit constraints, built together as one rule at two strengths (`--unique` is the unbounded `--loop-interval`). Enforced on every multi-hop engine through a per-chain visited-history: the candidate helpers skip forbidden stations *inside* the stream (so illegal revisits cannot starve legal candidates at the top-K cut), and the frontier trim keys carry a history fragment so a chain that can still complete is not coalesced away — orientation-aware, so the recency window is read correctly when the open-origin / `--via` to-only search grows the chain backward. Validation: `--unique` excludes `--loop` / `--loop-interval` (reject-redundant), `--loop-interval < 2` rejected, `--loop` + `--loop-interval` allowed. An impossible request fails with a specific `NoUniqueRoute`. Verified on live data — the fixed-terminal bite, the backward-orientation bracket, and `--via` + `--unique`.**
+
+| Document | Content |
+|----------|---------|
+| [twenty_ninth_slice_implementation_plan.md](twenty_ninth_slice_implementation_plan.md) | The plan, revised after an audit pass: the in-helper filter (not caller-side), the route-order orientation rule, the per-(station, history) trim keys, the failure classification, and the reject-redundant decision. |
+| [twenty_ninth_slice_completion_report.md](twenty_ninth_slice_completion_report.md) | Proof of completion: the six-commit build, the contract reading (gap `< N`, N=2 inert), the mechanism and the two enforcement seams, validation, the per-layer skip-delta failure classification, and the live verification. |
+
+---
+
 ## Reference and Technical Notes
 
 ## Reference and Technical Notes

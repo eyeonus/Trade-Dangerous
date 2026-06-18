@@ -48,8 +48,8 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 | `--avoid` | `[done]` | Excludes a commodity, system, or station; repeated / comma-separated, fuzzy-matched like the endpoints. Avoided commodity never bought; avoided station never a route station; avoided system also barred from jump-path transit (the permit case). Explicit `--from` exempt as origin. |
 | `--direct` | `[varied]` | Single direct hop between a fixed `--from` and `--to`; no jump/distance checks. Requires both endpoints; single-hop only; open-destination mode dropped. See Variations. |
 | `--shorten` | `[todo]` | Gated. |
-| `--unique` | `[todo]` | Gated. |
-| `--loop-interval` | `[todo]` | Gated. |
+| `--unique` | `[done]` | Forbids visiting a station more than once; enforced on every multi-hop engine via a per-chain visited-history. Excludes `--loop` and `--loop-interval` (reject-redundant). |
+| `--loop-interval` | `[done]` | Forbids revisiting a station until `N` hops have passed (gap `< N`; `N ≥ 2`, with `N=2` inert and `N=3` the first to bite). Allowed with `--loop`. The unbounded form is `--unique`. |
 
 ### Reachability options
 
@@ -132,12 +132,12 @@ separate semantics for the same option.
 | towards mode | `[done]` | Progress-first per-hop ranking; arrives and stops early; mutually exclusive with `--to`. See Variations. |
 | loop routes | `[varied]` | Anchored loop built: closes on its own start station, requires `--from`, `--hops ≥ 2`, per-chain terminal rule on the fixed-terminal engine. The galaxy-wide loop (`--from` omitted) is not supported — a recorded decision. See Variations. |
 | shorten routes | `[todo]` | |
-| unique and loop interval | `[todo]` | |
+| unique and loop interval | `[done]` | Built on every multi-hop engine: an in-helper forbidden-station filter plus a history-aware frontier trim key, orientation-aware for the backward open-origin / `--via` to-only search. `--unique` is the unbounded `--loop-interval`. |
 | Pruning controls | `[todo]` | |
 | Output contract | `[done]` | Default route output plus verbose per-hop / cumulative / jump-path detail. |
 | Checklist output | `[todo]` | |
 | Progress output | `[todo]` | |
-| Failure behaviour | `[varied]` | Distinct families implemented; affordability is folded into "no profitable trades" — see Variations. The loop, towards, and via no-route classes are implemented (a route that cannot close back to its start, cannot make forward progress, or cannot visit every waypoint and reach the endpoint, fails in the no-route family); the unique no-route class is moot (gated). Matrix endpoint shapes classify missing-data failures in aggregate on the no-route path, not per pair; in a rare cross-pair corner (one pair's source lacks data, a different pair's destination lacks data) the reported family is "no profitable trades" where per-pair probing named a side. |
+| Failure behaviour | `[varied]` | Distinct families implemented; affordability is folded into "no profitable trades" — see Variations. The loop, towards, via, and unique no-route classes are implemented (a route that cannot close back to its start, cannot make forward progress, cannot visit every waypoint and reach the endpoint, or cannot complete the requested length without revisiting a station, fails in the no-route family — the unique case as `NoUniqueRoute`, fired only when a collapsed layer was actually revisit-blocked). Matrix endpoint shapes classify missing-data failures in aggregate on the no-route path, not per pair; in a rare cross-pair corner (one pair's source lacks data, a different pair's destination lacks data) the reported family is "no profitable trades" where per-pair probing named a side. |
 | Data requirements | `[done]` | Database is the source of truth; only the needed scope is materialised. |
 | Performance contract | `[done]` | Early narrowing, filters pushed into SQL, materially faster than legacy. The real-budget shapes (fixed-terminal, one-hop open) additionally pre-filter cargo — a pair that cannot beat the kept set skips the branch-and-bound solve (exact; routes unchanged), solving best-first so the threshold rises fast. The open-ended candidate fetches are narrowed in SQL by the fixed endpoint's per-item price bounds, stream station groups best-ceiling-first, and stop reading at the first station that provably cannot beat the kept set — the tail is never read out of the database (exact; routes unchanged; open multi-hop −45–61% wall). |
 

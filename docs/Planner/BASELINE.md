@@ -203,6 +203,20 @@ Do unify the contract.
   terminal lane reserves a slot for the chain nearest the destination, so
   the route closes on a distant `--to` rather than stalling on the last
   waypoint.
+- **`--unique` / `--loop-interval`** — the no-revisit constraints, one rule at
+  two strengths. `--unique` forbids visiting a station twice; `--loop-interval
+  N` forbids revisiting until `N` hops have passed (gap `< N` is forbidden, so
+  `N=2` is inert and `N=3` is the first that bites the immediate ping-pong).
+  Enforced on every multi-hop engine through a per-chain visited-history: the
+  candidate helpers skip forbidden stations *inside* the stream — before they
+  can starve legal candidates at the top-K cut — and the frontier trim keys
+  carry a history fragment so a chain that can still complete is not coalesced
+  away. The history is kept in route order, so the recency window is read
+  correctly even when the open-origin / `--via` to-only search grows the chain
+  backward. `--unique` excludes both `--loop` and `--loop-interval`
+  (reject-redundant); `--loop-interval < 2` is rejected; `--loop` with
+  `--loop-interval` is allowed. An impossible request fails with a specific
+  `NoUniqueRoute` naming the lever to relax.
 
 ### Legacy retired
 
@@ -323,11 +337,11 @@ unknown-pad station is admitted unless `--pad-size L` is set. Full reasoning in
 
 The authoritative, option-by-option status lives in **`SPEC_STATUS.md`**. In
 short, the route shapes, empty-jump positioning, `--towards`, `--direct`,
-`--avoid`, `--via` (requires an anchor — a chosen variation), and `--loop`
+`--avoid`, `--via` (requires an anchor — a chosen variation), `--loop`
 (anchored; requires `--from` — the galaxy-wide loop is a closed decision, see
-Settled decisions) are done; what remains is the rest of the
-modifier and display surface — `--unique`, `--shorten`,
-`--loop-interval`, and the search/display controls
+Settled decisions), `--unique`, and `--loop-interval` are done; what remains is
+the rest of the modifier and display surface — `--shorten` and the
+search/display controls
 (`--routes > 1`, `--max-routes`, `--prune-*`, `--checklist`, `--x52-pro`). Three
 options (`--show-jumps`, `--summary`, `--progress`) parse without error but
 currently do nothing — see `SPEC_STATUS.md`.
