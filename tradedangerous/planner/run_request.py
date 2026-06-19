@@ -49,6 +49,9 @@ class RunRequest:
     black_market_filter: tuple[str, ...] = ()
     max_ls: int = 0
     ls_penalty_percent: float = 0.0
+    # --sco declares a Supercruise Overcharge drive: it forces the ls-penalty to
+    # 0 (no arrival-distance penalty), overriding any parsed --ls-penalty value.
+    sco: bool = False
     show_jumps: bool = False
     summary: bool = False
     progress: bool = False
@@ -102,6 +105,8 @@ def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
     # here rather than letting the --hops default flow through to dispatch.
     direct = getattr(cmdenv, "direct", False)
 
+    # --sco forces the ls-penalty to 0, so resolve it before the penalty value.
+    sco = getattr(cmdenv, "sco", False)
     return RunRequest(
         capacity_units=getattr(cmdenv, "capacity", None),
         starting_credits=getattr(cmdenv, "credits", None),
@@ -137,7 +142,8 @@ def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
             getattr(cmdenv, "blackMarket", None),
         ),
         max_ls=getattr(cmdenv, "maxLs", 0) or 0,
-        ls_penalty_percent=getattr(cmdenv, "lsPenalty", 0.0) or 0.0,
+        ls_penalty_percent=0.0 if sco else (getattr(cmdenv, "lsPenalty", 0.0) or 0.0),
+        sco=sco,
         show_jumps=getattr(cmdenv, "showJumps", False),
         summary=getattr(cmdenv, "summary", False),
         progress=getattr(cmdenv, "progress", False),

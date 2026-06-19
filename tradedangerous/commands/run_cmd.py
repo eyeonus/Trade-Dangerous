@@ -207,6 +207,13 @@ switches = [
         type = float,
         dest = 'lsPenalty'
     ),
+    ParseArgument('--sco',
+        help = 'Declare an SCO (Supercruise Overcharge) drive; ignore the '
+                'ls-penalty so distant stations are not penalised.',
+        action = 'store_true',
+        default = False,
+        dest = 'sco',
+    ),
     ParseArgument('--ls-max',
         help = 'Only consider stations upto this many ls from their star.',
         metavar = 'LS',
