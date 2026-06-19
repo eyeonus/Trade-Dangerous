@@ -16,8 +16,9 @@ what was deliberately varied, and what is still to do.
 The clean-room rewrite of `trade run` has reached a working baseline. Every
 basic route shape is served by the new planner, the legacy route/preload
 architecture is retired, and the EDDN listener has been brought forward to the
-current database surface. What remains is the route-modifier and
-search/display option surface — see "What's still owed".
+current database surface. The route-modifier and search/display surface is now
+nearly complete — only `--checklist` / `--x52-pro` remain (gated). See "What's
+still owed".
 
 ---
 
@@ -155,12 +156,25 @@ Do unify the contract.
   `floor(demand * 0.25)` to avoid the in-game bulk-sale price penalty.
 - **`--max-price`** — absolute commodity-price cap (default 1,500,000 cr/t),
   clipping carrier-fiction rows. `--max-price 0` disables it.
+- **`--sco`** — declares an SCO drive; forces the ls-penalty input to 0
+  (overriding any `--ls-penalty`, whose CLI default is 12.5), so distant stations
+  are not penalised. The protected `score.py` curve is untouched.
+- **`--no-bulk-cap`** — off-switch for the Metals/Minerals bulk-sale demand cap;
+  fills the full demand at the headline price. Resolves the sensitive-commodity
+  id sets to empty so the cap evaporates uniformly at every site.
 - **`--ls-penalty`** — the protected travel-time curve (defined in the spec,
   implemented in `score.py`). Untouched.
 - **Route output** — expanded plain-text per-hop and cumulative figures for
   manual audit; partial-route warnings; the bulk-tax cap note. The diagnostics
   block (timings, counters, per-layer breakdown) is debug output, shown only at
   `-ww` (debug level 2); normal output is clean (Slice 28).
+- **`--routes N`** — returns up to N final routes (numbered, best-first) instead
+  of just the winner, ranked by the engine's existing final-route rank (practical
+  score; progress-first under `--towards`). N is a maximum, not a quota. Top-N by
+  rank, no diversity key — near-duplicates are accepted; a distinctness key is a
+  later, evidence-driven change. `--routes 1` is byte-identical to the single-
+  winner path on every engine. Works on every shape — one-hop, fixed-terminal,
+  open-anchor, unanchored; `--via` keeps its own single-route output for now.
 - **`--jumps-per` keyed default** — omitted `--jumps-per` defaults to 2 when
   `--ly-per <= 12.5`, otherwise 1.
 - **Empty-jump positioning** (`--start-jumps` / `--end-jumps`) — a named
@@ -303,7 +317,8 @@ unknown-pad station is admitted unless `--pad-size L` is set. Full reasoning in
   probe unless a cheap signal falls out of the main path.
 - **Bulk-sale-tax cap is conservative on purpose** — full price on a safe
   quantity, no discounted-price modelling, until the post-25% curve is better
-  understood.
+  understood. `--no-bulk-cap` is the user's off-switch (fill full demand at the
+  headline price); the cap stays the default.
 - The `--ls-penalty` curve is **protected behaviour** — change only on an
   explicit contract change.
 - **Beam widths stay at 50** (both `_MULTIHOP_EXPANSION_WIDTH` and
@@ -312,6 +327,12 @@ unknown-pad station is admitted unless `--pad-size L` is set. Full reasoning in
   and the rejected user-facing-width idea are recorded in
   `beam_width_analysis.md`. Re-open only with a fresh sweep on then-current
   data.
+- **The beam-control options are removed, not gated.** `--max-routes`,
+  `--prune-score`, and `--prune-hops` were legacy levers for the retired search
+  policy. The beam owns frontier width and pruning (the spec permits an
+  equivalent pruning policy), and the user-facing beam-width idea was already
+  rejected (above). `trade run` now rejects all three as unknown options — the
+  `--shorten` treatment. Do not list them as owed.
 - **The unanchored candidate-query restructure is closed.** Probed to a
   conclusion in Slice 5: 144 axis-uplift checks across realistic data shapes
   found zero routes the restructure would improve. It is not pending, not
@@ -349,25 +370,24 @@ The authoritative, option-by-option status lives in **`SPEC_STATUS.md`**. In
 short, the route shapes, empty-jump positioning, `--towards`, `--direct`,
 `--avoid`, `--via` (requires an anchor — a chosen variation), `--loop`
 (anchored; requires `--from` — the galaxy-wide loop is a closed decision, see
-Settled decisions), `--unique`, and `--loop-interval` are done; `--shorten` was
-removed (a recorded decision — see Settled decisions). What remains is the
-search/display controls
-(`--routes > 1`, `--max-routes`, `--prune-*`, `--checklist`, `--x52-pro`). Three
-options (`--show-jumps`, `--summary`, `--progress`) parse without error but
-currently do nothing — see `SPEC_STATUS.md`.
+Settled decisions), `--unique`, `--loop-interval`, `--routes` (top-N by rank),
+`--sco`, and `--no-bulk-cap` are done; `--shorten` and the beam-control options
+(`--max-routes`, `--prune-score`, `--prune-hops`) were removed (recorded
+decisions — see Settled decisions). What remains is `--checklist` / `--x52-pro`
+(gated). Three options (`--show-jumps`, `--summary`, `--progress`) parse without
+error but currently do nothing — see `SPEC_STATUS.md`.
 
 Agreed-but-unscheduled decisions and noted-for-later items:
 
-- **`--sco` flag** — declares an SCO drive; clamps `--ls-penalty` to 0. UX
-  signalling (flag / ship profile / journal) to resolve when it lands.
-- **`--bulk-tax-mode`** — decided. If ever built, the switch does one thing:
-  turn the cap **off** (fill to full demand at headline price) as an escape
-  hatch from the safe default. The third "estimate" mode — model the post-25%
-  sliding-scale discount — is dropped: that curve is community speculation, not
-  documented behaviour, so there is nothing sound to model. Moot for now;
-  revisit only if the curve is ever properly documented.
-- **`--max-gain-per-ton` default** — the filter works; giving it a sane default
-  cap (a different axis from `--max-price`) is an unscheduled idea.
+- **`--max-gain-per-ton` default** — the filter works (a user-set value already
+  bites); giving it a sane *default* cap (a different axis from `--max-price`) is
+  an unscheduled idea, and would need the same data-sizing probe `--max-price`
+  got.
+- **Bulk-tax "estimate" mode stays dropped.** `--no-bulk-cap` shipped as the cap
+  off-switch (see "What works now"). The third "estimate" mode — model the
+  post-25% sliding-scale discount — remains dropped: that curve is community
+  speculation, not documented behaviour, so there is nothing sound to model.
+  Revisit only if the curve is ever properly documented.
 - **Shared expansion-cost floor** — **done**, all layers. The *cargo* half is
   the Slice 22 pre-filter (skip solving pairs that cannot place). The *fetch*
   half landed in Slice 23: the open-ended candidate queries are narrowed in

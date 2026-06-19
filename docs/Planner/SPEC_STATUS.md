@@ -89,10 +89,10 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 
 | Option | Status | Note |
 |--------|--------|------|
-| `--routes` | `[todo]` | Only `--routes 1` supported; > 1 rejected. |
-| `--max-routes` | `[todo]` | Gated (non-zero). |
-| `--prune-score` | `[todo]` | Gated (non-zero). |
-| `--prune-hops` | `[todo]` | Gated (non-default; default 3). |
+| `--routes` | `[done]` | Top-N by final-route rank (practical score; progress-first under `--towards`); up to N routes, N is a maximum (fewer if fewer exist). `--routes < 1` rejected; `--routes > 1` with `--checklist` rejected. No diversity key — see Variations. |
+| `--max-routes` | `[removed]` | Removed — rejected as an unknown option. The beam owns pruning/width. See Variations. |
+| `--prune-score` | `[removed]` | Removed — the beam's top-K trim is the equivalent pruning policy. See Variations. |
+| `--prune-hops` | `[removed]` | Removed alongside `--prune-score`. See Variations. |
 | `--checklist` | `[todo]` | Gated. |
 | `--x52-pro` | `[todo]` | Gated (also requires `--checklist`). |
 | `--summary` | `[todo]` | Parses but inert. |
@@ -103,6 +103,8 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 | Option | Status | Note |
 |--------|--------|------|
 | `--max-price` | `[varied]` | **Added** — not in the spec. Absolute price cap (default 1,500,000 cr/t). See Variations. |
+| `--sco` | `[done]` | **Added** — declares an SCO drive; clamps the ls-penalty to 0, overriding any `--ls-penalty`. |
+| `--no-bulk-cap` | `[done]` | **Added** — off-switch for the Metals/Minerals bulk-sale demand cap; fills full demand at headline price. |
 | `--ls-penalty` | `[done]` | The protected curve (spec §ls-penalty), implemented in `score.py`. |
 
 Implementation note: option status records the shared behavioural meaning. Route
@@ -128,13 +130,13 @@ separate semantics for the same option.
 | Credits, insurance, margin | `[done]` | |
 | Reachability | `[done]` | `--ly-per`, `--jumps-per`, same-system supercruise. `--direct` bypasses reachability for a fixed pair (see Variations). |
 | Route generation | `[done]` | |
-| Route ranking | `[done]` | Practical value with ls-penalty; `--to` honoured; `--towards` ranks progress-first (closest, then fewer hops, profit only breaking ties). `--loop` closes the route on its own start station. `--via` carries the full waypoint mask — a route missing a waypoint never outranks one satisfying it, and satisfying routes rank by profit. `--shorten` was removed (see Variations). |
+| Route ranking | `[done]` | Practical value with ls-penalty; `--to` honoured; `--towards` ranks progress-first (closest, then fewer hops, profit only breaking ties). `--loop` closes the route on its own start station. `--via` carries the full waypoint mask — a route missing a waypoint never outranks one satisfying it, and satisfying routes rank by profit. `--shorten` was removed (see Variations). `--routes N` returns the top N by this rank — top-N by final-route rank, no diversity key. |
 | ls-penalty | `[done]` | Protected curve. |
 | towards mode | `[done]` | Progress-first per-hop ranking; arrives and stops early; mutually exclusive with `--to`. See Variations. |
 | loop routes | `[varied]` | Anchored loop built: closes on its own start station, requires `--from`, `--hops ≥ 2`, per-chain terminal rule on the fixed-terminal engine. The galaxy-wide loop (`--from` omitted) is not supported — a recorded decision. See Variations. |
 | shorten routes | `[removed]` | Built then removed — the per-hop ranking is inert on current data. See Variations. |
 | unique and loop interval | `[done]` | Built on every multi-hop engine: an in-helper forbidden-station filter plus a history-aware frontier trim key, orientation-aware for the backward open-origin / `--via` to-only search. `--unique` is the unbounded `--loop-interval`. |
-| Pruning controls | `[todo]` | |
+| Pruning controls | `[removed]` | The beam's fixed top-K frontier trim is the pruning policy — the spec permits an equivalent policy. The `--max-routes` / `--prune-score` / `--prune-hops` knobs are removed (rejected as unknown options). See Variations. |
 | Output contract | `[done]` | Default route output plus verbose per-hop / cumulative / jump-path detail. |
 | Checklist output | `[todo]` | |
 | Progress output | `[todo]` | |
@@ -231,6 +233,36 @@ Each of these is a chosen difference, not a gap. Do not revert without raising i
     build is kept as the design + investigation record in
     `thirtieth_slice_implementation_plan.md`; revisit only if real demand and a
     sound metric appear.
+
+11. **`--routes N` is top-N by final-route rank, no diversity.** Returns up to N
+    routes ordered by the engine's existing final-route rank (practical score;
+    progress-first under `--towards`), N a maximum not a quota. "Best N by rank"
+    is a deliberate reading of the spec's display-count wording — not "N
+    meaningfully different routes". Near-duplicates are accepted; a distinctness
+    key is a later, evidence-driven change if real runs show clone spam.
+    `--routes 1` is byte-identical to the pre-`--routes` single-winner path on
+    every engine.
+
+12. **Beam-control options removed.** `--max-routes`, `--prune-score`, and
+    `--prune-hops` were legacy levers for the retired search policy. The beam
+    already owns frontier width and pruning (the spec permits an equivalent
+    pruning policy), and exposing the beam width as a user knob was considered
+    and rejected in `beam_width_analysis.md`. Rather than ship inert gates the
+    three are removed from the command (rejected as unknown options) — the
+    `--shorten` treatment.
+
+13. **`--sco` added.** Not in the spec's option contract. Declares a Supercruise
+    Overcharge drive; forces the ls-penalty input to 0 (overriding any parsed
+    `--ls-penalty`, whose CLI default is 12.5), so distant stations are not
+    penalised. The protected `score.py` curve is untouched — `--sco` only feeds
+    it a 0.
+
+14. **`--no-bulk-cap` added.** Not in the spec's option contract. Off-switch for
+    the conservative Metals/Minerals bulk-sale demand cap (`floor(demand * 0.25)`,
+    applied by default to dodge the in-game bulk-sale price penalty): fill the
+    full demand at the headline price. Implemented by resolving the
+    sensitive-commodity id sets to empty under the flag, so the cap evaporates
+    uniformly at every site.
 
 ---
 
