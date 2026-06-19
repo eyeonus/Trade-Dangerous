@@ -211,25 +211,6 @@ def validate_run_request(request: RunRequest) -> None:
                 option_name=option_name,
             )
 
-    unsupported_non_zero = (
-        ("--max-routes", request.max_routes),
-        ("--prune-score", request.prune_score),
-    )
-    for option_name, value in unsupported_non_zero:
-        if value:
-            raise UnsupportedRunShape(
-                f"{option_name} is not supported for this planner slice.",
-                option_name=option_name,
-            )
-
-    # --prune-hops defaults to 3 at the parser; reject only non-default values
-    # since the pruning controls remain deferred to a later slice.
-    if request.prune_hops != 3:
-        raise UnsupportedRunShape(
-            "--prune-hops is not supported for this planner slice.",
-            option_name="--prune-hops",
-        )
-
     if request.routes != 1:
         raise UnsupportedRunShape(
             "Only --routes 1 is currently supported.",

@@ -92,9 +92,6 @@ class RunRequest:
     routes: int = 1
     checklist: bool = False
     x52_pro: bool = False
-    max_routes: int = 0
-    prune_score: float = 0.0
-    prune_hops: int = 3
 
 
 def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
@@ -159,9 +156,6 @@ def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
         routes=getattr(cmdenv, "routes", 1),
         checklist=getattr(cmdenv, "checklist", False),
         x52_pro=getattr(cmdenv, "x52pro", False),
-        max_routes=getattr(cmdenv, "maxRoutes", 0) or 0,
-        prune_score=getattr(cmdenv, "pruneScores", 0.0) or 0.0,
-        prune_hops=getattr(cmdenv, "pruneHops", 3),
     )
 
 
