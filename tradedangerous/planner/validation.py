@@ -211,9 +211,17 @@ def validate_run_request(request: RunRequest) -> None:
                 option_name=option_name,
             )
 
-    if request.routes != 1:
-        raise UnsupportedRunShape(
-            "Only --routes 1 is currently supported.",
+    if request.routes < 1:
+        raise InvalidNumericOption(
+            "--routes must be at least 1.",
+            option_name="--routes",
+        )
+    # --checklist renders a single route. This is shadowed by the --checklist
+    # unsupported gate above while checklist is gated; kept correct for when it
+    # lands.
+    if request.routes > 1 and request.checklist:
+        raise ContradictoryOptions(
+            "--checklist shows a single route; use --routes 1 with it.",
             option_name="--routes",
         )
 

@@ -67,7 +67,7 @@ def _plan_fixed_endpoints(
     station_filter_ms = _elapsed_ms(station_filter_started)
 
     (
-        best_pair,
+        best_pairs,
         reachability_ms,
         market_query_ms,
         cargo_optimisation_ms,
@@ -94,7 +94,7 @@ def _plan_fixed_endpoints(
         total_planner_ms=_elapsed_ms(started),
         candidate_trade_count=candidate_trade_count,
     )
-    return _assemble_result(request, best_pair, diagnostics)
+    return _assemble_result(request, best_pairs, diagnostics)
 
 
 def _best_open_ended_plan(
@@ -156,7 +156,7 @@ def _best_open_ended_plan(
     # only the work done. Pruning is by score, so it is disabled under
     # --towards, which ranks by progress toward the target rather than
     # score — the stream then runs to completion.
-    threshold = _KeptScoreThreshold(1, enabled=request.towards_target is None)
+    threshold = _KeptScoreThreshold(request.routes, enabled=request.towards_target is None)
     # The stop converts the held score to raw profit at the most permissive
     # destination the stream could still produce: the closest fixed station
     # when the open side is the source (the fixed side is the destination),
@@ -187,7 +187,7 @@ def _best_open_ended_plan(
             penalty_percent,
         )
 
-    best_pair = None
+    kept = _KeptPairs(request.routes, request)
     cargo_optimisation_ms = 0.0
     candidate_trade_count = 0
     group_iter = data_gateway.iter_open_ended_station_groups(
@@ -263,8 +263,7 @@ def _best_open_ended_plan(
                     cargo=cargo,
                     practical_score=practical_score,
                 )
-                if _pair_is_better(pair, best_pair, request):
-                    best_pair = pair
+                kept.offer(pair)
     finally:
         group_iter.close()
     # The stream interleaves fetch and solve, so the cargo share accumulated
@@ -279,23 +278,29 @@ def _best_open_ended_plan(
             fixed_station_ids,
             open_role=open_role,
         )
-    if best_pair is None:
+    best_pairs = kept.best()
+    if not best_pairs:
         raise failures.NoProfitableTrades(
             "No viable cargo plan was available."
         )
 
     reachability_started = time.perf_counter()
-    jump_path = plan_jump_path(
-        _system_from_station(best_pair.source_station),
-        _system_from_station(best_pair.destination_station),
-        max_jumps_per_hop=int(request.max_jumps_per_hop or 0),
-        max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
-        session=session,
-        bubble_cache=bubble_cache,
-        avoid_system_ids=request.avoid_system_ids,
-    )
+    best_pairs = [
+        replace(
+            pair,
+            jump_path=plan_jump_path(
+                _system_from_station(pair.source_station),
+                _system_from_station(pair.destination_station),
+                max_jumps_per_hop=int(request.max_jumps_per_hop or 0),
+                max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
+                session=session,
+                bubble_cache=bubble_cache,
+                avoid_system_ids=request.avoid_system_ids,
+            ),
+        )
+        for pair in best_pairs
+    ]
     reachability_ms = _elapsed_ms(reachability_started)
-    best_pair = replace(best_pair, jump_path=jump_path)
 
     cargo_fast_hits, cargo_recursive_hits = cargo_counters()
     diagnostics = run_result.PlannerDiagnostics(
@@ -311,7 +316,7 @@ def _best_open_ended_plan(
         total_planner_ms=_elapsed_ms(started),
         candidate_trade_count=candidate_trade_count,
     )
-    return _assemble_result(request, best_pair, diagnostics)
+    return _assemble_result(request, best_pairs, diagnostics)
 
 
 def _plan_unanchored(
@@ -362,7 +367,7 @@ def _plan_unanchored(
     # _pair_is_better breaks ties by station id, so the result is independent of
     # solve order. Unanchored has no --from, so --towards never applies, but the
     # disabled-under-towards guard is kept uniform with the open-ended path.
-    threshold = _KeptScoreThreshold(1, enabled=request.towards_target is None)
+    threshold = _KeptScoreThreshold(request.routes, enabled=request.towards_target is None)
 
     def _order_key(item):
         (_src, dest_id), candidates_for_pair = item
@@ -376,7 +381,7 @@ def _plan_unanchored(
             penalty_percent,
         )
 
-    best_pair = None
+    kept = _KeptPairs(request.routes, request)
     cargo_optimisation_ms = 0.0
     for (source_id, destination_id), pair_candidates in sorted(
         grouped_pairs.items(), key=_order_key, reverse=True
@@ -417,26 +422,31 @@ def _plan_unanchored(
             cargo=cargo,
             practical_score=practical_score,
         )
-        if _pair_is_better(pair, best_pair, request):
-            best_pair = pair
+        kept.offer(pair)
 
-    if best_pair is None:
+    best_pairs = kept.best()
+    if not best_pairs:
         raise failures.NoProfitableTrades(
             "No viable cargo plan was available."
         )
 
     reachability_started = time.perf_counter()
-    jump_path = plan_jump_path(
-        _system_from_station(best_pair.source_station),
-        _system_from_station(best_pair.destination_station),
-        max_jumps_per_hop=int(request.max_jumps_per_hop or 0),
-        max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
-        session=session,
-        bubble_cache=bubble_cache,
-        avoid_system_ids=request.avoid_system_ids,
-    )
+    best_pairs = [
+        replace(
+            pair,
+            jump_path=plan_jump_path(
+                _system_from_station(pair.source_station),
+                _system_from_station(pair.destination_station),
+                max_jumps_per_hop=int(request.max_jumps_per_hop or 0),
+                max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
+                session=session,
+                bubble_cache=bubble_cache,
+                avoid_system_ids=request.avoid_system_ids,
+            ),
+        )
+        for pair in best_pairs
+    ]
     reachability_ms = _elapsed_ms(reachability_started)
-    best_pair = replace(best_pair, jump_path=jump_path)
 
     cargo_fast_hits, cargo_recursive_hits = cargo_counters()
     diagnostics = run_result.PlannerDiagnostics(
@@ -456,7 +466,7 @@ def _plan_unanchored(
         unanchored_bubble_systems=unanchored_counters.bubble_systems,
         unanchored_per_commodity_cap_hits=unanchored_counters.per_commodity_cap_hits,
     )
-    return _assemble_result(request, best_pair, diagnostics)
+    return _assemble_result(request, best_pairs, diagnostics)
 
 
 def _best_pair_plan(
@@ -465,8 +475,8 @@ def _best_pair_plan(
     destination_stations: tuple[run_result.ResolvedStation, ...],
     request: RunRequest,
     bubble_cache: dict[int, object],
-) -> tuple[_PairPlan, float, float, float, int]:
-    best_pair = None
+) -> tuple[list[_PairPlan], float, float, float, int]:
+    kept = _KeptPairs(request.routes, request)
     reachability_ms = 0.0
     market_query_ms = 0.0
     cargo_optimisation_ms = 0.0
@@ -548,11 +558,11 @@ def _best_pair_plan(
                 cargo=cargo,
                 practical_score=practical_score,
             )
-            if _pair_is_better(pair, best_pair, request):
-                best_pair = pair
-    if best_pair is not None:
+            kept.offer(pair)
+    best_pairs = kept.best()
+    if best_pairs:
         return (
-            best_pair,
+            best_pairs,
             reachability_ms,
             market_query_ms,
             cargo_optimisation_ms,
@@ -612,34 +622,75 @@ def _pair_is_better(
     return pair.destination_station.station_id < best_pair.destination_station.station_id
 
 
+class _KeptPairs:
+    """Bounded best-N collector for one-hop pair plans, ordered by _pair_is_better.
+
+    Holds up to ``keep`` pairs, best-first. keep=1 reduces to the single-best
+    selection the one-hop paths used before --routes, so --routes 1 keeps exactly
+    the same winner.
+    """
+
+    __slots__ = ("_keep", "_request", "_pairs")
+
+    def __init__(self, keep: int, request: RunRequest):
+        self._keep = max(int(keep), 1)
+        self._request = request
+        self._pairs: list[_PairPlan] = []
+
+    def offer(self, pair: _PairPlan) -> None:
+        pairs = self._pairs
+        index = 0
+        while index < len(pairs) and not _pair_is_better(
+            pair, pairs[index], self._request
+        ):
+            index += 1
+        pairs.insert(index, pair)
+        if len(pairs) > self._keep:
+            del pairs[self._keep:]
+
+    def best(self) -> list[_PairPlan]:
+        return list(self._pairs)
+
+
 def _assemble_result(
     request: RunRequest,
-    best_pair: _PairPlan,
+    best_pairs: list[_PairPlan],
     diagnostics: run_result.PlannerDiagnostics,
 ) -> run_result.RunResult:
-    """Build the single-route RunResult shared by both planning paths."""
+    """Build the RunResult from the chosen pair plans, best-first.
+
+    One pair under --routes 1 (the default), up to --routes N otherwise. Shared
+    by all three one-hop paths.
+    """
+
+    routes = tuple(_route_from_pair(request, pair) for pair in best_pairs)
+    return run_result.RunResult(
+        routes=routes,
+        diagnostics=diagnostics,
+    )
+
+
+def _route_from_pair(
+    request: RunRequest, pair: _PairPlan
+) -> run_result.PlannedRoute:
+    """Build one PlannedRoute from a chosen pair plan."""
 
     hop = run_result.PlannedHop(
-        source_station=best_pair.source_station,
-        destination_station=best_pair.destination_station,
-        cargo=best_pair.cargo,
-        raw_profit=best_pair.cargo.total_profit,
-        practical_score=best_pair.practical_score,
-        jump_path=best_pair.jump_path,
+        source_station=pair.source_station,
+        destination_station=pair.destination_station,
+        cargo=pair.cargo,
+        raw_profit=pair.cargo.total_profit,
+        practical_score=pair.practical_score,
+        jump_path=pair.jump_path,
     )
-    route = run_result.PlannedRoute(
-        stations=(best_pair.source_station, best_pair.destination_station),
+    return run_result.PlannedRoute(
+        stations=(pair.source_station, pair.destination_station),
         hops=(hop,),
-        total_raw_profit=best_pair.cargo.total_profit,
-        total_practical_score=best_pair.practical_score,
+        total_raw_profit=pair.cargo.total_profit,
+        total_practical_score=pair.practical_score,
         starting_credits=int(request.starting_credits or 0),
         ending_credits=int(request.starting_credits or 0)
-        + best_pair.cargo.total_profit,
-    )
-
-    return run_result.RunResult(
-        routes=(route,),
-        diagnostics=diagnostics,
+        + pair.cargo.total_profit,
     )
 
 
