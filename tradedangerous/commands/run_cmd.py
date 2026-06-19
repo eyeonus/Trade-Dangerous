@@ -307,6 +307,13 @@ switches = [
         default = None,
         type = int
     ),
+    ParseArgument('--no-bulk-cap',
+        help = 'Fill the full Metals/Minerals demand, ignoring the safe '
+                'bulk-sale-tax quantity cap.',
+        action = 'store_true',
+        default = False,
+        dest = 'noBulkCap',
+    ),
     ParseArgument('--summary',
         help = 'Summary layout of route instructions.',
         action = 'store_true',

@@ -728,7 +728,7 @@ def fetch_station_pair_candidates(
     destination_item = aliased(StationItem)
 
     cutoff = _age_cutoff(request.age_days)
-    sensitive_category_ids = _bulk_sale_tax_category_ids(session)
+    sensitive_category_ids = _effective_sensitive_category_ids(session, request)
 
     filters = [
         source_item.station_id == source.station_id,
@@ -1363,7 +1363,7 @@ def fetch_loop_closable_station_ids(
         return frozenset()
 
     cutoff = _age_cutoff(request.age_days)
-    sensitive_category_ids = _bulk_sale_tax_category_ids(session)
+    sensitive_category_ids = _effective_sensitive_category_ids(session, request)
 
     filters = [
         StationItem.station_id.in_(station_ids),
@@ -1618,7 +1618,7 @@ def iter_open_ended_station_groups(
             cutoff = qualification.frozen_cutoff(request)
         else:
             cutoff = _age_cutoff(request.age_days)
-        sensitive_category_ids = _bulk_sale_tax_category_ids(session)
+        sensitive_category_ids = _effective_sensitive_category_ids(session, request)
 
         supply_filters = [supply_station_filter]
         if not unbounded_credits:
@@ -2041,7 +2041,7 @@ def fetch_unanchored_trade_candidates(
 
     available_credits = int(request.starting_credits or 0) - request.insurance_reserve
     cutoff = _age_cutoff(request.age_days)
-    sensitive_item_ids = _bulk_sale_tax_sensitive_item_ids(session)
+    sensitive_item_ids = _effective_sensitive_item_ids(session, request)
     capacity = int(request.capacity_units or 0)
     per_item_limit = request.cargo_limit_per_item
     same_system = request.max_jumps_per_hop == 0
@@ -2995,6 +2995,36 @@ def _bulk_sale_tax_sensitive_item_ids(session: Session) -> frozenset[int]:
 
     session.info[_BULK_SALE_TAX_ITEM_IDS_CACHE_KEY] = resolved
     return resolved
+
+
+def _effective_sensitive_category_ids(
+    session: Session, request: RunRequest
+) -> frozenset[int]:
+    """Sensitive (Metals/Minerals) category_ids, or empty under --no-bulk-cap.
+
+    --no-bulk-cap turns off the safe bulk-sale-tax demand cap by declaring
+    nothing sensitive, so the cap evaporates at every site that tests this set.
+    The empty path bypasses the session cache, so it never overwrites the real
+    resolved set for a later capped run on the same session.
+    """
+
+    if request.no_bulk_cap:
+        return frozenset()
+    return _bulk_sale_tax_category_ids(session)
+
+
+def _effective_sensitive_item_ids(
+    session: Session, request: RunRequest
+) -> frozenset[int]:
+    """Sensitive (Metals/Minerals) item_ids, or empty under --no-bulk-cap.
+
+    Mirrors _effective_sensitive_category_ids for the unanchored walk's
+    item-id membership set.
+    """
+
+    if request.no_bulk_cap:
+        return frozenset()
+    return _bulk_sale_tax_sensitive_item_ids(session)
 
 
 _KNOWN_PAD_SIZES = ("S", "M", "L")

@@ -41,6 +41,9 @@ class RunRequest:
     max_price: int = DEFAULT_MAX_PRICE
     min_supply: int | None = None
     min_demand: int | None = None
+    # --no-bulk-cap fills the full Metals/Minerals demand, turning off the
+    # floor(demand * 0.25) safe bulk-sale-tax cap.
+    no_bulk_cap: bool = False
     pad_size: str | None = None
     planetary_filter: tuple[str, ...] = ()
     no_planet: bool = False
@@ -127,6 +130,7 @@ def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
         max_price=_resolve_max_price(getattr(cmdenv, "maxPrice", None)),
         min_supply=getattr(cmdenv, "supply", None),
         min_demand=getattr(cmdenv, "demand", None),
+        no_bulk_cap=getattr(cmdenv, "noBulkCap", False),
         pad_size=_normalise_pad_size(getattr(cmdenv, "padSize", None)),
         planetary_filter=_normalise_state_filter(
             getattr(cmdenv, "planetary", None),
