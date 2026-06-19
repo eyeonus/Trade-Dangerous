@@ -81,7 +81,7 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 | Option | Status | Note |
 |--------|--------|------|
 | `--gain-per-ton` | `[done]` | Min profit/unit; default 1. |
-| `--max-gain-per-ton` | `[done]` | Max profit/unit; default 0 = off. A *default* cap is a deferred idea (see BASELINE), the option itself works. |
+| `--max-gain-per-ton` | `[done]` | Max profit/unit; default 0 = off (deliberate). |
 | `--supply` | `[done]` | Min source supply. |
 | `--demand` | `[done]` | Min destination demand. |
 

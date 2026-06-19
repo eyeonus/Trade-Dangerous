@@ -379,10 +379,6 @@ error but currently do nothing — see `SPEC_STATUS.md`.
 
 Agreed-but-unscheduled decisions and noted-for-later items:
 
-- **`--max-gain-per-ton` default** — the filter works (a user-set value already
-  bites); giving it a sane *default* cap (a different axis from `--max-price`) is
-  an unscheduled idea, and would need the same data-sizing probe `--max-price`
-  got.
 - **Bulk-tax "estimate" mode stays dropped.** `--no-bulk-cap` shipped as the cap
   off-switch (see "What works now"). The third "estimate" mode — model the
   post-25% sliding-scale discount — remains dropped: that curve is community
