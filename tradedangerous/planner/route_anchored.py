@@ -793,8 +793,8 @@ def best_fixed_pair_trades_from(
     --to endpoint's eligible stations. Reachability, market data, cargo
     fitting, and scoring all reuse the same helpers as the single-hop
     fixed-pair path; the only difference is that per-pair failures are
-    swallowed and the function returns the best (or None) rather than
-    raising classified failures.
+    swallowed and the function returns the best candidates, or an empty list,
+    rather than raising classified failures.
 
     When ``final_hop_stats`` is supplied, the helper records per-source
     aggregates so the planner can report which frontier nodes reached
