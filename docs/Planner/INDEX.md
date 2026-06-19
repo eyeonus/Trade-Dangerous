@@ -303,6 +303,16 @@ Planned in session from a supplied seam analysis, no separate plan doc — each 
 
 ---
 
+### Slice 31 — Multi-Route Output (`--routes`), `--sco`, `--no-bulk-cap`, Beam-Control Removal (Complete)
+**`--routes N` returns up to N final routes — best-first by the engine's existing final-route rank, N a maximum, no diversity key, `--routes 1` byte-identical — on every shape (one-hop, fixed-terminal, open-anchor, unanchored; `--via` keeps single-route output for now). Built alongside three smaller changes: `--sco` (declares an SCO drive, clamps the ls-penalty to 0), `--no-bulk-cap` (off-switch for the Metals/Minerals bulk-sale demand cap), and removal of the inert beam-control options `--max-routes` / `--prune-score` / `--prune-hops` (now rejected as unknown options).**
+
+| Document | Content |
+|----------|---------|
+| [thirty_first_slice_implementation_plan.md](thirty_first_slice_implementation_plan.md) | The audited plan (Findings 1–4 folded in): the four workstreams, the five `--routes` selection seams, the N-aware early-stop and `--routes 1` inert proof, the top-K fixed-terminal close, and the resolved decisions. |
+| [thirty_first_slice_completion_report.md](thirty_first_slice_completion_report.md) | Proof of completion: the six commits, the mechanism per workstream, the live + unit verification, and the variances (build order, `--via` left single-route, renderer unchanged). |
+
+---
+
 ## Reference and Technical Notes
 
 ## Reference and Technical Notes
