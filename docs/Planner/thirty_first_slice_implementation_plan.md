@@ -18,14 +18,14 @@ order; the plan builds the small isolated ones first and the engine work last.
 | **A** | Remove the beam-control options (`--max-routes`, `--prune-score`, `--prune-hops`) | small |
 | **B** | `--sco` — declare an SCO drive; clamp the ls-penalty to 0 | small |
 | **C** | `--no-bulk-cap` — turn off the Metals/Minerals safe demand cap | small |
-| **D** | `--routes N` — return up to N final routes, top-N by score | substantial |
+| **D** | `--routes N` — return up to N final routes, top-N by rank | substantial |
 
 Order: **A → B → C → D.** Each is a separate, reviewable step.
 
 **Not in scope (deliberate):**
 
 - **Route diversity.** `--routes N` means "the best N routes by the engine's
-  existing final score", not "N meaningfully different routes". If real runs show
+  existing final-route rank", not "N meaningfully different routes". If real runs show
   useless clone spam, a distinctness key is a later, evidence-driven slice — not
   this one. Building it now is speculative complexity.
 - **`--checklist` / `--x52-pro`.** Still gated. The `--routes`/`--checklist`
@@ -135,13 +135,15 @@ The substantial workstream.
 ### 5.1 Contract
 
 `--routes N` returns **up to** N final valid routes, ordered by the engine's
-existing final-route score, with deterministic tie-breaks.
+existing final-route **rank**, with deterministic tie-breaks. For
+ordinary routes the rank is practical score; under `--towards` it remains the
+existing progress-first rank.
 
 - **N is a maximum, not a quota.** Return however many valid final routes exist;
   fewer than N is not a failure.
 - **No diversity key.** Near-duplicates are acceptable for now (§1).
 - **Acceptance criterion (documented verbatim):** *`--routes N` means "show the
-  best N routes by the engine's existing final route score", not "show N
+  best N routes by the engine's existing final-route rank", not "show N
   meaningfully different routes".*
 
 `--routes` is already parsed and carried (`run_request.routes: int = 1`); it is
@@ -190,7 +192,7 @@ one-element sequence → byte-identical output.
 `best_fixed_pair_trade_from` (`:767`) returns the *single* best terminal trade
 per frontier node, so "keep top-N finalists" alone is too narrow (Finding 3): a
 prefix whose top three closes are 100 / 99 / 98 would surrender 99 and 98 to a
-weaker prefix's 60. Since the contract is "best N by score" and diversity is not
+weaker prefix's 60. Since the contract is "best N by rank" and diversity is not
 required, the close helper gains a top-K variant
 (`best_fixed_pair_trades_from(…, top_k=N)`) so each prefix can contribute up to K
 terminal candidates; final selection then takes the global top-N. **Low cost:**
@@ -279,7 +281,7 @@ not to build a seam.
 - **C:** a Metals/Minerals run shows the cap binding by default; `--no-bulk-cap`
   fills the same line to full demand.
 - **D:** `--routes 1` matches the pre-change winner on every shape (the inert
-  proof); `--routes 3` returns up to three score-ordered routes on a
+  proof); `--routes 3` returns up to three rank-ordered routes on a
   fixed-terminal shape, on each one-hop subpath (fixed / open / unanchored), and
   on an open-anchor shape; a fixed-terminal prefix with several strong terminal
   closes contributes more than one of them to the top-N (Finding 3); a shape with
@@ -290,7 +292,7 @@ not to build a seam.
 
 ## 9. Decisions — resolved
 
-1. **`--routes` first cut** → top-N-by-score, no diversity key. Diversity is a
+1. **`--routes` first cut** → top-N-by-rank, no diversity key. Diversity is a
    later, evidence-driven slice. §1, §5.1.
 2. **Beam-control options** → removed, not gated (the `--shorten` treatment). §2.
 3. **`--no-bulk-cap` name** → chosen over `--bulk-tax-mode`, `--bulk-sell`,
