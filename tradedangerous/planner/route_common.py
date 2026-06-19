@@ -138,6 +138,47 @@ class _KeptScoreThreshold:
             heapq.heapreplace(self._heap, score)
 
 
+class _KeptRoutes:
+    """Bounded best-N collector for corrected open-anchor routes.
+
+    Holds up to ``keep`` routes, best-first by _route_progress_rank, keeping the
+    first-offered route on a tie. keep=1 reduces to the single best_route the
+    correction loop kept before --routes, so --routes 1 is unchanged.
+    is_full()/worst_rank() drive the N-aware early-stop: once N are held, a
+    finalist whose optimistic rank cannot beat the Nth-best corrected route can
+    never enter the set.
+    """
+
+    __slots__ = ("_keep", "_request", "_routes")
+
+    def __init__(self, keep: int, request: RunRequest):
+        self._keep = max(int(keep), 1)
+        self._request = request
+        self._routes: list[run_result.PlannedRoute] = []
+
+    def offer(self, route: run_result.PlannedRoute) -> None:
+        routes = self._routes
+        rank = _route_progress_rank(route, self._request)
+        index = 0
+        while (
+            index < len(routes)
+            and _route_progress_rank(routes[index], self._request) >= rank
+        ):
+            index += 1
+        routes.insert(index, route)
+        if len(routes) > self._keep:
+            del routes[self._keep:]
+
+    def is_full(self) -> bool:
+        return len(self._routes) >= self._keep
+
+    def worst_rank(self) -> tuple:
+        return _route_progress_rank(self._routes[-1], self._request)
+
+    def best(self) -> list[run_result.PlannedRoute]:
+        return list(self._routes)
+
+
 def cargo_prune_floor(
     threshold: float | None,
     destination_ls: int | None,
@@ -202,8 +243,13 @@ def _multihop_result(
     final_hop_stats: run_result.FinalHopStats | None,
     correction_stats: run_result.CorrectionStats | None = None,
     warning: run_result.PartialRouteWarning | None = None,
+    extra_routes: tuple[run_result.PlannedRoute, ...] = (),
 ) -> run_result.RunResult:
-    """Build a multi-hop RunResult with diagnostics and optional warning."""
+    """Build a multi-hop RunResult with diagnostics and optional warning.
+
+    route is the best route; extra_routes carries any further --routes N routes,
+    best-first. With no extras the result is the single route as before.
+    """
     
     # Complete and partial multi-hop routes use the same diagnostics builder.
     # Partial-route handling should only change the warning payload, not lose
@@ -238,7 +284,7 @@ def _multihop_result(
     # render_text.py so CLI output can change without rewriting planner state.
     warnings = () if warning is None else (warning,)
     return run_result.RunResult(
-        routes=(route,),
+        routes=(route,) + tuple(extra_routes),
         diagnostics=diagnostics,
         warnings=warnings,
     )
@@ -1082,20 +1128,20 @@ def _plan_open_anchor_route(
         )
         correction_started = time.perf_counter()
         correction_fast_before, correction_bb_before = cargo_counters()
-        best_route: run_result.PlannedRoute | None = None
+        kept = _KeptRoutes(request.routes, request)
         finalist_nodes.sort(
             key=lambda candidate: _node_progress_rank(candidate, request),
             reverse=True,
         )
         for node in finalist_nodes:
-            # Exact early-stop: a corrected score never exceeds its optimistic
-            # score, so once the best corrected route we hold beats this
-            # finalist's optimistic score, no lower-ranked finalist can win.
-            # Fires when credits do not bind (corrected ~= optimistic).
+            # Exact early-stop, N-aware: a corrected score never exceeds its
+            # optimistic score, so once we hold N corrected routes and this
+            # finalist's optimistic rank cannot beat the Nth-best held, no
+            # lower-ranked finalist can enter the kept set. At keep=1 this is the
+            # old single-best early-stop. Fires when credits do not bind.
             if (
-                best_route is not None
-                and _node_progress_rank(node, request)
-                <= _route_progress_rank(best_route, request)
+                kept.is_full()
+                and _node_progress_rank(node, request) <= kept.worst_rank()
             ):
                 break
             # Correction budget: cap how many finalists are re-fitted. When
@@ -1110,14 +1156,10 @@ def _plan_open_anchor_route(
             if corrected is None:
                 continue
             correction_stats.finalists_corrected += 1
-            if (
-                best_route is None
-                or _route_progress_rank(corrected, request)
-                > _route_progress_rank(best_route, request)
-            ):
-                best_route = corrected
+            kept.offer(corrected)
 
-        if best_route is None:
+        best_routes = kept.best()
+        if not best_routes:
             if _revisit_active(request) and expansion_stats.revisit_skips > final_revisit_skips_before:
                 raise _no_revisit_route_failure(request)
             # No finalist completed N hops under the real budget. Fall back to
@@ -1163,7 +1205,8 @@ def _plan_open_anchor_route(
             correction_stats, correction_started,
             correction_fast_before, correction_bb_before,
         )
-        route = best_route
+        route = best_routes[0]
+        extra_routes = tuple(best_routes[1:])
     finally:
         qualification.release(session)
         data_gateway.release_reachable_memo(session, reachable_memo)
@@ -1171,6 +1214,7 @@ def _plan_open_anchor_route(
     return _multihop_result(
         request=request,
         route=route,
+        extra_routes=extra_routes,
         started=started,
         validation_ms=validation_ms,
         resolution_ms=resolution_ms,

@@ -424,7 +424,7 @@ def _plan_multi_hop(
                 )
             else:
                 node_destinations = destination_stations
-            trade = best_fixed_pair_trade_from(
+            trades = best_fixed_pair_trades_from(
                 session,
                 node.station,
                 node_destinations,
@@ -436,8 +436,9 @@ def _plan_multi_hop(
                 forbidden_station_ids=_revisit_forbidden(
                     node, request, backward=False,
                 ),
+                top_k=max(request.routes, 1),
             )
-            if trade is not None:
+            for trade in trades:
                 finalists.append(
                     _make_child_node(node, trade, request, base_trade_budget)
                 )
@@ -493,18 +494,25 @@ def _plan_multi_hop(
                 "requested destination with the current jump settings."
             )
 
-        winner = max(
-            finalists,
+        # Top-N by practical score. The sort is stable and reverse-ordered, so
+        # equal scores keep frontier order and --routes 1 selects the same single
+        # winner max() chose. Each chosen finalist becomes one route, best-first.
+        finalists.sort(
             key=lambda candidate: candidate.accumulated_practical_score,
+            reverse=True,
         )
-        route = _reconstruct_route(winner, request)
+        routes = [
+            _reconstruct_route(node, request)
+            for node in finalists[: max(request.routes, 1)]
+        ]
     finally:
         qualification.release(session)
         data_gateway.release_reachable_memo(session, reachable_memo)
 
     return _multihop_result(
         request=request,
-        route=route,
+        route=routes[0],
+        extra_routes=tuple(routes[1:]),
         started=started,
         validation_ms=validation_ms,
         resolution_ms=resolution_ms,
@@ -764,7 +772,7 @@ def best_open_ended_trades_from(
     return hop_candidates
 
 
-def best_fixed_pair_trade_from(
+def best_fixed_pair_trades_from(
     session: Session,
     source_station: run_result.ResolvedStation,
     destination_stations: tuple[run_result.ResolvedStation, ...],
@@ -775,9 +783,10 @@ def best_fixed_pair_trade_from(
     expansion_stats: run_result.ExpansionStats | None = None,
     final_hop_stats: run_result.FinalHopStats | None = None,
     forbidden_station_ids: frozenset[int] = frozenset(),
-) -> _HopCandidate | None:
-    """Return the single best fixed-pair trade from one source to any of the
-    given destinations, or None if no viable trade exists.
+    top_k: int = 1,
+) -> list[_HopCandidate]:
+    """Return up to ``top_k`` best fixed-pair trades from one source to any of
+    the given destinations, best-first, or an empty list if none is viable.
 
     The multi-hop final hop with --to set calls this once per surviving
     frontier node: source is the node's station, destinations are the
@@ -794,7 +803,7 @@ def best_fixed_pair_trade_from(
     """
 
     source_system = _system_from_station(source_station)
-    best: _HopCandidate | None = None
+    found: list[_HopCandidate] = []
     saw_reachable = False
     saw_viable_cargo = False
     for destination in destination_stations:
@@ -853,18 +862,22 @@ def best_fixed_pair_trade_from(
             destination_distance_ls=destination.ls_from_star,
             penalty_percent=request.ls_penalty_percent,
         )
-        if best is None or practical_score > best.practical_score:
-            best = _HopCandidate(
+        found.append(
+            _HopCandidate(
                 destination_station=destination,
                 cargo=cargo,
                 jump_path=jump_path,
                 practical_score=practical_score,
                 raw_profit=cargo.total_profit,
             )
+        )
     if final_hop_stats is not None:
         final_hop_stats.frontier_nodes_attempted += 1
         if saw_reachable:
             final_hop_stats.nodes_with_reachable_destination += 1
         if saw_viable_cargo:
             final_hop_stats.viable_cargo_plans += 1
-    return best
+    # Stable reverse sort keeps destination order on equal scores, so top_k=1
+    # returns the same single best the old keep-strictly-greater logic chose.
+    found.sort(key=lambda candidate: candidate.practical_score, reverse=True)
+    return found[: max(top_k, 1)]
