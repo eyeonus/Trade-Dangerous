@@ -11,6 +11,42 @@ from .run_result import (
     RunResult,
 )
 
+# Block layout. Every detail line under a hop is a label in a fixed-width
+# field followed by its data, so the data columns line up down the block and a
+# multi-commodity hop reads like a small ledger. Continuation lines (extra
+# commodities, a wrapped note, an overflowing total) indent to the same data
+# column with no label.
+_INDENT = 2
+_LABEL_W = 8
+_DATA_COL = _INDENT + _LABEL_W
+_WIDTH = 80
+
+
+def _fmt(value: int) -> str:
+    """Group an integer with thousands separators (``1,289,880``).
+
+    Uses an explicit comma rather than locale-aware ``:n`` so grouping is
+    consistent regardless of the environment's locale (``:n`` silently groups
+    nothing when the locale is unset). Centralised so a column's computed width
+    and its rendered text always use the same formatting — otherwise the
+    padding would drift from the real text.
+    """
+
+    return f"{value:,}"
+
+
+def _labelled(label: str, data: str) -> str:
+    """First line of a block — ``  Label:   data`` — with the label padded so
+    every block's data column starts in the same place."""
+
+    return f"{' ' * _INDENT}{label + ':':<{_LABEL_W}}{data}"
+
+
+def _cont(data: str) -> str:
+    """Continuation line: indented to the data column, no label."""
+
+    return f"{' ' * _DATA_COL}{data}"
+
 
 def render_run_result(result: RunResult, *, debug: int = 0) -> str:
     """Render route results as human-readable trade instructions.
@@ -29,18 +65,18 @@ def render_run_result(result: RunResult, *, debug: int = 0) -> str:
     if result.warnings and result.routes:
         lines.append("")
 
+    # --routes N can return several routes; number them when there is more than
+    # one and separate them with a blank line.
+    multi = len(result.routes) > 1
     for route_index, route in enumerate(result.routes, start=1):
-        if len(result.routes) > 1:
-            lines.append(f"Route {route_index}")
-
-        lines.extend(_render_route(route))
-
+        lines.extend(
+            _render_route(route, route_index if multi else None, debug)
+        )
         if route_index < len(result.routes):
             lines.append("")
 
     # Diagnostics are debug output: noisy, useful in development, not for the
-    # ordinary user. Gate them behind -ww (debug level 2) and up. Both single-
-    # and multi-hop runs route their instrumentation through the same helper.
+    # ordinary user. Gate them behind -ww (debug level 2) and up.
     if debug >= 2:
         lines.extend(_render_multihop_diagnostics(result.diagnostics))
 
@@ -67,42 +103,33 @@ def _render_warning(warning: PartialRouteWarning) -> str:
     )
 
 
-def _render_route(route: PlannedRoute) -> list[str]:
-    """Render one route: a header block followed by one block per hop.
+def _render_route(
+    route: PlannedRoute, number: int | None = None, debug: int = 0
+) -> list[str]:
+    """Render one route: a header line, one block per hop, then a summary.
 
-    The header carries the figures that scope the route as a whole — endpoints,
-    starting credits, total profit, final credits, and the practical score when
-    it differs from raw profit. Per-hop blocks repeat the same shape so a
-    multi-hop route is readable straight through. Cumulative profit and the
-    running credit balance are tracked here and threaded into each hop.
+    Each hop is a complete deal — buy at its source, fly, sell at its
+    destination — so the block names both endpoints and the hop count matches
+    --hops exactly. The shared dock between consecutive hops shows up as the
+    end of one hop and the start of the next. Cumulative profit and the running
+    credit balance are threaded across the hops here.
+
+    The closing summary (multi-hop only) restates the route totals at the foot,
+    where a journey's bottom line belongs. A single hop needs no summary — its
+    own profit line already is the total — so any route-level note (practical
+    score, --towards arrival) is appended on its own instead.
     """
 
+    hop_count = len(route.hops)
+    hop_word = "hop" if hop_count == 1 else "hops"
+    label = "Route" if number is None else f"Route {number}"
     lines = [
-        "Route:",
-        (
-            f"  {route.stations[0].dbname} -> "
-            f"{route.stations[-1].dbname}"
-        ),
-        f"  Starting credits: {route.starting_credits:n} cr",
-        f"  Total route profit: {route.total_raw_profit:n} cr",
-        f"  Final credits: {route.ending_credits:n} cr",
+        f"{label}: {route.stations[0].dbname} -> "
+        f"{route.stations[-1].dbname}   ({hop_count} {hop_word})"
     ]
 
-    if route.total_practical_score != route.total_raw_profit:
-        lines.append(
-            f"  Practical score: {route.total_practical_score:,.0f}"
-        )
-
-    # --towards: the route reached the target system. Report the arrival and the
-    # hop count, since the route may have stopped before using every --hops.
-    if route.arrival_hops is not None:
-        hop_word = "hop" if route.arrival_hops == 1 else "hops"
-        lines.append(
-            f"  Arrived at {route.stations[-1].system_name} after "
-            f"{route.arrival_hops} {hop_word}"
-        )
-
     if route.start_positioning is not None:
+        lines.append("")
         lines.append(
             _render_positioning(
                 "Empty jumps to start", route.start_positioning
@@ -114,10 +141,7 @@ def _render_route(route: PlannedRoute) -> list[str]:
         lines.append("")
         lines.extend(
             _render_hop(
-                hop,
-                hop_index,
-                route.starting_credits,
-                cumulative_profit,
+                hop, hop_index, route.starting_credits, cumulative_profit
             )
         )
         cumulative_profit += hop.raw_profit
@@ -128,7 +152,47 @@ def _render_route(route: PlannedRoute) -> list[str]:
             _render_positioning("Empty jumps from end", route.end_positioning)
         )
 
+    conditionals = _route_conditionals(route, debug)
+    if hop_count > 1:
+        lines.append("")
+        lines.extend(_render_summary(route, conditionals))
+    else:
+        # No summary for a one-hop route, but route-level notes still need a
+        # home, so trail them under the single hop.
+        for note in conditionals:
+            lines.append("")
+            lines.append(f"  {note}")
+
     return lines
+
+
+def _route_conditionals(route: PlannedRoute, debug: int = 0) -> list[str]:
+    """Route-level notes that only appear when they apply.
+
+    The practical score is a debug extra (``-w`` and up): the planner's
+    route-ranking value — raw profit weighted by the ls-distance curve, which
+    rewards stations close to the arrival star and penalises distant ones, so
+    it can sit either side of raw profit. Not credits the Cmdr banks, so it
+    stays out of normal output. The arrival line is shown whenever --towards
+    reached its target, since the route may have stopped before spending every
+    --hops.
+    """
+
+    notes: list[str] = []
+    if (
+        debug >= 1
+        and route.total_practical_score != route.total_raw_profit
+    ):
+        notes.append(
+            f"Practical score: {route.total_practical_score:,.0f}"
+        )
+    if route.arrival_hops is not None:
+        hop_word = "hop" if route.arrival_hops == 1 else "hops"
+        notes.append(
+            f"Arrived at {route.stations[-1].system_name} after "
+            f"{route.arrival_hops} {hop_word}"
+        )
+    return notes
 
 
 def _render_positioning(label: str, leg: JumpPath) -> str:
@@ -157,79 +221,149 @@ def _render_hop(
     starting_credits: int,
     cumulative_before: int,
 ) -> list[str]:
-    """Render one hop: From, Buy, Travel, To, Sell, Hop totals.
+    """Render one complete hop: header, Buy, Travel, Sell, Profit.
 
-    The blocks read top to bottom in the order a Cmdr would actually fly the
-    hop. starting_credits and cumulative_before are passed in so the hop
-    totals block can show the post-sale credit balance — raw, not margin-
-    adjusted, since the displayed figure should match what shows up in the
-    in-game balance.
+    The block reads top to bottom in the order a Cmdr flies it — load at the
+    source, fly, sell at the destination, bank the profit. starting_credits and
+    cumulative_before thread through so the closing line can show the post-sale
+    balance raw (what shows up in the in-game balance), not the planner-internal
+    margin-adjusted figure.
     """
 
     lines = [
-        f"Hop {hop_index}:",
-        f"  From: {hop.source_station.dbname}",
-        "",
-        "  Buy:",
+        f"Hop {hop_index}:  {hop.source_station.dbname} -> "
+        f"{hop.destination_station.dbname}"
     ]
-    for line in hop.cargo.lines:
-        lines.append(
-            f"    {line.quantity:n} t {line.item_name} "
-            f"@ {line.buy_price:n} cr/t = {line.total_cost:n} cr"
-        )
 
+    cargo = hop.cargo.lines
+    # Quantity and name columns are shared between the Buy and Sell blocks (same
+    # commodities, same amounts), so width them once.
+    qty_w = max(len(_fmt(line.quantity)) for line in cargo)
+    name_w = max(len(line.item_name) for line in cargo)
+
+    # Buy block — one line per commodity, columns aligned.
+    bprice_w = max(len(_fmt(line.buy_price)) for line in cargo)
+    btotal_w = max(len(_fmt(line.total_cost)) for line in cargo)
+    for index, line in enumerate(cargo):
+        data = (
+            f"{_fmt(line.quantity):>{qty_w}} t {line.item_name:<{name_w}} "
+            f"@ {_fmt(line.buy_price):>{bprice_w}} cr/t "
+            f"= {_fmt(line.total_cost):>{btotal_w}} cr"
+        )
+        lines.append(_labelled("Buy", data) if index == 0 else _cont(data))
+
+    # The bulk-sale-tax cap binds when a sensitive commodity's loaded quantity
+    # equals the (already 25%-capped) destination demand. Note it under Buy,
+    # wrapped to stay inside 80 columns.
     if any(
         line.bulk_sale_tax_sensitive
         and line.quantity == line.effective_destination_demand_units
-        for line in hop.cargo.lines
+        for line in cargo
     ):
         lines.append(
-            "    Metals/Minerals capped at 25% of destination demand "
-            "to avoid the bulk-sale price reduction."
+            _labelled(
+                "Note",
+                "Metals/Minerals capped at 25% of destination demand to",
+            )
         )
+        lines.append(_cont("avoid the bulk-sale price reduction."))
 
-    lines.append("")
-    lines.append("  Travel:")
+    # Travel — direct (no path), same-system supercruise, or a jump path.
     if hop.jump_path is None:
-        # --direct carries no jump path: the commander plots the route.
-        lines.append("    Direct: plot your own jump route")
+        travel = "Direct: plot your own jump route"
     elif hop.jump_path.is_same_system:
-        lines.append("    Same-system supercruise")
+        travel = "Same-system supercruise"
     else:
         path = " -> ".join(system.name for system in hop.jump_path.systems)
-        lines.append(
-            f"    {hop.jump_path.jumps:n} jump(s), "
-            f"{hop.jump_path.distance_ly:.2f} ly: {path}"
+        jump_word = "jump" if hop.jump_path.jumps == 1 else "jumps"
+        travel = (
+            f"{_fmt(hop.jump_path.jumps)} {jump_word}, "
+            f"{hop.jump_path.distance_ly:.2f} ly  ({path})"
         )
+    lines.append(_labelled("Travel", travel))
 
-    lines.append("")
-    lines.append(f"  To: {hop.destination_station.dbname}")
-    lines.append("")
-    lines.append("  Sell:")
-    total_sale_value = 0
-    for line in hop.cargo.lines:
+    # Sell block — mirrors Buy, with per-tonne and line profit folded onto the
+    # line; the profit note drops to its own line if it would overflow 80.
+    sprice_w = max(len(_fmt(line.sell_price)) for line in cargo)
+    svalue_w = max(
+        len(_fmt(line.quantity * line.sell_price)) for line in cargo
+    )
+    for index, line in enumerate(cargo):
         sale_value = line.quantity * line.sell_price
-        total_sale_value += sale_value
-        lines.append(
-            f"    {line.quantity:n} t {line.item_name} "
-            f"@ {line.sell_price:n} cr/t = {sale_value:n} cr"
+        data = (
+            f"{_fmt(line.quantity):>{qty_w}} t {line.item_name:<{name_w}} "
+            f"@ {_fmt(line.sell_price):>{sprice_w}} cr/t "
+            f"= {_fmt(sale_value):>{svalue_w}} cr"
         )
-        lines.append(
-            f"      Profit: {line.profit_per_unit:n} cr/t, "
-            f"{line.total_profit:n} cr total"
+        profit = (
+            f"(+{_fmt(line.profit_per_unit)} cr/t "
+            f"= {_fmt(line.total_profit)} cr)"
         )
+        head = _labelled("Sell", data) if index == 0 else _cont(data)
+        if len(head) + 2 + len(profit) <= _WIDTH:
+            lines.append(f"{head}  {profit}")
+        else:
+            lines.append(head)
+            lines.append(_cont(profit))
 
+    # Hop close — profit banked this hop, the running cumulative, and the
+    # post-sale credit balance. Split across two lines if the figures would
+    # push past 80 columns.
     cumulative_after = cumulative_before + hop.raw_profit
-    credits_after_sale = starting_credits + cumulative_after
+    credits_after = starting_credits + cumulative_after
+    close = (
+        f"hop {_fmt(hop.raw_profit)} "
+        f"| cumulative profit {_fmt(cumulative_after)} cr "
+        f"| balance {_fmt(credits_after)} cr"
+    )
+    head = _labelled("Profit", close)
+    if len(head) <= _WIDTH:
+        lines.append(head)
+    else:
+        lines.append(
+            _labelled(
+                "Profit",
+                f"hop {_fmt(hop.raw_profit)} "
+                f"| cumulative profit {_fmt(cumulative_after)} cr",
+            )
+        )
+        lines.append(_cont(f"balance {_fmt(credits_after)} cr"))
 
-    lines.append("")
-    lines.append("  Hop totals:")
-    lines.append(f"    Buy cost: {hop.cargo.total_cost:n} cr")
-    lines.append(f"    Sale value: {total_sale_value:n} cr")
-    lines.append(f"    Hop profit: {hop.raw_profit:n} cr")
-    lines.append(f"    Cumulative profit: {cumulative_after:n} cr")
-    lines.append(f"    Credits after sale: {credits_after_sale:n} cr")
+    return lines
 
+
+def _render_summary(
+    route: PlannedRoute, conditionals: list[str]
+) -> list[str]:
+    """The closing route summary — totals at the foot of a multi-hop route.
+
+    Carries the route shape (hops, jumps, total distance) and the bottom line
+    (start to final credits, total profit), plus any route-level conditional
+    notes folded in. Same-system supercruise and --direct legs are not jumps,
+    so they contribute nothing to the jump and distance totals.
+    """
+
+    hop_count = len(route.hops)
+    total_jumps = 0
+    total_ly = 0.0
+    for hop in route.hops:
+        leg = hop.jump_path
+        if leg is not None and not leg.is_same_system:
+            total_jumps += leg.jumps
+            total_ly += leg.distance_ly
+
+    hop_word = "hop" if hop_count == 1 else "hops"
+    jump_word = "jump" if total_jumps == 1 else "jumps"
+    lines = [
+        "Summary:",
+        f"  {hop_count} {hop_word}, {total_jumps} {jump_word}, "
+        f"{total_ly:.2f} ly",
+        f"  Start {_fmt(route.starting_credits)} cr  ->  "
+        f"Final {_fmt(route.ending_credits)} cr",
+        f"  Total profit {_fmt(route.total_raw_profit)} cr",
+    ]
+    for note in conditionals:
+        lines.append(f"  {note}")
     return lines
 
 
