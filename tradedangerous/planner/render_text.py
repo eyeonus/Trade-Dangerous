@@ -48,13 +48,17 @@ def _cont(data: str) -> str:
     return f"{' ' * _DATA_COL}{data}"
 
 
-def render_run_result(result: RunResult, *, debug: int = 0, raw: bool = False):
+def render_run_result(
+    result: RunResult, *, debug: int = 0, raw: bool = False,
+    summary: bool = False, verbose: bool = False,
+):
     """Dispatch route rendering by output format.
 
     ``--raw`` returns the plain-text render (a string): literal, 80-column, for
-    grepping, piping, and diagnostics. Otherwise it returns the rich renderable
-    for the formatted default output. Either way the caller prints the result
-    through the shared rich console.
+    grepping, piping, and diagnostics. Otherwise it returns the rich renderable:
+    ``-v`` verbose for the lead-by-the-nose walk, ``--summary`` for the lean
+    glance table, or the fuller standard table by default. Either way the caller
+    prints the result through the shared rich console.
     """
 
     if raw:
@@ -62,7 +66,13 @@ def render_run_result(result: RunResult, *, debug: int = 0, raw: bool = False):
     # Lazy import: render_rich reuses helpers from this module, so importing it
     # here rather than at module top keeps the load order acyclic.
     from . import render_rich
-    return render_rich.render_run_result_rich(result, debug=debug)
+    if verbose:
+        tier = "verbose"
+    elif summary:
+        tier = "summary"
+    else:
+        tier = "standard"
+    return render_rich.render_run_result_rich(result, debug=debug, tier=tier)
 
 
 def render_raw(result: RunResult, *, debug: int = 0) -> str:

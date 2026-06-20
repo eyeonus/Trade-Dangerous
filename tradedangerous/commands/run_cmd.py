@@ -325,6 +325,13 @@ switches = [
         default = False,
         dest = 'raw',
     ),
+    ParseArgument('--narrow',
+        help = 'Constrain rich output to a portable 80 columns. Without it, '
+                'the tables use the full terminal width.',
+        action = 'store_true',
+        default = False,
+        dest = 'narrow',
+    ),
 ]
 
 
@@ -842,11 +849,17 @@ def render(results, cmdenv, tdb):
     # there is nothing further to show.
     if isinstance(results.data, RunResult):
         rendered = render_run_result(
-            results.data, debug=cmdenv.debug, raw=cmdenv.raw
+            results.data, debug=cmdenv.debug, raw=cmdenv.raw,
+            summary=cmdenv.summary, verbose=bool(cmdenv.detail),
         )
         if cmdenv.raw:
-            # Plain text: literal lines, exactly as before, for grep / pipe.
+            # Plain text: literal lines, already wrapped to 80, for grep / pipe.
             cmdenv.console.print(rendered, highlight=False)
-        else:
-            # Rich renderable, pinned to 80 columns.
+        elif cmdenv.narrow:
+            # --narrow: the safe, portable 80-column layout.
             cmdenv.console.print(rendered, width=80, highlight=False)
+        else:
+            # Default: let the rich tables breathe to the terminal's real width.
+            # The shared Console falls back to 80 when output is not a tty, so
+            # pipes and redirects still get the portable width without --narrow.
+            cmdenv.console.print(rendered, highlight=False)
