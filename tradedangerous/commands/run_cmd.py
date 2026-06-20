@@ -318,6 +318,13 @@ switches = [
         help = 'Summary layout of route instructions.',
         action = 'store_true',
     ),
+    ParseArgument('--raw',
+        help = 'Plain-text route output (no colour or tables), for '
+                'grepping, piping to scripts, and diagnostics.',
+        action = 'store_true',
+        default = False,
+        dest = 'raw',
+    ),
 ]
 
 
@@ -834,7 +841,12 @@ def render(results, cmdenv, tdb):
     # run leaves results.data empty — its guidance was already printed — so
     # there is nothing further to show.
     if isinstance(results.data, RunResult):
-        cmdenv.console.print(
-            render_run_result(results.data, debug=cmdenv.debug),
-            highlight=False,
+        rendered = render_run_result(
+            results.data, debug=cmdenv.debug, raw=cmdenv.raw
         )
+        if cmdenv.raw:
+            # Plain text: literal lines, exactly as before, for grep / pipe.
+            cmdenv.console.print(rendered, highlight=False)
+        else:
+            # Rich renderable, pinned to 80 columns.
+            cmdenv.console.print(rendered, width=80, highlight=False)

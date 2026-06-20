@@ -48,8 +48,25 @@ def _cont(data: str) -> str:
     return f"{' ' * _DATA_COL}{data}"
 
 
-def render_run_result(result: RunResult, *, debug: int = 0) -> str:
-    """Render route results as human-readable trade instructions.
+def render_run_result(result: RunResult, *, debug: int = 0, raw: bool = False):
+    """Dispatch route rendering by output format.
+
+    ``--raw`` returns the plain-text render (a string): literal, 80-column, for
+    grepping, piping, and diagnostics. Otherwise it returns the rich renderable
+    for the formatted default output. Either way the caller prints the result
+    through the shared rich console.
+    """
+
+    if raw:
+        return render_raw(result, debug=debug)
+    # Lazy import: render_rich reuses helpers from this module, so importing it
+    # here rather than at module top keeps the load order acyclic.
+    from . import render_rich
+    return render_rich.render_run_result_rich(result, debug=debug)
+
+
+def render_raw(result: RunResult, *, debug: int = 0) -> str:
+    """Plain-text route render — the ``--raw`` output.
 
     The diagnostics block is debug output, not normal or verbose output, so it
     is emitted only at debug level 2 and up (``-ww``). ``debug`` defaults to 0,
