@@ -1521,6 +1521,41 @@ def _station_group_candidates(
     return tuple(candidates)
 
 
+# A via reserved fetch can hand back a large station-id set under --end-jumps:
+# the whole expanded terminal region. A literal IN of that many ids risks
+# SQLite's bound-parameter ceiling and can knock the query off its index, so
+# above this count the set is materialised into a temp table and applied as a
+# subquery instead. Small reservations (an exact terminal, a loop root, one
+# --to system's eligible set) stay a cheap literal IN.
+_RESERVE_IN_LITERAL_MAX = 500
+
+
+def _build_station_id_temp(connection, station_ids):
+    """Materialise a station-id set into a temp table for subquery restriction.
+
+    Returns a freshly created TEMPORARY table holding the supplied ids in one
+    indexed station_id column. The caller restricts a query with
+    ``column.in_(select(temp.c.station_id))`` instead of a large literal IN, and
+    drops the table when the fetch is done. station_id is BigInteger in the ORM,
+    so the temp mirrors that to avoid an implicit cast.
+    """
+
+    metadata = MetaData()
+    temp = Table(
+        "td_reserved_stations",
+        metadata,
+        Column("station_id", BigInteger, primary_key=True),
+        prefixes=["TEMPORARY"],
+    )
+    temp.drop(connection, checkfirst=True)
+    temp.create(connection)
+    connection.execute(
+        temp.insert(),
+        [{"station_id": int(sid)} for sid in station_ids],
+    )
+    return temp
+
+
 def iter_open_ended_station_groups(
     session: Session,
     fixed_station_ids: tuple[int, ...],
@@ -1639,6 +1674,9 @@ def iter_open_ended_station_groups(
             session, open_role, supply_filters, demand_filters
         )
         connection = session.connection()
+        # A large station-id restriction is materialised once into a temp table
+        # (see _build_station_id_temp) and dropped in the finally below.
+        reserve_temp = None
         try:
             if not bounds_populated:
                 # Fixed endpoint has no usable rows — nothing can pair.
@@ -1739,13 +1777,24 @@ def iter_open_ended_station_groups(
             if restrict_open_station_ids is not None:
                 # Targeted reserved fetch: the via owner restricts the open side
                 # to the specific stations it must retain (an owed station via,
-                # the exact terminal, the loop root, or a --to system's eligible
-                # set). reachable ∩ required, so an out-of-range required station
-                # simply yields no candidate. Same qualification, cutoff and
-                # affordability rules as the ordinary stream.
-                open_filters.append(
-                    station_column.in_(restrict_open_station_ids)
-                )
+                # the exact terminal, the loop root, or a --to / expanded
+                # terminal set). reachable ∩ required, so an out-of-range
+                # required station simply yields no candidate. Same
+                # qualification, cutoff and affordability rules as the ordinary
+                # stream. A large set (the --end-jumps expanded terminal region)
+                # goes through a temp-backed subquery rather than a literal IN,
+                # which would risk SQLite's parameter ceiling and the index.
+                if len(restrict_open_station_ids) > _RESERVE_IN_LITERAL_MAX:
+                    reserve_temp = _build_station_id_temp(
+                        connection, restrict_open_station_ids
+                    )
+                    open_filters.append(
+                        station_column.in_(select(reserve_temp.c.station_id))
+                    )
+                else:
+                    open_filters.append(
+                        station_column.in_(restrict_open_station_ids)
+                    )
 
             if not terminal_hop:
                 if qualification is not None:
@@ -1885,6 +1934,8 @@ def iter_open_ended_station_groups(
             _charge_fetch()
         finally:
             bounds_temp.drop(connection, checkfirst=True)
+            if reserve_temp is not None:
+                reserve_temp.drop(connection, checkfirst=True)
 
 
 def any_reachable_station_pair(

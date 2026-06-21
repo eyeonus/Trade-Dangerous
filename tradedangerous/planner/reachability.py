@@ -51,6 +51,7 @@ def plan_jump_path(
     session: Session,
     bubble_cache: dict[int, _LocalBubble],
     avoid_system_ids: frozenset[int],
+    exempt_anchor_from_avoid: bool = True,
 ) -> JumpPath:
     """Return a jump path from source to destination within the request limits.
 
@@ -128,6 +129,7 @@ def plan_jump_path(
         bubble = _load_local_bubble(
             session, source, bubble_radius, max_ly_per_jump,
             avoid_system_ids=avoid_system_ids,
+            exempt_anchor_from_avoid=exempt_anchor_from_avoid,
         )
         bubble_cache[source.system_id] = bubble
 
@@ -205,6 +207,7 @@ def _load_local_bubble(
     max_ly_per_jump: float,
     *,
     avoid_system_ids: frozenset[int],
+    exempt_anchor_from_avoid: bool = True,
 ) -> _LocalBubble:
     """Fetch every system within radius_ly of the anchor and precompute adjacency.
 
@@ -231,11 +234,16 @@ def _load_local_bubble(
     )
     # --avoid: drop avoided systems from the jump graph so no BFS path can route
     # through one (the permit case: a permit-locked system cannot be entered even
-    # in transit). The anchor is always kept, even when it is itself avoided --
-    # the explicit-origin carve-out: you may leave the system you started in
+    # in transit). The anchor is kept when exempt_anchor_from_avoid is set -- the
+    # explicit-origin carve-out: you may leave the system you started in
     # (--from X --avoid X) but never route back, because every other bubble still
-    # excludes it. The set is small, so a literal NOT IN is cheap.
-    excluded = avoid_system_ids - {anchor.system_id}
+    # excludes it. A destination positioning anchor is NOT an origin, so it
+    # passes this False: an avoided --to obeys avoid like any other system rather
+    # than being silently re-admitted (the end-leg reversal would otherwise fly
+    # into it). The set is small, so a literal NOT IN is cheap.
+    excluded = avoid_system_ids
+    if exempt_anchor_from_avoid:
+        excluded = excluded - {anchor.system_id}
     if excluded:
         stmt = stmt.where(System.system_id.notin_(excluded))
 
@@ -353,6 +361,7 @@ def reachable_systems_from(
     max_ly_per_jump: float,
     bubble_cache: dict[int, _LocalBubble],
     avoid_system_ids: frozenset[int],
+    exempt_anchor_from_avoid: bool = True,
 ) -> tuple[ResolvedSystem, ...]:
     """Return every system reachable from anchor within max_jumps_per_hop.
 
@@ -373,6 +382,7 @@ def reachable_systems_from(
         bubble = _load_local_bubble(
             session, anchor, bubble_radius, max_ly_per_jump,
             avoid_system_ids=avoid_system_ids,
+            exempt_anchor_from_avoid=exempt_anchor_from_avoid,
         )
         bubble_cache[anchor.system_id] = bubble
 

@@ -782,6 +782,11 @@ def _positioning_stations(
     positioning_bubble_cache = (
         positioning_cache if positioning_cache is not None else {}
     )
+    # The source anchor is the explicit --from origin, which keeps the
+    # origin carve-out (--from X --avoid X: start there, never return). The
+    # destination anchor is not an origin, so it gets no carve-out — an avoided
+    # --to is honoured like any other avoided system, and the reversed end leg
+    # cannot later fly into it.
     reachable = reachable_systems_from(
         session,
         anchor_system,
@@ -789,6 +794,7 @@ def _positioning_stations(
         max_ly_per_jump=float(empty_ly or 0.0),
         bubble_cache=positioning_bubble_cache,
         avoid_system_ids=request.avoid_system_ids,
+        exempt_anchor_from_avoid=(role == "source"),
     )
 
     stations = data_gateway.fetch_eligible_stations_in_reachable_systems(

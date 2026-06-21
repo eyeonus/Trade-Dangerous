@@ -307,6 +307,9 @@ def _attach_positioning_legs(
         if end_anchor is not None and route.stations:
             # Plot anchor -> terminal so the cached destination-anchor bubble is
             # reused, then reverse to the flown terminal -> anchor orientation.
+            # The end anchor is a destination, not an origin, so it gets no
+            # origin carve-out — matching the bubble the destination expansion
+            # cached, and so the reversed leg never flies into an avoided --to.
             end_leg = reverse_jump_path(
                 plan_jump_path(
                     end_anchor,
@@ -316,6 +319,7 @@ def _attach_positioning_legs(
                     session=session,
                     bubble_cache=end_cache,
                     avoid_system_ids=request.avoid_system_ids,
+                    exempt_anchor_from_avoid=False,
                 )
             )
         new_routes.append(
