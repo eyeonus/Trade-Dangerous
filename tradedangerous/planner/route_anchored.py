@@ -502,6 +502,7 @@ def _plan_multi_hop(
         terminal_restriction_kwargs: dict = {}
         terminal_by_id: dict = {}
         terminal_system_ids: frozenset = frozenset()
+        terminal_system_coords: dict = {}
         if not loop_mode:
             terminal_by_id = {
                 station.station_id: station
@@ -510,6 +511,12 @@ def _plan_multi_hop(
             terminal_system_ids = frozenset(
                 station.system_id for station in destination_stations
             )
+            # Distinct terminal system coordinates, for each source's cheap
+            # geometric reach precheck before its bubble is built.
+            terminal_system_coords = {
+                station.system_id: (station.x, station.y, station.z)
+                for station in destination_stations
+            }
             terminal_temp, terminal_restriction_kwargs = (
                 data_gateway.build_open_restriction(
                     session.connection(), frozenset(terminal_by_id)
@@ -544,6 +551,7 @@ def _plan_multi_hop(
                         bubble_cache=bubble_cache,
                         terminal_by_id=terminal_by_id,
                         terminal_system_ids=terminal_system_ids,
+                        terminal_system_coords=terminal_system_coords,
                         restriction_kwargs=terminal_restriction_kwargs,
                         expansion_stats=expansion_stats,
                         final_hop_stats=final_hop_stats,
@@ -1019,6 +1027,7 @@ def best_fixed_terminal_trades_streamed(
     bubble_cache: dict[int, object],
     terminal_by_id: dict[int, run_result.ResolvedStation],
     terminal_system_ids: frozenset[int],
+    terminal_system_coords: dict[int, tuple[float, float, float]],
     restriction_kwargs: dict,
     expansion_stats: run_result.ExpansionStats | None = None,
     final_hop_stats: run_result.FinalHopStats | None = None,
@@ -1039,7 +1048,40 @@ def best_fixed_terminal_trades_streamed(
 
     max_jumps = int(request.max_jumps_per_hop or 0)
     max_ly = float(request.max_ly_per_jump or 0.0)
+    capacity_units = int(request.capacity_units or 0)
+    penalty_percent = request.ls_penalty_percent
     source_system = _system_from_station(source_station)
+
+    # A revisit-blocked terminal cannot close the route: count it (so a final hop
+    # that collapses solely on blocked terminals classifies as NoUniqueRoute) and
+    # drop it from the reachable-destination signal — the old path checked
+    # forbidden before the reach test.
+    if forbidden_station_ids:
+        blocked = forbidden_station_ids & frozenset(terminal_by_id)
+        if blocked and expansion_stats is not None:
+            expansion_stats.revisit_skips += len(blocked)
+        open_terminal_systems = frozenset(
+            station.system_id
+            for station_id, station in terminal_by_id.items()
+            if station_id not in forbidden_station_ids
+        )
+    else:
+        open_terminal_systems = terminal_system_ids
+
+    if final_hop_stats is not None:
+        final_hop_stats.frontier_nodes_attempted += 1
+
+    # Coordinate-radius precheck before any bubble build: if no terminal system
+    # lies within the maximum geometric reach, none can be reached, so skip the
+    # bubble entirely (the Part B triangle reject). The zero radius at
+    # --jumps-per 0 admits only the source's own system, i.e. same-system.
+    sx, sy, sz = source_system.x, source_system.y, source_system.z
+    max_reach_sq = (max_jumps * max_ly) ** 2
+    if not any(
+        (cx - sx) ** 2 + (cy - sy) ** 2 + (cz - sz) ** 2 <= max_reach_sq
+        for cx, cy, cz in terminal_system_coords.values()
+    ):
+        return []
 
     # Reachable relation: which terminal systems this source can reach. Same
     # bubble and avoid handling plan_jump_path would use, so a terminal system in
@@ -1058,30 +1100,18 @@ def best_fixed_terminal_trades_streamed(
         reachable = (source_system,)
     reachable_ids = frozenset(r.system_id for r in reachable)
 
-    # A revisit-blocked terminal cannot close the route: count it (so a final hop
-    # that collapses solely on blocked terminals classifies as NoUniqueRoute) and
-    # drop it from the reachable-destination signal — the old path checked
-    # forbidden before the reach test.
-    if forbidden_station_ids:
-        blocked = forbidden_station_ids & frozenset(terminal_by_id)
-        if blocked and expansion_stats is not None:
-            expansion_stats.revisit_skips += len(blocked)
-        open_terminal_systems = frozenset(
-            station.system_id
-            for station_id, station in terminal_by_id.items()
-            if station_id not in forbidden_station_ids
-        )
-    else:
-        open_terminal_systems = terminal_system_ids
-
     saw_reachable = bool(reachable_ids & open_terminal_systems)
-    if final_hop_stats is not None:
-        final_hop_stats.frontier_nodes_attempted += 1
-        if saw_reachable:
-            final_hop_stats.nodes_with_reachable_destination += 1
     if not saw_reachable:
         return []
+    if final_hop_stats is not None:
+        final_hop_stats.nodes_with_reachable_destination += 1
 
+    # Stream terminals best-ceiling-first; solve cargo with the kept-score prune
+    # and stop once the ceiling cannot beat the held top-K — so cargo work scales
+    # with top_k, not the terminal count. The destination varies per terminal, so
+    # the stop converts the floor at the curve maximum (ls 0), which is
+    # admissible. Fixed-terminal never sees --towards, so pruning is always on.
+    threshold = _KeptScoreThreshold(top_k)
     found: list[_HopCandidate] = []
     saw_viable_cargo = False
     group_iter = data_gateway.iter_open_ended_station_groups(
@@ -1096,7 +1126,19 @@ def best_fixed_terminal_trades_streamed(
         **restriction_kwargs,
     )
     try:
-        for dest_station_id, _ceiling, candidates in group_iter:
+        for dest_station_id, ceiling_ppu, candidates in group_iter:
+            floor = threshold.current()
+            if floor is not None:
+                stop_floor = cargo_prune_floor(floor, 0, penalty_percent)
+                if (
+                    stop_floor is not None
+                    and capacity_units * ceiling_ppu < stop_floor
+                ):
+                    # Ceilings are non-increasing and the floor only rises, so no
+                    # unread terminal can place.
+                    if expansion_stats is not None:
+                        expansion_stats.stream_stops += 1
+                    break
             if dest_station_id in forbidden_station_ids:
                 # Already counted above; just never trade into it.
                 continue
@@ -1105,21 +1147,31 @@ def best_fixed_terminal_trades_streamed(
                 continue
             if final_hop_stats is not None:
                 final_hop_stats.market_candidates_found += len(candidates)
+            prune_floor = cargo_prune_floor(
+                threshold.current(),
+                destination.ls_from_star,
+                penalty_percent,
+            )
             try:
                 cargo = optimise_cargo(
                     candidates,
-                    capacity_units=int(request.capacity_units or 0),
+                    capacity_units=capacity_units,
                     available_credits=available_credits,
                     cargo_limit_per_item=request.cargo_limit_per_item,
+                    prune_below_raw=prune_floor,
                 )
             except failures.NoProfitableTrades:
+                continue
+            if cargo is None:
+                # Pruned: cannot beat the held top-K.
                 continue
             saw_viable_cargo = True
             practical_score = score_with_destination_penalty(
                 cargo.total_profit,
                 destination_distance_ls=destination.ls_from_star,
-                penalty_percent=request.ls_penalty_percent,
+                penalty_percent=penalty_percent,
             )
+            threshold.offer(practical_score)
             found.append(
                 _HopCandidate(
                     destination_station=destination,

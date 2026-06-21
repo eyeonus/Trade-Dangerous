@@ -1818,6 +1818,23 @@ def best_open_ended_hop_candidates(
     return hop_candidates
 
 
+def _rank_seed_entries(entries: list, request: RunRequest) -> list:
+    """Order seed-expansion entries best-first: progress rank desc, pair-key asc.
+
+    The same order best_open_ended_hop_candidates materialises in — a stable sort
+    by the pair-best tie-key, then by progress rank — so a one-seed batch ranks
+    identically to the single-anchor path. Used both to keep each seed's
+    collector bounded (running top-K) and for the final materialise.
+    """
+
+    ranked = sorted(entries, key=lambda item: item[4])
+    ranked.sort(
+        key=lambda item: _candidate_progress_rank(item, request),
+        reverse=True,
+    )
+    return ranked
+
+
 def batched_seed_hop_candidates(
     session: Session,
     seeds: tuple[run_result.ResolvedStation, ...],
@@ -2027,7 +2044,8 @@ def batched_seed_hop_candidates(
                     )
                     if pruning_enabled:
                         threshold.offer(practical_score)
-                    scored_by_seed[seed_id].append(
+                    bucket = scored_by_seed[seed_id]
+                    bucket.append(
                         (
                             practical_score,
                             open_station,
@@ -2040,6 +2058,14 @@ def batched_seed_hop_candidates(
                             ),
                         )
                     )
+                    if len(bucket) >= 2 * top_k:
+                        # Bounded per-seed top-K: a fast-filling seed cannot grow
+                        # unbounded before the shared multi-floor stop fires.
+                        # Entry ranks are fixed, so compacting to the running
+                        # top-K keeps exactly what keeping them all would.
+                        scored_by_seed[seed_id] = _rank_seed_entries(
+                            bucket, request
+                        )[:top_k]
 
         group_iter = data_gateway.iter_open_ended_station_groups(
             session,
@@ -2073,11 +2099,7 @@ def batched_seed_hop_candidates(
             entries = scored_by_seed[seed.station_id]
             if not entries:
                 continue
-            ranked = sorted(entries, key=lambda item: item[4])
-            ranked.sort(
-                key=lambda item: _candidate_progress_rank(item, request),
-                reverse=True,
-            )
+            ranked = _rank_seed_entries(entries, request)
             built: list[_HopCandidate] = []
             for practical_score, open_station, cargo, pair_candidates, _key in (
                 ranked
