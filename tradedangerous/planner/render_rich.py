@@ -1,20 +1,25 @@
 """Rich (formatted) renderer for trade run planner results.
 
 This is the default ``trade run`` output: a colour table built on the ``rich``
-library, pinned to 80 columns by the caller. The plain-text renderer in
-``render_text`` is the ``--raw`` alternative; the warning, positioning,
-diagnostics, and route-note text is shared from there so the two formats stay
-in step.
+library. The plain-text renderer in ``render_text`` is the ``--raw``
+alternative; the warning, positioning, diagnostics, and route-note text is
+shared from there so the two formats stay in step.
 
-Three rich tiers share one table; they differ only in how much each cell holds.
-``--summary`` is the bare glance — destination, a comma-separated load, jump
-count, profit. ``standard`` (the default) stacks the load with buy prices, adds
-the nav route under each destination, and leaves a blank line between hops.
-``-v`` verbose switches to a station-centric layout — a row per stop, showing
-what you sell on arrival and what you buy before leaving, with the jumps under
-each station — so it reads the way the route is actually flown.
-(``--raw`` is the plain-text format, handled in ``render_text``.) All three
-share the route header, the totals line, and the route notes.
+Three rich tiers share one station-centric table — a row per stop, showing what
+you sell on arrival and what you buy before leaving, so it reads the way the
+route is actually flown. They differ only in how much each cell holds.
+``--summary`` is the bare glance — Sell and Buy as comma loads, no prices, no
+nav, profit only. ``standard`` (the default) stacks each commodity, prices the
+buy side, condenses the flown systems to a line under each station, and
+separates stops with a blank line. ``-v`` verbose prices both sides and lists
+every jump, with a rule between stops. All three adapt to the terminal width:
+the numeric columns (Balance, then Profit) shed on a narrower screen rather than
+fold; narrower still the priced tiers each keep Profit their own way — standard
+drops its Sell column, verbose folds Sell and Buy into one tagged Trade column —
+so the Profit column survives even at 80 columns. Summary, carrying no prices,
+keeps both sides throughout. (``--raw`` is the plain-text format, handled in
+``render_text``.) All share the route header, the totals line, and the route
+notes.
 """
 
 from __future__ import annotations
@@ -46,11 +51,12 @@ _DIM = "dim"
 # Data colours derived from the Elite orange chrome (_CHROME) on the colour
 # wheel: gold is analogous to orange, azure is its complement, emerald a
 # balanced tetrad partner — so the palette harmonises rather than just sharing
-# screen space. Origin is a soft cyan beside the azure destinations. The three
-# coloured columns (To, Load, Profit) alternate a medium and a lighter shade of
-# their hue row to row, in sync, so a row reads as a whole and a folded name
-# stays with its hop. Truecolor hex; rich downgrades on terminals without
-# 24-bit. _DEST / _PROFIT (header destination, totals figure) reuse the medium.
+# screen space. Origin is a soft cyan beside the azure destinations. The
+# coloured columns (Station, the Sell/Buy loads, Profit) alternate a medium and
+# a lighter shade of their hue row to row, in sync, so a row reads as a whole
+# and a folded name stays with its stop. Truecolor hex; rich downgrades on
+# terminals without 24-bit. _DEST / _PROFIT (header destination, totals figure)
+# reuse the medium.
 _DEST_ALT = ("#6aadf0", "#a3ccf5")    # azure — orange's complement
 _LOAD_ALT = ("#edcb45", "#f7e497")    # gold — analogous to orange
 _PROFIT_ALT = ("#45d380", "#98e1b7")  # emerald — tetrad with orange + azure
@@ -61,34 +67,52 @@ _PROFIT_ALT = ("#45d380", "#98e1b7")  # emerald — tetrad with orange + azure
 # way the in-game HUD does, without taking a data colour off the red-green axis.
 _CHROME = "#f07b05"
 
-# Advisory amber for the bulk-sale-tax cap — the flag marker on a capped Load
+# Advisory amber for the bulk-sale-tax cap — the flag marker on a capped Buy
 # line and its footnote. Matches the yellow used for warnings, and stands clear
-# of the gold Load colour so the flag still reads against it.
+# of the gold load colour so the flag still reads against it.
 _CAP = "yellow"
 
-# A dimmed chrome for the rule between verbose hops — the same HUD orange as the
-# frame, attenuated so the inter-hop rules read as quiet dividers rather than
-# competing with the header. rich applies the dim attribute over the truecolour.
+# A dimmed chrome for the rule between verbose stops — the same HUD orange as
+# the frame, attenuated so the inter-stop rules read as quiet dividers rather
+# than competing with the header. rich applies the dim attribute over the
+# truecolour.
 _CHROME_DIM = f"dim {_CHROME}"
 
 # A light grid: HORIZONTALS frames the table and underlines the header without
-# vertical bars, and show_lines stays off so there is no rule between every hop
-# — enough structure to break the route up, not a line per row. The box style
+# vertical bars. show_lines (a rule between every row) is reserved for verbose;
+# standard uses a blank line (leading) and summary a tight grid. The box style
 # is the easiest knob to make it heavier (MINIMAL/SQUARE/ROUNDED add verticals)
 # or lighter (SIMPLE_HEAD drops the frame to just the header rule).
 _BOX = box.HORIZONTALS
 
+# The numeric columns shed as the terminal narrows so the text columns keep
+# room rather than folding to mush. Standard and verbose price their loads, so
+# their cells are wide: above _PROFIT_MIN they keep separate Sell and Buy
+# columns (and Balance too, above _BALANCE_MIN); below it they each keep Profit
+# a different way — standard drops its Sell column, verbose folds Sell and Buy
+# into one tagged Trade column. Summary's cells carry no prices, so it never
+# needs to — it just sheds Profit below its own (lower) width and never carries
+# Balance. Tune these by eye once run at real widths.
+_PROFIT_MIN = {"summary": 70, "standard": 100, "verbose": 100}
+_BALANCE_MIN = {"standard": 120, "verbose": 120}
+
 
 def render_run_result_rich(
-    result: RunResult, *, debug: int = 0, tier: str = "standard"
+    result: RunResult, *, debug: int = 0, tier: str = "standard",
+    width: int = 80,
 ) -> Group:
     """Build the rich renderable for a planner result.
 
-    ``tier`` selects how much each cell of the hop table carries. ``"summary"``
-    is the lean glance; ``"standard"`` (the default) adds the nav route, buy
-    prices, and a gap between hops; ``"verbose"`` switches to a station-centric
-    table — a row per stop, what you sell and buy there, with a rule between
-    stops. All share the header, totals, and notes.
+    ``tier`` selects how much each cell of the station-centric table carries.
+    ``"summary"`` is the lean glance — comma loads, no prices; ``"standard"``
+    (the default) prices the buy side, condenses the nav under each station, and
+    gaps the stops with a blank line; ``"verbose"`` prices both sides, lists
+    every jump, and rules the stops apart. All share the header, totals, and
+    notes.
+
+    ``width`` is the column budget the output will be printed at; every tier
+    uses it to shed or rearrange its columns on a narrow terminal so the table
+    degrades rather than folds.
 
     Returns a rich ``Group`` the caller prints through the shared console. A
     string is never returned here — that is the ``--raw`` path's job.
@@ -106,7 +130,7 @@ def render_run_result_rich(
     multi = len(result.routes) > 1
     for index, route in enumerate(result.routes, start=1):
         blocks.extend(
-            _route_block(route, index if multi else None, debug, tier)
+            _route_block(route, index if multi else None, debug, tier, width)
         )
         if index < len(result.routes):
             blocks.append(Text(""))
@@ -125,9 +149,9 @@ def render_run_result_rich(
 
 
 def _route_block(
-    route: PlannedRoute, number: int | None, debug: int, tier: str
+    route: PlannedRoute, number: int | None, debug: int, tier: str, width: int
 ) -> list:
-    """One route: a header line, the hop table, then a totals line."""
+    """One route: a header line, the stops table, then a totals line."""
 
     hop_count = len(route.hops)
     total_jumps, total_ly = _jump_totals(route)
@@ -144,29 +168,23 @@ def _route_block(
             )
         )
 
-    if tier == "verbose":
-        # Verbose renders station-centric: a row per stop (what you sell on
-        # arrival, what you buy before leaving), which reads the way the route
-        # is flown. The hop-centric layout in _hop_table is the alternative
-        # under evaluation.
-        blocks.append(_stops_table(route))
-    else:
-        blocks.append(_hop_table(route, tier))
-        # On the standard tier, flag below the table when the bulk-sale-tax cap
-        # shaped any hop's cargo — the flag in the Load column points at which
-        # commodity, this line says why.
-        if tier == "standard" and any(
-            _bulk_capped(line)
-            for hop in route.hops
-            for line in hop.cargo.lines
-        ):
-            blocks.append(
-                Text(
-                    "  ⚑ Metals/Minerals capped at 25% of demand to avoid the "
-                    "bulk-sale tax.",
-                    style=_CAP,
-                )
+    blocks.append(_stops_table(route, tier, width))
+
+    # Flag below the table when the bulk-sale-tax cap shaped any hop's cargo —
+    # the ⚑ in the Buy column points at which commodity, this line says why.
+    # Summary stays clean (no flag, no note); standard and verbose carry both.
+    if tier in ("standard", "verbose") and any(
+        _bulk_capped(line)
+        for hop in route.hops
+        for line in hop.cargo.lines
+    ):
+        blocks.append(
+            Text(
+                "  ⚑ Metals/Minerals capped at 25% of demand to avoid the "
+                "bulk-sale tax.",
+                style=_CAP,
             )
+        )
 
     if route.end_positioning is not None:
         blocks.append(
@@ -210,81 +228,6 @@ def _header_line(
     return header
 
 
-def _hop_table(route: PlannedRoute, tier: str) -> Table:
-    """The hop table — one row a hop. The same five columns at every tier; what
-    changes is how much each cell holds, and the location column is headed "To"
-    (the destination) for summary and standard, "Trip" for verbose.
-
-    The location and Load cells fold long text within their column so nothing
-    strays to the next line. ``summary`` is the bare row: destination, a comma
-    load, jump count, profit. ``standard`` stacks each commodity with its buy
-    price and adds the nav route (systems + distance) on a dim line under the
-    destination; a blank line (``leading``) keeps the taller rows apart.
-    ``verbose`` goes further — the Trip cell names the source you buy at, the
-    destination you sell at, and the jumps one per line; the Load cell shows
-    every commodity's buy and sell price — and ``show_lines`` rules the hops
-    apart in dim chrome rather than a blank gap. Cell building lives in
-    ``_to_cell`` / ``_trip_cell`` and ``_load_cell``.
-    """
-
-    is_standard = tier == "standard"
-    is_verbose = tier == "verbose"
-
-    table = Table(
-        box=_BOX,
-        show_lines=is_verbose,
-        header_style=_CHROME,
-        border_style=_CHROME_DIM if is_verbose else _CHROME,
-        padding=(0, 1),
-        pad_edge=False,
-        leading=1 if is_standard else 0,
-    )
-    table.add_column("Hop", justify="center", no_wrap=True)
-    table.add_column("Trip" if is_verbose else "To", overflow="fold")
-    table.add_column("Load", overflow="fold")
-    # "Jmp" not "Jumps": the count is one or two digits, so the long header was
-    # the only thing widening the column. Trimming it hands width back to the
-    # cramped To and Load text columns.
-    table.add_column("Jmp", justify="center", no_wrap=True)
-    table.add_column("Profit", justify="right", no_wrap=True)
-
-    for hop_index, hop in enumerate(route.hops, start=1):
-        shade = (hop_index - 1) % 2
-        table.add_row(
-            Text(str(hop_index), style=_CHROME),
-            _to_cell(hop, tier, shade),
-            _load_cell(hop, tier, shade),
-            Text(_jumps_text(hop), style=_CHROME),
-            Text(f"+{hop.raw_profit:,} cr", style=_PROFIT_ALT[shade]),
-        )
-    return table
-
-
-def _jumps_text(hop: PlannedHop) -> str:
-    """Compact per-hop travel — jump count, or the special-leg shorthand."""
-
-    leg = hop.jump_path
-    if leg is None:
-        return "direct"
-    if leg.is_same_system:
-        return "sc"
-    return str(leg.jumps)
-
-
-def _nav_route(hop: PlannedHop) -> tuple[str, float] | None:
-    """The systems flown on a hop and the leg's flown distance, or None.
-
-    None when the hop carries no jump path to walk — a same-system supercruise
-    hop, or a --direct hop the commander plots for themselves.
-    """
-
-    leg = hop.jump_path
-    if leg is None or leg.is_same_system or len(leg.systems) < 2:
-        return None
-    chain = " → ".join(system.dbname for system in leg.systems)
-    return chain, leg.distance_ly
-
-
 def _bulk_capped(line: CargoLine) -> bool:
     """Whether the bulk-sale-tax cap bound this cargo line.
 
@@ -298,65 +241,6 @@ def _bulk_capped(line: CargoLine) -> bool:
         line.bulk_sale_tax_sensitive
         and line.quantity == line.effective_destination_demand_units
     )
-
-
-def _to_cell(hop: PlannedHop, tier: str, shade: int) -> Text:
-    """The location cell. Summary and standard show the destination (standard
-    adds the nav chain on a dim line beneath it). Verbose shows the whole trip
-    — source, destination, then the jumps — so the buy and the sell read as two
-    different places; that build lives in ``_trip_cell``."""
-
-    if tier == "verbose":
-        return _trip_cell(hop, shade)
-
-    cell = Text(hop.destination_station.dbname, style=_DEST_ALT[shade])
-    if tier == "standard":
-        nav = _nav_route(hop)
-        if nav is not None:
-            chain, distance_ly = nav
-            cell.append(f"\n↳ {chain} · {distance_ly:.1f} ly", style=_DIM)
-    return cell
-
-
-def _trip_cell(hop: PlannedHop, shade: int) -> Text:
-    """Verbose location cell — the hop as a trip: the source station you buy
-    at, the destination you sell at, then the jumps one per line. Naming both
-    ends stops the buy and the sell reading as one place."""
-
-    cell = Text(hop.source_station.dbname, style=_DEST_ALT[shade])
-    cell.append(
-        f"\n→ {hop.destination_station.dbname}", style=_DEST_ALT[shade]
-    )
-    leg = hop.jump_path
-    if leg is not None and not leg.is_same_system:
-        for system, leg_ly in _jump_legs(leg):
-            cell.append(
-                f"\n  ↳ {system.dbname} · {leg_ly:.1f} ly", style=_DIM
-            )
-    return cell
-
-
-def _load_cell(hop: PlannedHop, tier: str, shade: int) -> Text:
-    """The Load cell: the hop's commodities in its gold shade. Summary keeps a
-    single comma-separated line; standard puts each on its own line with its
-    buy price; verbose stacks the buy and sell price under each commodity. On
-    standard, a commodity the bulk-sale-tax cap held back gets an amber flag."""
-
-    gold = _LOAD_ALT[shade]
-    cell = Text()
-    for position, line in enumerate(hop.cargo.lines):
-        if position:
-            cell.append(", " if tier == "summary" else "\n", style=gold)
-        entry = f"{line.quantity:,} t {line.item_name}"
-        if tier == "standard":
-            entry += f" @ {line.buy_price:,} cr/t"
-        cell.append(entry, style=gold)
-        if tier == "standard" and _bulk_capped(line):
-            cell.append(" ⚑", style=_CAP)
-        if tier == "verbose":
-            cell.append(f"\n    buy  {line.buy_price:,} cr/t", style=_DIM)
-            cell.append(f"\n    sell {line.sell_price:,} cr/t", style=_DIM)
-    return cell
 
 
 def _jump_legs(leg) -> list:
@@ -375,29 +259,107 @@ def _jump_legs(leg) -> list:
     return out
 
 
-def _stops_table(route: PlannedRoute) -> Table:
-    """Station-centric verbose: a row per stop, not per hop. At each station
-    you sell what you arrived carrying and buy what you leave with — different
-    commodities at the same place, which is how the route is actually flown.
-    The origin has nothing to sell, the final stop nothing to buy; a hop's
-    profit and the running balance land on the row where its cargo is sold
-    (arrival). The leg leaving a station — its jumps — sits under that station's
-    name. Stops are deliberately unnumbered, to avoid clashing with hop numbers.
+def _append_nav(cell: Text, hop: PlannedHop, tier: str) -> None:
+    """Append the leg leaving this station, under its name in dim, in the form
+    the tier calls for.
+
+    Summary shows nothing. A same-system hop is a supercruise to another station
+    in the same system — no hyperspace jump, so its distance is 0.0 ly — and
+    gets a single ``Supercruise`` line so the leg is not silently blank. A
+    --direct hop carries no jump path (the commander plots it), so nothing is
+    appended. Otherwise standard condenses the flown systems to a single line
+    (systems jumped to and the leg's distance) and verbose lists each jump on
+    its own line with its leg length.
     """
 
+    if tier == "summary":
+        return
+    leg = hop.jump_path
+    if leg is None:
+        return
+    if leg.is_same_system:
+        cell.append(
+            f"\n  ↓ Supercruise · {leg.distance_ly:.1f} ly", style=_DIM
+        )
+        return
+    legs = _jump_legs(leg)
+    if tier == "verbose":
+        for system, leg_ly in legs:
+            cell.append(f"\n  ↓ {system.dbname} · {leg_ly:.1f} ly", style=_DIM)
+    else:
+        chain = " → ".join(system.dbname for system, _ in legs)
+        cell.append(f"\n  ↓ {chain} · {leg.distance_ly:.1f} ly", style=_DIM)
+
+
+def _stops_table(route: PlannedRoute, tier: str, width: int) -> Table:
+    """Station-centric table: a row per stop, not per hop. At each station you
+    sell what you arrived carrying and buy what you leave with — different
+    commodities at the same place, which is how the route is actually flown. The
+    origin has nothing to sell, the final stop nothing to buy; a hop's profit
+    and the running balance land on the row where its cargo is sold (arrival).
+    The leg leaving a station sits under that station's name. Stops are
+    deliberately unnumbered, to avoid clashing with hop numbers.
+
+    The tiers differ by how much each cell holds. ``summary`` is the bare glance
+    — Sell and Buy as comma loads, no prices, no nav, profit only; ``standard``
+    stacks each commodity, prices the buy side, condenses the flown systems to
+    one line under the station, and flags a capped buy; ``verbose`` adds sell
+    prices too and lists every jump. The frame: a rule between stops for verbose,
+    a blank line for standard, a tight grid for summary.
+
+    The layout adapts to ``width``. Wide, standard and verbose show separate Sell
+    and Buy columns with Profit and Balance; as the terminal narrows Balance
+    sheds first. Narrower still, each keeps Profit by its own compromise:
+    standard drops the Sell column (holding the route and the priced Buy),
+    verbose folds Sell and Buy into one tagged Trade column (holding both sides).
+    Summary carries no prices, so it fits both sides at any width and only sheds
+    Profit when very narrow. The header and totals line always carry the route's
+    bottom line.
+    """
+
+    is_standard = tier == "standard"
+    is_verbose = tier == "verbose"
+    priced = tier in ("standard", "verbose")
+
+    # Below the width where Profit would otherwise be dropped, the priced tiers
+    # make room for it rather than lose it, each its own way: verbose folds Sell
+    # and Buy into one tagged Trade column (keeping both sides), standard drops
+    # its Sell column (keeping the priced Buy and the route under each station).
+    # Summary carries no prices, so its cells already fit both sides at any width
+    # and it never has to.
+    narrow_priced = priced and width < _PROFIT_MIN[tier]
+    combine = narrow_priced and is_verbose
+    drop_sell = narrow_priced and is_standard
+    if narrow_priced:
+        show_profit = True
+        show_balance = False
+    else:
+        show_profit = width >= _PROFIT_MIN[tier]
+        show_balance = tier in _BALANCE_MIN and width >= _BALANCE_MIN[tier]
+
+    # The rule between stops (show_lines) is verbose's alone; standard separates
+    # stops with a blank line at every width, summary with nothing.
     table = Table(
         box=_BOX,
-        show_lines=True,
+        show_lines=is_verbose,
         header_style=_CHROME,
-        border_style=_CHROME_DIM,
+        border_style=_CHROME_DIM if is_verbose else _CHROME,
         padding=(0, 1),
         pad_edge=False,
+        leading=1 if is_standard else 0,
     )
     table.add_column("Station", overflow="fold")
-    table.add_column("Sell", overflow="fold")
-    table.add_column("Buy", overflow="fold")
-    table.add_column("Profit", justify="right", no_wrap=True)
-    table.add_column("Balance", justify="right", no_wrap=True)
+    if combine:
+        table.add_column("Trade", overflow="fold")
+    elif drop_sell:
+        table.add_column("Buy", overflow="fold")
+    else:
+        table.add_column("Sell", overflow="fold")
+        table.add_column("Buy", overflow="fold")
+    if show_profit:
+        table.add_column("Profit", justify="right", no_wrap=True)
+    if show_balance:
+        table.add_column("Balance", justify="right", no_wrap=True)
 
     # The stop chain: the first hop's origin, then every hop's destination. So
     # at stop ``index`` the arriving hop is ``hops[index - 1]`` (what you sell)
@@ -414,51 +376,109 @@ def _stops_table(route: PlannedRoute) -> Table:
 
         station_cell = Text(station.dbname, style=_DEST_ALT[shade])
         if buy_hop is not None:
-            leg = buy_hop.jump_path
-            if leg is not None and not leg.is_same_system:
-                for system, leg_ly in _jump_legs(leg):
-                    station_cell.append(
-                        f"\n  ↓ {system.dbname} · {leg_ly:.1f} ly", style=_DIM
-                    )
+            _append_nav(station_cell, buy_hop, tier)
 
         if sell_hop is not None:
             running += sell_hop.raw_profit
-            sell_cell = _trade_cell(sell_hop, "sell_price", shade)
             profit_cell = Text(
                 f"+{sell_hop.raw_profit:,} cr", style=_PROFIT_ALT[shade]
             )
         else:
-            sell_cell = Text("—", style=_DIM)
             profit_cell = Text("—", style=_DIM)
 
-        if buy_hop is not None:
-            buy_cell = _trade_cell(buy_hop, "buy_price", shade)
+        row = [station_cell]
+        if combine:
+            row.append(_combined_trade_cell(sell_hop, buy_hop, tier, shade))
+        elif drop_sell:
+            row.append(_side_cell(buy_hop, "buy", tier, shade))
         else:
-            buy_cell = Text("—", style=_DIM)
-
-        balance_cell = Text(f"{running:,} cr", style=_PROFIT_ALT[shade])
-
-        table.add_row(
-            station_cell, sell_cell, buy_cell, profit_cell, balance_cell
-        )
+            row.append(_side_cell(sell_hop, "sell", tier, shade))
+            row.append(_side_cell(buy_hop, "buy", tier, shade))
+        if show_profit:
+            row.append(profit_cell)
+        if show_balance:
+            row.append(Text(f"{running:,} cr", style=_PROFIT_ALT[shade]))
+        table.add_row(*row)
     return table
 
 
-def _trade_cell(hop: PlannedHop, price_attr: str, shade: int) -> Text:
-    """One side of a stop's trade — the hop's commodities at the given price
-    (``buy_price`` for the buy column, ``sell_price`` for the sell), one per
-    line in the hop's gold shade."""
+def _trade_entry(line: CargoLine, side: str, tier: str) -> str:
+    """Commodity text for one cargo line: quantity and name, plus the price when
+    the tier shows it. Verbose prices both sides, standard prices only the buy
+    side, summary shows no prices."""
+
+    entry = f"{line.quantity:,} t {line.item_name}"
+    show_price = tier == "verbose" or (tier == "standard" and side == "buy")
+    if show_price:
+        attr = "sell_price" if side == "sell" else "buy_price"
+        entry += f" @ {getattr(line, attr):,} cr/t"
+    return entry
+
+
+def _flag_capped(line: CargoLine, side: str, tier: str) -> bool:
+    """Whether this line earns the bulk-cap ⚑ — a capped buy on standard or
+    verbose (summary stays clean, and the cap is a buy-side concern)."""
+
+    return (
+        side == "buy"
+        and tier in ("standard", "verbose")
+        and _bulk_capped(line)
+    )
+
+
+def _trade_cell(hop: PlannedHop, side: str, tier: str, shade: int) -> Text:
+    """One side of a stop's trade — the hop's commodities in its gold shade, for
+    the wide layout's separate Sell / Buy columns. ``side`` is ``"sell"`` (the
+    cargo offloaded on arrival) or ``"buy"`` (the cargo loaded before leaving).
+    Summary keeps a comma list; the priced tiers stack one per line. A capped
+    buy gets the amber ⚑."""
 
     gold = _LOAD_ALT[shade]
+    separator = ", " if tier == "summary" else "\n"
     cell = Text()
     for position, line in enumerate(hop.cargo.lines):
         if position:
-            cell.append("\n", style=gold)
-        price = getattr(line, price_attr)
-        cell.append(
-            f"{line.quantity:,} t {line.item_name} @ {price:,} cr/t",
-            style=gold,
-        )
+            cell.append(separator, style=gold)
+        cell.append(_trade_entry(line, side, tier), style=gold)
+        if _flag_capped(line, side, tier):
+            cell.append(" ⚑", style=_CAP)
+    return cell
+
+
+def _side_cell(hop, side: str, tier: str, shade: int) -> Text:
+    """A Sell or Buy column cell, or a dim dash where there is no trade — the
+    origin has nothing to sell, the final stop nothing to buy."""
+
+    if hop is None:
+        return Text("—", style=_DIM)
+    return _trade_cell(hop, side, tier, shade)
+
+
+def _combined_trade_cell(sell_hop, buy_hop, tier: str, shade: int) -> Text:
+    """Sell and Buy folded into one cell for the narrow priced layout. Each line
+    is tagged with a Sell / Buy label so the two trades stay distinct now they
+    share a column — the label sits in dim chrome, set off from the gold
+    commodity by hue rather than weight. The origin contributes only buy lines,
+    the final stop only sell lines. Used for verbose's narrow layout, so loads
+    are always stacked one per line. A capped buy still gets the amber ⚑."""
+
+    gold = _LOAD_ALT[shade]
+    cell = Text()
+    first = True
+    for hop, side, tag in (
+        (sell_hop, "sell", "Sell"),
+        (buy_hop, "buy", "Buy"),
+    ):
+        if hop is None:
+            continue
+        for line in hop.cargo.lines:
+            if not first:
+                cell.append("\n")
+            first = False
+            cell.append(f"{tag:<4} ", style=_CHROME_DIM)
+            cell.append(_trade_entry(line, side, tier), style=gold)
+            if _flag_capped(line, side, tier):
+                cell.append(" ⚑", style=_CAP)
     return cell
 
 

@@ -50,15 +50,17 @@ def _cont(data: str) -> str:
 
 def render_run_result(
     result: RunResult, *, debug: int = 0, raw: bool = False,
-    summary: bool = False, verbose: bool = False,
+    summary: bool = False, verbose: bool = False, width: int = 80,
 ):
     """Dispatch route rendering by output format.
 
     ``--raw`` returns the plain-text render (a string): literal, 80-column, for
     grepping, piping, and diagnostics. Otherwise it returns the rich renderable:
     ``-v`` verbose for the lead-by-the-nose walk, ``--summary`` for the lean
-    glance table, or the fuller standard table by default. Either way the caller
-    prints the result through the shared rich console.
+    glance table, or the fuller standard table by default. ``width`` is the
+    column budget the rich output will print at, so the verbose layout can shed
+    columns on a narrow terminal. Either way the caller prints the result
+    through the shared rich console.
     """
 
     if raw:
@@ -72,7 +74,9 @@ def render_run_result(
         tier = "summary"
     else:
         tier = "standard"
-    return render_rich.render_run_result_rich(result, debug=debug, tier=tier)
+    return render_rich.render_run_result_rich(
+        result, debug=debug, tier=tier, width=width
+    )
 
 
 def render_raw(result: RunResult, *, debug: int = 0) -> str:
