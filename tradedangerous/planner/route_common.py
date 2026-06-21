@@ -13,6 +13,7 @@ from .cargo import cargo_counters, cargo_pruned, cargo_time_ms, optimise_cargo
 from .reachability import plan_jump_path, reachable_systems_from
 from .run_request import RunRequest
 from .score import ls_penalty_multiplier, score_with_destination_penalty
+from ..misc import progress as pbar
 
 
 @dataclass(frozen=True, slots=True)
@@ -858,6 +859,7 @@ def _plan_open_anchor_route(
     *,
     seed_frontier: list[_FrontierNode],
     open_role: str,
+    progress: pbar.Progress | None = None,
 ) -> run_result.RunResult:
     """Grow a pre-built seed frontier into the best open-ended N-hop route.
 
@@ -898,6 +900,11 @@ def _plan_open_anchor_route(
     seed-fetch time for the unanchored planner; the anchor resolve and station
     filter times for the single-anchor front).
     """
+
+    # A disabled bar stands in when the caller passes none, so every tick below
+    # is a safe no-op off the --progress path.
+    if progress is None:
+        progress = pbar.Progress(show=False)
 
     base_trade_budget = (
         int(request.starting_credits or 0) - request.insurance_reserve
@@ -948,7 +955,11 @@ def _plan_open_anchor_route(
             layer_children_generated = 0
             next_frontier: list[_FrontierNode] = []
             revisit_skips_before = expansion_stats.revisit_skips
+            node_task = progress.open_subtask(
+                f"  hop {hop_layer}: expanding stations", layer_frontier_in
+            )
             for node in frontier:
+                progress.update_task(node_task, advance=1)
                 expansions_examined += 1
                 layer_expansion_calls += 1
                 children = best_open_ended_hop_candidates(
@@ -982,6 +993,7 @@ def _plan_open_anchor_route(
                         arrivals.append(child)
                         continue
                     next_frontier.append(child)
+            progress.close_subtask(node_task)
             layer_elapsed_ms = _elapsed_ms(layer_started)
             market_query_ms += layer_elapsed_ms
 
@@ -1074,6 +1086,17 @@ def _plan_open_anchor_route(
                     elapsed_ms=layer_elapsed_ms,
                 )
             )
+            # One spine step per completed hop layer; the description carries
+            # the best optimistic partial profit in the current beam (the
+            # corrected figure is only known once a chain reaches N hops).
+            best_profit = max(
+                (node.accumulated_raw_profit for node in frontier),
+                default=0,
+            )
+            progress.increment(
+                1,
+                description=f"Planning route  ·  best +{best_profit:,} cr",
+            )
 
         # Final layer (hop N): reach the open endpoint. terminal_hop=True — the
         # route end needs no onward-viability check. Unlike the forward
@@ -1088,7 +1111,11 @@ def _plan_open_anchor_route(
         final_hop_started = time.perf_counter()
         finalist_nodes: list[_FrontierNode] = []
         final_revisit_skips_before = expansion_stats.revisit_skips
+        final_node_task = progress.open_subtask(
+            "  final hop: reaching the open end", len(frontier)
+        )
         for node in frontier:
+            progress.update_task(final_node_task, advance=1)
             expansions_examined += 1
             children = best_open_ended_hop_candidates(
                 session,
@@ -1110,6 +1137,7 @@ def _plan_open_anchor_route(
             for trade in children:
                 finalist_nodes.append(_make_open_child(node, trade, request, open_role=open_role))
                 candidate_trade_count += 1
+        progress.close_subtask(final_node_task)
         # --towards: chains that reached the target before the final layer are
         # finished routes too. Fold them in so the winner selection ranks them
         # against the full-length finalists; an arrival outranks any route that
@@ -1207,6 +1235,14 @@ def _plan_open_anchor_route(
         )
         route = best_routes[0]
         extra_routes = tuple(best_routes[1:])
+        # Final spine step: the terminal hop is done and the corrected winner
+        # is known, so the description can show the real route profit.
+        progress.increment(
+            1,
+            description=(
+                f"Planning route  ·  best +{route.total_raw_profit:,} cr"
+            ),
+        )
     finally:
         qualification.release(session)
         data_gateway.release_reachable_memo(session, reachable_memo)

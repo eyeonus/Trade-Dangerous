@@ -27,6 +27,7 @@ from enum import Enum
 from . import data_gateway, failures, run_result
 from .run_request import RunRequest
 from .cargo import cargo_counters
+from ..misc import progress as pbar
 from .route_common import (
     _FrontierNode,
     _MULTIHOP_EXPANSION_WIDTH,
@@ -540,6 +541,7 @@ def _plan_via_route(
     started: float,
     validation_ms: float,
     bubble_cache: dict,
+    progress: pbar.Progress | None = None,
 ) -> run_result.RunResult:
     """Plan an N-hop route through every --via waypoint.
 
@@ -550,6 +552,11 @@ def _plan_via_route(
     endpoint rule. No partial-via route is ever returned — any collapse raises
     NoViaRoute.
     """
+
+    # A disabled bar stands in when the caller passes none, so every tick below
+    # is a safe no-op off the --progress path.
+    if progress is None:
+        progress = pbar.Progress(show=False)
 
     full_mask = _via_full_set(request)
     loop_mode = request.loop
@@ -726,7 +733,11 @@ def _plan_via_route(
             layer_expansion_calls = 0
             layer_children_generated = 0
             next_entries: list[_LaneEntry] = []
+            node_task = progress.open_subtask(
+                f"  hop {hop_layer}: expanding stations", layer_frontier_in
+            )
             for entry in frontier:
+                progress.update_task(node_task, advance=1)
                 expansions_examined += 1
                 layer_expansion_calls += 1
                 for trade in _expand(
@@ -741,6 +752,7 @@ def _plan_via_route(
                             fixed_terminal=fixed_terminal,
                         )
                     )
+            progress.close_subtask(node_task)
             layer_elapsed_ms = _elapsed_ms(layer_started)
             market_query_ms += layer_elapsed_ms
 
@@ -777,13 +789,28 @@ def _plan_via_route(
                     elapsed_ms=layer_elapsed_ms,
                 )
             )
+            # One spine step per completed hop layer; the lane-trimmed frontier
+            # holds _LaneEntry wrappers, so reach through .node for the best
+            # optimistic partial profit in the current beam.
+            best_profit = max(
+                (entry.node.accumulated_raw_profit for entry in frontier),
+                default=0,
+            )
+            progress.increment(
+                1,
+                description=f"Planning route  ·  best +{best_profit:,} cr",
+            )
 
         # Final layer (hop N): steer to the terminal / open end and keep only
         # full-mask chains that satisfy the endpoint rule.
         final_hop_started = time.perf_counter()
         final_envelope_ly = float(jumps_per * ly_per)
         finalist_nodes: list[_FrontierNode] = []
+        final_node_task = progress.open_subtask(
+            "  final hop: reaching the endpoint", len(frontier)
+        )
         for entry in frontier:
+            progress.update_task(final_node_task, advance=1)
             expansions_examined += 1
             for trade in _expand(
                 entry, final_envelope_ly, terminal_hop=True, final_layer=True,
@@ -797,6 +824,7 @@ def _plan_via_route(
                     open_endpoint=open_endpoint,
                 ):
                     finalist_nodes.append(node)
+        progress.close_subtask(final_node_task)
         market_query_ms += _elapsed_ms(final_hop_started)
 
         if not finalist_nodes:
@@ -854,6 +882,13 @@ def _plan_via_route(
                 option_name="--via",
             )
         route = best_route
+        # Final spine step: the corrected via winner is known.
+        progress.increment(
+            1,
+            description=(
+                f"Planning route  ·  best +{route.total_raw_profit:,} cr"
+            ),
+        )
     finally:
         qualification.release(session)
         data_gateway.release_reachable_memo(session, reachable_memo)

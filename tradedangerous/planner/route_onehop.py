@@ -12,6 +12,7 @@ from .cargo import cargo_counters, cargo_pruned, optimise_cargo
 from .reachability import plan_jump_path
 from .run_request import RunRequest
 from .score import score_with_destination_penalty
+from ..misc import progress as pbar
 
 from .route_common import (
     _KeptScoreThreshold,
@@ -105,6 +106,7 @@ def _best_open_ended_plan(
     *,
     open_role: str,
     bubble_cache: dict[int, object],
+    progress=None,
 ) -> run_result.RunResult:
     """Plan one hop with one fixed endpoint and one chosen by the planner.
 
@@ -116,6 +118,11 @@ def _best_open_ended_plan(
     best-scoring station pair wins. Both open-ended directions run through this
     one path; only the endpoint derivation below depends on open_role.
     """
+
+    # A disabled bar stands in when the caller passes none, so the progress
+    # calls below are safe no-ops off the --progress path.
+    if progress is None:
+        progress = pbar.Progress(show=False)
 
     # The fixed endpoint is the one the user supplied; its role is the inverse
     # of open_role. It was resolved once at dispatch, so read the canonical DTO.
@@ -199,8 +206,20 @@ def _best_open_ended_plan(
         available_credits=available_credits,
         terminal_hop=True,
     )
+    scanned_stations = 0
     try:
         for open_station_id, ceiling_ppu, station_candidates in group_iter:
+            # Streaming fetch with no known total, so the bar counts stations as
+            # they arrive rather than filling to a percentage. Refresh every 50
+            # to keep the forced redraw off the hot path.
+            scanned_stations += 1
+            if scanned_stations % 50 == 0:
+                progress.increment(
+                    50,
+                    description=(
+                        f"scanning candidates · {scanned_stations:,} stations"
+                    ),
+                )
             floor = threshold.current()
             if floor is not None:
                 stop_floor = cargo_prune_floor(
@@ -325,6 +344,7 @@ def _plan_unanchored(
     started: float,
     validation_ms: float,
     bubble_cache: dict[int, object],
+    progress=None,
 ) -> run_result.RunResult:
     """Plan one hop with neither endpoint named — the planner selects both.
 
@@ -336,7 +356,16 @@ def _plan_unanchored(
     in kind, not in a parameter.
     """
 
+    # A disabled bar stands in when the caller passes none, so the progress
+    # calls below are safe no-ops off the --progress path.
+    if progress is None:
+        progress = pbar.Progress(show=False)
+
     market_started = time.perf_counter()
+    # One blocking galaxy-wide fetch with nothing to count, so just show it is
+    # alive — the spinner and elapsed animate on rich's refresh thread while the
+    # query runs.
+    progress.increment(0, description="scanning galaxy-wide candidates")
     candidates, unanchored_counters = data_gateway.fetch_unanchored_trade_candidates(
         session, request, bubble_cache
     )

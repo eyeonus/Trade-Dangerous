@@ -7,6 +7,7 @@ import time
 
 from sqlalchemy.orm import Session
 
+from ..misc import progress as pbar
 from . import failures, run_result
 from .cargo import reset_cargo_counters
 from .reachability import plan_jump_path
@@ -53,6 +54,35 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
     # a fixed origin pays for the bubble once, not once per destination.
     bubble_cache: dict[int, object] = {}
 
+    # plan_route owns the search progress bar for its whole life: build it once
+    # here, hand it to whichever engine runs, and clear it in the finally before
+    # any result is rendered. Every multi-hop search — and any --via search —
+    # has a known hop count, so the spine is a CountingBar (M of N hops +
+    # elapsed). Single-hop has nothing to count and is wired separately, so its
+    # bar stays disabled; a disabled bar's methods are all no-ops.
+    multi_hop_search = bool(
+        request.via_system_ids
+        or request.via_station_ids
+        or request.hops > 1
+    )
+    if multi_hop_search:
+        # Known hop count → a CountingBar hop spine (M of N hops + elapsed),
+        # with a per-node sub-row the engines fill as each layer expands.
+        prog = pbar.Progress(
+            max_value=request.hops,
+            label="Planning route",
+            style=pbar.CountingBar,
+            show=request.progress,
+        )
+    else:
+        # Single-hop: the candidate scan has no known total, so a spinner +
+        # elapsed that counts candidate stations as they stream past.
+        prog = pbar.Progress(
+            label="Planning route",
+            style=pbar.ElapsedBar,
+            show=request.progress,
+        )
+
     try:
         # --via routes through named waypoints with its own lane-diversity
         # owner, ahead of the ordinary shape dispatch. It requires --from or
@@ -60,11 +90,13 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
         # via shape — fixed-terminal, single-anchor open, and loop — itself.
         if request.via_system_ids or request.via_station_ids:
             result = _plan_via_route(
-                session, request, started, validation_ms, bubble_cache
+                session, request, started, validation_ms, bubble_cache,
+                progress=prog,
             )
         elif request.hops == 1:
             result = _plan_single_hop(
-                session, request, started, validation_ms, bubble_cache
+                session, request, started, validation_ms, bubble_cache,
+                progress=prog,
             )
         # Multi-hop endpoint dispatch, mirroring the single-hop dispatcher
         # above. Both endpoints set keeps the fixed-terminal planner (envelope,
@@ -74,21 +106,25 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
         # that same open engine from a galaxy-wide set of origins.
         elif (request.from_text and request.to_text) or request.loop:
             result = _plan_multi_hop(
-                session, request, started, validation_ms, bubble_cache
+                session, request, started, validation_ms, bubble_cache,
+                progress=prog,
             )
         elif request.from_text:
             result = _plan_open_anchor_multi_hop(
                 session, request, started, validation_ms, bubble_cache,
                 open_role="destination",
+                progress=prog,
             )
         elif request.to_text:
             result = _plan_open_anchor_multi_hop(
                 session, request, started, validation_ms, bubble_cache,
                 open_role="source",
+                progress=prog,
             )
         else:
             result = _plan_unanchored_multi_hop(
-                session, request, started, validation_ms, bubble_cache
+                session, request, started, validation_ms, bubble_cache,
+                progress=prog,
             )
     except (failures.NoProfitableTrades, failures.NoReachableRoute) as exc:
         # --towards: every candidate the search saw was already filtered to
@@ -106,6 +142,8 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
                 entity_name=target.name,
             ) from exc
         raise
+    finally:
+        prog.clear()
 
     # --towards: flag any route that reached the target system, so the renderer
     # can report the arrival and how many hops it took.
@@ -115,7 +153,21 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
     # Surface the empty repositioning legs once the trade route is chosen, so
     # every anchored shape shows them without each engine owning the logic.
     if request.start_jumps or request.end_jumps:
-        result = _attach_positioning_legs(session, request, result)
+        # The positioning BFS runs after the hop spine has cleared, and on a
+        # wide --empty-ly bubble it can stall long enough to look like a hang —
+        # the failure mode is hitting ^C and binning a finished search. A
+        # bounded "working" spinner (no known total, so ElapsedBar) covers the
+        # gap so the step reads as alive. It animates on rich's own refresh
+        # thread while the BFS blocks; we never tick it, just open and clear it.
+        reposition_prog = pbar.Progress(
+            label="Repositioning empty jumps",
+            style=pbar.ElapsedBar,
+            show=request.progress,
+        )
+        try:
+            result = _attach_positioning_legs(session, request, result)
+        finally:
+            reposition_prog.clear()
     return result
 
 
@@ -155,6 +207,7 @@ def _plan_single_hop(
     started: float,
     validation_ms: float,
     bubble_cache: dict[int, object],
+    progress=None,
 ) -> run_result.RunResult:
     """Dispatch a single-hop request by which endpoints the user named.
 
@@ -173,14 +226,17 @@ def _plan_single_hop(
         return _best_open_ended_plan(
             session, request, started, validation_ms,
             open_role="destination", bubble_cache=bubble_cache,
+            progress=progress,
         )
     if request.to_text:
         return _best_open_ended_plan(
             session, request, started, validation_ms,
             open_role="source", bubble_cache=bubble_cache,
+            progress=progress,
         )
     return _plan_unanchored(
-        session, request, started, validation_ms, bubble_cache
+        session, request, started, validation_ms, bubble_cache,
+        progress=progress,
     )
 
 

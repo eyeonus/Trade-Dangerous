@@ -758,6 +758,12 @@ def _resolve_request_endpoints(request, tdb):
 
 
 def run(results, cmdenv, tdb):
+    # --progress paints a rich, transient search bar; --raw is the plain-text
+    # path for scripts and diagnostics. The two don't mix, so refuse the pair
+    # outright rather than quietly dropping one.
+    if cmdenv.progress and cmdenv.raw:
+        raise CommandLineError("--progress cannot be combined with --raw.")
+
     request = run_request_from_cmdenv(cmdenv)
     session = getattr(tdb, "session", None)
     if session is None:

@@ -25,6 +25,7 @@ def _plan_unanchored_multi_hop(
     started: float,
     validation_ms: float,
     bubble_cache: dict[int, object],
+    progress=None,
 ) -> run_result.RunResult:
     """Plan an N-hop route with neither endpoint named — the planner picks all.
 
@@ -119,6 +120,7 @@ def _plan_unanchored_multi_hop(
         bubble_cache,
         seed_frontier=seed_frontier,
         open_role="destination",
+        progress=progress,
     )
 
     # The engine builds the multi-hop diagnostics but never saw the galaxy

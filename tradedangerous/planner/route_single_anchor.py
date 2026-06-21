@@ -26,6 +26,7 @@ def _plan_open_anchor_multi_hop(
     bubble_cache: dict[int, object],
     *,
     open_role: str,
+    progress=None,
 ) -> run_result.RunResult:
     """Plan an N-hop route with one fixed endpoint and the other open.
 
@@ -94,4 +95,5 @@ def _plan_open_anchor_multi_hop(
         bubble_cache,
         seed_frontier=seed_frontier,
         open_role=open_role,
+        progress=progress,
     )

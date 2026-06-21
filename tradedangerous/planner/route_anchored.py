@@ -11,6 +11,7 @@ from .cargo import optimise_cargo
 from .reachability import plan_jump_path
 from .run_request import RunRequest
 from .score import score_with_destination_penalty
+from ..misc import progress as pbar
 
 from .route_common import (
     _FrontierNode,
@@ -42,6 +43,7 @@ def _plan_multi_hop(
     started: float,
     validation_ms: float,
     bubble_cache: dict[int, object],
+    progress: pbar.Progress | None = None,
 ) -> run_result.RunResult:
     """Plan an N-hop route between a named --from origin and --to destination.
 
@@ -75,6 +77,11 @@ def _plan_multi_hop(
     accumulated profit and the final raw credits; margin only changes what the
     planner is willing to *spend* on a later hop's buy.
     """
+
+    # A disabled bar stands in when the caller passes none, so every tick below
+    # is a safe no-op off the --progress path.
+    if progress is None:
+        progress = pbar.Progress(show=False)
 
     # Endpoints were resolved once at dispatch; read the canonical DTOs.
     # --loop carries no --to: each chain must close on its own root station, so
@@ -236,7 +243,11 @@ def _plan_multi_hop(
             layer_children_generated = 0
             next_frontier: list[_FrontierNode] = []
             revisit_skips_before = expansion_stats.revisit_skips
+            node_task = progress.open_subtask(
+                f"  hop {hop_layer}: expanding stations", layer_frontier_in
+            )
             for node in frontier:
+                progress.update_task(node_task, advance=1)
                 expansions_examined += 1
                 layer_expansion_calls += 1
                 # Pick this node's envelope anchor and radius, then run the
@@ -292,6 +303,7 @@ def _plan_multi_hop(
                     )
                     candidate_trade_count += 1
                     layer_children_generated += 1
+            progress.close_subtask(node_task)
             layer_elapsed_ms = _elapsed_ms(layer_started)
             market_query_ms += layer_elapsed_ms
 
@@ -407,6 +419,14 @@ def _plan_multi_hop(
                     elapsed_ms=layer_elapsed_ms,
                 )
             )
+            # One spine step per completed hop layer. The M/N column shows the
+            # layer count; the description carries the best partial profit so
+            # far (frontier is score-sorted, so [0] is the current leader).
+            best_profit = frontier[0].accumulated_raw_profit if frontier else 0
+            progress.increment(
+                1,
+                description=f"Planning route  ·  best +{best_profit:,} cr",
+            )
 
         # Final hop: each surviving frontier node is matched against Y's
         # stations as a fixed-pair plan. The destination is the fixed --to, so
@@ -414,7 +434,11 @@ def _plan_multi_hop(
         final_hop_started = time.perf_counter()
         finalists: list[_FrontierNode] = []
         final_revisit_skips_before = expansion_stats.revisit_skips
+        final_node_task = progress.open_subtask(
+            "  final hop: matching destinations", len(frontier)
+        )
         for node in frontier:
+            progress.update_task(final_node_task, advance=1)
             expansions_examined += 1
             if loop_mode:
                 # The terminal rule: each chain closes on its own root.
@@ -443,6 +467,7 @@ def _plan_multi_hop(
                     _make_child_node(node, trade, request, base_trade_budget)
                 )
                 candidate_trade_count += 1
+        progress.close_subtask(final_node_task)
         final_hop_elapsed_ms = _elapsed_ms(final_hop_started)
         market_query_ms += final_hop_elapsed_ms
         final_hop_stats.elapsed_ms = final_hop_elapsed_ms
@@ -505,6 +530,15 @@ def _plan_multi_hop(
             _reconstruct_route(node, request)
             for node in finalists[: max(request.routes, 1)]
         ]
+        # Final spine step: the terminal hop is done and the winner is known.
+        # finalists is score-sorted, so [0] carries the best completed profit.
+        progress.increment(
+            1,
+            description=(
+                f"Planning route  ·  best "
+                f"+{finalists[0].accumulated_raw_profit:,} cr"
+            ),
+        )
     finally:
         qualification.release(session)
         data_gateway.release_reachable_memo(session, reachable_memo)
