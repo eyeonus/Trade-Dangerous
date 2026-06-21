@@ -17,9 +17,11 @@ The clean-room rewrite of `trade run` has reached a working baseline. Every
 basic route shape is served by the new planner, the legacy route/preload
 architecture is retired, and the EDDN listener has been brought forward to the
 current database surface. The route-modifier and search/display surface is now
-nearly complete, and route output has been rebuilt as a rich, tiered,
-station-centric default with `--raw` the plain-text format for scripts and the
-GUI — only `--checklist` / `--x52-pro` remain (gated). See "What's still owed".
+complete: route output is a rich, tiered, station-centric default with `--raw`
+the plain-text format for scripts and the GUI; `--checklist` walks a route a hop
+at a time; `--progress` shows a live search bar. No `trade run` option is gated,
+and none parses-but-does-nothing. See "What's still owed" for the non-option
+work that remains.
 
 ---
 
@@ -386,12 +388,14 @@ short, the route shapes, empty-jump positioning, `--towards`, `--direct`,
 `--avoid`, `--via` (requires an anchor — a chosen variation), `--loop`
 (anchored; requires `--from` — the galaxy-wide loop is a closed decision, see
 Settled decisions), `--unique`, `--loop-interval`, `--routes` (top-N by rank),
-`--sco`, `--no-bulk-cap`, and the rich tiered route output (`--summary` /
-`--raw` / `--80col`) are done; `--shorten` and the beam-control options
-(`--max-routes`, `--prune-score`, `--prune-hops`) were removed (recorded
-decisions — see Settled decisions). What remains is `--checklist` / `--x52-pro`
-(gated). Two options (`--show-jumps`, `--progress`) parse without
-error but currently do nothing — see `SPEC_STATUS.md`.
+`--sco`, `--no-bulk-cap`, the rich tiered route output (`--summary` / `--raw` /
+`--80col`), `--checklist` (interactive per-hop walk), and `--progress` (live
+search bar) are done; `--shorten` and the beam-control options (`--max-routes`,
+`--prune-score`, `--prune-hops`) were removed (recorded decisions — see Settled
+decisions), and the legacy X52 Pro MFD (`--x52-pro`) and the inert `--show-jumps`
+were removed too (see `SPEC_STATUS.md` Variations). The whole option surface is
+now built or deliberately removed — nothing is gated or inert. What remains owed
+is the non-option work below.
 
 Agreed-but-unscheduled decisions and noted-for-later items:
 

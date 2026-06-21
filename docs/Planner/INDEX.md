@@ -324,6 +324,17 @@ Planned in conversation across sessions, no separate plan doc.
 
 ---
 
+### Slice 33 — Close Out the Remaining `trade run` Options (`--checklist`, `--progress`; X52 MFD and `--show-jumps` removed) (Complete)
+**The last of the option surface: `--checklist` (interactive per-hop walk through one route) and `--progress` (opt-in live search bar — a multi-hop hop spine with a per-node sub-row, a single-hop spinner / count-up, and a positioning spinner) added; the legacy Windows-only X52 Pro MFD integration and the inert `--show-jumps` flag removed. After this, no `trade run` option is gated or parses-but-inert.**
+
+Planned in conversation, no separate plan doc.
+
+| Document | Content |
+|----------|---------|
+| [thirty_third_slice_completion_report.md](thirty_third_slice_completion_report.md) | Proof of completion: the two code commits, the `--checklist` renderer + driver, the MFD / `--show-jumps` removal, the `--progress` design (shape-adaptive bar, the facade `open_subtask` / `close_subtask` helpers, the `--raw` exclusion), verification, and the variances. |
+
+---
+
 ## Reference and Technical Notes
 
 ## Reference and Technical Notes

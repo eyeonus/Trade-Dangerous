@@ -61,7 +61,7 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 | `--start-jumps` | `[done]` | Empty positioning jumps before the first trade hop; expands eligible origins from the `--from` anchor's system. Requires `--from`. |
 | `--end-jumps` | `[done]` | Mirror after the last hop; expands eligible destinations from the `--to` anchor's system. Requires `--to`. |
 | `--empty-ly` | `[done]` | Unladen fan-out range for `--start-jumps`/`--end-jumps`; falls back to `--ly-per` when absent. Inert on its own (deliberate no-op). |
-| `--show-jumps` | `[todo]` | Parses but inert — the jump path shows in expanded output regardless of the flag. |
+| `--show-jumps` | `[removed]` | Removed — rejected as an unknown option. The jump path already shows in the standard and verbose output, so the flag toggled nothing; taken out rather than left inert. See Variations. |
 
 ### Station filters
 
@@ -93,10 +93,10 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 | `--max-routes` | `[removed]` | Removed — rejected as an unknown option. The beam owns pruning/width. See Variations. |
 | `--prune-score` | `[removed]` | Removed — the beam's top-K trim is the equivalent pruning policy. See Variations. |
 | `--prune-hops` | `[removed]` | Removed alongside `--prune-score`. See Variations. |
-| `--checklist` | `[todo]` | Gated. |
-| `--x52-pro` | `[todo]` | Gated (also requires `--checklist`). |
+| `--checklist` | `[done]` | Interactive walk through one route, a hop at a time, waiting for the commander between hops. Rich-only (excludes `--raw`); excludes `--routes > 1`. `-v` adds supply/demand and a dock/refuel reminder per step. |
+| `--x52-pro` | `[removed]` | Removed — rejected as an unknown option. The legacy Windows-only Saitek X52 Pro MFD integration was dropped (package, `checkMFD` path, the flag). See Variations. |
 | `--summary` | `[done]` | Selects the summary output tier — the lean rich glance (both sides, no prices, no nav, profit). See Output contract / Variations. |
-| `--progress` | `[todo]` | Parses but inert. |
+| `--progress` | `[done]` | Opt-in live search bar (rich-only; excludes `--raw`). Multi-hop: a hop spine (M/N + best-so-far) with a per-node sub-row. Single-hop: a spinner + candidate count-up. Positioning gets its own spinner. |
 
 ### Beyond the spec's option contract
 
@@ -140,8 +140,8 @@ separate semantics for the same option.
 | unique and loop interval | `[done]` | Built on every multi-hop engine: an in-helper forbidden-station filter plus a history-aware frontier trim key, orientation-aware for the backward open-origin / `--via` to-only search. `--unique` is the unbounded `--loop-interval`. |
 | Pruning controls | `[removed]` | The beam's fixed top-K frontier trim is the pruning policy — the spec permits an equivalent policy. The `--max-routes` / `--prune-score` / `--prune-hops` knobs are removed (rejected as unknown options). See Variations. |
 | Output contract | `[varied]` | A rich colour table is the default, in three station-centric tiers (summary / standard / `-v` verbose) — a row per stop, sell-on-arrival / buy-before-leaving, width-adaptive (Balance then Profit shed; at 80col standard drops Sell and verbose folds Sell+Buy into one Trade column); `--80col` forces the portable width. `--raw` selects the plain-text format instead: hop-centric, 80-column, verbosity-gated (clean / `-w` score / `-ww` diagnostics), thousands-grouped. See Variations. |
-| Checklist output | `[todo]` | |
-| Progress output | `[todo]` | |
+| Checklist output | `[done]` | Interactive per-hop walk (`render_checklist.py`); one route, rich-only, `-v` detail. |
+| Progress output | `[done]` | Opt-in `--progress` search bar, shape-adaptive: multi-hop hop spine + per-node sub-row, single-hop spinner / count-up, positioning spinner. |
 | Failure behaviour | `[varied]` | Distinct families implemented; affordability is folded into "no profitable trades" — see Variations. The loop, towards, via, and unique no-route classes are implemented (a route that cannot close back to its start, cannot make forward progress, cannot visit every waypoint and reach the endpoint, or cannot complete the requested length without revisiting a station, fails in the no-route family — the unique case as `NoUniqueRoute`, fired only when a collapsed layer was actually revisit-blocked). Matrix endpoint shapes classify missing-data failures in aggregate on the no-route path, not per pair; in a rare cross-pair corner (one pair's source lacks data, a different pair's destination lacks data) the reported family is "no profitable trades" where per-pair probing named a side. |
 | Data requirements | `[done]` | Database is the source of truth; only the needed scope is materialised. |
 | Performance contract | `[done]` | Early narrowing, filters pushed into SQL, materially faster than legacy. The real-budget shapes (fixed-terminal, one-hop open) additionally pre-filter cargo — a pair that cannot beat the kept set skips the branch-and-bound solve (exact; routes unchanged), solving best-first so the threshold rises fast. The open-ended candidate fetches are narrowed in SQL by the fixed endpoint's per-item price bounds, stream station groups best-ceiling-first, and stop reading at the first station that provably cannot beat the kept set — the tail is never read out of the database (exact; routes unchanged; open multi-hop −45–61% wall). |
@@ -277,6 +277,16 @@ Each of these is a chosen difference, not a gap. Do not revert without raising i
     parse-but-inert legacy option). A pure presentation change — no planner
     behaviour moved.
 
+16. **X52 Pro MFD and `--show-jumps` removed.** Spec §Search and display controls
+    carries `--x52-pro` (mirror route steps to a Saitek X52 Pro multifunction
+    display) and `--show-jumps` (toggle the jump path in output). The MFD code is
+    the legacy 2014 Windows-only `DirectOutput` integration — unreachable from the
+    current environment and of marginal value — so it was removed (the package,
+    the `checkMFD` handle, the flag) rather than carried. `--show-jumps` toggled
+    nothing, the jump path already showing in the standard and verbose output, so
+    it too is removed rather than left inert. Both reject as unknown options — the
+    `--shorten` / beam-control treatment.
+
 ---
 
 ## Spec "Open decisions for supervisor" — how resolved
@@ -306,15 +316,7 @@ The spec closes with five decisions left to the supervisor. Current resolution:
 
 ## Options that parse but do not act yet
 
-Accepted by the parser — so they do **not** error — but nothing honours them yet.
-Listed so a worker does not assume they work just because they run clean.
-
-Two are output-display options carried over from the legacy path. The output
-pass landed (Slice 32): the rich tiered default plus `--raw`, with `--summary`
-now wired to the summary tier. `--show-jumps` and `--progress` remain inert.
-
-```text
---show-jumps    output display: the jump path already shows in the standard and
-                verbose tiers, so the flag toggles nothing today
---progress      output display: a legacy progress mode, not honoured yet
-```
+None. Every option the parser accepts now acts. The last two inert display
+options were resolved in Slice 33: `--progress` was built (an opt-in live search
+bar), and `--show-jumps` was removed (the jump path already shows in the standard
+and verbose output, so it toggled nothing).
