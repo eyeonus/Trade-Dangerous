@@ -17,8 +17,9 @@ The clean-room rewrite of `trade run` has reached a working baseline. Every
 basic route shape is served by the new planner, the legacy route/preload
 architecture is retired, and the EDDN listener has been brought forward to the
 current database surface. The route-modifier and search/display surface is now
-nearly complete — only `--checklist` / `--x52-pro` remain (gated). See "What's
-still owed".
+nearly complete, and route output has been rebuilt as a rich, tiered,
+station-centric default with `--raw` the plain-text format for scripts and the
+GUI — only `--checklist` / `--x52-pro` remain (gated). See "What's still owed".
 
 ---
 
@@ -48,7 +49,8 @@ shape:
 
 Supporting modules: `data_gateway.py` (all SQL/candidate queries),
 `cargo.py` (the cargo optimiser), `reachability.py` (jump paths),
-`resolver.py` (name resolution), `render_text.py` (renderer),
+`resolver.py` (name resolution), `render_text.py` / `render_rich.py`
+(renderers — the `--raw` plain text and the rich tiered default),
 `run_request.py` (request DTO + parsing/normalisation),
 `run_result.py` (result DTO), `score.py` (the protected ls-penalty curve),
 `validation.py`, `failures.py` (typed exceptions).
@@ -164,10 +166,23 @@ Do unify the contract.
   id sets to empty so the cap evaporates uniformly at every site.
 - **`--ls-penalty`** — the protected travel-time curve (defined in the spec,
   implemented in `score.py`). Untouched.
-- **Route output** — expanded plain-text per-hop and cumulative figures for
-  manual audit; partial-route warnings; the bulk-tax cap note. The diagnostics
-  block (timings, counters, per-layer breakdown) is debug output, shown only at
-  `-ww` (debug level 2); normal output is clean (Slice 28).
+- **Route output** — a rich colour table is the default, in three verbosity
+  tiers, all **station-centric**: a row per stop showing what you sell on
+  arrival and buy before leaving, so it reads the way the route is flown.
+  `--summary` is the lean glance (both sides, no prices, no nav, profit);
+  standard (default) prices the buy side and shows the nav route under each
+  stop; `-v` verbose prices both sides, lists every jump, and rules the stops
+  apart. Each tier adapts to the terminal width — Balance then Profit shed as it
+  narrows, and narrower still standard drops its Sell column while verbose folds
+  Sell and Buy into one tagged Trade column, so Profit survives at 80 columns.
+  `--80col` forces the portable 80-column layout (a pipe/redirect falls back to
+  80 anyway). A same-system leg shows as a supercruise; a bulk-capped buy carries
+  an amber flag and footnote. **`--raw`** selects the plain-text format instead:
+  hop-centric, 80-column, verbosity-gated (clean by default, practical score at
+  `-w`, the diagnostics block at `-ww`), thousands-grouped — for grep, pipes,
+  scripts, diagnostics, and the GUI's intercept path. Partial-route warnings head
+  every format. The renderers are `render_rich.py` (the tiers) and
+  `render_text.py` (the `--raw` format plus the shared dispatch and helpers).
 - **`--routes N`** — returns up to N final routes (numbered, best-first) instead
   of just the winner, ranked by the engine's existing final-route rank (practical
   score; progress-first under `--towards`). N is a maximum, not a quota. Top-N by
@@ -371,10 +386,11 @@ short, the route shapes, empty-jump positioning, `--towards`, `--direct`,
 `--avoid`, `--via` (requires an anchor — a chosen variation), `--loop`
 (anchored; requires `--from` — the galaxy-wide loop is a closed decision, see
 Settled decisions), `--unique`, `--loop-interval`, `--routes` (top-N by rank),
-`--sco`, and `--no-bulk-cap` are done; `--shorten` and the beam-control options
+`--sco`, `--no-bulk-cap`, and the rich tiered route output (`--summary` /
+`--raw` / `--80col`) are done; `--shorten` and the beam-control options
 (`--max-routes`, `--prune-score`, `--prune-hops`) were removed (recorded
 decisions — see Settled decisions). What remains is `--checklist` / `--x52-pro`
-(gated). Three options (`--show-jumps`, `--summary`, `--progress`) parse without
+(gated). Two options (`--show-jumps`, `--progress`) parse without
 error but currently do nothing — see `SPEC_STATUS.md`.
 
 Agreed-but-unscheduled decisions and noted-for-later items:

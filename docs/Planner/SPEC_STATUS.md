@@ -95,7 +95,7 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 | `--prune-hops` | `[removed]` | Removed alongside `--prune-score`. See Variations. |
 | `--checklist` | `[todo]` | Gated. |
 | `--x52-pro` | `[todo]` | Gated (also requires `--checklist`). |
-| `--summary` | `[todo]` | Parses but inert. |
+| `--summary` | `[done]` | Selects the summary output tier — the lean rich glance (both sides, no prices, no nav, profit). See Output contract / Variations. |
 | `--progress` | `[todo]` | Parses but inert. |
 
 ### Beyond the spec's option contract
@@ -105,6 +105,8 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 | `--max-price` | `[varied]` | **Added** — not in the spec. Absolute price cap (default 1,500,000 cr/t). See Variations. |
 | `--sco` | `[done]` | **Added** — declares an SCO drive; clamps the ls-penalty to 0, overriding any `--ls-penalty`. |
 | `--no-bulk-cap` | `[done]` | **Added** — off-switch for the Metals/Minerals bulk-sale demand cap; fills full demand at headline price. |
+| `--raw` | `[done]` | **Added** — plain-text route output (no colour/tables): literal, 80-column, hop-centric, verbosity-gated, for grep / pipe / scripts / diagnostics and the GUI. See Variations. |
+| `--80col` | `[done]` | **Added** — forces the rich output to a portable 80 columns; default uses the full terminal width (80 when piped). See Variations. |
 | `--ls-penalty` | `[done]` | The protected curve (spec §ls-penalty), implemented in `score.py`. |
 
 Implementation note: option status records the shared behavioural meaning. Route
@@ -137,7 +139,7 @@ separate semantics for the same option.
 | shorten routes | `[removed]` | Built then removed — the per-hop ranking is inert on current data. See Variations. |
 | unique and loop interval | `[done]` | Built on every multi-hop engine: an in-helper forbidden-station filter plus a history-aware frontier trim key, orientation-aware for the backward open-origin / `--via` to-only search. `--unique` is the unbounded `--loop-interval`. |
 | Pruning controls | `[removed]` | The beam's fixed top-K frontier trim is the pruning policy — the spec permits an equivalent policy. The `--max-routes` / `--prune-score` / `--prune-hops` knobs are removed (rejected as unknown options). See Variations. |
-| Output contract | `[done]` | Default route output plus verbose per-hop / cumulative / jump-path detail. |
+| Output contract | `[varied]` | A rich colour table is the default, in three station-centric tiers (summary / standard / `-v` verbose) — a row per stop, sell-on-arrival / buy-before-leaving, width-adaptive (Balance then Profit shed; at 80col standard drops Sell and verbose folds Sell+Buy into one Trade column); `--80col` forces the portable width. `--raw` selects the plain-text format instead: hop-centric, 80-column, verbosity-gated (clean / `-w` score / `-ww` diagnostics), thousands-grouped. See Variations. |
 | Checklist output | `[todo]` | |
 | Progress output | `[todo]` | |
 | Failure behaviour | `[varied]` | Distinct families implemented; affordability is folded into "no profitable trades" — see Variations. The loop, towards, via, and unique no-route classes are implemented (a route that cannot close back to its start, cannot make forward progress, cannot visit every waypoint and reach the endpoint, or cannot complete the requested length without revisiting a station, fails in the no-route family — the unique case as `NoUniqueRoute`, fired only when a collapsed layer was actually revisit-blocked). Matrix endpoint shapes classify missing-data failures in aggregate on the no-route path, not per pair; in a rare cross-pair corner (one pair's source lacks data, a different pair's destination lacks data) the reported family is "no profitable trades" where per-pair probing named a side. |
@@ -264,6 +266,17 @@ Each of these is a chosen difference, not a gap. Do not revert without raising i
     sensitive-commodity id sets to empty under the flag, so the cap evaporates
     uniformly at every site.
 
+15. **Route output rebuilt — rich tiered default, `--raw`, `--80col`.** Spec
+    §Output contract describes a plain-text route render. The default is now a
+    rich colour table in three station-centric tiers (a row per stop — sell on
+    arrival, buy before leaving — rather than per hop), width-adaptive so it
+    degrades on a narrow terminal rather than folding. The original plain-text
+    render is preserved as the `--raw` format (for grep / pipe / scripts /
+    diagnostics and the GUI's intercept path), and `--80col` forces the portable
+    80-column layout. `--summary` now selects the lean tier (it was a
+    parse-but-inert legacy option). A pure presentation change — no planner
+    behaviour moved.
+
 ---
 
 ## Spec "Open decisions for supervisor" — how resolved
@@ -283,7 +296,8 @@ The spec closes with five decisions left to the supervisor. Current resolution:
    confirmation-gated rather than time-bounded.
 4. **Machine-readable output mode?** → Not implemented. The plain-text output
    was instead expanded (Slice 9) to expose auditable per-hop / cumulative
-   figures. A structured mode remains an open idea.
+   figures, and is now the dedicated `--raw` format (Slice 32) for grep / pipe /
+   scripts. A structured (e.g. JSON) mode remains an open idea.
 5. **Safety limit on broad galaxy-wide searches?** → **Interactive confirmation
    prompt**, not a hard limit. A non-affirmative answer or non-TTY invocation
    exits cleanly without planning.
@@ -295,13 +309,12 @@ The spec closes with five decisions left to the supervisor. Current resolution:
 Accepted by the parser — so they do **not** error — but nothing honours them yet.
 Listed so a worker does not assume they work just because they run clean.
 
-Three are output-display options carried over from the legacy path. Whether the
-new planner reuses any of them is an open question for a later output / look-and-
-feel pass; none is on the radar now, while output styling is not a priority.
+Two are output-display options carried over from the legacy path. The output
+pass landed (Slice 32): the rich tiered default plus `--raw`, with `--summary`
+now wired to the summary tier. `--show-jumps` and `--progress` remain inert.
 
 ```text
---show-jumps    output display: the jump path already shows in expanded output,
-                so the flag toggles nothing today
---summary       output display: a legacy summary mode, not honoured yet
+--show-jumps    output display: the jump path already shows in the standard and
+                verbose tiers, so the flag toggles nothing today
 --progress      output display: a legacy progress mode, not honoured yet
 ```

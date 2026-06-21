@@ -313,6 +313,17 @@ Planned in session from a supplied seam analysis, no separate plan doc — each 
 
 ---
 
+### Slice 32 — Trade Run Route Output Rewrite (Rich Tiered Default, `--raw`, `--80col`) (Complete)
+**`trade run`'s route output rebuilt: a rich colour table is the default, in three station-centric tiers (summary / standard / `-v` verbose) — a row per stop, what you sell on arrival and buy before leaving. Each tier adapts to the terminal width (Balance then Profit shed; at 80col standard drops its Sell column, verbose folds Sell and Buy into one tagged Trade column, so Profit survives). The original plain-text render is preserved as `--raw` (hop-centric, 80-column, verbosity-gated — for grep / pipe / scripts / diagnostics and the GUI). `--80col` forces the portable width; a same-system leg shows as a supercruise; `--summary` graduated from parse-but-inert to the lean tier. A presentation change — no planner behaviour moved.**
+
+Planned in conversation across sessions, no separate plan doc.
+
+| Document | Content |
+|----------|---------|
+| [thirty_second_slice_completion_report.md](thirty_second_slice_completion_report.md) | Proof of completion: the four-commit arc (plain rewrite → rich default → tiers → station-centric + width adaptation), the output ladder and per-stop model, what each tier carries, the colour scheme, the modules and width plumbing, verification (flake8, render probes, live runs, eyeonus sign-off), and the notes (profit attribution, the GUI path, `--summary` graduating). |
+
+---
+
 ## Reference and Technical Notes
 
 ## Reference and Technical Notes
