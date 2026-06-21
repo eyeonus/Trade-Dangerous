@@ -226,12 +226,34 @@ def fetch_eligible_stations_in_reachable_systems(
     temp.create(connection)
     try:
         _bulk_insert_reachable_systems(connection, temp, systems)
+        # Role-qualify in SQL before materialising DTOs: a source positioning
+        # station must have at least one usable supply row, a destination one
+        # at least one usable demand row, under the run-constant predicates
+        # (price/units, --age, --max-price, avoided commodities). Without this
+        # a station that clears the attribute filters but has no usable rows for
+        # its role is still built into a DTO and admitted to the pair matrix,
+        # only to be found useless. The predicates are the canonical constant-row
+        # filters shared with the pair query and the qualification temps, so
+        # eligibility cannot drift; the per-hop credit cap and the pair-gain stay
+        # later (neither is run-constant), so this removes only stations that can
+        # never produce a candidate — exact, not a new eligibility definition.
+        cutoff = _age_cutoff(request.age_days)
+        if role == "source":
+            row_filters = _supply_constant_row_filters(request, cutoff)
+        else:
+            row_filters = _demand_constant_row_filters(request, cutoff)
+        has_usable_row = (
+            select(StationItem.station_id)
+            .where(StationItem.station_id == Station.station_id, *row_filters)
+            .exists()
+        )
         stmt = (
             select(Station)
             .where(
                 and_(
                     Station.system_id.in_(select(temp.c.system_id)),
                     *_station_attribute_predicates(request),
+                    has_usable_row,
                 )
             )
             .order_by(Station.station_id)
@@ -1530,19 +1552,22 @@ def _station_group_candidates(
 _RESERVE_IN_LITERAL_MAX = 500
 
 
-def _build_station_id_temp(connection, station_ids):
+def _build_station_id_temp(
+    connection, station_ids, name: str = "td_reserved_stations"
+):
     """Materialise a station-id set into a temp table for subquery restriction.
 
     Returns a freshly created TEMPORARY table holding the supplied ids in one
     indexed station_id column. The caller restricts a query with
     ``column.in_(select(temp.c.station_id))`` instead of a large literal IN, and
     drops the table when the fetch is done. station_id is BigInteger in the ORM,
-    so the temp mirrors that to avoid an implicit cast.
+    so the temp mirrors that to avoid an implicit cast. ``name`` distinguishes
+    concurrent restriction temps (fixed side, open side) so they cannot collide.
     """
 
     metadata = MetaData()
     temp = Table(
-        "td_reserved_stations",
+        name,
         metadata,
         Column("station_id", BigInteger, primary_key=True),
         prefixes=["TEMPORARY"],
@@ -1554,6 +1579,27 @@ def _build_station_id_temp(connection, station_ids):
         [{"station_id": int(sid)} for sid in station_ids],
     )
     return temp
+
+
+def build_open_restriction(connection, station_ids):
+    """Build a reusable open-side station restriction for the streaming fetch.
+
+    Returns ``(temp_or_none, kwargs)`` to splat into
+    iter_open_ended_station_groups. A large set is materialised once into a temp
+    table and passed as a subquery — reused across many streams, e.g. the
+    one-hop matrix's destination set applied against each source-system stream
+    rather than rebuilt each time. A small set stays a cheap literal IN. The
+    caller drops the returned temp (if any) once every stream is done.
+    """
+
+    if len(station_ids) > _RESERVE_IN_LITERAL_MAX:
+        temp = _build_station_id_temp(
+            connection, station_ids, name="td_onehop_destinations"
+        )
+        return temp, {
+            "restrict_open_station_subquery": select(temp.c.station_id),
+        }
+    return None, {"restrict_open_station_ids": frozenset(station_ids)}
 
 
 def iter_open_ended_station_groups(
@@ -1570,6 +1616,7 @@ def iter_open_ended_station_groups(
     destination_envelope_xyz: tuple[float, float, float] | None = None,
     destination_envelope_ly: float | None = None,
     restrict_open_station_ids: frozenset[int] | None = None,
+    restrict_open_station_subquery=None,
     expansion_stats: ExpansionStats | None = None,
     precomputed_reachable_systems: tuple[ResolvedSystem, ...] | None = None,
     qualification: QualificationCache | None = None,
@@ -1642,11 +1689,27 @@ def iter_open_ended_station_groups(
         expansion_stats=expansion_stats,
         precomputed_systems=precomputed_reachable_systems,
     ) as reachable_query:
+        connection = session.connection()
+        # The fixed side restricts by a literal IN, or a temp-backed subquery
+        # when the set is large enough to risk SQLite's parameter ceiling or to
+        # knock the query off the station index — e.g. the one-hop matrix groups
+        # its fixed source side by system, and a single system can hold many
+        # stations. Dropped in the finally below.
+        fixed_temp = None
+        if len(fixed_station_ids) > _RESERVE_IN_LITERAL_MAX:
+            fixed_temp = _build_station_id_temp(
+                connection, fixed_station_ids, name="td_fixed_stations"
+            )
+            fixed_clause = StationItem.station_id.in_(
+                select(fixed_temp.c.station_id)
+            )
+        else:
+            fixed_clause = StationItem.station_id.in_(fixed_station_ids)
         if open_role == "source":
             supply_station_filter = StationItem.station_id.in_(reachable_query)
-            demand_station_filter = StationItem.station_id.in_(fixed_station_ids)
+            demand_station_filter = fixed_clause
         else:
-            supply_station_filter = StationItem.station_id.in_(fixed_station_ids)
+            supply_station_filter = fixed_clause
             demand_station_filter = StationItem.station_id.in_(reachable_query)
 
         if qualification is not None:
@@ -1673,9 +1736,8 @@ def iter_open_ended_station_groups(
         bounds_temp, bounds_populated = _build_open_fixed_bounds(
             session, open_role, supply_filters, demand_filters
         )
-        connection = session.connection()
-        # A large station-id restriction is materialised once into a temp table
-        # (see _build_station_id_temp) and dropped in the finally below.
+        # A large open-side restriction set is materialised once into a temp
+        # table (see _build_station_id_temp) and dropped in the finally below.
         reserve_temp = None
         try:
             if not bounds_populated:
@@ -1774,7 +1836,15 @@ def iter_open_ended_station_groups(
                     units_column = StationItem.demand_units
                     open_filters = list(demand_filters)
 
-            if restrict_open_station_ids is not None:
+            if restrict_open_station_subquery is not None:
+                # The caller built and owns a restriction temp once and passes
+                # its subquery — the one-hop matrix's destination set, reused
+                # across every source-system stream rather than rebuilt each
+                # time. Applied directly as a subquery membership test.
+                open_filters.append(
+                    station_column.in_(restrict_open_station_subquery)
+                )
+            elif restrict_open_station_ids is not None:
                 # Targeted reserved fetch: the via owner restricts the open side
                 # to the specific stations it must retain (an owed station via,
                 # the exact terminal, the loop root, or a --to / expanded
@@ -1936,6 +2006,8 @@ def iter_open_ended_station_groups(
             bounds_temp.drop(connection, checkfirst=True)
             if reserve_temp is not None:
                 reserve_temp.drop(connection, checkfirst=True)
+            if fixed_temp is not None:
+                fixed_temp.drop(connection, checkfirst=True)
 
 
 def any_reachable_station_pair(

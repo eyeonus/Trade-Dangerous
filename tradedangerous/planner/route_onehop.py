@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from . import data_gateway, failures, resolver, run_result
 from .cargo import cargo_counters, cargo_pruned, optimise_cargo
-from .reachability import plan_jump_path
+from .reachability import plan_jump_path, reachable_systems_from
 from .run_request import RunRequest
 from .score import score_with_destination_penalty
 from ..misc import progress as pbar
@@ -510,17 +510,43 @@ def _best_pair_plan(
     request: RunRequest,
     bubble_cache: dict[int, object],
 ) -> tuple[list[_PairPlan], float, float, float, int]:
+    """Best one-hop station pair(s) for fixed or expanded endpoints.
+
+    --direct skips reachability entirely (the commander plots the jumps), so it
+    keeps the simple per-pair evaluation. Every other one-hop fixed shape goes
+    through the batched path: reachability gates candidates per source system and
+    the whole expanded destination set is paired in one streamed query per source
+    system, rather than one market query per (source, destination) pair.
+    """
+
+    if request.direct:
+        return _direct_pair_plan(
+            session, source_stations, destination_stations, request
+        )
+    return _batched_pair_plan(
+        session, source_stations, destination_stations, request, bubble_cache
+    )
+
+
+def _direct_pair_plan(
+    session: Session,
+    source_stations: tuple[run_result.ResolvedStation, ...],
+    destination_stations: tuple[run_result.ResolvedStation, ...],
+    request: RunRequest,
+) -> tuple[list[_PairPlan], float, float, float, int]:
+    """--direct: best trade per fixed pair, no reachability and no jump path.
+
+    The commander flies the jumps, so every non-self pair is treated as
+    reachable and carries no jump path. The matrix is small (named endpoints; no
+    positioning — validation forbids it under --direct), so the per-pair fetch is
+    kept rather than batched.
+    """
+
     kept = _KeptPairs(request.routes, request)
-    reachability_ms = 0.0
     market_query_ms = 0.0
     cargo_optimisation_ms = 0.0
     candidate_trade_count = 0
-    saw_reachable_pair = False
     saw_profitable_pair = False
-    # Stations that took part in at least one reachable pair. Zero-result
-    # classification is disabled inside the matrix loop (it costs up to two
-    # probe queries per empty pair); if no pair wins, these sets feed two
-    # aggregate probes on the failure path instead.
     reachable_source_ids: set[int] = set()
     reachable_destination_ids: set[int] = set()
     available_credits = (
@@ -530,28 +556,6 @@ def _best_pair_plan(
         for destination_station in destination_stations:
             if source_station.station_id == destination_station.station_id:
                 continue
-            if request.direct:
-                # --direct: the commander plots the jumps themselves, so the
-                # planner skips reachability and carries no jump path. Every
-                # pair is treated as reachable.
-                jump_path = None
-            else:
-                reach_started = time.perf_counter()
-                try:
-                    jump_path = plan_jump_path(
-                        _system_from_station(source_station),
-                        _system_from_station(destination_station),
-                        max_jumps_per_hop=int(request.max_jumps_per_hop or 0),
-                        max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
-                        session=session,
-                        bubble_cache=bubble_cache,
-                        avoid_system_ids=request.avoid_system_ids,
-                    )
-                except failures.NoReachableRoute:
-                    reachability_ms += _elapsed_ms(reach_started)
-                    continue
-                reachability_ms += _elapsed_ms(reach_started)
-            saw_reachable_pair = True
             reachable_source_ids.add(source_station.station_id)
             reachable_destination_ids.add(destination_station.station_id)
             market_started = time.perf_counter()
@@ -585,29 +589,266 @@ def _best_pair_plan(
                 destination_distance_ls=destination_station.ls_from_star,
                 penalty_percent=request.ls_penalty_percent,
             )
-            pair = _PairPlan(
-                source_station=source_station,
-                destination_station=destination_station,
-                jump_path=jump_path,
-                cargo=cargo,
-                practical_score=practical_score,
+            kept.offer(
+                _PairPlan(
+                    source_station=source_station,
+                    destination_station=destination_station,
+                    jump_path=None,
+                    cargo=cargo,
+                    practical_score=practical_score,
+                )
             )
-            kept.offer(pair)
     best_pairs = kept.best()
     if best_pairs:
         return (
             best_pairs,
+            0.0,
+            market_query_ms,
+            cargo_optimisation_ms,
+            candidate_trade_count,
+        )
+    _raise_pair_failure(
+        session,
+        request,
+        saw_reachable_pair=bool(reachable_source_ids),
+        reachable_source_ids=reachable_source_ids,
+        reachable_destination_ids=reachable_destination_ids,
+        saw_profitable_pair=saw_profitable_pair,
+    )
+
+
+def _batched_pair_plan(
+    session: Session,
+    source_stations: tuple[run_result.ResolvedStation, ...],
+    destination_stations: tuple[run_result.ResolvedStation, ...],
+    request: RunRequest,
+    bubble_cache: dict[int, object],
+) -> tuple[list[_PairPlan], float, float, float, int]:
+    """Reachability-gated one-hop pairing, batched by source system.
+
+    Per source system the reachable systems are computed once (respecting
+    --avoid transit, via reachable_systems_from so the avoid-blind SQL fallback
+    is never used) and every profitable (source, destination) pair is streamed
+    through one iter_open_ended_station_groups call, the open destination side
+    restricted to the expanded destination set. Cargo is solved per pair and
+    offered to the same bounded best-N collector, so kept-pair selection and ties
+    match the per-pair matrix exactly. Jump paths are plotted only for the kept
+    winners — reachability is already the candidate gate.
+    """
+
+    kept = _KeptPairs(request.routes, request)
+    reachability_ms = 0.0
+    market_query_ms = 0.0
+    cargo_optimisation_ms = 0.0
+    candidate_trade_count = 0
+    available_credits = (
+        int(request.starting_credits or 0) - request.insurance_reserve
+    )
+    capacity_units = int(request.capacity_units or 0)
+    max_jumps = int(request.max_jumps_per_hop or 0)
+    max_ly = float(request.max_ly_per_jump or 0.0)
+
+    source_by_id = {s.station_id: s for s in source_stations}
+    destination_by_id = {d.station_id: d for d in destination_stations}
+    destination_ids = frozenset(destination_by_id)
+
+    # Reachability is a per-system fact: group the source stations by system and
+    # compute each system's reachable set once.
+    source_by_system: dict[int, list] = {}
+    source_system_by_id: dict[int, run_result.ResolvedSystem] = {}
+    for station in source_stations:
+        source_by_system.setdefault(station.system_id, []).append(station)
+        if station.system_id not in source_system_by_id:
+            source_system_by_id[station.system_id] = _system_from_station(
+                station
+            )
+
+    reach_started = time.perf_counter()
+    reachable_by_system: dict[int, tuple] = {}
+    reachable_ids_by_system: dict[int, frozenset] = {}
+    for system_id, system in source_system_by_id.items():
+        reachable = reachable_systems_from(
+            session,
+            system,
+            max_jumps_per_hop=max_jumps,
+            max_ly_per_jump=max_ly,
+            bubble_cache=bubble_cache,
+            avoid_system_ids=request.avoid_system_ids,
+        )
+        reachable_by_system[system_id] = reachable
+        reachable_ids_by_system[system_id] = frozenset(
+            r.system_id for r in reachable
+        )
+    reachability_ms += _elapsed_ms(reach_started)
+
+    # Failure classification comes from the reachable relation itself, not from
+    # the profitable stream output: which sources can reach a non-self
+    # destination, and which destinations are reachable from a non-self source.
+    dests_by_system: dict[int, list] = {}
+    for station in destination_stations:
+        dests_by_system.setdefault(station.system_id, []).append(station)
+    reachable_source_ids: set[int] = set()
+    reachable_destination_ids: set[int] = set()
+    for system_id, sources_here in source_by_system.items():
+        reach_ids = reachable_ids_by_system[system_id]
+        dests_reachable = [
+            d
+            for dest_system_id, group in dests_by_system.items()
+            if dest_system_id in reach_ids
+            for d in group
+        ]
+        if not dests_reachable:
+            continue
+        dest_ids_here = frozenset(d.station_id for d in dests_reachable)
+        for station in sources_here:
+            if dest_ids_here - {station.station_id}:
+                reachable_source_ids.add(station.station_id)
+        source_ids_here = frozenset(s.station_id for s in sources_here)
+        for d in dests_reachable:
+            if source_ids_here - {d.station_id}:
+                reachable_destination_ids.add(d.station_id)
+    saw_reachable_pair = bool(reachable_source_ids)
+
+    # Stream candidates per source system, pairing against the expanded
+    # destination set. The destination restriction is materialised once and
+    # reused across every stream (amendment), small sets staying a literal IN.
+    connection = session.connection()
+    dest_temp, restrict_kwargs = data_gateway.build_open_restriction(
+        connection, destination_ids
+    )
+    pair_candidates: dict[tuple[int, int], list] = {}
+    try:
+        for system_id, sources_here in source_by_system.items():
+            reachable = reachable_by_system[system_id]
+            if not reachable:
+                continue
+            market_started = time.perf_counter()
+            stream = data_gateway.iter_open_ended_station_groups(
+                session,
+                tuple(s.station_id for s in sources_here),
+                source_system_by_id[system_id],
+                request,
+                open_role="destination",
+                available_credits=available_credits,
+                terminal_hop=True,
+                precomputed_reachable_systems=reachable,
+                **restrict_kwargs,
+            )
+            try:
+                for _open_id, _ceiling, candidates in stream:
+                    for candidate in candidates:
+                        if (
+                            candidate.source_station_id
+                            == candidate.destination_station_id
+                        ):
+                            continue
+                        key = (
+                            candidate.source_station_id,
+                            candidate.destination_station_id,
+                        )
+                        pair_candidates.setdefault(key, []).append(candidate)
+                        candidate_trade_count += 1
+            finally:
+                stream.close()
+            market_query_ms += _elapsed_ms(market_started)
+    finally:
+        if dest_temp is not None:
+            dest_temp.drop(connection, checkfirst=True)
+
+    saw_profitable_pair = bool(pair_candidates)
+
+    # Cargo per pair, offered to the bounded collector. Offer order does not
+    # matter: it keeps the top-N under a deterministic total order, so the
+    # batched result matches the per-pair matrix exactly.
+    for (source_id, dest_id), candidates in pair_candidates.items():
+        cargo_started = time.perf_counter()
+        try:
+            cargo = optimise_cargo(
+                tuple(candidates),
+                capacity_units=capacity_units,
+                available_credits=available_credits,
+                cargo_limit_per_item=request.cargo_limit_per_item,
+            )
+        except failures.NoProfitableTrades:
+            cargo_optimisation_ms += _elapsed_ms(cargo_started)
+            continue
+        cargo_optimisation_ms += _elapsed_ms(cargo_started)
+        destination_station = destination_by_id[dest_id]
+        practical_score = score_with_destination_penalty(
+            cargo.total_profit,
+            destination_distance_ls=destination_station.ls_from_star,
+            penalty_percent=request.ls_penalty_percent,
+        )
+        kept.offer(
+            _PairPlan(
+                source_station=source_by_id[source_id],
+                destination_station=destination_station,
+                jump_path=None,
+                cargo=cargo,
+                practical_score=practical_score,
+            )
+        )
+
+    best_pairs = kept.best()
+    if best_pairs:
+        # Jump paths for the winners only — each is reachable (the candidate
+        # gate), and its source bubble is already cached from the reach compute.
+        reach_started = time.perf_counter()
+        resolved = [
+            replace(
+                pair,
+                jump_path=plan_jump_path(
+                    _system_from_station(pair.source_station),
+                    _system_from_station(pair.destination_station),
+                    max_jumps_per_hop=max_jumps,
+                    max_ly_per_jump=max_ly,
+                    session=session,
+                    bubble_cache=bubble_cache,
+                    avoid_system_ids=request.avoid_system_ids,
+                ),
+            )
+            for pair in best_pairs
+        ]
+        reachability_ms += _elapsed_ms(reach_started)
+        return (
+            resolved,
             reachability_ms,
             market_query_ms,
             cargo_optimisation_ms,
             candidate_trade_count,
         )
+
+    _raise_pair_failure(
+        session,
+        request,
+        saw_reachable_pair=saw_reachable_pair,
+        reachable_source_ids=reachable_source_ids,
+        reachable_destination_ids=reachable_destination_ids,
+        saw_profitable_pair=saw_profitable_pair,
+    )
+
+
+def _raise_pair_failure(
+    session: Session,
+    request: RunRequest,
+    *,
+    saw_reachable_pair: bool,
+    reachable_source_ids: set[int],
+    reachable_destination_ids: set[int],
+    saw_profitable_pair: bool,
+) -> None:
+    """Raise the right no-result failure for a one-hop pair search.
+
+    Shared by the direct and batched paths. The reachable flags and id sets
+    describe the reachable relation (not the profitable stream), so the family is
+    correct even when no pair produced a candidate. Two aggregate probes
+    classify selling/buying-data gaps for the whole matrix rather than per pair.
+    """
+
     if not saw_reachable_pair:
         raise failures.NoReachableRoute(
             "No station pair within range was found for the chosen endpoints."
         )
-    # No pair won; classify coarsely now, two probes for the whole matrix
-    # rather than two per empty pair inside the loop.
     if not data_gateway.station_set_has_selling_data(
         session, tuple(reachable_source_ids), request
     ):
