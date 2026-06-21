@@ -49,12 +49,12 @@ Do not tick a task unless:
 ## 1. Current snapshot
 
 ### Current active checkpoint
-- Status: `[x]`
-- Checkpoint: `K — Reduce TradeCalc setup cost (complete — realised by the clean-room planner rewrite, not by incremental narrowing)`
-- Subtask: `K closed. K4 answered its own question: the preload-first model was replaced, not tuned. Next up is L (nav/olddata), not yet started.`
+- Status: `[ ]`
+- Checkpoint: `L — Migrate remaining legacy command surfaces (olddata, nav, trade direct) — not started`
+- Subtask: `None started. Predecessor K is complete and signed off: the clean-room planner rewrite replaced the preload-first trade run model and is now feature-complete. Begin L at L1 (migrate olddata); see Checkpoint L for the acceptance criteria.`
 - Owner: `Tromador`
-- Started: `2026-05-03`
-- Goal: `Decide whether the preload-first TradeCalc/TradeDB route model should survive — answered: no. The clean-room planner rewrite (Slices 1–14, docs/Planner/) replaced it; trade run is planner-only, and tradecalc.py / tradedb.py are retired to archive/.`
+- Started: `—`
+- Goal: `Finish the main command migration set (olddata, nav, trade direct, the zero-range audit, and any remaining full-load callers) without turning it into a generic command-framework rewrite. See the Checkpoint L detail for the full goal and acceptance criteria.`
 
 ### Current blocker
 - Status: `[ ]`
@@ -63,9 +63,9 @@ Do not tick a task unless:
 - Needed to unblock: `n/a`
 
 ### Last updated
-- Date: `2026-06-03`
+- Date: `2026-06-21`
 - By: `Tromador + assistant`
-- Session summary: `Checkpoint K closed by the clean-room planner rewrite. trade run is planner-only; the full-galaxy preload model is gone; tradecalc.py / tradedb.py are retired to archive/. Slice 14 landed across eight commits (39828ab2 -> f6958820), the last being the 14D planner cleanup. Full record in docs/Planner/ (SLICE_SUMMARY.md, fourteenth_slice_completion_report.md).`
+- Session summary: `Checkpoint K signed off now that the clean-room planner rewrite is complete. trade run is planner-only and feature-complete — every route shape plus the full route-modifier, search, and output option surface — with the preload-first model gone and tradecalc.py / tradedb.py retired to archive/. Full record in docs/Planner/ (BASELINE.md, SPEC_STATUS.md, INDEX.md) and the v13.0.0 release notes (docs/Planner/RELEASE_NOTES_v13.0.0.md). Snapshot advanced to L (not started).`
 
 ### Last known good rollback point
 - Commit: `ee777adc`
@@ -488,6 +488,12 @@ Reduce `TradeCalc.__init__()` setup overhead before touching route maths.
 - tradedangerous/planner contains the new code
 - this major rewrite was fully documented under docs/Planner
 
+### Status — complete and signed off (2026-06-21)
+- The original acceptance criteria above (measure TradeCalc setup, narrow candidate stations, scan fewer rows, improve `run` before route-maths) are **superseded, not individually ticked**: the preload-first TradeCalc/TradeDB route model was replaced wholesale rather than tuned, so those row-scan / setup measures no longer describe how `trade run` works.
+- The replacement — the clean-room `trade run` route planner in `tradedangerous/planner/` — is **feature-complete**: every route shape (one-hop and multi-hop; fixed, open-origin, open-destination, and unanchored) plus the full route-modifier, search, and output option surface are built. `trade run` is planner-only; `tradecalc.py` and `tradedb.py` are retired to `archive/`; the full-galaxy preload model is gone.
+- Full record in `docs/Planner/` (BASELINE.md, SPEC_STATUS.md, INDEX.md) and the v13.0.0 release notes (`docs/Planner/RELEASE_NOTES_v13.0.0.md`).
+- **Checkpoint K is complete.** Next is Checkpoint L (olddata, nav, trade direct), not yet started.
+
 ### Follow-up: outfitting-table drop and SQLite↔ORM reconciliation
 - Schema cleanup riding on the rebuild (not part of the `trade run` planner): the
   outfitting tables `Upgrade`, `UpgradeVendor`, and the `FDevOutfitting` EDCD bridge
@@ -777,6 +783,10 @@ Use this as the short “what is already definitely done” section for quick sc
   - Date completed: `2026-05-07`
   - Commit: `80b67f2b` through `7df13360`
   - Notes: `Station type handling was rationalised before K3. Legacy collapsed type_id meanings were replaced with a canonical 0-15 TD-owned registry based on Spansh station types. --odyssey/--od was replaced by --settlement because the filter is settlement classification, not Odyssey capability. Fleet and settlement Y/N/? state derivation is centralised; UNKNOWN/type_id 0 is ? rather than fleet/settlement N. Spansh import maps station.type through the registry. EDDN/listener commodity ingestion does not infer station type, and unknown listener-created station types default to UNKNOWN. Fresh fixtures now use the new type_id model; fixture cleanup removed stray generated files. Fixture subsequently regenerated with corrected system list (172 systems); Blanco Manufacturing Forge is a natural duplicate in Lushertha and Jastreb Sector CL-Y d145. 432 tests passing.`
+- [x] Milestone: `Checkpoint K complete — trade run replaced by the clean-room planner`
+  - Date completed: `2026-06-21`
+  - Commit: `f6958820` (Slice 14 legacy-retirement closeout); planner build continued across docs/Planner/ through the v13.0.0 release notes
+  - Notes: `Checkpoint K's incremental TradeCalc-narrowing goal was superseded by a full clean-room rewrite of trade run. The preload-first model was retired (tradecalc.py / tradedb.py archived; trade run is planner-only, querying the database directly), and the planner is now feature-complete — every route shape plus the full route-modifier, search, and output option surface — documented in docs/Planner/ with v13.0.0 release notes. Original K acceptance criteria superseded, not individually met.`
 
 ---
 
