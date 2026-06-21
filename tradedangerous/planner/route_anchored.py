@@ -1181,6 +1181,18 @@ def best_fixed_terminal_trades_streamed(
                     raw_profit=cargo.total_profit,
                 )
             )
+            if len(found) >= 2 * max(top_k, 1):
+                # Bounded running top-K: equal-score or steadily-improving
+                # terminals would otherwise accumulate without limit. Scores and
+                # station ids are fixed, so compacting to the top-K by the final
+                # (-score, station_id) order keeps exactly what retaining them
+                # all would.
+                found.sort(
+                    key=lambda c: (
+                        -c.practical_score, c.destination_station.station_id
+                    )
+                )
+                del found[max(top_k, 1):]
     finally:
         group_iter.close()
     if final_hop_stats is not None and saw_viable_cargo:
