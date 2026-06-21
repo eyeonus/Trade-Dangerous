@@ -24,6 +24,7 @@ from tradedangerous.planner.failures import (
     UnsupportedRunShape,
 )
 from tradedangerous.planner import resolver
+from tradedangerous.planner.render_checklist import render_checklist
 from tradedangerous.planner.render_text import render_run_result
 from tradedangerous.planner.run_route import plan_route
 from tradedangerous.planner.run_request import run_request_from_cmdenv
@@ -169,11 +170,6 @@ switches = [
         default = 0,
         type = int,
     ),
-    ParseArgument('--show-jumps', '-J',
-        help = 'Show detail of jumps between hops.',
-        dest = 'showJumps',
-        action = 'store_true',
-    ),
     ParseArgument('--limit',
         help = 'Maximum units of any one cargo item to buy (0: unlimited).',
         metavar = 'N',
@@ -281,17 +277,6 @@ switches = [
         metavar = 'N',
         type = int,
     ),
-    ParseArgument('--checklist',
-        help = 'Provide a checklist flow for the route.',
-        action = 'store_true',
-        default = False,
-    ),
-    ParseArgument('--x52-pro',
-        help = 'Enable experimental X52 Pro MFD output (requires --checklist).',
-        action = 'store_true',
-        default = False,
-        dest = 'x52pro',
-    ),
     ParseArgument('--progress', '-P',
         help = 'Show hop progress',
         default = False,
@@ -318,12 +303,20 @@ switches = [
         help = 'Summary layout of route instructions.',
         action = 'store_true',
     ),
-    ParseArgument('--raw',
-        help = 'Plain-text route output (no colour or tables), for '
-                'grepping, piping to scripts, and diagnostics.',
-        action = 'store_true',
-        default = False,
-        dest = 'raw',
+    MutuallyExclusiveGroup(
+        ParseArgument('--checklist',
+            help = 'Step through the route one hop at a time, with full '
+                    'buy/fly/sell instructions.',
+            action = 'store_true',
+            default = False,
+        ),
+        ParseArgument('--raw',
+            help = 'Plain-text route output (no colour or tables), for '
+                    'grepping, piping to scripts, and diagnostics.',
+            action = 'store_true',
+            default = False,
+            dest = 'raw',
+        ),
     ),
     ParseArgument('--80col',
         # Flag reads --80col (clearer intent than --narrow); the internal dest
@@ -844,12 +837,40 @@ def run(results, cmdenv, tdb):
 # Transform result set into output
 
 
+def _drive_checklist(steps, console):
+    """Reveal the checklist one step at a time, pausing for the commander between
+    panels. A non-interactive stdin (a pipe or redirect) hits EOF on the prompt,
+    which we treat as 'advance', so the whole checklist streams out rather than
+    stalling on a dead prompt."""
+
+    total = len(steps)
+    for index, step in enumerate(steps, start=1):
+        console.print(step, highlight=False)
+        if index < total:
+            try:
+                input(f"\n  [Enter] next step  ·  {index + 1} of {total} ")
+            except EOFError:
+                pass
+
+
 def render(results, cmdenv, tdb):
     # The planner always returns a RunResult, and the new renderer owns the
     # whole route presentation. A cancelled or non-interactive unanchored
     # run leaves results.data empty — its guidance was already printed — so
     # there is nothing further to show.
     if isinstance(results.data, RunResult):
+        # --checklist takes over presentation entirely: an interactive,
+        # hop-by-hop walkthrough instead of the route table. It is excluded
+        # from --raw at the parser, so the two never collide here.
+        if cmdenv.checklist:
+            steps = render_checklist(
+                results.data, verbose=bool(cmdenv.detail)
+            )
+            if steps:
+                _drive_checklist(steps, cmdenv.console)
+                return
+            # No steps means nothing was planned; fall through to the normal
+            # renderer so any partial-route warning still reaches the commander.
         # Effective render width: 80 under --80col, otherwise the console's
         # detected width (itself 80 when output is piped). The renderer takes it
         # so the adaptive layout sheds or combines columns to match what it

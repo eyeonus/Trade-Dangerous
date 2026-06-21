@@ -55,7 +55,6 @@ class RunRequest:
     # --sco declares a Supercruise Overcharge drive: it forces the ls-penalty to
     # 0 (no arrival-distance penalty), overriding any parsed --ls-penalty value.
     sco: bool = False
-    show_jumps: bool = False
     summary: bool = False
     progress: bool = False
     detail: int = 0
@@ -97,7 +96,6 @@ class RunRequest:
     loop_interval: int | None = None
     routes: int = 1
     checklist: bool = False
-    x52_pro: bool = False
 
 
 def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
@@ -148,7 +146,6 @@ def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
         max_ls=getattr(cmdenv, "maxLs", 0) or 0,
         ls_penalty_percent=0.0 if sco else (getattr(cmdenv, "lsPenalty", 0.0) or 0.0),
         sco=sco,
-        show_jumps=getattr(cmdenv, "showJumps", False),
         summary=getattr(cmdenv, "summary", False),
         progress=getattr(cmdenv, "progress", False),
         detail=getattr(cmdenv, "detail", 0) or 0,
@@ -165,7 +162,6 @@ def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
         loop_interval=getattr(cmdenv, "loopInt", None),
         routes=getattr(cmdenv, "routes", 1),
         checklist=getattr(cmdenv, "checklist", False),
-        x52_pro=getattr(cmdenv, "x52pro", False),
     )
 
 

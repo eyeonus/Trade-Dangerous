@@ -66,7 +66,6 @@ class CommandEnv(TradeEnv):
         super().__init__(properties = properties)
         
         self.tdb = None
-        self.mfd = None
         self.argv = argv or sys.argv
         self._preflight_done = False
         
@@ -138,25 +137,10 @@ class CommandEnv(TradeEnv):
         self.checkFleet()
         self.checkSettlement()
         self.checkPadSize()
-        self.checkMFD()
         
         results = CommandResults(self)
         return self._cmd.run(results, self, tdb)
-    
-    def checkMFD(self) -> None:
-        self.mfd = None
-        try:
-            if not self.x52pro:
-                return
-        except AttributeError:
-            return
-        
-        # The x52 module throws some hard errors, so we really only want to
-        # import it as a last resort when the user has asked. We can't do a
-        # soft "try and import and tell the user later".
-        from tradedangerous.mfd import X52ProMFD  # noqa
-        self.mfd = X52ProMFD()
-    
+
     def checkFromToNearORM(self) -> None:
         def _resolve_place(label, fieldName):
             key = getattr(self, fieldName, None)

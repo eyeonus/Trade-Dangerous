@@ -200,25 +200,13 @@ def validate_run_request(request: RunRequest) -> None:
             option_name="--via",
         )
 
-    unsupported = (
-        ("--checklist", request.checklist),
-        ("--x52-pro", request.x52_pro),
-    )
-    for option_name, active in unsupported:
-        if active:
-            raise UnsupportedRunShape(
-                f"{option_name} is not supported for this planner slice.",
-                option_name=option_name,
-            )
-
     if request.routes < 1:
         raise InvalidNumericOption(
             "--routes must be at least 1.",
             option_name="--routes",
         )
-    # --checklist renders a single route. This is shadowed by the --checklist
-    # unsupported gate above while checklist is gated; kept correct for when it
-    # lands.
+    # --checklist walks a single route interactively, so requesting more than
+    # one route is contradictory.
     if request.routes > 1 and request.checklist:
         raise ContradictoryOptions(
             "--checklist shows a single route; use --routes 1 with it.",
