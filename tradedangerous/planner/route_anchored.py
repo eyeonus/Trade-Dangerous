@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import time
+from dataclasses import replace
 
 from sqlalchemy.orm import Session
 
 from . import data_gateway, failures, run_result
 from .cargo import optimise_cargo
-from .reachability import plan_jump_path
+from .reachability import plan_jump_path, reachable_systems_from
 from .run_request import RunRequest
 from .score import score_with_destination_penalty
 from ..misc import progress as pbar
@@ -34,6 +35,7 @@ from .route_common import (
     _stations_from_endpoint,
     _system_from_station,
     _terminal_envelope_centre,
+    batched_seed_hop_candidates,
     cargo_prune_floor,
 )
 
@@ -256,60 +258,101 @@ def _plan_multi_hop(
             node_task = progress.open_subtask(
                 f"  hop {hop_layer}: expanding stations", layer_frontier_in
             )
-            for node in frontier:
-                progress.update_task(node_task, advance=1)
-                expansions_examined += 1
-                layer_expansion_calls += 1
-                # Pick this node's envelope anchor and radius, then run the
-                # shared loose-drop check on it.
-                if loop_mode:
-                    # The remaining hops must close on this chain's own root
-                    # station (same geometry legacy used — distance home
-                    # against remaining range).
-                    root_station = _root_node(node).station
-                    anchor_xyz = (
-                        root_station.x, root_station.y, root_station.z,
-                    )
-                    anchor_ly = envelope_ly
-                else:
-                    # The remaining hops must close on some eligible terminal in
-                    # the --to region; the envelope is widened by the region's
-                    # spread so every expanded terminal stays admissible (with no
-                    # --end-jumps the spread is zero — unchanged behaviour).
-                    anchor_xyz = to_system_xyz
-                    anchor_ly = envelope_ly + terminal_spread_ly
-                # An envelope that provably contains this anchor's whole reach
-                # bubble excludes nothing — drop it for the call, so the fetch
-                # keeps the qualification skip-marker and plain reachable SQL its
-                # presence would otherwise disable. The result set is identical
-                # by construction.
-                if _envelope_is_provably_loose(
-                    node.station, anchor_xyz, anchor_ly, bubble_reach_ly,
-                ):
-                    node_envelope_xyz = None
-                    node_envelope_ly = None
-                    expansion_stats.loose_envelopes_dropped += 1
-                else:
-                    node_envelope_xyz = anchor_xyz
-                    node_envelope_ly = anchor_ly
-                children = best_open_ended_trades_from(
+            seed_results: dict[int, list] = {}
+            batched_seed_layer = hop_layer == 1 and not loop_mode
+            if batched_seed_layer:
+                # Seed layer (hop zero): the expanded --from origins share one
+                # reachable market per system, demultiplexed per seed — one
+                # batched expansion per system, not one per seed. The closing
+                # envelope is the same for every seed at this layer (centred on
+                # the --to region), applied uniformly without the per-node
+                # loose-drop, which only ever removes a redundant filter, so the
+                # candidate set is unchanged. (--loop forbids --start-jumps, so a
+                # loop seed layer is never expanded and keeps the per-node path.)
+                seed_results = batched_seed_hop_candidates(
                     session,
-                    node.station,
+                    tuple(node.station for node in frontier),
                     request,
-                    available_credits=node.available_credits,
+                    open_role="destination",
+                    budget_credits=base_trade_budget,
+                    ignore_credits=False,
                     top_k=_MULTIHOP_EXPANSION_WIDTH,
                     terminal_hop=False,
                     bubble_cache=bubble_cache,
+                    retain_correction=False,
                     reachable_memo=reachable_memo,
-                    destination_envelope_xyz=node_envelope_xyz,
-                    destination_envelope_ly=node_envelope_ly,
-                    expansion_stats=expansion_stats,
                     station_cache=station_cache,
                     qualification=qualification,
-                    forbidden_station_ids=_revisit_forbidden(
-                        node, request, backward=False,
-                    ),
+                    forbidden_by_seed={
+                        node.station.station_id: _revisit_forbidden(
+                            node, request, backward=False,
+                        )
+                        for node in frontier
+                    },
+                    destination_envelope_xyz=to_system_xyz,
+                    destination_envelope_ly=envelope_ly + terminal_spread_ly,
+                    expansion_stats=expansion_stats,
                 )
+                layer_expansion_calls = len(
+                    {node.station.system_id for node in frontier}
+                )
+            for node in frontier:
+                progress.update_task(node_task, advance=1)
+                expansions_examined += 1
+                if batched_seed_layer:
+                    children = seed_results.get(node.station.station_id, [])
+                else:
+                    layer_expansion_calls += 1
+                    # Pick this node's envelope anchor and radius, then run the
+                    # shared loose-drop check on it.
+                    if loop_mode:
+                        # The remaining hops must close on this chain's own root
+                        # station (same geometry legacy used — distance home
+                        # against remaining range).
+                        root_station = _root_node(node).station
+                        anchor_xyz = (
+                            root_station.x, root_station.y, root_station.z,
+                        )
+                        anchor_ly = envelope_ly
+                    else:
+                        # The remaining hops must close on some eligible terminal
+                        # in the --to region; the envelope is widened by the
+                        # region's spread so every expanded terminal stays
+                        # admissible (no --end-jumps -> spread zero -> unchanged).
+                        anchor_xyz = to_system_xyz
+                        anchor_ly = envelope_ly + terminal_spread_ly
+                    # An envelope that provably contains this anchor's whole reach
+                    # bubble excludes nothing — drop it for the call, so the fetch
+                    # keeps the qualification skip-marker and plain reachable SQL
+                    # its presence would otherwise disable. The result set is
+                    # identical by construction.
+                    if _envelope_is_provably_loose(
+                        node.station, anchor_xyz, anchor_ly, bubble_reach_ly,
+                    ):
+                        node_envelope_xyz = None
+                        node_envelope_ly = None
+                        expansion_stats.loose_envelopes_dropped += 1
+                    else:
+                        node_envelope_xyz = anchor_xyz
+                        node_envelope_ly = anchor_ly
+                    children = best_open_ended_trades_from(
+                        session,
+                        node.station,
+                        request,
+                        available_credits=node.available_credits,
+                        top_k=_MULTIHOP_EXPANSION_WIDTH,
+                        terminal_hop=False,
+                        bubble_cache=bubble_cache,
+                        reachable_memo=reachable_memo,
+                        destination_envelope_xyz=node_envelope_xyz,
+                        destination_envelope_ly=node_envelope_ly,
+                        expansion_stats=expansion_stats,
+                        station_cache=station_cache,
+                        qualification=qualification,
+                        forbidden_station_ids=_revisit_forbidden(
+                            node, request, backward=False,
+                        ),
+                    )
                 for trade in children:
                     next_frontier.append(
                         _make_child_node(node, trade, request, base_trade_budget)
@@ -450,36 +493,73 @@ def _plan_multi_hop(
         final_node_task = progress.open_subtask(
             "  final hop: matching destinations", len(frontier)
         )
-        for node in frontier:
-            progress.update_task(final_node_task, advance=1)
-            expansions_examined += 1
-            if loop_mode:
-                # The terminal rule: each chain closes on its own root.
-                root_station = _root_node(node).station
-                node_destinations = (
-                    destination_by_id[root_station.station_id],
-                )
-            else:
-                node_destinations = destination_stations
-            trades = best_fixed_pair_trades_from(
-                session,
-                node.station,
-                node_destinations,
-                request,
-                available_credits=node.available_credits,
-                bubble_cache=bubble_cache,
-                expansion_stats=expansion_stats,
-                final_hop_stats=final_hop_stats,
-                forbidden_station_ids=_revisit_forbidden(
-                    node, request, backward=False,
-                ),
-                top_k=max(request.routes, 1),
+        # The fixed --to terminal set is shared across every frontier source, so
+        # its restriction is built once and reused across all node-streams. The
+        # per-root loop terminal has no shared set (each node closes on its own
+        # root), so loops keep the per-pair final hop — one destination per node,
+        # no source x destination blow-up to remove.
+        terminal_temp = None
+        terminal_restriction_kwargs: dict = {}
+        terminal_by_id: dict = {}
+        terminal_system_ids: frozenset = frozenset()
+        if not loop_mode:
+            terminal_by_id = {
+                station.station_id: station
+                for station in destination_stations
+            }
+            terminal_system_ids = frozenset(
+                station.system_id for station in destination_stations
             )
-            for trade in trades:
-                finalists.append(
-                    _make_child_node(node, trade, request, base_trade_budget)
+            terminal_temp, terminal_restriction_kwargs = (
+                data_gateway.build_open_restriction(
+                    session.connection(), frozenset(terminal_by_id)
                 )
-                candidate_trade_count += 1
+            )
+        try:
+            for node in frontier:
+                progress.update_task(final_node_task, advance=1)
+                expansions_examined += 1
+                forbidden = _revisit_forbidden(node, request, backward=False)
+                if loop_mode:
+                    # The terminal rule: each chain closes on its own root.
+                    root_station = _root_node(node).station
+                    trades = best_fixed_pair_trades_from(
+                        session,
+                        node.station,
+                        (destination_by_id[root_station.station_id],),
+                        request,
+                        available_credits=node.available_credits,
+                        bubble_cache=bubble_cache,
+                        expansion_stats=expansion_stats,
+                        final_hop_stats=final_hop_stats,
+                        forbidden_station_ids=forbidden,
+                        top_k=max(request.routes, 1),
+                    )
+                else:
+                    trades = best_fixed_terminal_trades_streamed(
+                        session,
+                        node.station,
+                        request,
+                        available_credits=node.available_credits,
+                        bubble_cache=bubble_cache,
+                        terminal_by_id=terminal_by_id,
+                        terminal_system_ids=terminal_system_ids,
+                        restriction_kwargs=terminal_restriction_kwargs,
+                        expansion_stats=expansion_stats,
+                        final_hop_stats=final_hop_stats,
+                        forbidden_station_ids=forbidden,
+                        top_k=max(request.routes, 1),
+                    )
+                for trade in trades:
+                    finalists.append(
+                        _make_child_node(
+                            node, trade, request, base_trade_budget
+                        )
+                    )
+                    candidate_trade_count += 1
+        finally:
+            if terminal_temp is not None:
+                terminal_temp.drop(session.connection(), checkfirst=True)
         progress.close_subtask(final_node_task)
         final_hop_elapsed_ms = _elapsed_ms(final_hop_started)
         market_query_ms += final_hop_elapsed_ms
@@ -928,3 +1008,152 @@ def best_fixed_pair_trades_from(
     # returns the same single best the old keep-strictly-greater logic chose.
     found.sort(key=lambda candidate: candidate.practical_score, reverse=True)
     return found[: max(top_k, 1)]
+
+
+def best_fixed_terminal_trades_streamed(
+    session: Session,
+    source_station: run_result.ResolvedStation,
+    request: RunRequest,
+    *,
+    available_credits: int,
+    bubble_cache: dict[int, object],
+    terminal_by_id: dict[int, run_result.ResolvedStation],
+    terminal_system_ids: frozenset[int],
+    restriction_kwargs: dict,
+    expansion_stats: run_result.ExpansionStats | None = None,
+    final_hop_stats: run_result.FinalHopStats | None = None,
+    forbidden_station_ids: frozenset[int] = frozenset(),
+    top_k: int = 1,
+) -> list[_HopCandidate]:
+    """Final hop from one source to the expanded --to terminal set, streamed.
+
+    The fixed-terminal final hop, set-based: rather than a reachability check and
+    a market query per terminal (source x destination), the source streams the
+    whole terminal set in one restricted fetch under real credits, solving cargo
+    per terminal as its group arrives. Returns up to ``top_k`` _HopCandidate
+    best-first; equal scores keep terminal-station-id order, matching the old
+    per-destination path. ``nodes_with_reachable_destination`` is taken from the
+    reachable relation, not the stream output, and the terminal restriction is
+    built once by the caller and reused across every frontier source.
+    """
+
+    max_jumps = int(request.max_jumps_per_hop or 0)
+    max_ly = float(request.max_ly_per_jump or 0.0)
+    source_system = _system_from_station(source_station)
+
+    # Reachable relation: which terminal systems this source can reach. Same
+    # bubble and avoid handling plan_jump_path would use, so a terminal system in
+    # the set is exactly one a per-pair reachability check would have admitted.
+    if max_jumps >= 1:
+        reachable = reachable_systems_from(
+            session,
+            source_system,
+            max_jumps_per_hop=max_jumps,
+            max_ly_per_jump=max_ly,
+            bubble_cache=bubble_cache,
+            avoid_system_ids=request.avoid_system_ids,
+        )
+    else:
+        # --jumps-per 0: same-system only, no jump graph.
+        reachable = (source_system,)
+    reachable_ids = frozenset(r.system_id for r in reachable)
+
+    # A revisit-blocked terminal cannot close the route: count it (so a final hop
+    # that collapses solely on blocked terminals classifies as NoUniqueRoute) and
+    # drop it from the reachable-destination signal — the old path checked
+    # forbidden before the reach test.
+    if forbidden_station_ids:
+        blocked = forbidden_station_ids & frozenset(terminal_by_id)
+        if blocked and expansion_stats is not None:
+            expansion_stats.revisit_skips += len(blocked)
+        open_terminal_systems = frozenset(
+            station.system_id
+            for station_id, station in terminal_by_id.items()
+            if station_id not in forbidden_station_ids
+        )
+    else:
+        open_terminal_systems = terminal_system_ids
+
+    saw_reachable = bool(reachable_ids & open_terminal_systems)
+    if final_hop_stats is not None:
+        final_hop_stats.frontier_nodes_attempted += 1
+        if saw_reachable:
+            final_hop_stats.nodes_with_reachable_destination += 1
+    if not saw_reachable:
+        return []
+
+    found: list[_HopCandidate] = []
+    saw_viable_cargo = False
+    group_iter = data_gateway.iter_open_ended_station_groups(
+        session,
+        (source_station.station_id,),
+        source_system,
+        request,
+        open_role="destination",
+        available_credits=available_credits,
+        terminal_hop=True,
+        precomputed_reachable_systems=reachable,
+        **restriction_kwargs,
+    )
+    try:
+        for dest_station_id, _ceiling, candidates in group_iter:
+            if dest_station_id in forbidden_station_ids:
+                # Already counted above; just never trade into it.
+                continue
+            destination = terminal_by_id.get(dest_station_id)
+            if destination is None:
+                continue
+            if final_hop_stats is not None:
+                final_hop_stats.market_candidates_found += len(candidates)
+            try:
+                cargo = optimise_cargo(
+                    candidates,
+                    capacity_units=int(request.capacity_units or 0),
+                    available_credits=available_credits,
+                    cargo_limit_per_item=request.cargo_limit_per_item,
+                )
+            except failures.NoProfitableTrades:
+                continue
+            saw_viable_cargo = True
+            practical_score = score_with_destination_penalty(
+                cargo.total_profit,
+                destination_distance_ls=destination.ls_from_star,
+                penalty_percent=request.ls_penalty_percent,
+            )
+            found.append(
+                _HopCandidate(
+                    destination_station=destination,
+                    cargo=cargo,
+                    jump_path=None,
+                    practical_score=practical_score,
+                    raw_profit=cargo.total_profit,
+                )
+            )
+    finally:
+        group_iter.close()
+    if final_hop_stats is not None and saw_viable_cargo:
+        final_hop_stats.viable_cargo_plans += 1
+
+    # Best-first; equal scores keep terminal-station-id order — the old stable
+    # reverse sort over station-id-ordered destinations.
+    found.sort(
+        key=lambda c: (-c.practical_score, c.destination_station.station_id)
+    )
+    winners = found[: max(top_k, 1)]
+    # Jump paths for the winners only — each is reachable (the gate above), and
+    # the source bubble is already cached from the reachable compute.
+    return [
+        replace(
+            candidate,
+            jump_path=plan_jump_path(
+                source_system,
+                _system_from_station(candidate.destination_station),
+                max_jumps_per_hop=max_jumps,
+                max_ly_per_jump=max_ly,
+                session=session,
+                bubble_cache=bubble_cache,
+                avoid_system_ids=request.avoid_system_ids,
+            ),
+        )
+        for candidate in winners
+    ]

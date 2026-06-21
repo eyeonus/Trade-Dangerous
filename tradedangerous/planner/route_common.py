@@ -1018,29 +1018,64 @@ def _plan_open_anchor_route(
             node_task = progress.open_subtask(
                 f"  hop {hop_layer}: expanding stations", layer_frontier_in
             )
-            for node in frontier:
-                progress.update_task(node_task, advance=1)
-                expansions_examined += 1
-                layer_expansion_calls += 1
-                children = best_open_ended_hop_candidates(
+            seed_results: dict[int, list[_HopCandidate]] = {}
+            if hop_layer == 1:
+                # Seed layer (hop zero): equivalent anchors in one system share a
+                # single reachable market stream, demultiplexed per seed — one
+                # batched expansion per system instead of one per seed.
+                seed_results = batched_seed_hop_candidates(
                     session,
-                    node.station,
+                    tuple(node.station for node in frontier),
                     request,
                     open_role=open_role,
-                    optimistic_credits=optimistic_credits,
+                    budget_credits=optimistic_credits,
+                    ignore_credits=False,
                     top_k=_MULTIHOP_EXPANSION_WIDTH,
                     terminal_hop=False,
                     bubble_cache=bubble_cache,
+                    retain_correction=True,
                     reachable_memo=reachable_memo,
-                    expansion_stats=expansion_stats,
                     station_cache=station_cache,
                     qualification=qualification,
-                    forbidden_station_ids=_revisit_forbidden(
-                        node, request, backward=open_role == "source",
-                    ),
+                    forbidden_by_seed={
+                        node.station.station_id: _revisit_forbidden(
+                            node, request, backward=open_role == "source",
+                        )
+                        for node in frontier
+                    },
+                    expansion_stats=expansion_stats,
                 )
+                layer_expansion_calls = len(
+                    {node.station.system_id for node in frontier}
+                )
+            for node in frontier:
+                progress.update_task(node_task, advance=1)
+                expansions_examined += 1
+                if hop_layer == 1:
+                    children = seed_results.get(node.station.station_id, [])
+                else:
+                    layer_expansion_calls += 1
+                    children = best_open_ended_hop_candidates(
+                        session,
+                        node.station,
+                        request,
+                        open_role=open_role,
+                        optimistic_credits=optimistic_credits,
+                        top_k=_MULTIHOP_EXPANSION_WIDTH,
+                        terminal_hop=False,
+                        bubble_cache=bubble_cache,
+                        reachable_memo=reachable_memo,
+                        expansion_stats=expansion_stats,
+                        station_cache=station_cache,
+                        qualification=qualification,
+                        forbidden_station_ids=_revisit_forbidden(
+                            node, request, backward=open_role == "source",
+                        ),
+                    )
                 for trade in children:
-                    child = _make_open_child(node, trade, request, open_role=open_role)
+                    child = _make_open_child(
+                        node, trade, request, open_role=open_role
+                    )
                     candidate_trade_count += 1
                     layer_children_generated += 1
                     if (
@@ -1781,6 +1816,316 @@ def best_open_ended_hop_candidates(
         expansion_stats.children_returned += len(hop_candidates)
         expansion_stats.elapsed_ms += _elapsed_ms(helper_started)
     return hop_candidates
+
+
+def batched_seed_hop_candidates(
+    session: Session,
+    seeds: tuple[run_result.ResolvedStation, ...],
+    request: RunRequest,
+    *,
+    open_role: str,
+    budget_credits: int,
+    ignore_credits: bool,
+    top_k: int,
+    terminal_hop: bool,
+    bubble_cache: dict[int, object],
+    retain_correction: bool,
+    reachable_memo: dict | None = None,
+    station_cache: dict[int, run_result.ResolvedStation] | None = None,
+    qualification: data_gateway.QualificationCache | None = None,
+    forbidden_by_seed: dict[int, frozenset[int]] | None = None,
+    destination_envelope_xyz: tuple[float, float, float] | None = None,
+    destination_envelope_ly: float | None = None,
+    expansion_stats: run_result.ExpansionStats | None = None,
+) -> dict[int, list[_HopCandidate]]:
+    """Expand many equivalent hop-zero anchors that share a reachable market.
+
+    HOP-ZERO ONLY. A multi-hop search's seed layer holds many anchors with
+    identical expansion semantics — empty via mask, a history of just
+    themselves — so anchors in one system share a single reachable market
+    stream, demultiplexed into an independent bounded top-K per seed. Returns
+    ``{seed_station_id: [_HopCandidate, ...]}`` best-first; a seed absent from
+    the mapping produced nothing. The caller must batch only conforming hop-zero
+    seeds and fall back to the per-node primitive for anything else.
+
+    Each genuine per-engine difference is a parameter: ``open_role`` and the path
+    direction it implies, the budget policy (``budget_credits`` plus
+    ``ignore_credits``), whether per-pair candidates are kept for the forward
+    credit correction (``retain_correction``), the optional destination envelope
+    and ``terminal_hop``. Candidate, cargo, score, ranking and jump-path work all
+    reuse the same helpers the single-anchor primitives use; only the
+    orchestration — one stream fanned into per-seed collectors — is new, so the
+    proven per-node primitives stay untouched and a one-seed call is
+    byte-identical to them (see the parity probe).
+    """
+
+    capacity_units = int(request.capacity_units or 0)
+    penalty_percent = request.ls_penalty_percent
+    anchor_is_destination = open_role == "source"
+    forbidden_by_seed = forbidden_by_seed or {}
+    # --towards (and via steering, never a seed) make practical score a
+    # non-primary key, so the score-ceiling stop and prune floor are unsound;
+    # the stream is then exhausted exactly as the single-anchor path does.
+    pruning_enabled = request.towards_target is None
+    results: dict[int, list[_HopCandidate]] = {}
+
+    # Same-system seeds share one reachable market stream.
+    seeds_by_system: dict[int, list[run_result.ResolvedStation]] = {}
+    for seed in seeds:
+        seeds_by_system.setdefault(seed.system_id, []).append(seed)
+
+    for system_seeds in seeds_by_system.values():
+        if expansion_stats is not None:
+            # One batched expansion call per system, not one per seed — the
+            # measurable point of the seed layer batching.
+            expansion_stats.expansion_calls += 1
+        anchor_system = _system_from_station(system_seeds[0])
+        seed_by_id = {s.station_id: s for s in system_seeds}
+        scored_by_seed: dict[int, list] = {
+            s.station_id: [] for s in system_seeds
+        }
+        threshold_by_seed = {
+            s.station_id: _KeptScoreThreshold(top_k, enabled=pruning_enabled)
+            for s in system_seeds
+        }
+        # A seed's early-stop floor converts at its own most-permissive ls: the
+        # anchor's own ls when the anchor is the destination (backward), the
+        # curve maximum (0) when the destination varies per station (forward).
+        stop_ls_by_seed = {
+            s.station_id: (s.ls_from_star if anchor_is_destination else 0)
+            for s in system_seeds
+        }
+
+        # Reachable set computed once for the whole system (avoid-correct), or
+        # reused from the memo; --jumps-per 0 falls back to the fetch's
+        # same-system path, matching the single-anchor primitives.
+        precomputed_reachable = None
+        memo_has = (
+            reachable_memo is not None
+            and data_gateway.reachable_memo_contains(
+                reachable_memo, anchor_system, request
+            )
+        )
+        if (request.max_jumps_per_hop or 0) >= 1 and not memo_has:
+            precomputed_reachable = reachable_systems_from(
+                session,
+                anchor_system,
+                max_jumps_per_hop=int(request.max_jumps_per_hop),
+                max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
+                bubble_cache=bubble_cache,
+                avoid_system_ids=request.avoid_system_ids,
+            )
+
+        def _ceiling_beats_no_seed(ceiling_ppu):
+            # Multi-floor stop: true only when EVERY seed has a full top-K and
+            # the shared ceiling cannot beat ANY seed's floor. Ceilings are
+            # non-increasing, so beyond here no unread station can place for any
+            # seed. If even one seed is unfilled or still beatable, keep reading.
+            for seed in system_seeds:
+                floor = threshold_by_seed[seed.station_id].current()
+                if floor is None:
+                    return False
+                stop_floor = cargo_prune_floor(
+                    floor, stop_ls_by_seed[seed.station_id], penalty_percent
+                )
+                if (
+                    stop_floor is None
+                    or capacity_units * ceiling_ppu >= stop_floor
+                ):
+                    return False
+            return True
+
+        def _consume(open_station_id, station_candidates):
+            hydrate_started = time.perf_counter()
+            open_station = data_gateway.fetch_stations_by_id(
+                session, (open_station_id,), cache=station_cache,
+            ).get(open_station_id)
+            if expansion_stats is not None:
+                expansion_stats.fetch_ms += _elapsed_ms(hydrate_started)
+                expansion_stats.stream_stations_read += 1
+                expansion_stats.candidate_rows += len(station_candidates)
+            if open_station is None:
+                return
+            grouped_pairs = _group_pairs(station_candidates)
+            if expansion_stats is not None:
+                expansion_stats.grouped_pairs += len(grouped_pairs)
+            # Demultiplex this open station's pairs to their parent seed: the
+            # seed is the anchor (fixed) side of the pair.
+            pairs_by_seed: dict[int, list] = {}
+            for pair_key, pair_candidates in grouped_pairs.items():
+                source_id, destination_id = pair_key
+                seed_id = (
+                    destination_id if anchor_is_destination else source_id
+                )
+                if seed_id in seed_by_id:
+                    pairs_by_seed.setdefault(seed_id, []).append(
+                        (pair_key, pair_candidates)
+                    )
+            for seed_id, seed_pairs in pairs_by_seed.items():
+                if open_station_id in forbidden_by_seed.get(
+                    seed_id, frozenset()
+                ):
+                    # The expanding chain has already visited this open station:
+                    # a revisit the rule forbids. Skip before it scores.
+                    if expansion_stats is not None:
+                        expansion_stats.revisit_skips += 1
+                    continue
+                seed = seed_by_id[seed_id]
+                destination_distance_ls = (
+                    seed.ls_from_star
+                    if anchor_is_destination
+                    else open_station.ls_from_star
+                )
+                threshold = threshold_by_seed[seed_id]
+                # Solve the seed's pairs best-first by the same cheap optimistic
+                # key the single-anchor path uses, so the floor rises fastest.
+                ordered = sorted(
+                    seed_pairs,
+                    key=lambda pc: cargo_order_key(
+                        pc[1],
+                        destination_distance_ls,
+                        capacity_units,
+                        penalty_percent,
+                    ),
+                    reverse=True,
+                )
+                for pair_key, pair_candidates in ordered:
+                    if expansion_stats is not None:
+                        expansion_stats.cargo_calls += 1
+                    prune_floor = (
+                        cargo_prune_floor(
+                            threshold.current(),
+                            destination_distance_ls,
+                            penalty_percent,
+                        )
+                        if pruning_enabled
+                        else None
+                    )
+                    cargo_started = time.perf_counter()
+                    try:
+                        cargo = optimise_cargo(
+                            pair_candidates,
+                            capacity_units=capacity_units,
+                            available_credits=budget_credits,
+                            cargo_limit_per_item=request.cargo_limit_per_item,
+                            prune_below_raw=prune_floor,
+                            ignore_credits=ignore_credits,
+                        )
+                    except failures.NoProfitableTrades:
+                        continue
+                    finally:
+                        if expansion_stats is not None:
+                            expansion_stats.cargo_ms += _elapsed_ms(
+                                cargo_started
+                            )
+                    if cargo is None:
+                        continue
+                    practical_score = score_with_destination_penalty(
+                        cargo.total_profit,
+                        destination_distance_ls=destination_distance_ls,
+                        penalty_percent=penalty_percent,
+                    )
+                    if pruning_enabled:
+                        threshold.offer(practical_score)
+                    scored_by_seed[seed_id].append(
+                        (
+                            practical_score,
+                            open_station,
+                            cargo,
+                            pair_candidates,
+                            (
+                                -pair_candidates[0].profit_per_unit,
+                                pair_candidates[0].item_name,
+                                pair_key,
+                            ),
+                        )
+                    )
+
+        group_iter = data_gateway.iter_open_ended_station_groups(
+            session,
+            tuple(s.station_id for s in system_seeds),
+            anchor_system,
+            request,
+            open_role=open_role,
+            available_credits=budget_credits,
+            unbounded_credits=ignore_credits,
+            terminal_hop=terminal_hop,
+            reachable_memo=reachable_memo,
+            destination_envelope_xyz=destination_envelope_xyz,
+            destination_envelope_ly=destination_envelope_ly,
+            expansion_stats=expansion_stats,
+            precomputed_reachable_systems=precomputed_reachable,
+            qualification=qualification,
+        )
+        try:
+            for open_station_id, ceiling_ppu, station_candidates in group_iter:
+                if pruning_enabled and _ceiling_beats_no_seed(ceiling_ppu):
+                    if expansion_stats is not None:
+                        expansion_stats.stream_stops += 1
+                    break
+                _consume(open_station_id, station_candidates)
+        finally:
+            group_iter.close()
+
+        # Materialise each seed's top-K independently — same ranking, jump-path
+        # anchoring and reversal the single-anchor primitives use.
+        for seed in system_seeds:
+            entries = scored_by_seed[seed.station_id]
+            if not entries:
+                continue
+            ranked = sorted(entries, key=lambda item: item[4])
+            ranked.sort(
+                key=lambda item: _candidate_progress_rank(item, request),
+                reverse=True,
+            )
+            built: list[_HopCandidate] = []
+            for practical_score, open_station, cargo, pair_candidates, _key in (
+                ranked
+            ):
+                if len(built) >= top_k:
+                    break
+                open_system = _system_from_station(open_station)
+                jump_started = time.perf_counter()
+                try:
+                    jump_path = plan_jump_path(
+                        anchor_system,
+                        open_system,
+                        max_jumps_per_hop=int(request.max_jumps_per_hop or 0),
+                        max_ly_per_jump=float(request.max_ly_per_jump or 0.0),
+                        session=session,
+                        bubble_cache=bubble_cache,
+                        avoid_system_ids=request.avoid_system_ids,
+                    )
+                except failures.NoReachableRoute:
+                    continue
+                finally:
+                    if expansion_stats is not None:
+                        expansion_stats.jump_ms += _elapsed_ms(jump_started)
+                # Store source -> destination flight order: backward anchors on
+                # the destination, so anchor -> open is reversed.
+                hop_jump_path = (
+                    _reverse_jump_path(jump_path)
+                    if anchor_is_destination
+                    else jump_path
+                )
+                built.append(
+                    _HopCandidate(
+                        destination_station=open_station,
+                        cargo=cargo,
+                        jump_path=hop_jump_path,
+                        practical_score=practical_score,
+                        raw_profit=cargo.total_profit,
+                        hop_candidates=(
+                            pair_candidates if retain_correction else None
+                        ),
+                    )
+                )
+            if built:
+                if expansion_stats is not None:
+                    expansion_stats.children_returned += len(built)
+                results[seed.station_id] = built
+
+    return results
 
 
 def _reverse_jump_path(path: run_result.JumpPath) -> run_result.JumpPath:
