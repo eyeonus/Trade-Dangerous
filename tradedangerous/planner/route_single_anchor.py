@@ -27,6 +27,7 @@ def _plan_open_anchor_multi_hop(
     *,
     open_role: str,
     progress=None,
+    positioning_caches: dict[str, dict] | None = None,
 ) -> run_result.RunResult:
     """Plan an N-hop route with one fixed endpoint and the other open.
 
@@ -63,6 +64,7 @@ def _plan_open_anchor_multi_hop(
         anchor_endpoint,
         request,
         role=anchor_role,
+        positioning_caches=positioning_caches,
     )
     station_filter_ms = _elapsed_ms(station_filter_started)
 

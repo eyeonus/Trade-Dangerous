@@ -33,6 +33,7 @@ from .route_common import (
     _root_node,
     _stations_from_endpoint,
     _system_from_station,
+    _terminal_envelope_centre,
     cargo_prune_floor,
 )
 
@@ -44,6 +45,7 @@ def _plan_multi_hop(
     validation_ms: float,
     bubble_cache: dict[int, object],
     progress: pbar.Progress | None = None,
+    positioning_caches: dict[str, dict] | None = None,
 ) -> run_result.RunResult:
     """Plan an N-hop route between a named --from origin and --to destination.
 
@@ -106,6 +108,7 @@ def _plan_multi_hop(
         origin_endpoint,
         request,
         role="source",
+        positioning_caches=positioning_caches,
     )
     destination_by_id: dict[int, run_result.ResolvedStation] = {}
     if loop_mode:
@@ -152,6 +155,7 @@ def _plan_multi_hop(
             station.station_id: station for station in origin_stations
         }
         to_system_xyz = None
+        terminal_spread_ly = 0.0
     else:
         destination_endpoint = request.to_endpoint
         destination_stations = _stations_from_endpoint(
@@ -159,11 +163,17 @@ def _plan_multi_hop(
             destination_endpoint,
             request,
             role="destination",
+            positioning_caches=positioning_caches,
         )
-        # Every --to station shares the same system, so any of them gives the
-        # envelope anchor coordinates.
-        anchor_station = destination_stations[0]
-        to_system_xyz = (anchor_station.x, anchor_station.y, anchor_station.z)
+        # With --end-jumps the eligible terminals span many systems out to
+        # end_jumps empty jumps of the anchor, not one --to system. Centre the
+        # closing envelope on the terminal region and widen it by the region's
+        # spread, so the bound admits every expanded terminal, not only the
+        # first. Without --end-jumps there is one terminal system, the spread is
+        # zero, and the envelope is exactly as before.
+        to_system_xyz, terminal_spread_ly = _terminal_envelope_centre(
+            destination_stations
+        )
     station_filter_ms = _elapsed_ms(station_filter_started)
 
     base_trade_budget = (
@@ -262,9 +272,12 @@ def _plan_multi_hop(
                     )
                     anchor_ly = envelope_ly
                 else:
-                    # The remaining hops must close on the shared --to system.
+                    # The remaining hops must close on some eligible terminal in
+                    # the --to region; the envelope is widened by the region's
+                    # spread so every expanded terminal stays admissible (with no
+                    # --end-jumps the spread is zero — unchanged behaviour).
                     anchor_xyz = to_system_xyz
-                    anchor_ly = envelope_ly
+                    anchor_ly = envelope_ly + terminal_spread_ly
                 # An envelope that provably contains this anchor's whole reach
                 # bubble excludes nothing — drop it for the call, so the fetch
                 # keeps the qualification skip-marker and plain reachable SQL its

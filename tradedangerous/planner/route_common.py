@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import heapq
+import math
 import time
 from dataclasses import dataclass, replace
 
@@ -658,6 +659,7 @@ def _stations_from_endpoint(
     request: RunRequest,
     *,
     role: str,
+    positioning_caches: dict[str, dict] | None = None,
 ) -> tuple[run_result.ResolvedStation, ...]:
     """Return candidate stations for a fixed station or expanded system endpoint.
 
@@ -668,18 +670,27 @@ def _stations_from_endpoint(
     With --start-jumps (source) or --end-jumps (destination) set, the endpoint
     is instead treated as a positioning anchor and expanded into the eligible
     stations within that many empty jumps — see _positioning_stations.
+
+    ``positioning_caches`` is the request-scoped {role: cache} owned by
+    plan_route; the role's cache is pinned to one (jumps, empty_ly, avoid)
+    configuration, so the anchor bubble built here is reused later for the
+    rendered repositioning leg instead of being rebuilt.
     """
 
     positioning_jumps = (
         request.start_jumps if role == "source" else request.end_jumps
     )
     if positioning_jumps > 0:
+        positioning_cache = (
+            positioning_caches.get(role) if positioning_caches else None
+        )
         return _positioning_stations(
             session,
             endpoint,
             request,
             role=role,
             positioning_jumps=positioning_jumps,
+            positioning_cache=positioning_cache,
         )
 
     if endpoint.station is not None:
@@ -736,6 +747,7 @@ def _positioning_stations(
     *,
     role: str,
     positioning_jumps: int,
+    positioning_cache: dict | None = None,
 ) -> tuple[run_result.ResolvedStation, ...]:
     """Expand a positioning anchor into eligible stations within N empty jumps.
 
@@ -762,9 +774,14 @@ def _positioning_stations(
 
     # The positioning bubble's radius (positioning_jumps * empty_ly) differs
     # from the per-hop bubble for the same anchor, and reachable_systems_from
-    # keys its cache on system_id alone. A private cache keeps the wrong-radius
-    # bubble out of the per-hop cache shared across the rest of the plan.
-    positioning_bubble_cache: dict = {}
+    # keys its cache on system_id alone. The role's positioning cache (owned by
+    # plan_route, pinned to this role's single (jumps, empty_ly, avoid) config)
+    # keeps the wrong-radius bubble out of the per-hop cache, and lets the
+    # rendered repositioning leg reuse this anchor bubble rather than rebuild it.
+    # A private cache is the fallback for any caller that does not supply one.
+    positioning_bubble_cache = (
+        positioning_cache if positioning_cache is not None else {}
+    )
     reachable = reachable_systems_from(
         session,
         anchor_system,
@@ -824,6 +841,43 @@ def _system_from_station(
         y=station.y,
         z=station.z,
     )
+
+
+def _terminal_envelope_centre(
+    stations: tuple[run_result.ResolvedStation, ...],
+) -> tuple[tuple[float, float, float], float]:
+    """Centre and enclosing radius for an expanded fixed-terminal station set.
+
+    A fixed terminal expanded by --end-jumps spans many systems, not one; a
+    closing envelope centred on a single arbitrary terminal can wrongly prune a
+    route that would close on another valid expanded terminal. This returns the
+    centroid of the *distinct* terminal systems and the maximum distance from
+    that centroid to any of them, so a caller can widen its feasibility envelope
+    by that spread and admit every expanded terminal (over-inclusive is safe;
+    excluding a valid terminal is not).
+
+    With one terminal system (no --end-jumps) the centroid is that system and
+    the spread is zero, leaving the caller's envelope exactly as before. Station
+    coordinates are their parent system's, so stations sharing a system share a
+    point and collapse to one entry.
+    """
+
+    seen: dict[int, tuple[float, float, float]] = {}
+    for station in stations:
+        seen.setdefault(
+            station.system_id, (station.x, station.y, station.z)
+        )
+    coords = tuple(seen.values())
+    count = len(coords)
+    cx = sum(c[0] for c in coords) / count
+    cy = sum(c[1] for c in coords) / count
+    cz = sum(c[2] for c in coords) / count
+    spread = 0.0
+    for x, y, z in coords:
+        distance = math.sqrt((x - cx) ** 2 + (y - cy) ** 2 + (z - cz) ** 2)
+        if distance > spread:
+            spread = distance
+    return (cx, cy, cz), spread
 
 
 def _group_pairs(

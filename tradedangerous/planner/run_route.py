@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from ..misc import progress as pbar
 from . import failures, run_result
 from .cargo import reset_cargo_counters
-from .reachability import plan_jump_path
+from .reachability import plan_jump_path, reverse_jump_path
 from .route_anchored import _plan_multi_hop
 from .route_common import (
     _elapsed_ms,
@@ -54,6 +54,15 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
     # a fixed origin pays for the bubble once, not once per destination.
     bubble_cache: dict[int, object] = {}
 
+    # Two request-scoped positioning caches, owned here, one per role. Each is
+    # pinned to its role's single (jumps, empty_ly, avoid) configuration:
+    # --start-jumps fans the source side out, --end-jumps the destination side.
+    # Kept separate from the per-hop bubble_cache (a different radius) and from
+    # each other (so a start and end leg sharing a source system cannot reuse
+    # each other's wrong-count bubble), and reused by _attach_positioning_legs
+    # so each anchor's bubble is built once, not rebuilt for the rendered legs.
+    positioning_caches: dict[str, dict] = {"source": {}, "destination": {}}
+
     # plan_route owns the search progress bar for its whole life: build it once
     # here, hand it to whichever engine runs, and clear it in the finally before
     # any result is rendered. Every multi-hop search — and any --via search —
@@ -91,12 +100,12 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
         if request.via_system_ids or request.via_station_ids:
             result = _plan_via_route(
                 session, request, started, validation_ms, bubble_cache,
-                progress=prog,
+                progress=prog, positioning_caches=positioning_caches,
             )
         elif request.hops == 1:
             result = _plan_single_hop(
                 session, request, started, validation_ms, bubble_cache,
-                progress=prog,
+                progress=prog, positioning_caches=positioning_caches,
             )
         # Multi-hop endpoint dispatch, mirroring the single-hop dispatcher
         # above. Both endpoints set keeps the fixed-terminal planner (envelope,
@@ -107,19 +116,19 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
         elif (request.from_text and request.to_text) or request.loop:
             result = _plan_multi_hop(
                 session, request, started, validation_ms, bubble_cache,
-                progress=prog,
+                progress=prog, positioning_caches=positioning_caches,
             )
         elif request.from_text:
             result = _plan_open_anchor_multi_hop(
                 session, request, started, validation_ms, bubble_cache,
                 open_role="destination",
-                progress=prog,
+                progress=prog, positioning_caches=positioning_caches,
             )
         elif request.to_text:
             result = _plan_open_anchor_multi_hop(
                 session, request, started, validation_ms, bubble_cache,
                 open_role="source",
-                progress=prog,
+                progress=prog, positioning_caches=positioning_caches,
             )
         else:
             result = _plan_unanchored_multi_hop(
@@ -165,7 +174,11 @@ def plan_route(session: Session, request: RunRequest) -> run_result.RunResult:
             show=request.progress,
         )
         try:
-            result = _attach_positioning_legs(session, request, result)
+            result = _attach_positioning_legs(
+                session, request, result,
+                start_cache=positioning_caches["source"],
+                end_cache=positioning_caches["destination"],
+            )
         finally:
             reposition_prog.clear()
     return result
@@ -208,6 +221,7 @@ def _plan_single_hop(
     validation_ms: float,
     bubble_cache: dict[int, object],
     progress=None,
+    positioning_caches: dict[str, dict] | None = None,
 ) -> run_result.RunResult:
     """Dispatch a single-hop request by which endpoints the user named.
 
@@ -220,19 +234,20 @@ def _plan_single_hop(
 
     if request.from_text and request.to_text:
         return _plan_fixed_endpoints(
-            session, request, started, validation_ms, bubble_cache
+            session, request, started, validation_ms, bubble_cache,
+            positioning_caches=positioning_caches,
         )
     if request.from_text:
         return _best_open_ended_plan(
             session, request, started, validation_ms,
             open_role="destination", bubble_cache=bubble_cache,
-            progress=progress,
+            progress=progress, positioning_caches=positioning_caches,
         )
     if request.to_text:
         return _best_open_ended_plan(
             session, request, started, validation_ms,
             open_role="source", bubble_cache=bubble_cache,
-            progress=progress,
+            progress=progress, positioning_caches=positioning_caches,
         )
     return _plan_unanchored(
         session, request, started, validation_ms, bubble_cache,
@@ -244,6 +259,9 @@ def _attach_positioning_legs(
     session: Session,
     request: RunRequest,
     result: run_result.RunResult,
+    *,
+    start_cache: dict,
+    end_cache: dict,
 ) -> run_result.RunResult:
     """Attach the empty repositioning legs for --start-jumps / --end-jumps.
 
@@ -254,13 +272,15 @@ def _attach_positioning_legs(
     positioning-leg logic.
 
     Empty jumps use the unladen range (--empty-ly, else --ly-per) and the
-    positioning count, which differ from the per-hop bubble. A private cache
-    keeps those positioning-radius bubbles out of the per-hop cache shared
-    across the search.
+    positioning count, which differ from the per-hop bubble. ``start_cache`` and
+    ``end_cache`` are the request-scoped positioning caches plan_route already
+    populated during endpoint expansion, each pinned to its role's single
+    (jumps, empty_ly, avoid) configuration — so the anchor bubble is reused here,
+    not rebuilt. The end leg is plotted anchor -> terminal (centred on the
+    cached anchor bubble) and reversed, since the jump graph is undirected.
     """
 
     empty_ly = float(request.empty_ly_per or request.max_ly_per_jump or 0.0)
-    leg_cache: dict[int, object] = {}
 
     start_anchor = None
     if request.start_jumps and request.from_endpoint is not None:
@@ -281,18 +301,22 @@ def _attach_positioning_legs(
                 max_jumps_per_hop=request.start_jumps,
                 max_ly_per_jump=empty_ly,
                 session=session,
-                bubble_cache=leg_cache,
+                bubble_cache=start_cache,
                 avoid_system_ids=request.avoid_system_ids,
             )
         if end_anchor is not None and route.stations:
-            end_leg = plan_jump_path(
-                _system_from_station(route.stations[-1]),
-                end_anchor,
-                max_jumps_per_hop=request.end_jumps,
-                max_ly_per_jump=empty_ly,
-                session=session,
-                bubble_cache=leg_cache,
-                avoid_system_ids=request.avoid_system_ids,
+            # Plot anchor -> terminal so the cached destination-anchor bubble is
+            # reused, then reverse to the flown terminal -> anchor orientation.
+            end_leg = reverse_jump_path(
+                plan_jump_path(
+                    end_anchor,
+                    _system_from_station(route.stations[-1]),
+                    max_jumps_per_hop=request.end_jumps,
+                    max_ly_per_jump=empty_ly,
+                    session=session,
+                    bubble_cache=end_cache,
+                    avoid_system_ids=request.avoid_system_ids,
+                )
             )
         new_routes.append(
             dataclasses.replace(

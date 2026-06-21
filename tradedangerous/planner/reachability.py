@@ -175,6 +175,29 @@ def plan_jump_path(
     )
 
 
+def reverse_jump_path(path: JumpPath) -> JumpPath:
+    """Flip a jump path end-for-end.
+
+    The jump graph is undirected, so an anchor -> terminal path is also the
+    terminal -> anchor path flown in reverse. The end-leg renderer plots
+    anchor -> terminal (reusing the anchor bubble already built for endpoint
+    expansion) and reverses it here rather than rebuilding a bubble centred on
+    the terminal. Polyline distance, jump count, reachability and same-system
+    state are direction-independent and carry over unchanged; only the endpoint
+    ids and the system order flip.
+    """
+
+    return JumpPath(
+        source_system_id=path.destination_system_id,
+        destination_system_id=path.source_system_id,
+        systems=tuple(reversed(path.systems)),
+        distance_ly=path.distance_ly,
+        jumps=path.jumps,
+        is_same_system=path.is_same_system,
+        is_reachable=path.is_reachable,
+    )
+
+
 def _load_local_bubble(
     session: Session,
     anchor: ResolvedSystem,

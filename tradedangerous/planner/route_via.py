@@ -47,6 +47,7 @@ from .route_common import (
     _root_node,
     _route_progress_rank,
     _stations_from_endpoint,
+    _terminal_envelope_centre,
     _via_full_set,
     _via_satisfied_by,
     best_open_ended_hop_candidates,
@@ -456,6 +457,7 @@ def _lane_steering(
     terminal_xyz: tuple | None,
     terminal_exact_ids: frozenset,
     terminal_system_ids: frozenset,
+    terminal_spread_ly: float = 0.0,
     envelope_ly: float,
     final_layer: bool,
 ):
@@ -510,7 +512,16 @@ def _lane_steering(
             return xyz, envelope_ly, False, required, frozenset()
         required = terminal_exact_ids if final_layer else frozenset()
         term_sys = terminal_system_ids if final_layer else frozenset()
-        return terminal_xyz, envelope_ly, False, required, term_sys
+        # Widen by the terminal region's spread so an --end-jumps-expanded
+        # terminal in a neighbouring system is not pruned (spread is zero
+        # without --end-jumps — envelope unchanged).
+        return (
+            terminal_xyz,
+            envelope_ly + terminal_spread_ly,
+            False,
+            required,
+            term_sys,
+        )
 
     return None, None, False, frozenset(), frozenset()
 
@@ -542,6 +553,7 @@ def _plan_via_route(
     validation_ms: float,
     bubble_cache: dict,
     progress: pbar.Progress | None = None,
+    positioning_caches: dict[str, dict] | None = None,
 ) -> run_result.RunResult:
     """Plan an N-hop route through every --via waypoint.
 
@@ -580,6 +592,7 @@ def _plan_via_route(
     station_filter_started = time.perf_counter()
     seed_stations = _stations_from_endpoint(
         session, anchor_endpoint, request, role=anchor_role,
+        positioning_caches=positioning_caches,
     )
 
     if loop_mode:
@@ -618,9 +631,11 @@ def _plan_via_route(
     terminal_exact_ids: frozenset = frozenset()
     terminal_system_ids: frozenset = frozenset()
     terminal_xyz: tuple | None = None
+    terminal_spread_ly: float = 0.0
     if fixed_terminal and not loop_mode:
         terminal_stations = _stations_from_endpoint(
             session, request.to_endpoint, request, role="destination",
+            positioning_caches=positioning_caches,
         )
         if not terminal_stations:
             raise failures.NoViaRoute(
@@ -630,9 +645,23 @@ def _plan_via_route(
         terminal_endpoint_ids = frozenset(
             s.station_id for s in terminal_stations
         )
-        first = terminal_stations[0]
-        terminal_xyz = (first.x, first.y, first.z)
-        if request.to_endpoint.station is not None:
+        # With --end-jumps the eligible terminals span many systems out to
+        # end_jumps empty jumps of the anchor, not one --to system. Centre the
+        # terminal envelope on the region and carry its spread, so the
+        # feasibility bound admits every expanded terminal, not only the first.
+        # Without --end-jumps there is one terminal system and the spread is
+        # zero — the centre is that system, the envelope unchanged.
+        terminal_xyz, terminal_spread_ly = _terminal_envelope_centre(
+            terminal_stations
+        )
+        # The terminal lane reserves a slot for the trade terminal. Under
+        # --end-jumps the named --to station is only a positioning anchor and
+        # need not be a trade endpoint, so reserving it would pin a slot to a
+        # station that can never be accepted while the real expanded terminals
+        # are trimmed. Reserve the exact named station only when no --end-jumps
+        # expansion is in play; otherwise reserve the whole eligible set, which
+        # is what acceptance already checks against.
+        if request.to_endpoint.station is not None and not request.end_jumps:
             terminal_exact_ids = frozenset(
                 {request.to_endpoint.station.station_id}
             )
@@ -696,6 +725,7 @@ def _plan_via_route(
             terminal_xyz=terminal_xyz,
             terminal_exact_ids=terminal_exact_ids,
             terminal_system_ids=terminal_system_ids,
+            terminal_spread_ly=terminal_spread_ly,
             envelope_ly=envelope_ly,
             final_layer=final_layer,
         )

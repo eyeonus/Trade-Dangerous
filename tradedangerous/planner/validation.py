@@ -161,6 +161,32 @@ def validate_run_request(request: RunRequest) -> None:
             option_name="--loop-interval",
         )
 
+    # --start-jumps / --end-jumps size an empty-positioning net, so a negative
+    # count is meaningless. A negative count currently slips through as an
+    # accidental no-op (the expansion gate is `> 0`); reject it instead of
+    # silently ignoring it. --empty-ly is the unladen fan-out range, so zero or
+    # negative cannot describe a jump -- and a negative value would otherwise
+    # reach the spatial loader and build an inverted bounding box. (A zero is
+    # currently absorbed by the --ly-per fallback; reject it too, so an explicit
+    # 0 is reported rather than quietly substituted.)
+    if request.start_jumps < 0:
+        raise InvalidNumericOption(
+            "--start-jumps cannot be negative.",
+            option_name="--start-jumps",
+        )
+
+    if request.end_jumps < 0:
+        raise InvalidNumericOption(
+            "--end-jumps cannot be negative.",
+            option_name="--end-jumps",
+        )
+
+    if request.empty_ly_per is not None and request.empty_ly_per <= 0:
+        raise InvalidNumericOption(
+            "--empty-ly must be greater than zero.",
+            option_name="--empty-ly",
+        )
+
     if request.start_jumps and not request.from_text:
         raise MissingRequiredInput(
             "--start-jumps requires --from.",

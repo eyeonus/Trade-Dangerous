@@ -43,6 +43,7 @@ def _plan_fixed_endpoints(
     started: float,
     validation_ms: float,
     bubble_cache: dict[int, object],
+    positioning_caches: dict[str, dict] | None = None,
 ) -> run_result.RunResult:
     """Plan one hop when both endpoints are supplied by the user."""
 
@@ -58,12 +59,14 @@ def _plan_fixed_endpoints(
         source_endpoint,
         request,
         role="source",
+        positioning_caches=positioning_caches,
     )
     destination_stations = _stations_from_endpoint(
         session,
         destination_endpoint,
         request,
         role="destination",
+        positioning_caches=positioning_caches,
     )
     station_filter_ms = _elapsed_ms(station_filter_started)
 
@@ -107,6 +110,7 @@ def _best_open_ended_plan(
     open_role: str,
     bubble_cache: dict[int, object],
     progress=None,
+    positioning_caches: dict[str, dict] | None = None,
 ) -> run_result.RunResult:
     """Plan one hop with one fixed endpoint and one chosen by the planner.
 
@@ -140,6 +144,7 @@ def _best_open_ended_plan(
         fixed_endpoint,
         request,
         role=fixed_role,
+        positioning_caches=positioning_caches,
     )
     station_filter_ms = _elapsed_ms(station_filter_started)
 
