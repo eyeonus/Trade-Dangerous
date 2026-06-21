@@ -101,6 +101,121 @@ def _plan_fixed_endpoints(
     return _assemble_result(request, best_pairs, diagnostics)
 
 
+def _consume_pair_stream(
+    session: Session,
+    group_iter,
+    *,
+    kept: _KeptPairs,
+    threshold: _KeptScoreThreshold,
+    station_map: dict,
+    capacity_units: int,
+    penalty_percent: float,
+    available_credits: int,
+    cargo_limit_per_item: int,
+    stop_conversion_ls: float,
+    on_scanned=None,
+) -> tuple[int, float]:
+    """Drain one open-ended station-group stream into kept / threshold.
+
+    The single consumption path for every fixed/expanded one-hop shape — the
+    single-anchor open search and the batched fixed-pair matrix both feed it, so
+    selection, the cargo prune and the early stop cannot drift between them.
+
+    Each yielded station's candidates are grouped by (source, destination) and
+    solved best-first with the kept-score prune; the stream is abandoned once the
+    next ceiling provably cannot beat the held score. ``station_map`` is shared
+    and updated so open-side DTOs hydrate once (across streams, for the matrix).
+    Returns ``(candidate_trade_count, cargo_optimisation_ms)`` for this stream.
+    """
+
+    candidate_trade_count = 0
+    cargo_optimisation_ms = 0.0
+
+    def _order_key(item):
+        (_src, dest_id), candidates_for_pair = item
+        destination = station_map.get(dest_id)
+        if destination is None:
+            return float("-inf")
+        return cargo_order_key(
+            candidates_for_pair,
+            destination.ls_from_star,
+            capacity_units,
+            penalty_percent,
+        )
+
+    try:
+        for open_station_id, ceiling_ppu, station_candidates in group_iter:
+            if on_scanned is not None:
+                on_scanned()
+            floor = threshold.current()
+            if floor is not None:
+                stop_floor = cargo_prune_floor(
+                    floor, stop_conversion_ls, penalty_percent
+                )
+                if (
+                    stop_floor is not None
+                    and capacity_units * ceiling_ppu < stop_floor
+                ):
+                    # Provable early stop: ceilings are non-increasing and
+                    # no unread station can reach the held score.
+                    break
+            if open_station_id not in station_map:
+                open_station = data_gateway.fetch_stations_by_id(
+                    session,
+                    (open_station_id,),
+                ).get(open_station_id)
+                if open_station is None:
+                    # Lost its DTO during the fetch — defensive skip.
+                    continue
+                station_map[open_station_id] = open_station
+            candidate_trade_count += len(station_candidates)
+            grouped_pairs = _group_pairs(station_candidates)
+            for (source_id, destination_id), pair_candidates in sorted(
+                grouped_pairs.items(), key=_order_key, reverse=True
+            ):
+                source_station = station_map[source_id]
+                destination_station = station_map[destination_id]
+                prune_floor = cargo_prune_floor(
+                    threshold.current(),
+                    destination_station.ls_from_star,
+                    penalty_percent,
+                )
+                cargo_started = time.perf_counter()
+                try:
+                    cargo = optimise_cargo(
+                        pair_candidates,
+                        capacity_units=capacity_units,
+                        available_credits=available_credits,
+                        cargo_limit_per_item=cargo_limit_per_item,
+                        prune_below_raw=prune_floor,
+                    )
+                except failures.NoProfitableTrades:
+                    cargo_optimisation_ms += _elapsed_ms(cargo_started)
+                    continue
+                cargo_optimisation_ms += _elapsed_ms(cargo_started)
+                if cargo is None:
+                    # Pruned: cannot beat the best pair found so far.
+                    continue
+                practical_score = score_with_destination_penalty(
+                    cargo.total_profit,
+                    destination_distance_ls=destination_station.ls_from_star,
+                    penalty_percent=penalty_percent,
+                )
+                threshold.offer(practical_score)
+                kept.offer(
+                    _PairPlan(
+                        source_station=source_station,
+                        destination_station=destination_station,
+                        jump_path=None,
+                        cargo=cargo,
+                        practical_score=practical_score,
+                    )
+                )
+    finally:
+        group_iter.close()
+    return candidate_trade_count, cargo_optimisation_ms
+
+
 def _best_open_ended_plan(
     session: Session,
     request: RunRequest,
@@ -187,21 +302,24 @@ def _best_open_ended_plan(
     # never hydrated.
     station_map = {station.station_id: station for station in fixed_stations}
 
-    def _order_key(item):
-        (_src, dest_id), candidates_for_pair = item
-        destination = station_map.get(dest_id)
-        if destination is None:
-            return float("-inf")
-        return cargo_order_key(
-            candidates_for_pair,
-            destination.ls_from_star,
-            capacity_units,
-            penalty_percent,
-        )
-
     kept = _KeptPairs(request.routes, request)
-    cargo_optimisation_ms = 0.0
-    candidate_trade_count = 0
+
+    scanned_stations = 0
+
+    def _on_scanned():
+        # Streaming fetch with no known total, so the bar counts stations as
+        # they arrive rather than filling to a percentage. Refresh every 50 to
+        # keep the forced redraw off the hot path.
+        nonlocal scanned_stations
+        scanned_stations += 1
+        if scanned_stations % 50 == 0:
+            progress.increment(
+                50,
+                description=(
+                    f"scanning candidates · {scanned_stations:,} stations"
+                ),
+            )
+
     group_iter = data_gateway.iter_open_ended_station_groups(
         session,
         fixed_station_ids,
@@ -211,85 +329,19 @@ def _best_open_ended_plan(
         available_credits=available_credits,
         terminal_hop=True,
     )
-    scanned_stations = 0
-    try:
-        for open_station_id, ceiling_ppu, station_candidates in group_iter:
-            # Streaming fetch with no known total, so the bar counts stations as
-            # they arrive rather than filling to a percentage. Refresh every 50
-            # to keep the forced redraw off the hot path.
-            scanned_stations += 1
-            if scanned_stations % 50 == 0:
-                progress.increment(
-                    50,
-                    description=(
-                        f"scanning candidates · {scanned_stations:,} stations"
-                    ),
-                )
-            floor = threshold.current()
-            if floor is not None:
-                stop_floor = cargo_prune_floor(
-                    floor, stop_conversion_ls, penalty_percent
-                )
-                if (
-                    stop_floor is not None
-                    and capacity_units * ceiling_ppu < stop_floor
-                ):
-                    # Provable early stop: ceilings are non-increasing and
-                    # no unread station can reach the held score.
-                    break
-            if open_station_id not in station_map:
-                open_station = data_gateway.fetch_stations_by_id(
-                    session,
-                    (open_station_id,),
-                ).get(open_station_id)
-                if open_station is None:
-                    # Lost its DTO during the fetch — defensive skip.
-                    continue
-                station_map[open_station_id] = open_station
-            candidate_trade_count += len(station_candidates)
-            grouped_pairs = _group_pairs(station_candidates)
-            for (source_id, destination_id), pair_candidates in sorted(
-                grouped_pairs.items(), key=_order_key, reverse=True
-            ):
-                source_station = station_map[source_id]
-                destination_station = station_map[destination_id]
-                prune_floor = cargo_prune_floor(
-                    threshold.current(),
-                    destination_station.ls_from_star,
-                    penalty_percent,
-                )
-                cargo_started = time.perf_counter()
-                try:
-                    cargo = optimise_cargo(
-                        pair_candidates,
-                        capacity_units=capacity_units,
-                        available_credits=available_credits,
-                        cargo_limit_per_item=request.cargo_limit_per_item,
-                        prune_below_raw=prune_floor,
-                    )
-                except failures.NoProfitableTrades:
-                    cargo_optimisation_ms += _elapsed_ms(cargo_started)
-                    continue
-                cargo_optimisation_ms += _elapsed_ms(cargo_started)
-                if cargo is None:
-                    # Pruned: cannot beat the best pair found so far.
-                    continue
-                practical_score = score_with_destination_penalty(
-                    cargo.total_profit,
-                    destination_distance_ls=destination_station.ls_from_star,
-                    penalty_percent=penalty_percent,
-                )
-                threshold.offer(practical_score)
-                pair = _PairPlan(
-                    source_station=source_station,
-                    destination_station=destination_station,
-                    jump_path=None,
-                    cargo=cargo,
-                    practical_score=practical_score,
-                )
-                kept.offer(pair)
-    finally:
-        group_iter.close()
+    candidate_trade_count, cargo_optimisation_ms = _consume_pair_stream(
+        session,
+        group_iter,
+        kept=kept,
+        threshold=threshold,
+        station_map=station_map,
+        capacity_units=capacity_units,
+        penalty_percent=penalty_percent,
+        available_credits=available_credits,
+        cargo_limit_per_item=request.cargo_limit_per_item,
+        stop_conversion_ls=stop_conversion_ls,
+        on_scanned=_on_scanned,
+    )
     # The stream interleaves fetch and solve, so the cargo share accumulated
     # inside the loop is subtracted to keep the market figure a fetch cost.
     market_query_ms = _elapsed_ms(market_started) - cargo_optimisation_ms
@@ -628,15 +680,24 @@ def _batched_pair_plan(
 
     Per source system the reachable systems are computed once (respecting
     --avoid transit, via reachable_systems_from so the avoid-blind SQL fallback
-    is never used) and every profitable (source, destination) pair is streamed
-    through one iter_open_ended_station_groups call, the open destination side
-    restricted to the expanded destination set. Cargo is solved per pair and
-    offered to the same bounded best-N collector, so kept-pair selection and ties
-    match the per-pair matrix exactly. Jump paths are plotted only for the kept
-    winners — reachability is already the candidate gate.
+    is never used), and every profitable (source, destination) pair is streamed
+    through one iter_open_ended_station_groups call — the open destination side
+    restricted to the expanded destination set — and solved as its group is
+    yielded. Nothing is buffered across the stream: cargo runs per pair into the
+    shared bounded collector, and the shared kept-score threshold lets the stream
+    stop reading once no unread station can win. So selection and ties match the
+    per-pair matrix exactly while query count, memory and rows read stay bounded.
+    Jump paths are plotted only for the kept winners — reachability is the gate.
+
+    A cheap coordinate-radius precheck per source system skips bubble
+    construction entirely when no destination lies within the maximum geometric
+    reach (the old per-pair triangle reject); --jumps-per 0 is same-system only.
     """
 
     kept = _KeptPairs(request.routes, request)
+    threshold = _KeptScoreThreshold(
+        request.routes, enabled=request.towards_target is None
+    )
     reachability_ms = 0.0
     market_query_ms = 0.0
     cargo_optimisation_ms = 0.0
@@ -645,15 +706,20 @@ def _batched_pair_plan(
         int(request.starting_credits or 0) - request.insurance_reserve
     )
     capacity_units = int(request.capacity_units or 0)
+    penalty_percent = request.ls_penalty_percent
     max_jumps = int(request.max_jumps_per_hop or 0)
     max_ly = float(request.max_ly_per_jump or 0.0)
+    # The open side is the destination, whose ls varies per station, so the early
+    # stop converts the held score at the most permissive ls (0).
+    stop_conversion_ls = 0
 
     source_by_id = {s.station_id: s for s in source_stations}
     destination_by_id = {d.station_id: d for d in destination_stations}
     destination_ids = frozenset(destination_by_id)
+    # Both sides' DTOs are known up front, so the consumer never refetches.
+    station_map = {**source_by_id, **destination_by_id}
 
-    # Reachability is a per-system fact: group the source stations by system and
-    # compute each system's reachable set once.
+    # Reachability is a per-system fact: group source stations by system.
     source_by_system: dict[int, list] = {}
     source_system_by_id: dict[int, run_result.ResolvedSystem] = {}
     for station in source_stations:
@@ -663,34 +729,59 @@ def _batched_pair_plan(
                 station
             )
 
+    # Distinct destination system coordinates, for the cheap reach precheck.
+    dest_system_coords: dict[int, tuple[float, float, float]] = {}
+    for d in destination_stations:
+        dest_system_coords.setdefault(d.system_id, (d.x, d.y, d.z))
+
+    # Per source system: a coordinate-radius precheck (the bubble's own triangle
+    # bound) decides whether ANY destination could be reached. The bubble is
+    # built only then, so a source system whose destinations are all out of
+    # geometric range costs nothing — the old per-pair triangle reject, kept.
+    # --jumps-per 0 is same-system only and needs no bubble.
     reach_started = time.perf_counter()
+    max_reach_sq = (max_jumps * max_ly) ** 2
     reachable_by_system: dict[int, tuple] = {}
     reachable_ids_by_system: dict[int, frozenset] = {}
     for system_id, system in source_system_by_id.items():
-        reachable = reachable_systems_from(
-            session,
-            system,
-            max_jumps_per_hop=max_jumps,
-            max_ly_per_jump=max_ly,
-            bubble_cache=bubble_cache,
-            avoid_system_ids=request.avoid_system_ids,
+        sx, sy, sz = system.x, system.y, system.z
+        in_reach = any(
+            (cx - sx) ** 2 + (cy - sy) ** 2 + (cz - sz) ** 2 <= max_reach_sq
+            for cx, cy, cz in dest_system_coords.values()
         )
+        if not in_reach:
+            continue
+        if max_jumps == 0:
+            # Same-system supercruise only; no jump graph to build.
+            reachable = (system,)
+        else:
+            reachable = reachable_systems_from(
+                session,
+                system,
+                max_jumps_per_hop=max_jumps,
+                max_ly_per_jump=max_ly,
+                bubble_cache=bubble_cache,
+                avoid_system_ids=request.avoid_system_ids,
+            )
         reachable_by_system[system_id] = reachable
         reachable_ids_by_system[system_id] = frozenset(
             r.system_id for r in reachable
         )
     reachability_ms += _elapsed_ms(reach_started)
 
-    # Failure classification comes from the reachable relation itself, not from
-    # the profitable stream output: which sources can reach a non-self
-    # destination, and which destinations are reachable from a non-self source.
+    # Failure classification from the reachable relation itself, not the
+    # profitable stream: which sources can reach a non-self destination, and
+    # which destinations are reachable from a non-self source. Systems the
+    # precheck skipped have no reachable destination and contribute nothing.
     dests_by_system: dict[int, list] = {}
     for station in destination_stations:
         dests_by_system.setdefault(station.system_id, []).append(station)
     reachable_source_ids: set[int] = set()
     reachable_destination_ids: set[int] = set()
     for system_id, sources_here in source_by_system.items():
-        reach_ids = reachable_ids_by_system[system_id]
+        reach_ids = reachable_ids_by_system.get(system_id)
+        if not reach_ids:
+            continue
         dests_reachable = [
             d
             for dest_system_id, group in dests_by_system.items()
@@ -709,21 +800,20 @@ def _batched_pair_plan(
                 reachable_destination_ids.add(d.station_id)
     saw_reachable_pair = bool(reachable_source_ids)
 
-    # Stream candidates per source system, pairing against the expanded
-    # destination set. The destination restriction is materialised once and
-    # reused across every stream (amendment), small sets staying a literal IN.
+    # Stream + solve per source system. The destination restriction is
+    # materialised once and reused across streams; kept and threshold are
+    # shared, so the early stop tightens as winners accumulate across systems.
     connection = session.connection()
     dest_temp, restrict_kwargs = data_gateway.build_open_restriction(
         connection, destination_ids
     )
-    pair_candidates: dict[tuple[int, int], list] = {}
     try:
         for system_id, sources_here in source_by_system.items():
-            reachable = reachable_by_system[system_id]
+            reachable = reachable_by_system.get(system_id)
             if not reachable:
                 continue
-            market_started = time.perf_counter()
-            stream = data_gateway.iter_open_ended_station_groups(
+            stream_started = time.perf_counter()
+            group_iter = data_gateway.iter_open_ended_station_groups(
                 session,
                 tuple(s.station_id for s in sources_here),
                 source_system_by_id[system_id],
@@ -734,60 +824,26 @@ def _batched_pair_plan(
                 precomputed_reachable_systems=reachable,
                 **restrict_kwargs,
             )
-            try:
-                for _open_id, _ceiling, candidates in stream:
-                    for candidate in candidates:
-                        if (
-                            candidate.source_station_id
-                            == candidate.destination_station_id
-                        ):
-                            continue
-                        key = (
-                            candidate.source_station_id,
-                            candidate.destination_station_id,
-                        )
-                        pair_candidates.setdefault(key, []).append(candidate)
-                        candidate_trade_count += 1
-            finally:
-                stream.close()
-            market_query_ms += _elapsed_ms(market_started)
+            stream_candidates, stream_cargo_ms = _consume_pair_stream(
+                session,
+                group_iter,
+                kept=kept,
+                threshold=threshold,
+                station_map=station_map,
+                capacity_units=capacity_units,
+                penalty_percent=penalty_percent,
+                available_credits=available_credits,
+                cargo_limit_per_item=request.cargo_limit_per_item,
+                stop_conversion_ls=stop_conversion_ls,
+            )
+            candidate_trade_count += stream_candidates
+            cargo_optimisation_ms += stream_cargo_ms
+            market_query_ms += _elapsed_ms(stream_started) - stream_cargo_ms
     finally:
         if dest_temp is not None:
             dest_temp.drop(connection, checkfirst=True)
 
-    saw_profitable_pair = bool(pair_candidates)
-
-    # Cargo per pair, offered to the bounded collector. Offer order does not
-    # matter: it keeps the top-N under a deterministic total order, so the
-    # batched result matches the per-pair matrix exactly.
-    for (source_id, dest_id), candidates in pair_candidates.items():
-        cargo_started = time.perf_counter()
-        try:
-            cargo = optimise_cargo(
-                tuple(candidates),
-                capacity_units=capacity_units,
-                available_credits=available_credits,
-                cargo_limit_per_item=request.cargo_limit_per_item,
-            )
-        except failures.NoProfitableTrades:
-            cargo_optimisation_ms += _elapsed_ms(cargo_started)
-            continue
-        cargo_optimisation_ms += _elapsed_ms(cargo_started)
-        destination_station = destination_by_id[dest_id]
-        practical_score = score_with_destination_penalty(
-            cargo.total_profit,
-            destination_distance_ls=destination_station.ls_from_star,
-            penalty_percent=request.ls_penalty_percent,
-        )
-        kept.offer(
-            _PairPlan(
-                source_station=source_by_id[source_id],
-                destination_station=destination_station,
-                jump_path=None,
-                cargo=cargo,
-                practical_score=practical_score,
-            )
-        )
+    saw_profitable_pair = candidate_trade_count > 0
 
     best_pairs = kept.best()
     if best_pairs:
