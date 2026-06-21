@@ -50,6 +50,7 @@ from .route_common import (
     _terminal_envelope_centre,
     _via_full_set,
     _via_satisfied_by,
+    batched_seed_hop_candidates,
     best_open_ended_hop_candidates,
 )
 
@@ -766,22 +767,105 @@ def _plan_via_route(
             node_task = progress.open_subtask(
                 f"  hop {hop_layer}: expanding stations", layer_frontier_in
             )
-            for entry in frontier:
-                progress.update_task(node_task, advance=1)
-                expansions_examined += 1
-                layer_expansion_calls += 1
-                for trade in _expand(
-                    entry, envelope_ly, terminal_hop=False, final_layer=False,
-                ):
-                    child = _make_open_child(entry.node, trade, request, open_role=open_role)
-                    candidate_trade_count += 1
-                    layer_children_generated += 1
-                    next_entries.extend(
-                        _child_lane_entries(
-                            entry, child, full_mask,
-                            fixed_terminal=fixed_terminal,
+            if hop_layer == 1 and not loop_mode:
+                # Seed layer: group lane entries by their full steering signature
+                # (envelope / distance_first / reservation; the system is grouped
+                # inside the helper), so each batched expansion is one
+                # (system, signature) stream rather than one per lane entry.
+                # Loops keep the per-entry path below — their terminal steering is
+                # root-specific, so same-target lanes do not share a signature.
+                signature_groups: dict = {}
+                for entry in frontier:
+                    env_xyz, env_ly, dist_first, required_ids, term_sys = (
+                        _lane_steering(
+                            entry,
+                            loop_mode=loop_mode,
+                            via_pos=via_pos,
+                            terminal_xyz=terminal_xyz,
+                            terminal_exact_ids=terminal_exact_ids,
+                            terminal_system_ids=terminal_system_ids,
+                            terminal_spread_ly=terminal_spread_ly,
+                            envelope_ly=envelope_ly,
+                            final_layer=False,
                         )
                     )
+                    signature = (
+                        env_xyz, env_ly, dist_first, required_ids, term_sys,
+                    )
+                    signature_groups.setdefault(signature, []).append(entry)
+                for signature, group_entries in signature_groups.items():
+                    env_xyz, env_ly, dist_first, required_ids, term_sys = (
+                        signature
+                    )
+                    layer_expansion_calls += len(
+                        {e.node.station.system_id for e in group_entries}
+                    )
+                    seed_results = batched_seed_hop_candidates(
+                        session,
+                        tuple(e.node.station for e in group_entries),
+                        request,
+                        open_role=open_role,
+                        budget_credits=optimistic_credits,
+                        ignore_credits=True,
+                        top_k=_MULTIHOP_EXPANSION_WIDTH,
+                        terminal_hop=False,
+                        bubble_cache=bubble_cache,
+                        retain_correction=True,
+                        reachable_memo=reachable_memo,
+                        station_cache=station_cache,
+                        qualification=qualification,
+                        forbidden_by_seed={
+                            e.node.station.station_id: _revisit_forbidden(
+                                e.node, request,
+                                backward=open_role == "source",
+                            )
+                            for e in group_entries
+                        },
+                        destination_envelope_xyz=env_xyz,
+                        destination_envelope_ly=env_ly,
+                        distance_first=dist_first,
+                        required_station_ids=required_ids,
+                        terminal_system_station_ids=term_sys,
+                        expansion_stats=expansion_stats,
+                    )
+                    for entry in group_entries:
+                        progress.update_task(node_task, advance=1)
+                        expansions_examined += 1
+                        for trade in seed_results.get(
+                            entry.node.station.station_id, []
+                        ):
+                            child = _make_open_child(
+                                entry.node, trade, request,
+                                open_role=open_role,
+                            )
+                            candidate_trade_count += 1
+                            layer_children_generated += 1
+                            next_entries.extend(
+                                _child_lane_entries(
+                                    entry, child, full_mask,
+                                    fixed_terminal=fixed_terminal,
+                                )
+                            )
+            else:
+                for entry in frontier:
+                    progress.update_task(node_task, advance=1)
+                    expansions_examined += 1
+                    layer_expansion_calls += 1
+                    for trade in _expand(
+                        entry, envelope_ly,
+                        terminal_hop=False, final_layer=False,
+                    ):
+                        child = _make_open_child(
+                            entry.node, trade, request, open_role=open_role,
+                        )
+                        candidate_trade_count += 1
+                        layer_children_generated += 1
+                        next_entries.extend(
+                            _child_lane_entries(
+                                entry, child, full_mask,
+                                fixed_terminal=fixed_terminal,
+                            )
+                        )
             progress.close_subtask(node_task)
             layer_elapsed_ms = _elapsed_ms(layer_started)
             market_query_ms += layer_elapsed_ms

@@ -1818,21 +1818,86 @@ def best_open_ended_hop_candidates(
     return hop_candidates
 
 
-def _rank_seed_entries(entries: list, request: RunRequest) -> list:
-    """Order seed-expansion entries best-first: progress rank desc, pair-key asc.
+def _rank_seed_entries(
+    entries: list,
+    request: RunRequest,
+    *,
+    steering: bool = False,
+    envelope_xyz: tuple[float, float, float] | None = None,
+) -> list:
+    """Order seed-expansion entries best-first, matching the single-anchor path.
 
-    The same order best_open_ended_hop_candidates materialises in — a stable sort
-    by the pair-best tie-key, then by progress rank — so a one-seed batch ranks
-    identically to the single-anchor path. Used both to keep each seed's
-    collector bounded (running top-K) and for the final materialise.
+    Under steering (a via lane): distance-first — closest to the envelope centre
+    first, score breaking ties — exactly as best_open_ended_hop_candidates ranks
+    a steered lane. Otherwise: a stable sort by the pair-best tie-key, then by
+    progress rank. Used both to keep each seed's collector bounded (running
+    top-K) and for the final materialise.
     """
 
+    if steering:
+        centre_x, centre_y, centre_z = envelope_xyz
+
+        def _distance_first_key(item):
+            station = item[1]
+            distance_sq = (
+                (station.x - centre_x) ** 2
+                + (station.y - centre_y) ** 2
+                + (station.z - centre_z) ** 2
+            )
+            return (distance_sq, -item[0])
+
+        return sorted(entries, key=_distance_first_key)
     ranked = sorted(entries, key=lambda item: item[4])
     ranked.sort(
         key=lambda item: _candidate_progress_rank(item, request),
         reverse=True,
     )
     return ranked
+
+
+def _select_seed_hop_entries(
+    ordinary_ranked: list,
+    leader: tuple | None,
+    reserved_pool: list,
+    *,
+    steering: bool,
+    top_k: int,
+    reserve_ids: frozenset,
+    required_station_ids: frozenset,
+    terminal_system_station_ids: frozenset,
+) -> tuple[list, int | None]:
+    """Per-seed selection mirroring best_open_ended_hop_candidates exactly.
+
+    Returns ``(entries, cap)`` for materialisation. With no steering and no
+    reservation the ordinary ranking is materialised capped at top_k. Otherwise
+    the steered/reserved path: top_k ordinary by rank, then hold the score
+    leader's slot when it missed the distance cut (the leader is tracked
+    separately so the distance-bounded collector cannot have dropped it), then
+    union the reserved stations past the cut, deduped on (open station, pair).
+    Reserved candidates are never trimmed back out, so the cap is then None.
+    """
+
+    if not (steering or reserve_ids):
+        return ordinary_ranked, top_k
+    selected = ordinary_ranked[:top_k]
+    if steering and top_k >= 2 and leader is not None:
+        top_keys = {(entry[1].station_id, entry[4][2]) for entry in selected}
+        if (leader[1].station_id, leader[4][2]) not in top_keys:
+            # The score leader missed the distance cut: occupy the lowest
+            # distance-ranked slot with it rather than adding a slot.
+            selected = ordinary_ranked[: top_k - 1] + [leader]
+    reserved_selected = _select_reserved(
+        reserved_pool, required_station_ids, terminal_system_station_ids,
+    )
+    selected_keys = {
+        (entry[1].station_id, entry[4][2]) for entry in selected
+    }
+    for entry in reserved_selected:
+        key = (entry[1].station_id, entry[4][2])
+        if key not in selected_keys:
+            selected.append(entry)
+            selected_keys.add(key)
+    return selected, None
 
 
 def batched_seed_hop_candidates(
@@ -1853,6 +1918,9 @@ def batched_seed_hop_candidates(
     forbidden_by_seed: dict[int, frozenset[int]] | None = None,
     destination_envelope_xyz: tuple[float, float, float] | None = None,
     destination_envelope_ly: float | None = None,
+    distance_first: bool = False,
+    required_station_ids: frozenset[int] = frozenset(),
+    terminal_system_station_ids: frozenset[int] = frozenset(),
     expansion_stats: run_result.ExpansionStats | None = None,
 ) -> dict[int, list[_HopCandidate]]:
     """Expand many equivalent hop-zero anchors that share a reachable market.
@@ -1880,10 +1948,18 @@ def batched_seed_hop_candidates(
     penalty_percent = request.ls_penalty_percent
     anchor_is_destination = open_role == "source"
     forbidden_by_seed = forbidden_by_seed or {}
-    # --towards (and via steering, never a seed) make practical score a
+    steering = distance_first
+    if steering and destination_envelope_xyz is None:
+        # Distance-first ranks by closeness to the envelope centre, so the centre
+        # must exist — a via lane always supplies one.
+        raise ValueError(
+            "distance_first seed expansion requires an envelope centre."
+        )
+    reserve_ids = required_station_ids | terminal_system_station_ids
+    # --towards or via distance-first steering make practical score a
     # non-primary key, so the score-ceiling stop and prune floor are unsound;
-    # the stream is then exhausted exactly as the single-anchor path does.
-    pruning_enabled = request.towards_target is None
+    # the stream is then exhausted, exactly as the single-anchor path does.
+    pruning_enabled = request.towards_target is None and not steering
     results: dict[int, list[_HopCandidate]] = {}
 
     # Same-system seeds share one reachable market stream.
@@ -1904,6 +1980,14 @@ def batched_seed_hop_candidates(
         threshold_by_seed = {
             s.station_id: _KeptScoreThreshold(top_k, enabled=pruning_enabled)
             for s in system_seeds
+        }
+        # Steering tracks the score leader per seed (the distance-bounded
+        # collector can drop it, but the leader slot must survive — parity with
+        # the single-anchor policy). A reserved pool per seed holds the targeted
+        # fetch's must-keep stations, never trimmed.
+        leader_by_seed: dict[int, tuple] = {}
+        reserved_by_seed: dict[int, list] = {
+            s.station_id: [] for s in system_seeds
         }
         # A seed's early-stop floor converts at its own most-permissive ls: the
         # anchor's own ls when the anchor is the destination (backward), the
@@ -1952,7 +2036,7 @@ def batched_seed_hop_candidates(
                     return False
             return True
 
-        def _consume(open_station_id, station_candidates):
+        def _consume(open_station_id, station_candidates, *, reserved=False):
             hydrate_started = time.perf_counter()
             open_station = data_gateway.fetch_stations_by_id(
                 session, (open_station_id,), cache=station_cache,
@@ -2015,7 +2099,7 @@ def batched_seed_hop_candidates(
                             destination_distance_ls,
                             penalty_percent,
                         )
-                        if pruning_enabled
+                        if (pruning_enabled and not reserved)
                         else None
                     )
                     cargo_started = time.perf_counter()
@@ -2042,29 +2126,57 @@ def batched_seed_hop_candidates(
                         destination_distance_ls=destination_distance_ls,
                         penalty_percent=penalty_percent,
                     )
+                    entry = (
+                        practical_score,
+                        open_station,
+                        cargo,
+                        pair_candidates,
+                        (
+                            -pair_candidates[0].profit_per_unit,
+                            pair_candidates[0].item_name,
+                            pair_key,
+                        ),
+                    )
+                    if reserved:
+                        # Targeted reserved fetch: keep every must-reach entry,
+                        # never trimmed, never raising the floor.
+                        reserved_by_seed[seed_id].append(entry)
+                        continue
                     if pruning_enabled:
                         threshold.offer(practical_score)
-                    bucket = scored_by_seed[seed_id]
-                    bucket.append(
-                        (
-                            practical_score,
-                            open_station,
-                            cargo,
-                            pair_candidates,
-                            (
-                                -pair_candidates[0].profit_per_unit,
-                                pair_candidates[0].item_name,
-                                pair_key,
-                            ),
+                    if steering:
+                        # Track the score leader so the distance-bounded
+                        # collector can't drop it: max score, ties to the closest
+                        # to the envelope centre, then first-seen — matching the
+                        # single-anchor max(... first occurrence ...).
+                        cx, cy, cz = destination_envelope_xyz
+                        distance_sq = (
+                            (open_station.x - cx) ** 2
+                            + (open_station.y - cy) ** 2
+                            + (open_station.z - cz) ** 2
                         )
-                    )
+                        current = leader_by_seed.get(seed_id)
+                        if (
+                            current is None
+                            or practical_score > current[0]
+                            or (
+                                practical_score == current[0]
+                                and distance_sq < current[1]
+                            )
+                        ):
+                            leader_by_seed[seed_id] = (
+                                practical_score, distance_sq, entry,
+                            )
+                    bucket = scored_by_seed[seed_id]
+                    bucket.append(entry)
                     if len(bucket) >= 2 * top_k:
                         # Bounded per-seed top-K: a fast-filling seed cannot grow
                         # unbounded before the shared multi-floor stop fires.
                         # Entry ranks are fixed, so compacting to the running
                         # top-K keeps exactly what keeping them all would.
                         scored_by_seed[seed_id] = _rank_seed_entries(
-                            bucket, request
+                            bucket, request, steering=steering,
+                            envelope_xyz=destination_envelope_xyz,
                         )[:top_k]
 
         group_iter = data_gateway.iter_open_ended_station_groups(
@@ -2093,18 +2205,62 @@ def batched_seed_hop_candidates(
         finally:
             group_iter.close()
 
+        if reserve_ids:
+            # Targeted reserved fetch: the lane's must-reach stations (an exact
+            # station via at this layer) fetched directly under the same rules
+            # and demultiplexed per seed — retained past the ordinary trim.
+            reserved_iter = data_gateway.iter_open_ended_station_groups(
+                session,
+                tuple(s.station_id for s in system_seeds),
+                anchor_system,
+                request,
+                open_role=open_role,
+                available_credits=budget_credits,
+                unbounded_credits=ignore_credits,
+                terminal_hop=terminal_hop,
+                reachable_memo=reachable_memo,
+                restrict_open_station_ids=frozenset(reserve_ids),
+                expansion_stats=expansion_stats,
+                precomputed_reachable_systems=precomputed_reachable,
+                qualification=qualification,
+            )
+            try:
+                for open_station_id, _ceiling, station_candidates in (
+                    reserved_iter
+                ):
+                    _consume(
+                        open_station_id, station_candidates, reserved=True,
+                    )
+            finally:
+                reserved_iter.close()
+
         # Materialise each seed's top-K independently — same ranking, jump-path
         # anchoring and reversal the single-anchor primitives use.
         for seed in system_seeds:
-            entries = scored_by_seed[seed.station_id]
-            if not entries:
+            ordinary = scored_by_seed[seed.station_id]
+            reserved_pool = reserved_by_seed[seed.station_id]
+            if not ordinary and not reserved_pool:
                 continue
-            ranked = _rank_seed_entries(entries, request)
+            ordinary_ranked = _rank_seed_entries(
+                ordinary, request, steering=steering,
+                envelope_xyz=destination_envelope_xyz,
+            )
+            leader_tracked = leader_by_seed.get(seed.station_id)
+            selected, cap = _select_seed_hop_entries(
+                ordinary_ranked,
+                leader_tracked[2] if leader_tracked is not None else None,
+                reserved_pool,
+                steering=steering,
+                top_k=top_k,
+                reserve_ids=reserve_ids,
+                required_station_ids=required_station_ids,
+                terminal_system_station_ids=terminal_system_station_ids,
+            )
             built: list[_HopCandidate] = []
             for practical_score, open_station, cargo, pair_candidates, _key in (
-                ranked
+                selected
             ):
-                if len(built) >= top_k:
+                if cap is not None and len(built) >= cap:
                     break
                 open_system = _system_from_station(open_station)
                 jump_started = time.perf_counter()
