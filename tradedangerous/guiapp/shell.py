@@ -979,8 +979,16 @@ class AppShell:
                         f'No {command_label} results yet.'
                     ).classes('text-sm text-gray-600')
                 elif self.session.execution.error_message:
+                    error_text = self.session.execution.error_message
+                    with ui.row().classes('w-full items-center gap-2'):
+                        ui.button(
+                            icon='content_copy',
+                            on_click=lambda: self._copy_text_to_clipboard(
+                                error_text, 'Error message'
+                            ),
+                        ).props('flat dense').tooltip('Copy error message')
                     ui.label(
-                        self.session.execution.error_message
+                        error_text
                     ).classes('text-negative whitespace-pre-wrap')
                 else:
                     render_command_results(
@@ -998,9 +1006,26 @@ class AppShell:
                     f'No {command_label} diagnostics yet.'
                 ).classes('text-sm text-gray-600')
                 return
+            diagnostics_text = self.session.execution.diagnostics_output
+            if diagnostics_text:
+                with ui.row().classes('w-full items-center gap-2'):
+                    ui.button(
+                        icon='content_copy',
+                        on_click=lambda: self._copy_text_to_clipboard(
+                            diagnostics_text, 'Diagnostics'
+                        ),
+                    ).props('flat dense').tooltip('Copy diagnostics')
             ui.label(
-                self.session.execution.diagnostics_output
+                diagnostics_text
             ).classes('whitespace-pre-wrap')
+    
+    def _copy_text_to_clipboard(self, text: str, label: str) -> None:
+        # ui.clipboard.write runs navigator.clipboard.writeText on the client.
+        # It works in secure contexts, which includes native mode on localhost.
+        # The copy is independent of the rendered panes, so a clipboard hiccup
+        # cannot disturb the error or diagnostics text already on screen.
+        ui.clipboard.write(text)
+        ui.notify(f'{label} copied to clipboard.')
     
     # Native close can delete the NiceGUI client while background polling is
     # still unwinding. Treat that specific case as shutdown noise, not a fresh

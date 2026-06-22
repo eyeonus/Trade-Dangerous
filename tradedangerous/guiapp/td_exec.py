@@ -549,6 +549,7 @@ class TdExecutor:
         diagnostics_stream = io.StringIO()
         render_stream = io.StringIO()
         structured_result = None
+        structured_snapshot = None
         
         try:
             cmdenv = commands.CommandIndex().parse(list(argv))
@@ -597,6 +598,14 @@ class TdExecutor:
                             render_stream
                         ):
                             results.render(cmdenv, tdb)
+                        # Flatten ORM-backed results into plain data while the
+                        # session is still open. After tdb.close() any lazy
+                        # relationship access (e.g. System.stations) would raise
+                        # DetachedInstanceError.
+                        structured_snapshot = _snapshot_structured_result(
+                            request.command,
+                            structured_result,
+                        )
                 finally:
                     if tdb is not None:
                         tdb.close(final=True)
@@ -614,10 +623,7 @@ class TdExecutor:
             diagnostics_output=_strip_ansi(
                 diagnostics_stream.getvalue().strip()
             ),
-            structured_result=_snapshot_structured_result(
-                request.command,
-                structured_result,
-            ),
+            structured_result=structured_snapshot,
             argv_used=argv,
         )
     
