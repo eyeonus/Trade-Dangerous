@@ -8,6 +8,7 @@ from .exceptions import CommandLineError, NoDataError, GameDataError
 from .parsing import ParseArgument, MutuallyExclusiveGroup
 from tradedangerous import TradeException, TradeORM
 from tradedangerous.db import orm_models as models
+from tradedangerous.db.utils import age_in_days
 from tradedangerous.tradegame import EliteGame, JsonFiles, require_game_data
 from tradedangerous.formatting import RowFormat, max_len
 
@@ -17,6 +18,12 @@ from sqlalchemy.orm import aliased
 
 if typing.TYPE_CHECKING:
     from .commandenv import CommandEnv, CommandResults
+
+
+# Multi-station output (a system endpoint on either side, or --local) can pair
+# a great many stations. When neither --limit nor --best bounds it, cap the
+# result set to this many rows and say so.
+DEFAULT_MULTI_STATION_LIMIT = 20
 
 
 ######################################################################
@@ -78,6 +85,12 @@ switches = [
         help = 'Requires at least this many units demand at the buyer (default 1)',
         type = int,
         default = 1,
+    ),
+    ParseArgument('--age',
+        help = 'Only consider trades fresher than this many days on both ends',
+        dest = 'maxAge',
+        type = float,
+        default = 0,
     ),
 ]
 
@@ -231,6 +244,16 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
     if getattr(cmdenv, "reverse", False):
         cmdenv.DEBUG0("--reverse: Reversing origin and destination")
         lhs, rhs = rhs, lhs
+    origin_multi = isinstance(lhs, models.System)
+    dest_multi = isinstance(rhs, models.System)
+    multi_station = origin_multi or dest_multi
+    # --load/--full-load build one cargo load and need a single concrete origin
+    # and destination; --fill is evaluated per row and stays valid here.
+    if multi_station and want_load:
+        raise CommandLineError(
+            "--load/--full-load need a single origin and destination station; "
+            "they do not apply when an endpoint is a whole system."
+        )
 
     # We want numbers to use in an ">" operation such that we produce
     # `> 0` to mean "1 or more", matching the index.
@@ -272,6 +295,22 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
         )
         .order_by((buyer.demand_price - seller.supply_price).desc())
     )
+    # --age: both ends of the trade must be at least this fresh.
+    if cmdenv.maxAge:
+        stmt = stmt.where(
+            age_in_days(tdb.session, seller.modified) <= cmdenv.maxAge,
+            age_in_days(tdb.session, buyer.modified) <= cmdenv.maxAge,
+        )
+    # Bound the result set in SQL. Multi-station mode can pair a great many
+    # stations, so when no explicit --limit is given we apply a default cap and
+    # flag it; single-station mode keeps the historic "no cap" default.
+    limit = cmdenv.limit
+    auto_limit = 0
+    if multi_station and limit <= 0:
+        limit = DEFAULT_MULTI_STATION_LIMIT
+        auto_limit = limit
+    if limit > 0:
+        stmt = stmt.limit(limit)
     compiled = stmt.compile(
         dialect=tdb.session.bind.dialect,
         compile_kwargs={"literal_binds": True}
@@ -286,11 +325,13 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
     results.summary = ResultRow(color=cmdenv.color)
     results.summary.fromStation = lhs
     results.summary.toStation = rhs
+    results.summary.originMulti = origin_multi
+    results.summary.destMulti = dest_multi
+    results.summary.autoLimit = auto_limit
     
     now = datetime.datetime.now(tz=datetime.timezone.utc)
     
-    if cmdenv.limit > 0:
-        trades = trades[:cmdenv.limit]
+    # Output is already bounded by the SQL LIMIT above.
     
     results.summary.cargo_space = 1
     if game and (want_fill or want_load):
@@ -364,8 +405,16 @@ def render(results, cmdenv, tdb):
     longestNameLen = max_len(results.rows, key=lambda row: row["item"])
     
     rowFmt = RowFormat()
+    if results.summary.originMulti:
+        fromLen = max_len(results.rows, key=lambda row: row["from_station"])
+        rowFmt.addColumn('From', '<', fromLen,
+                key=lambda row: row["from_station"])
     rowFmt.addColumn('Item', '<', longestNameLen,
             key=lambda row: row["item"])
+    if results.summary.destMulti:
+        toLen = max_len(results.rows, key=lambda row: row["to_station"])
+        rowFmt.addColumn('To', '<', toLen,
+                key=lambda row: row["to_station"])
     rowFmt.addColumn('Profit', '>', 10, 'n',
             key=lambda row: row["gain"])
     rowFmt.addColumn('Cost', '>', 10, 'n',
@@ -398,7 +447,13 @@ def render(results, cmdenv, tdb):
 
     heading, underline = rowFmt.heading()
     if not cmdenv.quiet:
-        print(f"{len(results.rows)} trades found between {_place_label(results.summary.fromStation)} and {_place_label(results.summary.toStation)}.")
+        summary = results.summary
+        print(f"From: {_place_label(summary.fromStation)}    "
+              f"To: {_place_label(summary.toStation)}")
+        if getattr(summary, "autoLimit", 0):
+            print(f"(showing the top {summary.autoLimit} by profit; "
+                  f"pass --limit to choose how many)")
+        print(f"{len(results.rows)} trades found.")
         print(heading)
         print(underline)
 
