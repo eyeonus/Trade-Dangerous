@@ -300,6 +300,12 @@ Goal:
 - align docs/comments with reality
 - prepare for upstream merge or selective PRs
 
+### O — Rebuild the test suite against the post-rewrite codebase
+Goal:
+- restore a green, meaningful suite after the planner rewrite retired the modules
+  the old tests targeted (`tradedb.py`, `tradecalc.py`, the preload model)
+- rebuild tests against the current architecture rather than patch the obsolete ones
+
 ---
 
 ## 12. Immediate execution order
@@ -320,6 +326,7 @@ If only one stream is active, use this order:
 12. L — remaining legacy command surfaces
 13. M — GUI session reuse
 14. N — closeout/prune wave 2
+15. O — rebuild the test suite against the post-rewrite codebase
 
 ---
 

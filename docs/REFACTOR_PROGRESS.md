@@ -49,11 +49,11 @@ Do not tick a task unless:
 ## 1. Current snapshot
 
 ### Current active checkpoint
-- Status: `[ ]`
-- Checkpoint: `L — Migrate remaining legacy command surfaces (olddata, nav, trade direct) — not started`
-- Subtask: `None started. Predecessor K is complete and signed off: the clean-room planner rewrite replaced the preload-first trade run model and is now feature-complete. Begin L at L1 (migrate olddata); see Checkpoint L for the acceptance criteria.`
+- Status: `[-]`
+- Checkpoint: `L — Migrate remaining legacy command surfaces — in progress`
+- Subtask: `L5 and L1 complete and audited (range-option contract; olddata migrated SQL-first). L2 (nav) is now active: rebuild on the planner's plan_jump_path with an iterative-deepening jump bound (no user-facing --max-jumps), a constrained state-space search for --refuel-jumps, command-owned station detail, and --ly-per required (no default, raise if missing). The full test suite is broken by the planner rewrite (it tests retired modules) — tracked as Checkpoint O; interim command work is smoke-validated, not gated on pytest. GUI argv builders deferred to Checkpoint M.`
 - Owner: `Tromador`
-- Started: `—`
+- Started: `2026-06-22`
 - Goal: `Finish the main command migration set (olddata, nav, trade direct, the zero-range audit, and any remaining full-load callers) without turning it into a generic command-framework rewrite. See the Checkpoint L detail for the full goal and acceptance criteria.`
 
 ### Current blocker
@@ -63,9 +63,9 @@ Do not tick a task unless:
 - Needed to unblock: `n/a`
 
 ### Last updated
-- Date: `2026-06-21`
+- Date: `2026-06-22`
 - By: `Tromador + assistant`
-- Session summary: `Checkpoint K signed off now that the clean-room planner rewrite is complete. trade run is planner-only and feature-complete — every route shape plus the full route-modifier, search, and output option surface — with the preload-first model gone and tradecalc.py / tradedb.py retired to archive/. Full record in docs/Planner/ (BASELINE.md, SPEC_STATUS.md, INDEX.md) and the v13.0.0 release notes (docs/Planner/RELEASE_NOTES_v13.0.0.md). Snapshot advanced to L (not started).`
+- Session summary: `Investigated olddata/nav for L1/L2 and traced the --ly / --ly-per / --link-ly grey area through the live code. Settled the L5 range-option contract and did L5 first (reordered): --ly = search radius (default 64), --ly-per = per-jump (no default, raise if missing), zero honoured via is-not-None, global --link-ly removed outright (hard break). Applied to buy/sell/__init__; local already compliant; olddata/nav inherit at L1/L2; GUI argv builders deferred to Checkpoint M (M scope note added). flake8 clean. The full test suite is broken by the rewrite (it tests retired modules) — added Checkpoint O to rebuild it — so L5 is smoke-validated rather than gated on pytest. L5 is now smoke-verified and closed; Checkpoint O mirrored into AGENT_START_HERE's checkpoint map and execution order. olddata (L1) migrated SQL-first, audit-fixed (chunked hydration, preflight --route check, house-style blanks) and passed; commits 2be80d7e, c932d89d, 29ee5ba0. nav (L2) is next.`
 
 ### Last known good rollback point
 - Commit: `ee777adc`
@@ -107,6 +107,7 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 - [ ] L — Migrate `olddata`, `nav`, `rares`
 - [ ] M — GUI session reuse and cache discipline
 - [ ] N — Legacy prune wave 2 and closeout
+- [ ] O — Rebuild the test suite against the post-rewrite codebase
 
 ---
 
@@ -529,9 +530,9 @@ Finish the main command migration set without turning command migration into a g
 - remaining monolithic `TradeDB.load()` callers are few and justified
 
 ### Tasks
-- [ ] L1. Migrate `olddata`
-  - Status note:
-  - Evidence:
+- [x] L1. Migrate `olddata`
+  - Status note: `olddata rewritten SQL-first on Needs.RESOLVER (un-parked). Aggregates MAX(StationItem.modified)->age per station, pushes all filters (--near bounding-box + exact sphere, --min-age, pad, planetary, fleet/settlement via type_id, --ls-max) into SQL, orders oldest-first and LIMITs in the DB, then hydrates only the survivors. Inherits the L5 contract: --ly = search radius (default 64; --ly 0 = this system only). Legacy wrappers replaced with the house helpers (_fleet_state/_settlement_state/_dist_from_star); --route rebuilt on a local distance helper; Station column now shows System/Station via dbname(). Audited and passed after a fix pass (commit 29ee5ba0): hydration chunked at 900 against the bind-parameter ceiling, --route validated at preflight before any query, in-function blank lines indented to house style; flake8 and ruff clean.`
+  - Evidence: `tradedangerous/commands/olddata_cmd.py; smoke-verified 2026-06-22 — default (global oldest), --near Sol --ly 12, --ly 0 (Sol-only, DistLy 0.00), --route (path order), --min-age all correct; commits c932d89d (rebuild) + 29ee5ba0 (audit fixes); audit passed 2026-06-22`
 - [ ] L2. Migrate `nav`
   - Status note:
   - Evidence:
@@ -541,9 +542,9 @@ Finish the main command migration set without turning command migration into a g
 - [ ] L4. Refactor `trade trade` into `trade direct`
   - Status note:
   - Evidence:
-- [ ] L5. Audit `--ly` / `--max-link-ly` zero-value fallback semantics
-  - Status note:
-  - Evidence:
+- [x] L5. Standardise the range-option contract (`--ly`, `--ly-per`, `--link-ly`) and fix zero-value fallback semantics
+  - Status note: `Contract settled and applied to the existing commands. Two options, never both on one command: --ly = search-bubble radius (local/buy/sell/olddata), internal default 64ly; --ly-per = distance per jump (run/nav), no default — raise if missing (explicit 0 also invalid). Fallback is always 'x if x is not None else default', never 'or', so --ly 0 is honoured = this-system-only. The global --link-ly/-L switch is removed outright (hard break): it was a misused default-radius number, never a reachability filter in the search commands, and its only legitimate routing-edge meaning is covered by --ly-per. 64 survives as the ENV_DEFAULTS internal default. Storage standardised: radius -> ly, per-jump -> maxLyPer. Code this pass: __init__.py drops --link-ly and its now-orphaned ENV_DEFAULTS import; buy moves dest maxLyPer->ly with is-not-None fallback; sell renames --ly-per->--ly, dest->ly, is-not-None fallback; local already compliant. olddata (L1) and nav (L2) inherit the contract when rebuilt; nav makes --ly-per required like run. GUI argv builders deferred to Checkpoint M. Validation: the full suite is broken by the planner rewrite (now tracked as Checkpoint O), so L5 is confirmed by targeted smoke checks rather than pytest. Parked idea: a real jump-reachability filter for search results, only if a ticket proves it needed.`
+  - Evidence: `tradedangerous/commands/__init__.py; tradedangerous/commands/buy_cmd.py; tradedangerous/commands/sell_cmd.py; smoke-verified 2026-06-22 — --link-ly/--ly-per rejected at argparse; buy "Gold" --near Sol returns ~10 rows at --ly 0 (Sol only), ~306 at --ly 30, ~1765 at default (64ly)`
 - [ ] L6. Re-evaluate remaining full `TradeDB.load()` callers
   - Status note:
   - Evidence:
@@ -552,7 +553,7 @@ Finish the main command migration set without turning command migration into a g
 - `trade rares` is retired under the locked Checkpoint E design.
 - `trade direct` is `trade trade` v2: a direct market comparison command for known endpoints. (https://github.com/eyeonus/Trade-Dangerous/issues/241)
 - `trade direct` must not be used as a reason to merge, replace, or delay `trade run --direct`.
-- `--ly 0` and equivalent zero-range inputs are explicit user intent, not absence. Audit truthiness fallbacks such as `cmdenv.maxLy or cmdenv.maxLinkLy` and use explicit `is not None` fallback semantics where affected. (https://github.com/eyeonus/Trade-Dangerous/issues/267)
+- `--ly 0` and equivalent zero-range inputs are explicit user intent, not absence. Settled under L5: fallbacks use `x if x is not None else default`, never `or`, so `--ly 0` means this-system-only. The real flag is `--link-ly` (there is no `--max-link-ly`); L5 removes it. (https://github.com/eyeonus/Trade-Dangerous/issues/267)
 
 ---
 
@@ -563,9 +564,20 @@ Finish the main command migration set without turning command migration into a g
 ### Goal
 Recover “load once, answer many questions” only where it belongs: GUI session scope.
 
+M has also absorbed a GUI↔CLI compatibility pass. The CLI command and option
+surface changed substantially across v13 — the planner rewrite of `run`, the L5
+range-option standardisation, and the L1/L2 rebuilds of `olddata`/`nav` — and the
+GUI argv builders in `guiapp/td_exec_commands.py` were not kept in step. The GUI is
+deliberately left untouched until this checkpoint rather than patched piecemeal per
+command change. M must reconcile every GUI command/option builder with the current
+CLI surface (for example: `sell` now takes `--ly`, not `--ly-per`; the global
+`--link-ly`/`-L` switch is gone; `olddata`/`nav` options match their rebuilt forms)
+before, or alongside, the session-reuse work.
+
 Stef random note to please remind him: Add copy from render.
 
 ### Acceptance criteria
+- GUI argv builders match the current CLI command/option surface (no stale or removed flags)
 - repeated GUI actions are faster than cold CLI runs where appropriate
 - no aggressive stale-data bugs
 - GUI still uses the same business logic as CLI
@@ -581,6 +593,9 @@ Stef random note to please remind him: Add copy from render.
   - Status note:
   - Evidence:
 - [ ] M4. Verify repeated GUI actions and stale-data behavior
+  - Status note:
+  - Evidence:
+- [ ] M5. GUI↔CLI compatibility pass — reconcile `guiapp/td_exec_commands.py` and the GUI workspaces with the post-L CLI command/option surface (foundational; likely tackled before the session-reuse tasks)
   - Status note:
   - Evidence:
 
@@ -618,6 +633,43 @@ Delete quarantined dead code and align docs/comments with reality.
 
 ### Notes
 -
+
+---
+
+## Checkpoint O — Rebuild the test suite against the post-rewrite codebase
+
+### Goal
+Restore a green, meaningful test suite. The clean-room planner rewrite and the v13
+command/schema changes retired large parts of the code the old tests were written
+against (`tradedb.py`, `tradecalc.py`, the preload model). Much of the suite now
+exercises a world that no longer exists, so this checkpoint rebuilds tests against
+the current architecture rather than patching the obsolete ones.
+
+### Acceptance criteria
+- the suite runs green against the current codebase
+- coverage reflects how the planner, resolver, and migrated commands actually
+  behave now, not the retired preload/TradeDB model
+- tests bound to archived modules are removed or rewritten, not skipped
+- the suite is trustworthy again as a gate for later work (e.g. N's final verification)
+
+### Tasks
+- [ ] O1. Inventory the suite: passing, failing, and obsolete-by-design
+  - Status note:
+  - Evidence:
+- [ ] O2. Remove or rewrite tests bound to archived modules (tradedb/tradecalc/preload)
+  - Status note:
+  - Evidence:
+- [ ] O3. Add or repair coverage for the planner and the post-L command surface
+  - Status note:
+  - Evidence:
+- [ ] O4. Confirm a full green run and record it as the new baseline
+  - Status note:
+  - Evidence:
+
+### Notes
+- Surfaced during L5: the suite is broken by the deliberate engine swap, not by any
+  single command change. Validate interim command work (L5, L1, L2) with targeted
+  smoke checks until O restores the suite.
 
 ---
 
@@ -686,6 +738,11 @@ Record decisions that materially affect later work.
   - Decision: `Exclude Festive Gifts from canonical rare handling.`
   - Reason: `Festive Gifts is a Frontier seasonal/event-specific commodity with bespoke behaviour and should not distort normal rare modelling.`
   - Revisit trigger: `Only if Frontier later turns Festive Gifts into a normal always-available rare commodity, which is not the current game behaviour.`
+- Date: `2026-06-22`
+  - Topic: `Range-option contract (L5)`
+  - Decision: `Standardise the CLI range options. --ly = search-bubble radius (local/buy/sell/olddata), default 64ly held as an internal ENV_DEFAULTS value. --ly-per = distance per jump (run/nav), no default — raise if missing; explicit 0 is invalid. Fallbacks use 'x if x is not None else default', never 'or', so --ly 0 = this-system-only. Remove the global --link-ly/-L switch outright (hard break). Storage: radius -> ly, per-jump -> maxLyPer.`
+  - Reason: `--ly was overloaded across commands (radius vs per-jump, two dest names) and the 'or' fallback silently swallowed an explicit 0. --link-ly was a misused shared default that even the lead dev did not rely on; its only legitimate (routing-edge) meaning is served by --ly-per. v13 is already a rebuild-the-world release, so a hard break is consistent.`
+  - Revisit trigger: `Only if a ticket proves a real need for a jump-reachability filter on search results (distinct from --ly radius), or if a removed flag is genuinely missed.`
 
 ---
 
