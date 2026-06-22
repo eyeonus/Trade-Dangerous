@@ -50,7 +50,6 @@ def build_run_argv(
     append_option(argv, '--jumps-per', resolved.get('maxJumpsPer'))
     append_option(argv, '--start-jumps', resolved.get('startJumps'))
     append_option(argv, '--end-jumps', resolved.get('endJumps'))
-    append_flag(argv, '--show-jumps', resolved.get('showJumps'))
     
     append_option(argv, '--limit', resolved.get('limit'))
     append_option(argv, '--pad-size', resolved.get('padSize'))
@@ -71,11 +70,7 @@ def build_run_argv(
     append_option(argv, '--insurance', resolved.get('insurance'))
     
     append_option(argv, '--routes', resolved.get('routes'))
-    append_option(argv, '--max-routes', resolved.get('maxRoutes'))
     append_flag(argv, '--checklist', resolved.get('checklist'))
-    append_flag(argv, '--x52-pro', resolved.get('x52pro'))
-    append_option(argv, '--prune-score', resolved.get('pruneScores'))
-    append_option(argv, '--prune-hops', resolved.get('pruneHops'))
     
     append_flag(argv, '--progress', resolved.get('progress'))
     append_option(argv, '--supply', resolved.get('supply'))
@@ -168,7 +163,7 @@ def build_sell_argv(
     _append_buysell_search_options(
         argv,
         resolved=resolved,
-        ly_option='--ly-per',
+        ly_option='--ly',
         include_ls_max=False,
         append_option=append_option,
         append_flag=append_flag,
@@ -365,7 +360,6 @@ def build_nav_argv(
     argv = ['tradegui.py', 'nav', starting, ending]
     
     append_option(argv, '--ly-per', resolved.get('lyPer'))
-    append_option(argv, '--refuel-jumps', resolved.get('refuelJumps'))
     append_option(argv, '--pad-size', resolved.get('padSize'))
     append_flag(argv, '--no-planet', resolved.get('noPlanet'))
     append_option(argv, '--planetary', resolved.get('planetary'))
@@ -400,7 +394,6 @@ def validate_nav_request(
         errors.append('Nav requires End.')
     
     validate_optional_float(resolved, 'lyPer', minimum=0.0, errors=errors)
-    validate_optional_int(resolved, 'refuelJumps', minimum=0, errors=errors)
 
 def build_olddata_argv(
     *,
