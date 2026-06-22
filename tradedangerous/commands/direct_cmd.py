@@ -157,7 +157,7 @@ def apply_game_name_shortcut(cmdenv: CommandEnv, name: str) -> str:
         raise TradeException("Internal error: missing EliteGame journal object")
     # Get the summary status information which has the fields we need.
     status = game.get_status()
-
+    
     if name == "~":
         # "Where I'm at": the docked station if docked, otherwise the current
         # system (a system endpoint -- all its stations). Both forms resolve
@@ -167,13 +167,13 @@ def apply_game_name_shortcut(cmdenv: CommandEnv, name: str) -> str:
             return status.star_system
         require_game_data(game, status_fields=["station_name"])
         return f"{status.star_system}/{status.station_name}"
-
+    
     if name.startswith("~/"):
         # Shortcut for "current system/..."; we just swap in the system name and
         # let the regular parsing pick it up from there.
         require_game_data(game, location=True, status_fields=["star_system"])
         return f"{status.star_system}/{name[2:]}"
-
+    
     if name == "~@":
         # "Current nav-target system" as a system endpoint (all its stations).
         # direct accepts a system on either side, so unlike the old command
@@ -185,7 +185,7 @@ def apply_game_name_shortcut(cmdenv: CommandEnv, name: str) -> str:
             raise CommandLineError("'~@' only works when you have a nav route programmed.")
         # The nav route is in jump order; the last entry is the destination.
         return nav_route[-1]["StarSystem"]
-
+    
     if name.startswith("~@/"):
         # Shortcut for "current navtarget system/..."
         require_game_data(game, navroute=True)
@@ -197,7 +197,7 @@ def apply_game_name_shortcut(cmdenv: CommandEnv, name: str) -> str:
         # The nav route is listed in jump order, so we want the last destination
         sys_name = nav_route[-1]["StarSystem"]
         return f"{sys_name}/{name[3:]}"
-
+    
     # Not something we handle; fall thru
     return name
 
@@ -253,12 +253,12 @@ def get_places(cmdenv: CommandEnv, tdb: TradeORM):
 # Perform query and populate result set
 
 def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandResults:
-
+    
     # Did they specify --fill?
     full_load = getattr(cmdenv, "full_load", False)
     want_load = getattr(cmdenv, "load", False) or full_load
     want_fill = getattr(cmdenv, "fill", False)
-
+    
     # Anything that references game data means (trying) to create an object.
     # dest is optional (--local), so guard the '~' checks against None.
     dest_raw = cmdenv.dest or ""
@@ -271,7 +271,7 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
     else:
         game = None
     setattr(cmdenv, "game", game)
-
+    
     local = getattr(cmdenv, "local", False)
     if local:
         # --local: one system, all its internal station-to-station trades.
@@ -293,7 +293,7 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
             "--load/--full-load need a single origin and destination station; "
             "they do not apply when an endpoint is a whole system."
         )
-
+    
     # We want numbers to use in an ">" operation such that we produce
     # `> 0` to mean "1 or more", matching the index.
     supply_cutoff = max(getattr(cmdenv, "supply", 1), 0) - 1
@@ -304,14 +304,14 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
     seller_stn = aliased(models.Station, name="seller_stn")
     buyer_stn = aliased(models.Station, name="buyer_stn")
     category = aliased(models.Category, name="category")
-
+    
     def endpoint_clause(station_alias, place):
         # A station endpoint pins one station; a system endpoint matches every
         # station in that system. Both are expressed against the joined Station.
         if isinstance(place, models.Station):
             return station_alias.station_id == place.station_id
         return station_alias.system_id == place.system_id
-
+    
     gain_expr = buyer.demand_price - seller.supply_price
     # Column-based select (rather than the Item entity) so the --best modes can
     # wrap it in a windowed subquery. Every branch below returns rows carrying
@@ -414,8 +414,8 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
     cmdenv.DEBUG0("Raw result count: {}", len(trades))
     if not trades:
         raise NoDataError(f"No profitable trades {lhs.name} -> {rhs.name}")
-
-
+    
+    
     results.summary = ResultRow(color=cmdenv.color)
     results.summary.fromStation = lhs
     results.summary.toStation = rhs
@@ -433,9 +433,9 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
         # Ensure cargo fields aren't None.
         need_current_cargo = not full_load  # not needed for the "to capacity" calculation
         require_game_data(game, cargo_space=True, cargo_load=need_current_cargo)
-
+        
         status = game.get_status()
-
+        
         cargo_space = max(status.cargo_space, 0)
         if not cargo_space:  # forgot to buy cargo modules?
             raise TradeException("Your current ship has zero cargo capacity, Commander.")
@@ -450,7 +450,7 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
             if cargo_space == 0:
                 raise CommandLineError("Cargo hold is full: use --full-load if you want to ignore current cargo occupancy")
         results.summary.cargo_space = max(cargo_space, 1)  # clamp to >= 1
-
+    
     units_seen = 0
     for r in trades:
         units = min(results.summary.cargo_space, r.sup_units, r.dem_units)
@@ -462,14 +462,14 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
             # - otherwise continue filling the load so they can see there's more to be made.
             if units_seen == 0 or not want_load:
                 break
-
+        
         if want_load:
             # How much space is left?
             spare_units = cargo_space - units_seen
             # That constrains how much you can buy really
             units = min(units, spare_units)
             units_seen += units
-
+        
         item_name = (f"{r.category_name}/{r.item_name}"
                      if cmdenv.detail else r.item_name)
         results.rows.append({
@@ -489,7 +489,7 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
         })
         if want_load and units_seen >= cargo_space:
             break
-
+    
     return results
 
 #######################################################################
@@ -534,12 +534,12 @@ def render(results, cmdenv, tdb):
             key=lambda row: row["sup_age"])
         rowFmt.addColumn('DstAge', '>', 9, 's',
             key=lambda row: row["dem_age"])
-
+    
     if results.summary.cargo_space > 1:
         rowFmt.addColumn('|',      '>', 1,  key=lambda row: '|')
         rowFmt.addColumn('Units',  '>', 6, key=lambda row: f'{row["units"]:n}')
         rowFmt.addColumn('Profit', '>', 11, key=lambda row: f'{row["units"]*row["gain"]:n}')
-
+    
     heading, underline = rowFmt.heading()
     if not cmdenv.quiet:
         summary = results.summary
@@ -553,13 +553,13 @@ def render(results, cmdenv, tdb):
         print(f"{len(results.rows)} trades found.")
         print(heading)
         print(underline)
-
+    
     total_units, total_gain = 0, 0
     for row in results.rows:
         total_units += row["units"]
         total_gain += row["gain"] * row["units"]
         print(rowFmt.format(row))
-
+    
     if total_units > 0 and not cmdenv.quiet and want_load:
         print(underline)
         cmdenv.uprint(f"Total Units: {total_units:n}. Total Profit: {total_gain:n}.")
