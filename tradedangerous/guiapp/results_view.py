@@ -262,6 +262,8 @@ def _render_trade_results(structured_result: Any) -> None:
     
     from_station = _field(summary, 'fromStation')
     to_station = _field(summary, 'toStation')
+    origin_multi = bool(_field(summary, 'originMulti'))
+    dest_multi = bool(_field(summary, 'destMulti'))
     
     def station_name(value: Any) -> str | None:
         dbname = _field(value, 'dbname')
@@ -296,7 +298,9 @@ def _render_trade_results(structured_result: Any) -> None:
         table_rows.append(
             {
                 'row_id': f'trade-{index}',
+                'from': _format_result_value(values.get('from_station')),
                 'item': _format_result_value(values.get('item')),
+                'to': _format_result_value(values.get('to_station')),
                 'profit': format_int(values.get('gain')),
                 'cost': format_int(values.get('sup_price')),
                 'buying': format_int(values.get('dem_price')),
@@ -305,15 +309,30 @@ def _render_trade_results(structured_result: Any) -> None:
             }
         )
     
+    # From/To mirror the CLI: shown only when that endpoint spans multiple
+    # stations (a system); redundant for a single concrete station.
+    columns = []
+    if origin_multi:
+        columns.append(
+            {'name': 'from', 'label': 'From', 'field': 'from', 'align': 'left'}
+        )
+    columns.append(
+        {'name': 'item', 'label': 'Item', 'field': 'item', 'align': 'left'}
+    )
+    if dest_multi:
+        columns.append(
+            {'name': 'to', 'label': 'To', 'field': 'to', 'align': 'left'}
+        )
+    columns.extend([
+        {'name': 'profit', 'label': 'Profit', 'field': 'profit', 'align': 'right'},
+        {'name': 'cost', 'label': 'Cost', 'field': 'cost', 'align': 'right'},
+        {'name': 'buying', 'label': 'Buying', 'field': 'buying', 'align': 'right'},
+        {'name': 'src_age', 'label': 'SrcAge', 'field': 'src_age', 'align': 'right'},
+        {'name': 'dst_age', 'label': 'DstAge', 'field': 'dst_age', 'align': 'right'},
+    ])
+    
     ui.table(
-        columns=[
-            {'name': 'item', 'label': 'Item', 'field': 'item', 'align': 'left'},
-            {'name': 'profit', 'label': 'Profit', 'field': 'profit', 'align': 'right'},
-            {'name': 'cost', 'label': 'Cost', 'field': 'cost', 'align': 'right'},
-            {'name': 'buying', 'label': 'Buying', 'field': 'buying', 'align': 'right'},
-            {'name': 'src_age', 'label': 'SrcAge', 'field': 'src_age', 'align': 'right'},
-            {'name': 'dst_age', 'label': 'DstAge', 'field': 'dst_age', 'align': 'right'},
-        ],
+        columns=columns,
         rows=table_rows,
         row_key='row_id',
     ).classes('w-full')

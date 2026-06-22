@@ -38,7 +38,7 @@ COMMAND_OPTIONS: dict[str, str] = {
     'run': 'Run',
     'buy': 'Buy',
     'sell': 'Sell',
-    'trade': 'Trade',
+    'trade': 'Direct',
     'local': 'Local',
     'market': 'Market',
     'nav': 'Nav',
