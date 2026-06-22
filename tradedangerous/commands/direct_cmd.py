@@ -36,16 +36,21 @@ needs=Needs.RESOLVER
 arguments = [
     ParseArgument(
         'origin',
-        help='Station you are purchasing from.',
-        type=str,
-    ),
-    ParseArgument(
-        'dest',
-        help='Station you are selling to.',
+        help='Station or system you are buying from.',
         type=str,
     ),
 ]
 switches = [
+    ParseArgument(
+        'dest',
+        help='Station or system you are selling to (omit when using --local).',
+        type=str,
+        default=None,
+    ),
+    ParseArgument('--local',
+        help='Show the best trades between stations within the origin system.',
+        action='store_true',
+    ),
     ParseArgument('--gain-per-ton', '--gpt',
         help = 'Specify the minimum gain per ton of cargo',
         dest = 'minGainPerTon',
@@ -100,6 +105,21 @@ switches = [
         default = None,
     ),
 ]
+
+
+def validateRunArgumentsFast(cmdenv):
+    # Preflight argument-shape checks, before any database work is done.
+    if cmdenv.local:
+        if cmdenv.dest:
+            raise CommandLineError(
+                "--local works within a single system; do not give a destination."
+            )
+        if getattr(cmdenv, "reverse", False):
+            raise CommandLineError("--reverse has no meaning with --local.")
+    elif not cmdenv.dest:
+        raise CommandLineError(
+            "Specify a destination, or use --local for in-system trades."
+        )
 
 
 def age(now: datetime, modified: datetime) -> str:
@@ -197,7 +217,23 @@ def _reject_identical(lhs, rhs) -> None:
             raise CommandLineError("Origin and destination are the same station.")
     elif isinstance(lhs, models.System) and isinstance(rhs, models.System):
         if lhs.system_id == rhs.system_id:
-            raise CommandLineError("Origin and destination are the same system.")
+            raise CommandLineError(
+                "Origin and destination are the same system; "
+                "use --local for in-system trades."
+            )
+
+
+def _resolve_place(cmdenv: CommandEnv, tdb: TradeORM, raw_name: str, what: str):
+    """ Resolve one endpoint name to a System or Station via lookup_place,
+        expanding a leading '~' game-journal shortcut first. """
+    if raw_name.startswith("~"):
+        raw_name = apply_game_name_shortcut(cmdenv, raw_name)
+    try:
+        place = tdb.lookup_place(raw_name)
+    except LookupError as e:
+        raise CommandLineError(f"Unknown {what}: {raw_name}") from e
+    cmdenv.DEBUG0("{}: {}", what, _place_label(place))
+    return place
 
 
 def get_places(cmdenv: CommandEnv, tdb: TradeORM):
@@ -207,21 +243,8 @@ def get_places(cmdenv: CommandEnv, tdb: TradeORM):
         a bare or trailing-slash name ('sol', 'sol/') is the whole system,
         while 'sol/abraham lincoln' or '/abraham lincoln' is a single station.
     """
-    orig_name, dest_name = cmdenv.origin, cmdenv.dest
-    # Do we need to consult the game journal for a '~' shortcut?
-    if orig_name.startswith("~") or dest_name.startswith("~"):
-        orig_name = apply_game_name_shortcut(cmdenv, orig_name)
-        dest_name = apply_game_name_shortcut(cmdenv, dest_name)
-    try:
-        lhs = tdb.lookup_place(orig_name)
-    except LookupError as e:
-        raise CommandLineError(f"Unknown origin: {orig_name}") from e
-    cmdenv.DEBUG0("from: {}", _place_label(lhs))
-    try:
-        rhs = tdb.lookup_place(dest_name)
-    except LookupError as e:
-        raise CommandLineError(f"Unknown destination: {dest_name}") from e
-    cmdenv.DEBUG0("to..: {}", _place_label(rhs))
+    lhs = _resolve_place(cmdenv, tdb, cmdenv.origin, "origin")
+    rhs = _resolve_place(cmdenv, tdb, cmdenv.dest, "destination")
     _reject_identical(lhs, rhs)
     return lhs, rhs
 
@@ -236,21 +259,30 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
     want_load = getattr(cmdenv, "load", False) or full_load
     want_fill = getattr(cmdenv, "fill", False)
 
-    # Anything that references game data means (trying) to create an object
-    if cmdenv.origin.startswith("~") or cmdenv.dest.startswith("~") or want_fill or want_load:
+    # Anything that references game data means (trying) to create an object.
+    # dest is optional (--local), so guard the '~' checks against None.
+    dest_raw = cmdenv.dest or ""
+    if cmdenv.origin.startswith("~") or dest_raw.startswith("~") or want_fill or want_load:
         # We need to load the navroute if we're going to resolve '~@'
         jsons = []
-        if cmdenv.origin.startswith("~@") or cmdenv.dest.startswith("~@"):
+        if cmdenv.origin.startswith("~@") or dest_raw.startswith("~@"):
             jsons += [JsonFiles.NAVROUTE]
         game = EliteGame(tdenv=cmdenv, extra_jsons=jsons)
     else:
         game = None
     setattr(cmdenv, "game", game)
 
-    lhs, rhs = get_places(cmdenv, tdb)
-    if getattr(cmdenv, "reverse", False):
-        cmdenv.DEBUG0("--reverse: Reversing origin and destination")
-        lhs, rhs = rhs, lhs
+    local = getattr(cmdenv, "local", False)
+    if local:
+        # --local: one system, all its internal station-to-station trades.
+        origin_place = _resolve_place(cmdenv, tdb, cmdenv.origin, "origin")
+        lhs = rhs = (origin_place if isinstance(origin_place, models.System)
+                     else origin_place.system)
+    else:
+        lhs, rhs = get_places(cmdenv, tdb)
+        if getattr(cmdenv, "reverse", False):
+            cmdenv.DEBUG0("--reverse: Reversing origin and destination")
+            lhs, rhs = rhs, lhs
     origin_multi = isinstance(lhs, models.System)
     dest_multi = isinstance(rhs, models.System)
     multi_station = origin_multi or dest_multi
@@ -318,6 +350,9 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
             buyer.demand_price >= seller.supply_price,
         )
     )
+    if local:
+        # In-system trades only make sense between two different stations.
+        base = base.where(seller_stn.station_id != buyer_stn.station_id)
     # --age: both ends of the trade must be at least this fresh.
     if cmdenv.maxAge:
         base = base.where(
@@ -387,6 +422,7 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
     results.summary.originMulti = origin_multi
     results.summary.destMulti = dest_multi
     results.summary.autoLimit = auto_limit
+    results.summary.local = local
     
     now = datetime.datetime.now(tz=datetime.timezone.utc)
     
@@ -507,8 +543,10 @@ def render(results, cmdenv, tdb):
     heading, underline = rowFmt.heading()
     if not cmdenv.quiet:
         summary = results.summary
-        print(f"From: {_place_label(summary.fromStation)}    "
-              f"To: {_place_label(summary.toStation)}")
+        to_label = _place_label(summary.toStation)
+        if getattr(summary, "local", False):
+            to_label += " (local)"
+        print(f"From: {_place_label(summary.fromStation)}    To: {to_label}")
         if getattr(summary, "autoLimit", 0):
             print(f"(showing the top {summary.autoLimit} by profit; "
                   f"pass --limit or --best to choose how many)")

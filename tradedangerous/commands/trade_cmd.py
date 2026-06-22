@@ -18,6 +18,7 @@ from .direct_cmd import (  # noqa: F401  (re-exported as this command's surface)
     switches,
     run,
     render,
+    validateRunArgumentsFast,
 )
 
 name = 'trade'
