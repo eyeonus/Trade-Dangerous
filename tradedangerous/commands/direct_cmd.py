@@ -12,7 +12,7 @@ from tradedangerous.db.utils import age_in_days
 from tradedangerous.tradegame import EliteGame, JsonFiles, require_game_data
 from tradedangerous.formatting import RowFormat, max_len
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import aliased
 
 
@@ -91,6 +91,13 @@ switches = [
         dest = 'maxAge',
         type = float,
         default = 0,
+    ),
+    ParseArgument('--best',
+        help = "Collapse multi-station output: 'per-station' (best trade at "
+               "each origin station), 'per-item' (best station pair per item), "
+               "or 'station' (all trades at the single best origin station)",
+        choices = ['per-station', 'per-item', 'station'],
+        default = None,
     ),
 ]
 
@@ -264,6 +271,7 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
     buyer = aliased(models.StationItem, name="buyer")
     seller_stn = aliased(models.Station, name="seller_stn")
     buyer_stn = aliased(models.Station, name="buyer_stn")
+    category = aliased(models.Category, name="category")
 
     def endpoint_clause(station_alias, place):
         # A station endpoint pins one station; a system endpoint matches every
@@ -272,17 +280,33 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
             return station_alias.station_id == place.station_id
         return station_alias.system_id == place.system_id
 
-    stmt = (
+    gain_expr = buyer.demand_price - seller.supply_price
+    # Column-based select (rather than the Item entity) so the --best modes can
+    # wrap it in a windowed subquery. Every branch below returns rows carrying
+    # these same labels, so the row loop reads them uniformly.
+    base = (
         select(
-            models.Item,
-            seller.supply_price, seller.supply_units, seller.supply_level,
-            buyer.demand_price, buyer.demand_units, buyer.demand_level,
-            seller.modified, buyer.modified,
-            seller_stn.name, buyer_stn.name,
+            models.Item.item_id.label("item_id"),
+            models.Item.name.label("item_name"),
+            category.name.label("category_name"),
+            seller_stn.station_id.label("from_id"),
+            seller_stn.name.label("from_station"),
+            buyer_stn.station_id.label("to_id"),
+            buyer_stn.name.label("to_station"),
+            seller.supply_price.label("sup_price"),
+            seller.supply_units.label("sup_units"),
+            seller.supply_level.label("sup_level"),
+            buyer.demand_price.label("dem_price"),
+            buyer.demand_units.label("dem_units"),
+            buyer.demand_level.label("dem_level"),
+            seller.modified.label("sup_modified"),
+            buyer.modified.label("dem_modified"),
+            gain_expr.label("gain"),
         )
         .where(
             seller_stn.station_id == seller.station_id,
             buyer_stn.station_id == buyer.station_id,
+            models.Item.category_id == category.category_id,
             endpoint_clause(seller_stn, lhs),
             endpoint_clause(buyer_stn, rhs),
             seller.item_id == buyer.item_id,
@@ -293,22 +317,57 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
             buyer.demand_units > demand_cutoff,
             buyer.demand_price >= seller.supply_price,
         )
-        .order_by((buyer.demand_price - seller.supply_price).desc())
     )
     # --age: both ends of the trade must be at least this fresh.
     if cmdenv.maxAge:
-        stmt = stmt.where(
+        base = base.where(
             age_in_days(tdb.session, seller.modified) <= cmdenv.maxAge,
             age_in_days(tdb.session, buyer.modified) <= cmdenv.maxAge,
         )
+    # Deterministic ordering: best gain first, ties broken stably so the
+    # rankings and repeated runs are reproducible.
+    order_cols = (
+        gain_expr.desc(),
+        seller.supply_price.asc(),
+        seller_stn.station_id.asc(),
+        buyer_stn.station_id.asc(),
+        models.Item.item_id.asc(),
+    )
     # Bound the result set in SQL. Multi-station mode can pair a great many
-    # stations, so when no explicit --limit is given we apply a default cap and
-    # flag it; single-station mode keeps the historic "no cap" default.
+    # stations; when neither --limit nor --best bounds it we apply a default cap
+    # and flag it. Single-station mode keeps the historic "no cap" default.
+    best = getattr(cmdenv, "best", None)
     limit = cmdenv.limit
     auto_limit = 0
-    if multi_station and limit <= 0:
+    if multi_station and limit <= 0 and not best:
         limit = DEFAULT_MULTI_STATION_LIMIT
         auto_limit = limit
+    # --best collapses the result set in SQL before the global limit applies.
+    if best in ("per-station", "per-item"):
+        partition = seller_stn.station_id if best == "per-station" else models.Item.item_id
+        ranked = base.add_columns(
+            func.row_number().over(
+                partition_by=partition, order_by=order_cols
+            ).label("rn")
+        ).subquery()
+        stmt = select(ranked).where(ranked.c.rn == 1)
+        final_order = (
+            ranked.c.gain.desc(), ranked.c.sup_price.asc(),
+            ranked.c.from_id.asc(), ranked.c.to_id.asc(),
+            ranked.c.item_id.asc(),
+        )
+    elif best == "station":
+        # Find the single origin station holding the best trade, then list all
+        # of that station's trades.
+        best_row = tdb.session.execute(base.order_by(*order_cols).limit(1)).first()
+        stmt = base
+        if best_row is not None:
+            stmt = base.where(seller_stn.station_id == best_row.from_id)
+        final_order = order_cols
+    else:
+        stmt = base
+        final_order = order_cols
+    stmt = stmt.order_by(*final_order)
     if limit > 0:
         stmt = stmt.limit(limit)
     compiled = stmt.compile(
@@ -316,7 +375,7 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
         compile_kwargs={"literal_binds": True}
     )
     cmdenv.DEBUG1("query: {}", compiled)
-    trades = tdb.session.execute(stmt).unique().all()
+    trades = tdb.session.execute(stmt).all()
     cmdenv.DEBUG0("Raw result count: {}", len(trades))
     if not trades:
         raise NoDataError(f"No profitable trades {lhs.name} -> {rhs.name}")
@@ -357,13 +416,11 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
         results.summary.cargo_space = max(cargo_space, 1)  # clamp to >= 1
 
     units_seen = 0
-    for (item, sup_price, sup_units, sup_level, dem_price, dem_units,
-         dem_level, sup_age, dem_age, from_stn, to_stn) in trades:
-        units = min(results.summary.cargo_space, sup_units, dem_units)
+    for r in trades:
+        units = min(results.summary.cargo_space, r.sup_units, r.dem_units)
         if not units:
             continue
-        gain = dem_price - sup_price
-        if gain < cmdenv.minGainPerTon:
+        if r.gain < cmdenv.minGainPerTon:
             # If they've asked for a load:
             # - if we haven't seen any units, break, indicating they can't meet that requirement,
             # - otherwise continue filling the load so they can see there's more to be made.
@@ -377,19 +434,21 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
             units = min(units, spare_units)
             units_seen += units
 
+        item_name = (f"{r.category_name}/{r.item_name}"
+                     if cmdenv.detail else r.item_name)
         results.rows.append({
-            "item": item.dbname(cmdenv.detail),
-            "from_station": from_stn,
-            "to_station": to_stn,
-            "sup_price": sup_price,
-            "sup_units": sup_units,
-            "sup_level": sup_level,
-            "dem_price": dem_price,
-            "dem_units": dem_units,
-            "dem_level": dem_level,
-            "sup_age": age(now, sup_age),
-            "dem_age": age(now, dem_age),
-            "gain": gain,
+            "item": item_name,
+            "from_station": r.from_station,
+            "to_station": r.to_station,
+            "sup_price": r.sup_price,
+            "sup_units": r.sup_units,
+            "sup_level": r.sup_level,
+            "dem_price": r.dem_price,
+            "dem_units": r.dem_units,
+            "dem_level": r.dem_level,
+            "sup_age": age(now, r.sup_modified),
+            "dem_age": age(now, r.dem_modified),
+            "gain": r.gain,
             "units": units,
         })
         if want_load and units_seen >= cargo_space:
@@ -452,7 +511,7 @@ def render(results, cmdenv, tdb):
               f"To: {_place_label(summary.toStation)}")
         if getattr(summary, "autoLimit", 0):
             print(f"(showing the top {summary.autoLimit} by profit; "
-                  f"pass --limit to choose how many)")
+                  f"pass --limit or --best to choose how many)")
         print(f"{len(results.rows)} trades found.")
         print(heading)
         print(underline)
