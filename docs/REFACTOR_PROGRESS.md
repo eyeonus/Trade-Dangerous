@@ -51,7 +51,7 @@ Do not tick a task unless:
 ### Current active checkpoint
 - Status: `[-]`
 - Checkpoint: `L — Migrate remaining legacy command surfaces — in progress`
-- Subtask: `L5 and L1 complete and audited (range-option contract; olddata migrated SQL-first). L2 (nav) is now active: rebuild on the planner's plan_jump_path with an iterative-deepening jump bound (no user-facing --max-jumps), a constrained state-space search for --refuel-jumps, command-owned station detail, and --ly-per required (no default, raise if missing). The full test suite is broken by the planner rewrite (it tests retired modules) — tracked as Checkpoint O; interim command work is smoke-validated, not gated on pytest. GUI argv builders deferred to Checkpoint M.`
+- Subtask: `L5, L1 and L2 complete and audited (range-option contract; olddata SQL-first; nav rebuilt as a basic A->B plotter on the planner's plan_jump_path, --refuel-jumps dropped to leave advanced fuel/neutron routing to Spansh). Remaining in L: L3 (post-E rare lookup cutover on buy), L4 (trade trade -> trade direct), L6 (re-evaluate remaining full TradeDB.load callers). Then M (GUI compatibility + session reuse), N (closeout), O (test-suite rebuild). The full test suite is broken by the planner rewrite — tracked as O; command work is smoke-validated, not gated on pytest. GUI deferred to M.`
 - Owner: `Tromador`
 - Started: `2026-06-22`
 - Goal: `Finish the main command migration set (olddata, nav, trade direct, the zero-range audit, and any remaining full-load callers) without turning it into a generic command-framework rewrite. See the Checkpoint L detail for the full goal and acceptance criteria.`
@@ -65,7 +65,7 @@ Do not tick a task unless:
 ### Last updated
 - Date: `2026-06-22`
 - By: `Tromador + assistant`
-- Session summary: `Investigated olddata/nav for L1/L2 and traced the --ly / --ly-per / --link-ly grey area through the live code. Settled the L5 range-option contract and did L5 first (reordered): --ly = search radius (default 64), --ly-per = per-jump (no default, raise if missing), zero honoured via is-not-None, global --link-ly removed outright (hard break). Applied to buy/sell/__init__; local already compliant; olddata/nav inherit at L1/L2; GUI argv builders deferred to Checkpoint M (M scope note added). flake8 clean. The full test suite is broken by the rewrite (it tests retired modules) — added Checkpoint O to rebuild it — so L5 is smoke-validated rather than gated on pytest. L5 is now smoke-verified and closed; Checkpoint O mirrored into AGENT_START_HERE's checkpoint map and execution order. olddata (L1) migrated SQL-first, audit-fixed (chunked hydration, preflight --route check, house-style blanks) and passed; commits 2be80d7e, c932d89d, 29ee5ba0. nav (L2) is next.`
+- Session summary: `Investigated olddata/nav for L1/L2 and traced the --ly / --ly-per / --link-ly grey area through the live code. Settled the L5 range-option contract and did L5 first (reordered): --ly = search radius (default 64), --ly-per = per-jump (no default, raise if missing), zero honoured via is-not-None, global --link-ly removed outright (hard break). Applied to buy/sell/__init__; local already compliant; olddata/nav inherit at L1/L2; GUI argv builders deferred to Checkpoint M (M scope note added). flake8 clean. The full test suite is broken by the rewrite (it tests retired modules) — added Checkpoint O to rebuild it — so L5 is smoke-validated rather than gated on pytest. L5 is now smoke-verified and closed; Checkpoint O mirrored into AGENT_START_HERE's checkpoint map and execution order. olddata (L1) migrated SQL-first, audit-fixed (chunked hydration, preflight --route check, house-style blanks) and passed; commits 2be80d7e, c932d89d, 29ee5ba0. nav (L2) rebuilt as a basic A->B route plotter on the planner engine (--refuel-jumps dropped, deferred to Spansh), audit-fixed (avoided-waypoint conflict) and passed; commits 753ba10a, 2b3cccf2.`
 
 ### Last known good rollback point
 - Commit: `ee777adc`
@@ -533,9 +533,9 @@ Finish the main command migration set without turning command migration into a g
 - [x] L1. Migrate `olddata`
   - Status note: `olddata rewritten SQL-first on Needs.RESOLVER (un-parked). Aggregates MAX(StationItem.modified)->age per station, pushes all filters (--near bounding-box + exact sphere, --min-age, pad, planetary, fleet/settlement via type_id, --ls-max) into SQL, orders oldest-first and LIMITs in the DB, then hydrates only the survivors. Inherits the L5 contract: --ly = search radius (default 64; --ly 0 = this system only). Legacy wrappers replaced with the house helpers (_fleet_state/_settlement_state/_dist_from_star); --route rebuilt on a local distance helper; Station column now shows System/Station via dbname(). Audited and passed after a fix pass (commit 29ee5ba0): hydration chunked at 900 against the bind-parameter ceiling, --route validated at preflight before any query, in-function blank lines indented to house style; flake8 and ruff clean.`
   - Evidence: `tradedangerous/commands/olddata_cmd.py; smoke-verified 2026-06-22 — default (global oldest), --near Sol --ly 12, --ly 0 (Sol-only, DistLy 0.00), --route (path order), --min-age all correct; commits c932d89d (rebuild) + 29ee5ba0 (audit fixes); audit passed 2026-06-22`
-- [ ] L2. Migrate `nav`
-  - Status note:
-  - Evidence:
+- [x] L2. Migrate `nav`
+  - Status note: `nav rebuilt as a basic A->B route plotter on the planner's plan_jump_path (public reachability surface; no full preload). Iterative-deepening jump bound from the straight-line minimum, stopping when the reachable set stops growing; --ly-per required (zero rejected at preflight). --via routes through ordered waypoints, --avoid removes systems from the graph (the avoid-vs-required-waypoint conflict is rejected before planning, with the initial source exempt), --stations lists each stop's stations (command-owned query, display filters in Python, default shows all). --refuel-jumps dropped: advanced fuel/neutron routing is intentionally left to Spansh. flake8 + ruff clean. Audit passed after one fix pass (the avoided-waypoint conflict). Unreachable "no route" branch taken as read, not live-triggered.`
+  - Evidence: `tradedangerous/commands/nav_cmd.py; commits 753ba10a (rebuild) + 2b3cccf2 (avoid-waypoint fix); audit passed 2026-06-22; smoke-verified one/multi-jump, --detail/-vv, filtered --stations (200->11 with --pad S), chained --via, avoid conflict + source exemption`
 - [ ] L3. Complete post-E rare lookup cutover on `buy`
   - Status note:
   - Evidence:
@@ -743,6 +743,11 @@ Record decisions that materially affect later work.
   - Decision: `Standardise the CLI range options. --ly = search-bubble radius (local/buy/sell/olddata), default 64ly held as an internal ENV_DEFAULTS value. --ly-per = distance per jump (run/nav), no default — raise if missing; explicit 0 is invalid. Fallbacks use 'x if x is not None else default', never 'or', so --ly 0 = this-system-only. Remove the global --link-ly/-L switch outright (hard break). Storage: radius -> ly, per-jump -> maxLyPer.`
   - Reason: `--ly was overloaded across commands (radius vs per-jump, two dest names) and the 'or' fallback silently swallowed an explicit 0. --link-ly was a misused shared default that even the lead dev did not rely on; its only legitimate (routing-edge) meaning is served by --ly-per. v13 is already a rebuild-the-world release, so a hard break is consistent.`
   - Revisit trigger: `Only if a ticket proves a real need for a jump-reachability filter on search results (distinct from --ly radius), or if a removed flag is genuinely missed.`
+- Date: `2026-06-22`
+  - Topic: `nav scope (L2)`
+  - Decision: `nav is a basic A->B route plotter: start, end, --ly-per, plus --via/--avoid/--stations. It does not model fuel, refuelling, or neutron boosting; the legacy --refuel-jumps option is dropped.`
+  - Reason: `A correct refuel/neutron plotter needs a full ship/fuel model nav has no business carrying, and Spansh already does it superbly and is well known to the player base. Pointing users there beats shipping a half-version.`
+  - Revisit trigger: `Only if a ticket establishes a concrete need for in-tool refuel/neutron routing that Spansh cannot reasonably serve.`
 
 ---
 
