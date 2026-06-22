@@ -12,10 +12,10 @@ from typing import Any
 
 from rich.console import Console
 
-from tradedangerous import commands, tradedb, tradeexcept
+from tradedangerous import commands, tradeexcept
 from tradedangerous.commands import exceptions as cmd_exceptions
-from tradedangerous.tradeorm import TradeORM
 
+from .td_backend import build_backend
 from .td_exec_commands import (
     build_buy_argv,
     build_local_argv,
@@ -576,16 +576,9 @@ class TdExecutor:
                 if preflight and callable(preflight):
                     preflight()
 
-                # Mirror the CLI capability-aware backend selection:
-                # RESOLVER → TradeORM only; LEGACY_HANDLE → TradeDB(load=False);
-                # FULL_LEGACY → TradeDB(load=True); NOTHING → no backend.
-                torm = None
-                tdb = None
-                if cmdenv.needs_resolver:
-                    torm = TradeORM(tdenv=cmdenv)
-                    tdb = torm
-                if cmdenv.needs_legacy_db:
-                    tdb = tradedb.TradeDB(cmdenv, load=cmdenv.needs_full_load)
+                # Build the backend exactly as the CLI does: a resolver-tier
+                # command gets a TradeORM handle; a no-backend command gets None.
+                tdb = build_backend(cmdenv)
                 try:
                     self._check_trade_data(cmdenv, tdb)
                     results = cmdenv.run(tdb)
@@ -607,8 +600,6 @@ class TdExecutor:
                 finally:
                     if tdb is not None:
                         tdb.close(final=True)
-                    if torm is not None and torm is not tdb:
-                        torm.close()
         except cmd_exceptions.CommandLineError as exc:
             return self._error_result(request.command, argv, str(exc))
         except tradeexcept.TradeException as exc:

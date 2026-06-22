@@ -9,8 +9,10 @@ from typing import Any, Callable
 
 from rich.console import Console
 
-from tradedangerous import commands, tradedb, tradeexcept
+from tradedangerous import commands, tradeexcept
 from tradedangerous.commands import exceptions as cmd_exceptions
+
+from .td_backend import build_backend
 
 EDDBLINK_OPTION_ORDER: tuple[str, ...] = (
     # Keep the option order stable so diagnostics and reproduced commands are
@@ -149,11 +151,15 @@ def execute_import_command(
             if monitor is not None:
                 monitor.set_status('Import running...')
             
-            tdb = tradedb.TradeDB(cmdenv, load=cmdenv.wantsTradeDB)
+            # import is a resolver-tier command declaring allowMissingDB, so the
+            # factory builds TradeORM(require_db=False) — tolerating the absence
+            # of a database file the import itself may be about to create.
+            tdb = build_backend(cmdenv)
             try:
                 cmdenv.run(tdb)
             finally:
-                tdb.close(final=True)
+                if tdb is not None:
+                    tdb.close(final=True)
     except cmd_exceptions.CommandLineError as exc:
         return ImportExecutionPayload(
             ok=False,
