@@ -57,7 +57,7 @@ def build_run_argv(
     append_option(argv, '--planetary', resolved.get('planetary'))
     append_option(argv, '--fleet-carrier', resolved.get('fleet'))
     append_option(argv, '--settlement', resolved.get('settlement'))
-    append_flag(argv, '--black-market', resolved.get('blackMarket'))
+    append_option(argv, '--black-market', 'Y' if resolved.get('blackMarket') else None)
     
     append_option(argv, '--ls-penalty', resolved.get('lsPenalty'))
     append_option(argv, '--ls-max', resolved.get('maxLs'))
@@ -223,7 +223,7 @@ def _append_buysell_search_options(
     append_option(argv, '--planetary', resolved.get('planetary'))
     append_option(argv, '--fleet-carrier', resolved.get('fleet'))
     append_option(argv, '--settlement', resolved.get('settlement'))
-    append_flag(argv, '--black-market', resolved.get('blackMarket'))
+    append_option(argv, '--black-market', 'Y' if resolved.get('blackMarket') else None)
     append_option(argv, '--gt', resolved.get('gt'))
     append_option(argv, '--lt', resolved.get('lt'))
     if include_ls_max:
@@ -325,7 +325,7 @@ def build_local_argv(
     append_option(argv, '--settlement', resolved.get('settlement'))
     
     append_flag(argv, '--trading', resolved.get('trading'))
-    append_flag(argv, '--black-market', resolved.get('blackMarket'))
+    append_option(argv, '--black-market', 'Y' if resolved.get('blackMarket') else None)
     append_flag(argv, '--shipyard', resolved.get('shipyard'))
     append_flag(argv, '--outfitting', resolved.get('outfitting'))
     append_flag(argv, '--rearm', resolved.get('rearm'))
