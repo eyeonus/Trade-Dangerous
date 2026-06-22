@@ -23,6 +23,14 @@ from .profiles import (
 )
 from .shell import AppShell, COMMAND_OPTIONS
 
+# Let the user select (and so manually copy) text in the native window. pywebview
+# disables document text selection by default; NiceGUI forwards native window
+# arguments through app.native.window_args. This is set at module import — not
+# inside main() — so it also takes effect in the spawned native-window process,
+# which re-imports this module and reads core.app.native.window_args when it
+# creates the window (spawn does not inherit the parent's runtime state).
+app.native.window_args['text_select'] = True
+
 _ORIGINAL_NATIVE_ACTIVATE: Callable[..., None] | None = None
 _NATIVE_WINDOW_CLOSE_SHARED_STATE: Any = None
 

@@ -135,12 +135,17 @@ class DraftValueHelper:
         system_key: str,
         station_key: str,
         combined_key: str,
+        allow_bare_system: bool = False,
     ) -> None:
         system_name = self._text_value(payload, system_key).strip()
         station_name = self._text_value(payload, station_key).strip()
         
         if system_name and station_name:
             payload[combined_key] = f'{system_name}/{station_name}'
+        elif system_name and allow_bare_system:
+            # Direct accepts a bare system (all qualifying stations). Other
+            # callers (e.g. market) still require a station, so this is opt-in.
+            payload[combined_key] = system_name
         else:
             payload.pop(combined_key, None)
     
@@ -151,6 +156,7 @@ class DraftValueHelper:
         system_key: str,
         station_key: str,
         combined_key: str,
+        allow_bare_system: bool = False,
     ) -> tuple[str, str]:
         system_name = self._text_value(payload, system_key).strip()
         station_name = self._text_value(payload, station_key).strip()
@@ -171,6 +177,7 @@ class DraftValueHelper:
             system_key=system_key,
             station_key=station_key,
             combined_key=combined_key,
+            allow_bare_system=allow_bare_system,
         )
         return system_name, station_name
     

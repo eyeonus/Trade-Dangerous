@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 from typing import Any
 
@@ -982,14 +983,18 @@ class AppShell:
                     error_text = self.session.execution.error_message
                     with ui.row().classes('w-full items-center gap-2'):
                         ui.button(
-                            icon='content_copy',
+                            'Copy Error',
                             on_click=lambda: self._copy_text_to_clipboard(
-                                error_text, 'Error message'
+                                error_text, 'Error'
                             ),
-                        ).props('flat dense').tooltip('Copy error message')
+                        ).props('flat dense').tooltip(
+                            'Copy the error message to the clipboard'
+                        )
                     ui.label(
                         error_text
-                    ).classes('text-negative whitespace-pre-wrap')
+                    ).classes('text-negative whitespace-pre-wrap').style(
+                        'user-select: text; -webkit-user-select: text'
+                    )
                 else:
                     render_command_results(
                         self.session.selected_command,
@@ -1010,22 +1015,63 @@ class AppShell:
             if diagnostics_text:
                 with ui.row().classes('w-full items-center gap-2'):
                     ui.button(
-                        icon='content_copy',
+                        'Copy Diagnostics',
                         on_click=lambda: self._copy_text_to_clipboard(
                             diagnostics_text, 'Diagnostics'
                         ),
-                    ).props('flat dense').tooltip('Copy diagnostics')
+                    ).props('flat dense').tooltip(
+                        'Copy the diagnostics output to the clipboard'
+                    )
             ui.label(
                 diagnostics_text
-            ).classes('whitespace-pre-wrap')
+            ).classes('whitespace-pre-wrap').style(
+                'user-select: text; -webkit-user-select: text'
+            )
     
-    def _copy_text_to_clipboard(self, text: str, label: str) -> None:
-        # ui.clipboard.write runs navigator.clipboard.writeText on the client.
-        # It works in secure contexts, which includes native mode on localhost.
-        # The copy is independent of the rendered panes, so a clipboard hiccup
-        # cannot disturb the error or diagnostics text already on screen.
-        ui.clipboard.write(text)
-        ui.notify(f'{label} copied to clipboard.')
+    async def _copy_text_to_clipboard(self, text: str, label: str) -> None:
+        # Copy on the client so it works in the native (pywebview) window. Try
+        # the modern async clipboard API first, then fall back to a hidden
+        # textarea + execCommand('copy') where it is unavailable. The script
+        # returns whether the copy actually happened, so success is only
+        # reported when the client confirms it. json.dumps safely escapes the
+        # arbitrary text into a JS string literal. The displayed panes are never
+        # touched, so a failure leaves the text on screen to copy by hand.
+        script = (
+            'const text = ' + json.dumps(text) + ';\n'
+            'try {\n'
+            '  if (navigator.clipboard && window.isSecureContext) {\n'
+            '    await navigator.clipboard.writeText(text);\n'
+            '    return true;\n'
+            '  }\n'
+            '} catch (e) {}\n'
+            'try {\n'
+            '  const ta = document.createElement("textarea");\n'
+            '  ta.value = text;\n'
+            '  ta.style.position = "fixed";\n'
+            '  ta.style.top = "-1000px";\n'
+            '  ta.style.opacity = "0";\n'
+            '  document.body.appendChild(ta);\n'
+            '  ta.focus();\n'
+            '  ta.select();\n'
+            '  const ok = document.execCommand("copy");\n'
+            '  document.body.removeChild(ta);\n'
+            '  return ok;\n'
+            '} catch (e) {\n'
+            '  return false;\n'
+            '}'
+        )
+        try:
+            copied = await ui.run_javascript(script)
+        except Exception:
+            copied = False
+        if copied:
+            ui.notify(f'{label} copied to clipboard.')
+        else:
+            ui.notify(
+                f'Could not copy {label.lower()}. '
+                'Select the text and copy it manually.',
+                color='negative',
+            )
     
     # Native close can delete the NiceGUI client while background polling is
     # still unwinding. Treat that specific case as shutdown noise, not a fresh

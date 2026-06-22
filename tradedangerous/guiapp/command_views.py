@@ -36,7 +36,7 @@ class TradeWorkspace(DraftValueHelper):
             self._build_constraint_section()
             
             with ui.row().classes('gap-2'):
-                ui.button('Execute Trade', on_click=self.on_execute)
+                ui.button('Execute Direct', on_click=self.on_execute)
     
     def _normalize_trade_state(self) -> None:
         origin_system, _origin_station = self._normalize_station_pair_value(
@@ -44,12 +44,14 @@ class TradeWorkspace(DraftValueHelper):
             system_key='originSystem',
             station_key='originStation',
             combined_key='origin',
+            allow_bare_system=True,
         )
         dest_system, _dest_station = self._normalize_station_pair_value(
             self.draft.main_values,
             system_key='destSystem',
             station_key='destStation',
             combined_key='dest',
+            allow_bare_system=True,
         )
         self.selected_origin_system_id = self._resolve_trade_system_id(
             origin_system,
@@ -133,6 +135,7 @@ class TradeWorkspace(DraftValueHelper):
             system_key=system_key,
             station_key=station_key,
             combined_key=combined_key,
+            allow_bare_system=True,
         )
         self.on_changed()
     
@@ -162,6 +165,7 @@ class TradeWorkspace(DraftValueHelper):
             system_key=system_key,
             station_key=station_key,
             combined_key=combined_key,
+            allow_bare_system=True,
         )
         self.on_changed()
     
@@ -202,10 +206,11 @@ class TradeWorkspace(DraftValueHelper):
     
     def _build_route_section(self) -> None:
         with ui.card().classes('w-full'):
-            ui.label('Trade Route')
+            ui.label('Direct Route')
             ui.label(
-                'Select the origin system and station you buy from, then the '
-                'destination system and station you sell to.'
+                'Enter an origin and a destination. Each side may be a whole '
+                'system (every qualifying station) or a single system/station '
+                '— the station is optional on either side.'
             ).classes('text-sm text-gray-600')
             
             with ui.row().classes('w-full gap-3'):
@@ -255,7 +260,7 @@ class TradeWorkspace(DraftValueHelper):
                 
                 if self.suggest_stations is None:
                     ui.input(
-                        'Origin Station',
+                        'Origin Station (optional)',
                         value=self._trade_station_value(
                             system_key='originSystem',
                             station_key='originStation',
@@ -272,7 +277,7 @@ class TradeWorkspace(DraftValueHelper):
                     )
                 else:
                     self.origin_station_autocomplete = AutocompleteInput(
-                        label='Origin Station',
+                        label='Origin Station (optional)',
                         value=self._trade_station_value(
                             system_key='originSystem',
                             station_key='originStation',
@@ -343,7 +348,7 @@ class TradeWorkspace(DraftValueHelper):
                 
                 if self.suggest_stations is None:
                     ui.input(
-                        'Destination Station',
+                        'Destination Station (optional)',
                         value=self._trade_station_value(
                             system_key='destSystem',
                             station_key='destStation',
@@ -360,7 +365,7 @@ class TradeWorkspace(DraftValueHelper):
                     )
                 else:
                     self.dest_station_autocomplete = AutocompleteInput(
-                        label='Destination Station',
+                        label='Destination Station (optional)',
                         value=self._trade_station_value(
                             system_key='destSystem',
                             station_key='destStation',

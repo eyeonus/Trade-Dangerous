@@ -238,7 +238,7 @@ def build_trade_argv(
     origin = str(resolved.get('origin') or '').strip()
     dest = str(resolved.get('dest') or '').strip()
     
-    argv = ['tradegui.py', 'trade', origin, dest]
+    argv = ['tradegui.py', 'direct', origin, dest]
     
     # The trade renderer expects the detailed row payload rather than the
     # compact CLI summary, so the GUI forces detail mode here.
@@ -266,9 +266,9 @@ def validate_trade_request(
     validate_optional_int: Callable[..., None],
 ) -> None:
     if not str(resolved.get('origin') or '').strip():
-        errors.append('Trade requires Origin.')
+        errors.append('Direct requires an origin system or station.')
     if not str(resolved.get('dest') or '').strip():
-        errors.append('Trade requires Destination.')
+        errors.append('Direct requires a destination system or station.')
     
     validate_optional_int(resolved, 'minGainPerTon', minimum=0, errors=errors)
     validate_optional_int(resolved, 'limit', minimum=0, errors=errors)
@@ -277,7 +277,7 @@ def validate_trade_request(
     
     cargo_mode = resolved.get('cargoMode')
     if cargo_mode not in (None, '', 'fill', 'load', 'full'):
-        errors.append('Trade cargo mode is invalid.')
+        errors.append('Direct cargo mode is invalid.')
 
 def build_market_argv(
     *,
