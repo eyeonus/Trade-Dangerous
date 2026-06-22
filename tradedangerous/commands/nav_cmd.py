@@ -265,6 +265,19 @@ def run(results, cmdenv, tdb):
         if isinstance(place, orm.System)
     )
     
+    # A required waypoint must not also be avoided. The leg anchor is exempt --
+    # you may leave the system you start in -- but routing to or through an
+    # avoided system is contradictory, so reject it before planning rather than
+    # letting it slip through for a one-jump leg (where plan_jump_path returns
+    # before the avoid-filtered bubble loads) yet fail for a multi-jump one.
+    clashes = [w for w in waypoints[1:] if w.system_id in avoid_ids]
+    if clashes:
+        raise CommandLineError(
+            "Cannot route to or through an avoided system: {}".format(
+                ', '.join(w.name for w in clashes)
+            )
+        )
+    
     # Plan each consecutive leg and stitch, dropping the shared junction system.
     route_systems: list = []
     for hop_src, hop_dst in zip(waypoints, waypoints[1:]):
