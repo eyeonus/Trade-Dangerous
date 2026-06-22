@@ -409,7 +409,7 @@ def _render_local_results(structured_result: Any) -> None:
                         'planetary': yes_no_unknown(_field(station, 'planetary')),
                         'fleet': yes_no_unknown(_field(station, 'fleet')),
                         'settlement': yes_no_unknown(_field(station, 'settlement')),
-                        'items': _format_result_value(_field(station, 'itemCount')),
+                        'items': _format_result_value(station_values.get('item_count')),
                     }
                 )
             
@@ -522,7 +522,7 @@ def _render_nav_results(structured_result: Any) -> None:
                         'planetary': yes_no_unknown(_field(station, 'planetary')),
                         'fleet': yes_no_unknown(_field(station, 'fleet')),
                         'settlement': yes_no_unknown(_field(station, 'settlement')),
-                        'items': _format_result_value(_field(station, 'itemCount')),
+                        'items': _format_result_value(station_values.get('item_count')),
                     }
                 )
             
