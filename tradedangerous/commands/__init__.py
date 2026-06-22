@@ -11,6 +11,7 @@ from . import parsing
 
 from . import buildcache_cmd
 from . import buy_cmd
+from . import direct_cmd
 from . import export_cmd
 from . import import_cmd
 from . import local_cmd
