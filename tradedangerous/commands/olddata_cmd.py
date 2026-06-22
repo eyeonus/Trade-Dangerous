@@ -75,6 +75,13 @@ switches = [
 ]
 
 
+def validateRunArgumentsFast(cmdenv):
+    # --route sorts results into a path from the --near origin, so it has no
+    # meaning without one. Reject it during preflight, before any database work.
+    if cmdenv.route and not cmdenv.near:
+        raise CommandLineError("--route requires --near")
+
+
 ######################################################################
 # Helpers
 
@@ -150,12 +157,12 @@ def run(results, cmdenv, tdb):
     cmdenv = results.cmdenv
     tdb = cmdenv.tdb
     session = tdb.session
-
+    
     nearSys = cmdenv.nearSystem  # resolved ORM System, or None
-
+    
     age_expr = age_in_days(session, func.max(orm.StationItem.modified)).label('age')
     columns = [orm.Station.station_id.label('station_id'), age_expr]
-
+    
     # --near: bounding box + exact-sphere range filter, both in SQL. The squared
     # distance is constant per station (one system), so MIN() makes it a legal
     # aggregate to select alongside the GROUP BY on every backend.
@@ -169,13 +176,13 @@ def run(results, cmdenv, tdb):
             + (orm.System.pos_z - z) * (orm.System.pos_z - z)
         )
         columns.append(func.min(dist2_raw).label('dist2'))
-
+    
     query = (
         session.query(*columns)
         .select_from(orm.Station)
         .join(orm.StationItem, orm.StationItem.station_id == orm.Station.station_id)
     )
-
+    
     if nearSys:
         query = (
             query.join(orm.System, orm.System.system_id == orm.Station.system_id)
@@ -186,7 +193,7 @@ def run(results, cmdenv, tdb):
                 dist2_raw <= ly * ly,
             )
         )
-
+    
     # Station-attribute filters, all pushed into SQL.
     if cmdenv.padSize:
         query = query.filter(orm.Station.max_pad_size.in_(list(cmdenv.padSize)))
@@ -200,30 +207,33 @@ def run(results, cmdenv, tdb):
         query = _apply_tristate_filter(query, cmdenv.fleet, FLEET_CARRIER_TYPE_IDS)
     if cmdenv.settlement:
         query = _apply_tristate_filter(query, cmdenv.settlement, SETTLEMENT_TYPE_IDS)
-
+    
     query = query.group_by(orm.Station.station_id)
-
+    
     if cmdenv.minAge:
         query = query.having(age_expr >= float(cmdenv.minAge))
-
+    
     query = query.order_by(age_expr.desc())
     if cmdenv.limit:
         query = query.limit(cmdenv.limit)
-
+    
     rows = query.all()
-
-    # Hydrate only the survivors (<= --limit) for rendering and --route.
+    
+    # Hydrate only the survivors for rendering and --route, in chunks so a large
+    # --limit cannot exceed the backend's bind-parameter ceiling.
     stn_ids = [r.station_id for r in rows]
     station_by_id = {}
-    if stn_ids:
+    for start in range(0, len(stn_ids), 900):
+        chunk = stn_ids[start:start + 900]
         hydrated = (
             session.query(orm.Station)
             .options(joinedload(orm.Station.system))
-            .filter(orm.Station.station_id.in_(stn_ids))
+            .filter(orm.Station.station_id.in_(chunk))
             .all()
         )
-        station_by_id = {s.station_id: s for s in hydrated}
-
+        for station in hydrated:
+            station_by_id[station.station_id] = station
+    
     for r in rows:
         station = station_by_id.get(r.station_id)
         if station is None:
@@ -233,22 +243,19 @@ def run(results, cmdenv, tdb):
         row.age = float(r.age or 0.0)
         row.dist = sqrt(float(r.dist2)) if nearSys and r.dist2 is not None else 0.0
         results.rows.append(row)
-
+    
     # --route: reorder the bounded result set into a short nearest-neighbour path.
-    if cmdenv.route:
-        if not cmdenv.near:
-            raise CommandLineError("--route requires --near")
-        if len(results.rows) > 1:
-            remaining = set(results.rows)
-            path = [results.rows[0]]
-            remaining.remove(results.rows[0])
-            while remaining:
-                last = path[-1].station.system
-                nearest = min(remaining, key=lambda rr: _distance(last, rr.station.system))
-                remaining.remove(nearest)
-                path.append(nearest)
-            results.rows[:] = path
-
+    if cmdenv.route and len(results.rows) > 1:
+        remaining = set(results.rows)
+        path = [results.rows[0]]
+        remaining.remove(results.rows[0])
+        while remaining:
+            last = path[-1].station.system
+            nearest = min(remaining, key=lambda rr: _distance(last, rr.station.system))
+            remaining.remove(nearest)
+            path.append(nearest)
+        results.rows[:] = path
+    
     return results
 
 
@@ -258,14 +265,14 @@ def run(results, cmdenv, tdb):
 def render(results, cmdenv, tdb):
     if not results or not results.rows:
         raise TradeException("No data found")
-
+    
     nameLen = max_len(results.rows, key=lambda row: row.station.dbname())
-
+    
     rowFmt = RowFormat().append(
             ColumnFormat("Station", '<', nameLen,
                     key=lambda row: row.station.dbname())
     )
-
+    
     if cmdenv.quiet < 2:
         if cmdenv.nearSystem:
             rowFmt.addColumn('DistLy', '>', 6, '.2f',
@@ -289,10 +296,10 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("Stl", '>', '3',
                         key=lambda row: formatting.settlementStates[_settlement_state(row.station)])
         )
-
+    
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
         print(heading, underline, sep='\n')
-
+    
     for row in results.rows:
         print(rowFmt.format(row))
