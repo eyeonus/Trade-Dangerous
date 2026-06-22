@@ -121,28 +121,6 @@ class NavWorkspace(DraftValueHelper):
                     'Edit the list of systems to exclude from routing.'
                 )
 
-            with ui.row().classes('w-full items-center gap-3'):
-                ui.label(
-                    'Jumps between fuel stops (optional)'
-                ).classes('text-sm text-gray-600')
-                ui.number(
-                    value=self._number_value(
-                        self.draft.main_values,
-                        'refuelJumps',
-                    ),
-                    min=0,
-                    step=1,
-                    precision=0,
-                    on_change=lambda event: self._set_int(
-                        self.draft.main_values,
-                        'refuelJumps',
-                        event.value,
-                        'Refuel jumps',
-                    ),
-                ).classes('w-12').tooltip(
-                    'Require a station after this many jumps.'
-                )
-
     def _build_filter_section(self) -> None:
         build_shared_filter_section(
             get_bool=lambda key: self._bool_value(self.draft.main_values, key),

@@ -1146,7 +1146,6 @@ class RunWorkspace(DraftValueHelper):
                     self._build_extended_routing_section()
                     self._build_extended_market_section()
                     self._build_extended_trade_section()
-                    self._build_extended_search_section()
 
                 with ui.row().classes('justify-end'):
                     ui.button('Close', on_click=dialog.close)
@@ -1239,18 +1238,6 @@ class RunWorkspace(DraftValueHelper):
                     'Require this many hops between visits to the same '
                     'station. 2 is the minimum useful value.'
                 )
-                ui.checkbox(
-                    'Show jumps',
-                    value=self._bool_value(
-                        self.draft.advanced_values,
-                        'showJumps',
-                    ),
-                    on_change=lambda event: self._set_bool(
-                        self.draft.advanced_values,
-                        'showJumps',
-                        event.value,
-                    ),
-                ).tooltip('Show detail of jumps between hops.')
 
     def _build_extended_market_section(self) -> None:
         with ui.column().classes('w-full gap-3'):
@@ -1456,65 +1443,4 @@ class RunWorkspace(DraftValueHelper):
                 ).classes('w-32').tooltip(
                     'Penalty applied per 1 kls of station distance from its '
                     'star.'
-                )
-
-    def _build_extended_search_section(self) -> None:
-        with ui.column().classes('w-full gap-3'):
-            ui.label('Search breadth and pruning')
-
-            with ui.row().classes('w-full gap-3'):
-                ui.number(
-                    'Max routes',
-                    value=self._number_value(
-                        self.draft.advanced_values,
-                        'maxRoutes',
-                    ),
-                    min=0,
-                    step=1,
-                    precision=0,
-                    on_change=lambda event: self._set_int(
-                        self.draft.advanced_values,
-                        'maxRoutes',
-                        event.value,
-                        'Max routes',
-                    ),
-                ).classes('w-40').tooltip(
-                    'After each hop, continue only the top N highest-scoring '
-                    'routes.'
-                )
-                ui.number(
-                    'Prune score',
-                    value=self._number_value(
-                        self.draft.advanced_values,
-                        'pruneScores',
-                    ),
-                    min=0,
-                    step=0.1,
-                    precision=2,
-                    on_change=lambda event: self._set_float(
-                        self.draft.advanced_values,
-                        'pruneScores',
-                        event.value,
-                    ),
-                ).classes('w-40').tooltip(
-                    'From the third hop onward, keep only routes at or above '
-                    'this percentage of the current best score.'
-                )
-                ui.number(
-                    'Prune hops',
-                    value=self._number_value(
-                        self.draft.advanced_values,
-                        'pruneHops',
-                    ),
-                    min=0,
-                    step=1,
-                    precision=0,
-                    on_change=lambda event: self._set_int(
-                        self.draft.advanced_values,
-                        'pruneHops',
-                        event.value,
-                        'Prune hops',
-                    ),
-                ).classes('w-40').tooltip(
-                    'Changes which hop Prune score takes effect from.'
                 )
