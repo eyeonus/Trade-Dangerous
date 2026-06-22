@@ -987,7 +987,7 @@ class AppShell:
                             on_click=lambda: self._copy_text_to_clipboard(
                                 error_text, 'Error'
                             ),
-                        ).props('flat dense').tooltip(
+                        ).props('dense').tooltip(
                             'Copy the error message to the clipboard'
                         )
                     ui.label(
@@ -1019,7 +1019,7 @@ class AppShell:
                         on_click=lambda: self._copy_text_to_clipboard(
                             diagnostics_text, 'Diagnostics'
                         ),
-                    ).props('flat dense').tooltip(
+                    ).props('dense').tooltip(
                         'Copy the diagnostics output to the clipboard'
                     )
             ui.label(
