@@ -63,10 +63,10 @@ switches = [
         help='Find buyers within jump range of this system.',
         type=str
     ),
-    ParseArgument('--ly-per',
-        help='Maximum light years per jump.',
+    ParseArgument('--ly',
+        help='[Requires --near] Systems within this range of --near.',
         default=None,
-        dest='maxLyPer',
+        dest='ly',
         metavar='N.NN',
         type=float,
     ),
@@ -122,7 +122,7 @@ def _near_station_ids(cmdenv, tdb) -> list[int] | None:
     if not near_system:
         return None
 
-    max_ly = cmdenv.maxLyPer or cmdenv.maxSystemLinkLy
+    max_ly = cmdenv.ly if cmdenv.ly is not None else cmdenv.maxSystemLinkLy
     rows = (
         tdb.session.query(orm.Station.station_id)
         .join(orm.System, orm.System.system_id == orm.Station.system_id)
@@ -221,7 +221,7 @@ def run(results, cmdenv, tdb):
 
     nearSystem = cmdenv.nearSystem
     if nearSystem:
-        maxLy = cmdenv.maxLyPer or cmdenv.maxSystemLinkLy
+        maxLy = cmdenv.ly if cmdenv.ly is not None else cmdenv.maxSystemLinkLy
         results.summary.near = nearSystem
         results.summary.ly = maxLy
         nx, ny, nz = nearSystem.pos_x, nearSystem.pos_y, nearSystem.pos_z
