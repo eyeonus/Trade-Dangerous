@@ -119,11 +119,13 @@ def apply_game_name_shortcut(cmdenv: CommandEnv, name: str) -> str:
     status = game.get_status()
 
     if name == "~":
-        require_game_data(game, location=True, status_fields=["star_system", "station_name"])
-
-        # Alias for "current station-or-system". It can only be station if they're docked.
+        # "Where I'm at": the docked station if docked, otherwise the current
+        # system (a system endpoint -- all its stations). Both forms resolve
+        # through lookup_place downstream.
+        require_game_data(game, location=True, status_fields=["star_system"])
         if not status.docked:
-            raise CommandLineError("'~' only works while docked at a station.")
+            return status.star_system
+        require_game_data(game, status_fields=["station_name"])
         return f"{status.star_system}/{status.station_name}"
 
     if name.startswith("~/"):
@@ -133,8 +135,16 @@ def apply_game_name_shortcut(cmdenv: CommandEnv, name: str) -> str:
         return f"{status.star_system}/{name[2:]}"
 
     if name == "~@":
-        # Alias for "current nav-target system", but trade requires a station.
-        raise CommandLineError("nav route doesn't include station, please qualify ('~@/soandso')")
+        # "Current nav-target system" as a system endpoint (all its stations).
+        # direct accepts a system on either side, so unlike the old command
+        # this no longer needs a station qualifier.
+        require_game_data(game, navroute=True)
+        nav_data = game.json_data[JsonFiles.NAVROUTE]
+        nav_route = nav_data.get("Route", None)
+        if not nav_route:
+            raise CommandLineError("'~@' only works when you have a nav route programmed.")
+        # The nav route is in jump order; the last entry is the destination.
+        return nav_route[-1]["StarSystem"]
 
     if name.startswith("~@/"):
         # Shortcut for "current navtarget system/..."
@@ -152,28 +162,47 @@ def apply_game_name_shortcut(cmdenv: CommandEnv, name: str) -> str:
     return name
 
 
-def get_stations(cmdenv: CommandEnv, tdb: TradeORM) -> tuple[models.Station, models.Station]:
-    """ @internal get_stations will work out what the from/to stations are. """
-    orig_name, dest_name = cmdenv.origin, cmdenv.dest
+def _place_label(place) -> str:
+    """ Display label for an endpoint: 'System/Station' for a single station,
+        'System/' for a whole-system endpoint. """
+    if isinstance(place, models.Station):
+        return place.dbname()
+    return f"{place.name}/"
 
-    # Do we need to consult the game?
+
+def _reject_identical(lhs, rhs) -> None:
+    """ Reject an origin and destination that name the same place. """
+    if isinstance(lhs, models.Station) and isinstance(rhs, models.Station):
+        if lhs.station_id == rhs.station_id:
+            raise CommandLineError("Origin and destination are the same station.")
+    elif isinstance(lhs, models.System) and isinstance(rhs, models.System):
+        if lhs.system_id == rhs.system_id:
+            raise CommandLineError("Origin and destination are the same system.")
+
+
+def get_places(cmdenv: CommandEnv, tdb: TradeORM):
+    """ Resolve origin/dest to a System (all its stations) or a single Station.
+
+        Endpoints go through lookup_place, so the syntax picks the namespace:
+        a bare or trailing-slash name ('sol', 'sol/') is the whole system,
+        while 'sol/abraham lincoln' or '/abraham lincoln' is a single station.
+    """
+    orig_name, dest_name = cmdenv.origin, cmdenv.dest
+    # Do we need to consult the game journal for a '~' shortcut?
     if orig_name.startswith("~") or dest_name.startswith("~"):
         orig_name = apply_game_name_shortcut(cmdenv, orig_name)
         dest_name = apply_game_name_shortcut(cmdenv, dest_name)
-    
-    lhs = tdb.lookup_station(orig_name)
-    if not lhs:
-        raise CommandLineError(f"Unknown origin station: {orig_name}")
-    cmdenv.DEBUG0("from id: system={}, station={}", lhs.system_id, lhs.station_id)
-
-    rhs = tdb.lookup_station(dest_name)
-    if not rhs:
-        raise CommandLineError(f"Unknown destination station: {dest_name}")
-    cmdenv.DEBUG0("to id..: system={}, station={}", rhs.system_id, rhs.station_id)
-    
-    if lhs == rhs:
-        raise CommandLineError("Must specify two different stations.")
-
+    try:
+        lhs = tdb.lookup_place(orig_name)
+    except LookupError as e:
+        raise CommandLineError(f"Unknown origin: {orig_name}") from e
+    cmdenv.DEBUG0("from: {}", _place_label(lhs))
+    try:
+        rhs = tdb.lookup_place(dest_name)
+    except LookupError as e:
+        raise CommandLineError(f"Unknown destination: {dest_name}") from e
+    cmdenv.DEBUG0("to..: {}", _place_label(rhs))
+    _reject_identical(lhs, rhs)
     return lhs, rhs
 
 
@@ -198,7 +227,7 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
         game = None
     setattr(cmdenv, "game", game)
 
-    lhs, rhs = get_stations(cmdenv, tdb)
+    lhs, rhs = get_places(cmdenv, tdb)
     if getattr(cmdenv, "reverse", False):
         cmdenv.DEBUG0("--reverse: Reversing origin and destination")
         lhs, rhs = rhs, lhs
@@ -210,21 +239,34 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
     
     seller = aliased(models.StationItem, name="seller")
     buyer = aliased(models.StationItem, name="buyer")
+    seller_stn = aliased(models.Station, name="seller_stn")
+    buyer_stn = aliased(models.Station, name="buyer_stn")
+
+    def endpoint_clause(station_alias, place):
+        # A station endpoint pins one station; a system endpoint matches every
+        # station in that system. Both are expressed against the joined Station.
+        if isinstance(place, models.Station):
+            return station_alias.station_id == place.station_id
+        return station_alias.system_id == place.system_id
+
     stmt = (
         select(
             models.Item,
             seller.supply_price, seller.supply_units, seller.supply_level,
             buyer.demand_price, buyer.demand_units, buyer.demand_level,
             seller.modified, buyer.modified,
+            seller_stn.name, buyer_stn.name,
         )
         .where(
-            seller.station_id == lhs.station_id,
-            buyer.station_id == rhs.station_id,
+            seller_stn.station_id == seller.station_id,
+            buyer_stn.station_id == buyer.station_id,
+            endpoint_clause(seller_stn, lhs),
+            endpoint_clause(buyer_stn, rhs),
             seller.item_id == buyer.item_id,
             seller.item_id == models.Item.item_id,
             seller.supply_price > 0,
             seller.supply_units > supply_cutoff,
-            buyer.demand_price > 0,                 # sqlite seems to need thi shint
+            buyer.demand_price > 0,                 # sqlite needs this hint
             buyer.demand_units > demand_cutoff,
             buyer.demand_price >= seller.supply_price,
         )
@@ -274,7 +316,8 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
         results.summary.cargo_space = max(cargo_space, 1)  # clamp to >= 1
 
     units_seen = 0
-    for item, sup_price, sup_units, sup_level, dem_price, dem_units, dem_level, sup_age, dem_age in trades:
+    for (item, sup_price, sup_units, sup_level, dem_price, dem_units,
+         dem_level, sup_age, dem_age, from_stn, to_stn) in trades:
         units = min(results.summary.cargo_space, sup_units, dem_units)
         if not units:
             continue
@@ -295,6 +338,8 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
 
         results.rows.append({
             "item": item.dbname(cmdenv.detail),
+            "from_station": from_stn,
+            "to_station": to_stn,
             "sup_price": sup_price,
             "sup_units": sup_units,
             "sup_level": sup_level,
@@ -353,7 +398,7 @@ def render(results, cmdenv, tdb):
 
     heading, underline = rowFmt.heading()
     if not cmdenv.quiet:
-        print(f"{len(results.rows)} trades found between {results.summary.fromStation.dbname()} and {results.summary.toStation.dbname()}.")
+        print(f"{len(results.rows)} trades found between {_place_label(results.summary.fromStation)} and {_place_label(results.summary.toStation)}.")
         print(heading)
         print(underline)
 
