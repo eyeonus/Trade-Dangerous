@@ -29,7 +29,7 @@ DEFAULT_MULTI_STATION_LIMIT = 20
 ######################################################################
 # Parser config
 
-help='Find potential trades between two given stations.'
+help='List profitable trades between two markets (stations or systems), or within one system with --local; routing is ignored.'
 name='direct'
 epilog=None
 needs=Needs.RESOLVER
@@ -341,6 +341,10 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
             models.Item.category_id == category.category_id,
             endpoint_clause(seller_stn, lhs),
             endpoint_clause(buyer_stn, rhs),
+            # Never pair a station with itself. When the endpoints overlap -- a
+            # system on one side and one of its stations on the other, or
+            # --local -- this rules out buying and selling at the same station.
+            seller_stn.station_id != buyer_stn.station_id,
             seller.item_id == buyer.item_id,
             seller.item_id == models.Item.item_id,
             seller.supply_price > 0,
@@ -350,9 +354,6 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandRe
             buyer.demand_price >= seller.supply_price,
         )
     )
-    if local:
-        # In-system trades only make sense between two different stations.
-        base = base.where(seller_stn.station_id != buyer_stn.station_id)
     # --age: both ends of the trade must be at least this fresh.
     if cmdenv.maxAge:
         base = base.where(
