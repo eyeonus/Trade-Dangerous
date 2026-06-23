@@ -482,20 +482,6 @@ class BuySellWorkspace(DraftValueHelper):
             
             with ui.row().classes('w-full gap-4'):
                 ui.checkbox(
-                    'Space stations only',
-                    value=self._bool_value(
-                        self.draft.advanced_values,
-                        'noPlanet',
-                    ),
-                    on_change=lambda event: self._set_bool(
-                        self.draft.advanced_values,
-                        'noPlanet',
-                        event.value,
-                    ),
-                ).tooltip(
-                    'Require stations to be in space.'
-                )
-                ui.checkbox(
                     'Black market only',
                     value=self._bool_value(
                         self.draft.advanced_values,
