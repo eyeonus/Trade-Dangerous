@@ -61,8 +61,10 @@ def build_run_argv(
     
     append_option(argv, '--ls-penalty', resolved.get('lsPenalty'))
     append_option(argv, '--ls-max', resolved.get('maxLs'))
+    append_flag(argv, '--sco', resolved.get('sco'))
     append_option(argv, '--gain-per-ton', resolved.get('minGainPerTon'))
     append_option(argv, '--max-gain-per-ton', resolved.get('maxGainPerTon'))
+    append_option(argv, '--max-price', resolved.get('maxPrice'))
     
     append_flag(argv, '--unique', resolved.get('unique'))
     append_option(argv, '--loop-interval', resolved.get('loopInt'))
@@ -75,6 +77,7 @@ def build_run_argv(
     append_flag(argv, '--progress', resolved.get('progress'))
     append_option(argv, '--supply', resolved.get('supply'))
     append_option(argv, '--demand', resolved.get('demand'))
+    append_flag(argv, '--no-bulk-cap', resolved.get('noBulkCap'))
     append_flag(argv, '--summary', resolved.get('summary'))
     return argv
 

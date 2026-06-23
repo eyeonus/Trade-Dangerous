@@ -550,6 +550,18 @@ class RunWorkspace(DraftValueHelper):
                             event.value,
                         ),
                     ).tooltip('Only visit each station once in route.')
+                    ui.checkbox(
+                        'SCO',
+                        value=self._bool_value(self.draft.main_values, 'sco'),
+                        on_change=lambda event: self._set_bool(
+                            self.draft.main_values,
+                            'sco',
+                            event.value,
+                        ),
+                    ).tooltip(
+                        'Declare an SCO (Supercruise Overcharge) drive: ignore '
+                        'the LS penalty so distant stations are not penalised.'
+                    )
 
     def _build_via_editor_dialog(self) -> ui.dialog:
         dialog = ui.dialog()
@@ -1447,4 +1459,41 @@ class RunWorkspace(DraftValueHelper):
                 ).classes('w-32').tooltip(
                     'Penalty applied per 1 kls of station distance from its '
                     'star.'
+                )
+
+            with ui.row().classes('w-full items-end gap-4'):
+                ui.number(
+                    'Max price',
+                    value=self._number_value(
+                        self.draft.advanced_values,
+                        'maxPrice',
+                    ),
+                    min=0,
+                    step=1,
+                    precision=0,
+                    on_change=lambda event: self._set_int(
+                        self.draft.advanced_values,
+                        'maxPrice',
+                        event.value,
+                        'Max price',
+                    ),
+                ).classes('w-48').tooltip(
+                    'Maximum commodity market price to buy at (cr/t). Leave '
+                    'blank for the default (1,500,000); set 0 to disable the '
+                    'cap.'
+                )
+                ui.checkbox(
+                    'No bulk cap',
+                    value=self._bool_value(
+                        self.draft.advanced_values,
+                        'noBulkCap',
+                    ),
+                    on_change=lambda event: self._set_bool(
+                        self.draft.advanced_values,
+                        'noBulkCap',
+                        event.value,
+                    ),
+                ).tooltip(
+                    'Fill the full Metals/Minerals demand, ignoring the safe '
+                    'bulk-sale-tax quantity cap.'
                 )
