@@ -1172,6 +1172,22 @@ class AppShell:
                         'user-select: text; -webkit-user-select: text'
                     )
                 else:
+                    # Copy the command's own plain-text output (ANSI stripped):
+                    # the route table for run, the result table for structured
+                    # commands -- the same text the CLI emits. Reuses the
+                    # confirmed clipboard path. Absent when there is no text.
+                    result_text = self.session.execution.raw_output
+                    if result_text and result_text.strip():
+                        with ui.row().classes('w-full items-center gap-2'):
+                            ui.button(
+                                'Copy Results',
+                                on_click=lambda: self._copy_text_to_clipboard(
+                                    result_text, 'Results'
+                                ),
+                            ).props('dense').tooltip(
+                                'Copy the results as plain text to the '
+                                'clipboard'
+                            )
                     render_command_results(
                         self.session.selected_command,
                         self.session.execution.structured_result,

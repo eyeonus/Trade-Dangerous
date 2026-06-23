@@ -53,7 +53,9 @@ def build_run_argv(
     
     append_option(argv, '--limit', resolved.get('limit'))
     append_option(argv, '--pad-size', resolved.get('padSize'))
-    append_flag(argv, '--no-planet', resolved.get('noPlanet'))
+    # The GUI drops the redundant "Space stations only" (--no-planet) control;
+    # Planetary = No only (--planetary N) is the single non-planetary filter.
+    # Any stale noPlanet key in an old draft is intentionally left unread.
     append_option(argv, '--planetary', resolved.get('planetary'))
     append_option(argv, '--fleet-carrier', resolved.get('fleet'))
     append_option(argv, '--settlement', resolved.get('settlement'))

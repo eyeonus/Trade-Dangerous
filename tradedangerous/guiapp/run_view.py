@@ -1260,18 +1260,9 @@ class RunWorkspace(DraftValueHelper):
             ui.label('Market and station constraints')
 
             with ui.row().classes('w-full gap-4'):
-                ui.checkbox(
-                    'Space stations only',
-                    value=self._bool_value(
-                        self.draft.advanced_values,
-                        'noPlanet',
-                    ),
-                    on_change=lambda event: self._set_bool(
-                        self.draft.advanced_values,
-                        'noPlanet',
-                        event.value,
-                    ),
-                ).tooltip('Require stations to be in space.')
+                # 'Space stations only' (--no-planet) was redundant with the
+                # Planetary = No only filter, so it has been removed. Planetary
+                # in the Common Filters section is the single non-planetary knob.
                 ui.checkbox(
                     'Black market only',
                     value=self._bool_value(
