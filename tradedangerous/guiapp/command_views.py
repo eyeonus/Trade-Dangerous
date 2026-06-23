@@ -28,7 +28,11 @@ class TradeWorkspace(DraftValueHelper):
         self.resolve_system = resolve_system
         self.selected_origin_system_id: int | None = None
         self.selected_dest_system_id: int | None = None
-    
+        # Controls that --local makes meaningless (origin station, destination
+        # system, destination station). Populated as the route section builds;
+        # toggled by _apply_local_disable without touching the draft.
+        self._local_disable_targets: list = []
+
     def build(self) -> None:
         self._normalize_trade_state()
         with ui.column().classes('w-full gap-3'):
@@ -37,6 +41,26 @@ class TradeWorkspace(DraftValueHelper):
             
             with ui.row().classes('gap-2'):
                 ui.button('Execute Direct', on_click=self.on_execute)
+        
+        # Reflect a persisted Local choice on first render: disable the
+        # endpoints --local ignores while leaving their draft values intact.
+        self._apply_local_disable(
+            self._bool_value(self.draft.main_values, 'local')
+        )
+
+    def _on_local_changed(self, value: object) -> None:
+        enabled = bool(value)
+        self.draft.main_values['local'] = enabled
+        self._apply_local_disable(enabled)
+        self.on_changed()
+
+    def _apply_local_disable(self, local_enabled: bool) -> None:
+        # --local trades within the origin system, so the origin station and
+        # both destination controls have no meaning. Disable them (without
+        # clearing the draft) so unchecking Local restores the prior endpoints.
+        for element in self._local_disable_targets:
+            if element is not None:
+                element.set_enabled(not local_enabled)
     
     def _normalize_trade_state(self) -> None:
         origin_system, _origin_station = self._normalize_station_pair_value(
@@ -205,6 +229,7 @@ class TradeWorkspace(DraftValueHelper):
         return relabeled
     
     def _build_route_section(self) -> None:
+        self._local_disable_targets = []
         with ui.card().classes('w-full'):
             ui.label('Direct Route')
             ui.label(
@@ -259,7 +284,7 @@ class TradeWorkspace(DraftValueHelper):
                     ).build()
                 
                 if self.suggest_stations is None:
-                    ui.input(
+                    origin_station_input = ui.input(
                         'Origin Station (optional)',
                         value=self._trade_station_value(
                             system_key='originSystem',
@@ -275,6 +300,7 @@ class TradeWorkspace(DraftValueHelper):
                     ).classes('min-w-80 flex-1').tooltip(
                         'Station you are purchasing from.'
                     )
+                    self._local_disable_targets.append(origin_station_input)
                 else:
                     self.origin_station_autocomplete = AutocompleteInput(
                         label='Origin Station (optional)',
@@ -300,10 +326,13 @@ class TradeWorkspace(DraftValueHelper):
                         input_classes='min-w-80 flex-1',
                     )
                     self.origin_station_autocomplete.build()
+                    self._local_disable_targets.append(
+                        self.origin_station_autocomplete.input
+                    )
             
             with ui.row().classes('w-full gap-3'):
                 if self.suggest_systems is None:
-                    ui.input(
+                    dest_system_input = ui.input(
                         'Destination System',
                         value=self._trade_system_value(
                             system_key='destSystem',
@@ -321,8 +350,9 @@ class TradeWorkspace(DraftValueHelper):
                     ).classes('min-w-80 flex-1').tooltip(
                         'System containing the station you are selling to.'
                     )
+                    self._local_disable_targets.append(dest_system_input)
                 else:
-                    AutocompleteInput(
+                    dest_system_autocomplete = AutocompleteInput(
                         label='Destination System',
                         value=self._trade_system_value(
                             system_key='destSystem',
@@ -344,10 +374,14 @@ class TradeWorkspace(DraftValueHelper):
                         ),
                         tooltip='System containing the station you are selling to.',
                         input_classes='min-w-80 flex-1',
-                    ).build()
+                    )
+                    dest_system_autocomplete.build()
+                    self._local_disable_targets.append(
+                        dest_system_autocomplete.input
+                    )
                 
                 if self.suggest_stations is None:
-                    ui.input(
+                    dest_station_input = ui.input(
                         'Destination Station (optional)',
                         value=self._trade_station_value(
                             system_key='destSystem',
@@ -363,6 +397,7 @@ class TradeWorkspace(DraftValueHelper):
                     ).classes('min-w-80 flex-1').tooltip(
                         'Station you are selling to.'
                     )
+                    self._local_disable_targets.append(dest_station_input)
                 else:
                     self.dest_station_autocomplete = AutocompleteInput(
                         label='Destination Station (optional)',
@@ -388,10 +423,24 @@ class TradeWorkspace(DraftValueHelper):
                         input_classes='min-w-80 flex-1',
                     )
                     self.dest_station_autocomplete.build()
-    
+                    self._local_disable_targets.append(
+                        self.dest_station_autocomplete.input
+                    )
+            
+            with ui.row().classes('w-full items-center'):
+                ui.checkbox(
+                    'Within origin system',
+                    value=self._bool_value(self.draft.main_values, 'local'),
+                    on_change=lambda event: self._on_local_changed(event.value),
+                ).tooltip(
+                    'List the best trades between stations inside the origin '
+                    'system. The destination and origin-station fields are '
+                    'ignored.'
+                )
+
     def _build_constraint_section(self) -> None:
         with ui.card().classes('w-full'):
-            ui.label('Trade Constraints')
+            ui.label('Direct Constraints')
             
             with ui.row().classes('w-full items-end gap-3'):
                 ui.number(
@@ -487,6 +536,25 @@ class TradeWorkspace(DraftValueHelper):
                 ).tooltip(
                     'Show the reverse trade by swapping origin and '
                     'destination.'
+                )
+                ui.select(
+                    {
+                        '': 'All trades',
+                        'per-station': 'Best per origin station',
+                        'per-item': 'Best station pair per item',
+                        'station': 'All trades from best origin station',
+                    },
+                    value=self._text_value(self.draft.main_values, 'best'),
+                    label='Best',
+                    on_change=lambda event: self._set_text(
+                        self.draft.main_values,
+                        'best',
+                        event.value,
+                    ),
+                ).classes('w-80').tooltip(
+                    'Collapse multi-station output: the best trade at each '
+                    'origin station, the best station pair per item, or every '
+                    'trade at the single best origin station.'
                 )
 
 class LocalWorkspace(DraftValueHelper):

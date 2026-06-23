@@ -235,10 +235,19 @@ def build_trade_argv(
     append_option: Callable[[list[str], str, Any], None],
     append_flag: Callable[[list[str], str, Any], None],
 ) -> list[str]:
+    local = bool(resolved.get('local'))
     origin = str(resolved.get('origin') or '').strip()
-    dest = str(resolved.get('dest') or '').strip()
     
-    argv = ['tradegui.py', 'direct', origin, dest]
+    if local:
+        # --local trades within one system. Pass the origin as a bare system
+        # (drop any preserved station qualifier), emit no destination, and
+        # never send --reverse -- the CLI rejects it alongside --local.
+        origin_system = origin.split('/', 1)[0].strip()
+        argv = ['tradegui.py', 'direct', origin_system]
+        append_flag(argv, '--local', True)
+    else:
+        dest = str(resolved.get('dest') or '').strip()
+        argv = ['tradegui.py', 'direct', origin, dest]
     
     # The trade renderer expects the detailed row payload rather than the
     # compact CLI summary, so the GUI forces detail mode here.
@@ -247,7 +256,11 @@ def build_trade_argv(
     append_option(argv, '--limit', resolved.get('limit'))
     append_option(argv, '--supply', resolved.get('supply'))
     append_option(argv, '--demand', resolved.get('demand'))
-    append_flag(argv, '--reverse', resolved.get('reverse'))
+    append_option(argv, '--best', resolved.get('best'))
+    # Direct inherits the commander-wide maximum data age from the global pane.
+    append_option(argv, '--age', resolved.get('max_data_age_days'))
+    if not local:
+        append_flag(argv, '--reverse', resolved.get('reverse'))
     
     cargo_mode = str(resolved.get('cargoMode') or '').strip()
     if cargo_mode == 'fill':
@@ -265,9 +278,12 @@ def validate_trade_request(
     errors: list[str],
     validate_optional_int: Callable[..., None],
 ) -> None:
+    local = bool(resolved.get('local'))
     if not str(resolved.get('origin') or '').strip():
         errors.append('Direct requires an origin system or station.')
-    if not str(resolved.get('dest') or '').strip():
+    if not local and not str(resolved.get('dest') or '').strip():
+        # --local needs only the origin system; a destination is required for
+        # an ordinary point-to-point Direct query.
         errors.append('Direct requires a destination system or station.')
     
     validate_optional_int(resolved, 'minGainPerTon', minimum=0, errors=errors)
@@ -278,6 +294,10 @@ def validate_trade_request(
     cargo_mode = resolved.get('cargoMode')
     if cargo_mode not in (None, '', 'fill', 'load', 'full'):
         errors.append('Direct cargo mode is invalid.')
+    
+    best = resolved.get('best')
+    if best not in (None, '', 'per-station', 'per-item', 'station'):
+        errors.append('Direct best mode is invalid.')
 
 def build_market_argv(
     *,
