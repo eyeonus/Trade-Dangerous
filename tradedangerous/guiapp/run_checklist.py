@@ -1,19 +1,16 @@
-"""GUI-native, dialog-based stepper for following a planned Run route.
+"""GUI Run checklist stepper, shared between a detached window and a dialog.
 
-This is the GUI's answer to ``run --checklist`` without any terminal/stdin
-stepping. It reads the structured Run snapshot the GUI already produces
-(td_exec._snapshot_run_routes -> route/stops/cargo/nav), so it scrapes no CLI
-text and changes no planner or CLI behaviour.
-
-A single persistent NiceGUI dialog is built once during shell construction so it
-survives results-pane refreshes; open_for() loads the current result's routes
-and shows step one. All state is transient -- it never touches the run draft or
-the persisted store. (A true OS-native secondary window was not attempted: the
-packet did not require it and the app has no general multi-window helper.)
+Following a planned Run route hop by hop, with no terminal/stdin stepping. The
+step rendering lives in ChecklistView so the same rules drive both the detached
+native window (the /run-checklist/<token> page) and the in-window dialog
+fallback (RunChecklist). Data is the structured Run snapshot the GUI already
+produces (td_exec._snapshot_run_routes -> route/stops/cargo/nav); no CLI text is
+scraped and no planner/CLI behaviour changes.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from nicegui import ui
@@ -27,73 +24,55 @@ from tradedangerous.planner.render_rich import (
     _PROFIT,
 )
 
+from .checklist_store import get_checklist
+
 _GOLD = _LOAD_ALT[0]
 _DIM = '#9aa0a6'
 _CAP = '#f5c518'
 _SELECT = 'user-select: text; -webkit-user-select: text'
 
-class RunChecklist:
-    """A persistent dialog that steps through one route's stops, hop by hop."""
+class ChecklistView:
+    """Render a step-through view of one Run's routes into the current context.
 
-    def __init__(self) -> None:
-        self._routes: list[dict[str, Any]] = []
+    Builds a route selector (when >1 route), a position label, a step body, and
+    Previous/Next controls, and owns its own transient step/route state. The
+    embedding container supplies its own Close (dialog) or relies on the window
+    chrome (detached page).
+    """
+
+    def __init__(self, routes: list[dict[str, Any]]) -> None:
+        self._routes = list(routes or [])
         self._route_index = 0
         self._step = 0
-        self.dialog = None
-        self._route_select = None
         self._position_label = None
         self._content = None
         self._prev_button = None
         self._next_button = None
 
     def build(self) -> None:
-        # Built once, at shell construction, so a results-pane rebuild never
-        # destroys it. Quasar dialogs attach to the page body, not the pane.
-        self.dialog = ui.dialog().props('persistent')
-        with self.dialog, ui.card().style(
-            'min-width: 34rem; max-width: 95vw;'
-        ).classes('gap-3'):
-            with ui.row().classes('w-full items-center justify-between'):
-                ui.label('Run Checklist').classes('text-lg').style(
-                    f'color: {_CHROME}; font-weight: 700'
-                )
-                self._position_label = ui.label('').classes('text-sm')
-            self._route_select = ui.select(
-                {},
+        with ui.row().classes('w-full items-center justify-between'):
+            ui.label('Run Checklist').classes('text-lg').style(
+                f'color: {_CHROME}; font-weight: 700'
+            )
+            self._position_label = ui.label('').classes('text-sm')
+        if len(self._routes) > 1:
+            ui.select(
+                {index: f'Route {index + 1}' for index in range(len(self._routes))},
+                value=0,
                 label='Route',
                 on_change=self._on_route_changed,
             ).classes('w-72').tooltip('Choose which route to step through.')
-            self._content = ui.column().classes('w-full gap-1')
-            with ui.row().classes('w-full items-center justify-between'):
-                self._prev_button = ui.button(
-                    'Previous',
-                    on_click=self._on_prev,
-                ).props('outline').tooltip('Go to the previous step.')
-                self._next_button = ui.button(
-                    'Next',
-                    on_click=self._on_next,
-                ).tooltip('Go to the next step.')
-                ui.button(
-                    'Close',
-                    on_click=self.dialog.close,
-                ).props('outline').tooltip('Close the checklist.')
-
-    def open_for(self, routes: list[dict[str, Any]] | None) -> None:
-        # Snapshot the routes at open time. A later run does not disturb an open
-        # checklist; reopening reflects the new result.
-        self._routes = list(routes or [])
-        if not self._routes:
-            return
-        self._route_index = 0
-        self._step = 0
-        options = {
-            index: f'Route {index + 1}'
-            for index in range(len(self._routes))
-        }
-        self._route_select.set_options(options, value=0)
-        self._route_select.set_visibility(len(self._routes) > 1)
+        self._content = ui.column().classes('w-full gap-1')
+        with ui.row().classes('w-full items-center gap-2'):
+            self._prev_button = ui.button(
+                'Previous',
+                on_click=self._on_prev,
+            ).props('outline').tooltip('Go to the previous step.')
+            self._next_button = ui.button(
+                'Next',
+                on_click=self._on_next,
+            ).tooltip('Go to the next step.')
         self._render_step()
-        self.dialog.open()
 
     def _on_route_changed(self, event: Any) -> None:
         value = getattr(event, 'value', None)
@@ -150,7 +129,6 @@ class RunChecklist:
         ui.label(f'Stop {index + 1} of {stop_count}').classes('text-sm').style(
             f'color: {_DIM}'
         )
-
         self._render_cargo('Sell here', stop.get('sell') or [])
         self._render_cargo('Buy here', stop.get('buy') or [])
 
@@ -217,3 +195,58 @@ class RunChecklist:
             f'Start {int(route.get("starting_credits", 0) or 0):,} cr  →  '
             f'final {int(route.get("ending_credits", 0) or 0):,} cr'
         ).style(f'color: {_CHROME}; {_SELECT}')
+
+class RunChecklist:
+    """In-window dialog fallback that embeds a ChecklistView.
+
+    Built once during shell construction so a results-pane refresh never
+    destroys it. Used when a detached native window is unavailable.
+    """
+
+    def __init__(self) -> None:
+        self.dialog = None
+        self._content = None
+
+    def build(self) -> None:
+        self.dialog = ui.dialog().props('persistent')
+        with self.dialog, ui.card().style(
+            'min-width: 34rem; max-width: 95vw;'
+        ).classes('gap-3'):
+            self._content = ui.column().classes('w-full gap-3')
+            with ui.row().classes('w-full justify-end'):
+                ui.button(
+                    'Close',
+                    on_click=self.dialog.close,
+                ).props('outline').tooltip('Close the checklist.')
+
+    def open_for(self, routes: list[dict[str, Any]] | None) -> None:
+        routes = list(routes or [])
+        if not routes:
+            return
+        self._content.clear()
+        with self._content:
+            ChecklistView(routes).build()
+        self.dialog.open()
+
+def _apply_elite_theme() -> None:
+    # The detached page is its own client, so it carries none of the shell's
+    # theme. Apply the same Elite CSS + body class for a consistent look.
+    css = Path(__file__).with_name('themes.css').read_text(encoding='utf-8')
+    ui.add_head_html(f'<style>\n{css}\n</style>')
+    ui.query('body').classes('td-theme-elite')
+
+@ui.page('/run-checklist/{token}')
+def checklist_page(token: str) -> None:
+    """Detached checklist window contents, keyed by a transient store token."""
+    _apply_elite_theme()
+    routes = get_checklist(token)
+    with ui.column().classes('w-full p-4 gap-3 td-theme-elite'):
+        if not routes:
+            ui.label('Checklist data is no longer available.').classes(
+                'text-lg'
+            ).style(f'color: {_CHROME}; {_SELECT}')
+            ui.label(
+                'Reopen the checklist from the Trade Dangerous results pane.'
+            ).style(f'color: {_DIM}')
+            return
+        ChecklistView(routes).build()

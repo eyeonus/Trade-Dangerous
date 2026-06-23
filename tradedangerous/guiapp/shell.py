@@ -32,6 +32,8 @@ from .import_runtime import (
 from .import_view import ImportWorkspace
 from .journal_import import read_journal_facts
 from .run_checklist import RunChecklist
+from .checklist_store import store_checklist
+from . import native_bridge
 from .results_view import render_command_results
 from .session import ExecutionStatus, SessionState
 from .td_exec import GuiCommandRequest, TdCommandProcess, TdExecutor
@@ -1208,7 +1210,7 @@ class AppShell:
                                     'Open Checklist',
                                     on_click=lambda routes=structured.get(
                                         'routes'
-                                    ): self.run_checklist.open_for(routes),
+                                    ): self._on_open_checklist(routes),
                                 ).props('dense').tooltip(
                                     'Step through this route hop by hop.'
                                 )
@@ -1244,6 +1246,16 @@ class AppShell:
                 'user-select: text; -webkit-user-select: text'
             )
     
+    def _on_open_checklist(self, routes: list[dict[str, Any]] | None) -> None:
+        # Prefer a detached native window; fall back to the in-window dialog
+        # when not in native mode or the native request channel is unavailable.
+        if not routes:
+            return
+        token = store_checklist(routes)
+        if native_bridge.request_checklist_window(f'/run-checklist/{token}'):
+            return
+        self.run_checklist.open_for(routes)
+
     async def _copy_text_to_clipboard(self, text: str, label: str) -> None:
         # Copy on the client so it works in the native (pywebview) window. Try
         # the modern async clipboard API first, then fall back to a hidden

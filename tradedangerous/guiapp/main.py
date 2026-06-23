@@ -22,6 +22,7 @@ from .profiles import (
     load_gui_store,
 )
 from .shell import AppShell, COMMAND_OPTIONS
+from . import native_bridge
 
 # Let the user select (and so manually copy) text in the native window. pywebview
 # disables document text selection by default; NiceGUI forwards native window
@@ -176,6 +177,7 @@ def _open_window_with_close_handler(
     event_sender: Any,
     native_favicon: str | Path | None,
     shared_state: Any,
+    checklist_queue: Any = None,
 ) -> None:
     from nicegui import core, helpers
     from nicegui.native import native_mode, window_icon
@@ -219,6 +221,46 @@ def _open_window_with_close_handler(
         response_queue,
         closed,
     )
+
+    # Detached helper windows (the Run checklist). The server process puts
+    # {'url', 'title'} requests on checklist_queue; each becomes its own
+    # pywebview window created here in the GUI process. They carry no close
+    # veto -- closing one leaves the main window running. When the main window
+    # closes we destroy any survivors so webview.start() can return and the
+    # process exits cleanly.
+    checklist_windows: list[Any] = []
+
+    def _serve_checklist_requests() -> None:
+        while not closed.is_set():
+            try:
+                request = checklist_queue.get(timeout=0.2)
+            except Exception:
+                continue
+            if not request:
+                continue
+            try:
+                extra = native_mode.webview.create_window(
+                    request.get('title', 'Run Checklist'),
+                    request.get('url'),
+                    width=520,
+                    height=720,
+                )
+                checklist_windows.append(extra)
+            except Exception:
+                pass
+
+    def _destroy_checklist_windows() -> None:
+        for extra in list(checklist_windows):
+            try:
+                extra.destroy()
+            except Exception:
+                pass
+        checklist_windows.clear()
+
+    if checklist_queue is not None:
+        window.events.closed += _destroy_checklist_windows
+        Thread(target=_serve_checklist_requests, daemon=True).start()
+
     native_mode.webview.start(**core.app.native.start_args)
 
 # This is a local shim around NiceGUI's native activation path. It exists only
@@ -294,6 +336,13 @@ def _activate_native_mode_with_close_handler(
     multiprocessing.freeze_support()
     native.create_queues()
     native_mode.event_manager.start()
+    # Channel for detached helper windows (the Run checklist). The server
+    # process puts requests here; the spawned window process serves them.
+    checklist_queue = multiprocessing.Queue()
+    native_bridge.set_checklist_window_channel(
+        checklist_queue,
+        f'{protocol}://{host}:{port}',
+    )
     args = (
         protocol,
         host,
@@ -308,6 +357,7 @@ def _activate_native_mode_with_close_handler(
         native.event_sender,
         native_favicon,
         _NATIVE_WINDOW_CLOSE_SHARED_STATE,
+        checklist_queue,
     )
     process = multiprocessing.Process(
         target=_open_window_with_close_handler,
