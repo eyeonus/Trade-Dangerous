@@ -103,11 +103,6 @@ class SettingsWorkspace:
                     'blank to let Trade Dangerous find it automatically; set it '
                     'only if auto-detection picks the wrong place.'
                 )
-                ui.label(
-                    'Leave blank for automatic detection. Cargo-aware options '
-                    '(such as Direct --fill / --load) read your current ship '
-                    'from this folder.'
-                ).classes('text-sm text-gray-600 whitespace-pre-wrap')
                 ui.button(
                     'Advanced Settings',
                     on_click=self.advanced_dialog.open,

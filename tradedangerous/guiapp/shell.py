@@ -30,10 +30,12 @@ from .import_runtime import (
     run_import_execution,
 )
 from .import_view import ImportWorkspace
+from .journal_import import read_journal_facts
 from .results_view import render_command_results
 from .session import ExecutionStatus, SessionState
 from .td_exec import GuiCommandRequest, TdCommandProcess, TdExecutor
 from .gui_search import get_gui_search_service
+from tradedangerous import TradeException
 
 COMMAND_OPTIONS: dict[str, str] = {
     'run': 'Run',
@@ -222,6 +224,15 @@ class AppShell:
         with ui.column().classes('w-full gap-3 pr-2 box-border').style(
             'min-width: 23rem;'
         ):
+            with ui.row().classes('w-full'):
+                ui.button(
+                    'Import from Journal',
+                    on_click=self._on_import_from_journal,
+                ).classes('w-full').tooltip(
+                    'Read your commander and current ship from the Elite '
+                    'Dangerous journal and fill the fields below. If the '
+                    'journal cannot be found, set its folder in Settings.'
+                )
             ui.label('Commander Details')
             self.commander_name_input = ui.input(
                 'Commander Name',
@@ -470,6 +481,119 @@ class AppShell:
         self.session.revert_ship_profile(self.store)
         self._refresh_ui()
         ui.notify('Ship profile reverted.')
+
+    def _on_import_from_journal(self) -> None:
+        # Read current commander/ship facts from the configured (or
+        # auto-discovered) journal and pre-fill the left-pane fields.
+        try:
+            facts = read_journal_facts(self.store.journal_dir)
+        except TradeException as exc:
+            self._show_journal_dialog(
+                'Journal not found',
+                str(exc),
+                show_fix_hint=True,
+            )
+            return
+        except Exception as exc:  # noqa: BLE001 - surface anything unexpected
+            self._show_journal_dialog(
+                'Could not read the journal',
+                f'{type(exc).__name__}: {exc}',
+                show_fix_hint=True,
+            )
+            return
+
+        imported, unchanged = self._apply_journal_facts(facts)
+        save_gui_store(self.store)
+        self._refresh_ui()
+        self._show_import_summary(imported, unchanged)
+
+    def _apply_journal_facts(self, facts) -> tuple[list[str], list[str]]:
+        # Fill only the fields the journal actually provided; everything else
+        # keeps its current value. Commander/credits persist immediately;
+        # ship fields land in the working profile (marked dirty) for Save.
+        imported: list[str] = []
+        unchanged: list[str] = []
+        state = self.session.global_state
+        commander = (facts.commander_name if facts.commander_name is not None
+                     else state.commander_name)
+        credits = facts.credits if facts.credits is not None else state.credits
+        self.session.set_global_state(
+            self.store,
+            commander_name=commander,
+            credits=credits,
+            max_data_age_days=state.max_data_age_days,
+        )
+        (imported if facts.commander_name is not None else unchanged).append(
+            'Commander Name'
+        )
+        (imported if facts.credits is not None else unchanged).append('Credits')
+
+        ship = self.session.ship_state
+        if facts.ship_name is not None:
+            ship.ship_name = facts.ship_name
+            imported.append('Ship Name')
+        else:
+            unchanged.append('Ship Name')
+        if facts.cargo_capacity is not None:
+            ship.capacity = facts.cargo_capacity
+            imported.append('Capacity')
+        else:
+            unchanged.append('Capacity')
+        if facts.insurance is not None:
+            ship.insurance = facts.insurance
+            imported.append('Insurance')
+        else:
+            unchanged.append('Insurance')
+        self.session.mark_ship_dirty()
+        return imported, unchanged
+
+    def _show_import_summary(
+        self,
+        imported: list[str],
+        unchanged: list[str],
+    ) -> None:
+        lines: list[str] = []
+        if imported:
+            lines.append('Imported: ' + ', '.join(imported) + '.')
+        else:
+            lines.append('Nothing was imported.')
+        if unchanged:
+            lines.append(
+                'Left unchanged (not found in journal): '
+                + ', '.join(unchanged) + '.'
+            )
+        lines.append(
+            'Ship fields are filled in the form. Click Save to keep them in '
+            'the profile.'
+        )
+        self._show_journal_dialog('Imported from journal', '\n'.join(lines))
+
+    def _show_journal_dialog(
+        self,
+        title: str,
+        body: str,
+        *,
+        show_fix_hint: bool = False,
+    ) -> None:
+        # The profile area has no result pane, so report import outcomes and
+        # errors in a dialog. Text is selectable so the message can be copied.
+        dialog = ui.dialog()
+        with dialog, ui.card().style('min-width: 28rem; max-width: 90vw;'):
+            ui.label(title).classes('text-lg')
+            ui.label(body).classes('whitespace-pre-wrap').style(
+                'user-select: text; -webkit-user-select: text;'
+            )
+            if show_fix_hint:
+                ui.label(
+                    'Fix: open Settings and set "Journal directory" to your '
+                    'Elite Dangerous saved-games folder, then try again. You '
+                    'can also set the ELITE_JOURNAL_PATH environment variable.'
+                ).classes('text-sm whitespace-pre-wrap').style(
+                    'user-select: text; -webkit-user-select: text;'
+                )
+            with ui.row().classes('w-full justify-end'):
+                ui.button('OK', on_click=dialog.close)
+        dialog.open()
     
     def _on_global_changed(self, _event: Any) -> None:
         if getattr(self, '_refreshing_ui', False):
