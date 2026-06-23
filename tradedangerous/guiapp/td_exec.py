@@ -6,7 +6,9 @@ from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import dataclass, field
 import io
 import multiprocessing
+import os
 import re
+import sys
 from multiprocessing.connection import Connection
 from typing import Any
 
@@ -180,6 +182,17 @@ def _execute_request_worker(
     request: GuiCommandRequest,
     result_conn: Connection,
 ) -> None:
+    # The worker has no usable interactive terminal. Point stdin at the null
+    # device so any command that would otherwise prompt -- notably run's
+    # unanchored galaxy-search confirmation -- sees a non-interactive stdin:
+    # sys.stdin.isatty() is then reliably False, so those paths take their clean
+    # non-interactive branch instead of blocking or raising "EOF when reading a
+    # line" on input(). A leftover console handle (seen on Windows) otherwise
+    # reports as a TTY yet EOFs immediately when read.
+    try:
+        sys.stdin = open(os.devnull, 'r')  # noqa: SIM115 (lives for the worker)
+    except OSError:
+        pass
     try:
         result = TdExecutor().execute(request)
         try:
