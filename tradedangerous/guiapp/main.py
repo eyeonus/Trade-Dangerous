@@ -230,6 +230,18 @@ def _open_window_with_close_handler(
     # process exits cleanly.
     checklist_windows: list[Any] = []
 
+    def _apply_checklist_window_icon(win: Any, win_title: str) -> None:
+        # Give detached checklist windows the same Windows icon as the main
+        # window. Best-effort: an icon failure must never break the window.
+        try:
+            window_icon.apply_icon(
+                win.native.Handle.ToInt32(),
+                win_title,
+                str(native_favicon),
+            )
+        except Exception:
+            pass
+
     def _serve_checklist_requests() -> None:
         while not closed.is_set():
             try:
@@ -239,13 +251,19 @@ def _open_window_with_close_handler(
             if not request:
                 continue
             try:
+                window_title = request.get('title', 'Run Checklist')
                 extra = native_mode.webview.create_window(
-                    request.get('title', 'Run Checklist'),
+                    window_title,
                     request.get('url'),
                     width=520,
                     height=720,
                 )
                 checklist_windows.append(extra)
+                if sys.platform == 'win32' and native_favicon is not None:
+                    extra.events.shown += (
+                        lambda win=extra, title=window_title:
+                        _apply_checklist_window_icon(win, title)
+                    )
             except Exception:
                 pass
 
