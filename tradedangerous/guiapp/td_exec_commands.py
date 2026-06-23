@@ -74,8 +74,11 @@ def build_run_argv(
     append_option(argv, '--insurance', resolved.get('insurance'))
     
     append_option(argv, '--routes', resolved.get('routes'))
-    append_flag(argv, '--checklist', resolved.get('checklist'))
-    
+    # The GUI follows routes through its own checklist stepper (run_checklist),
+    # so it never drives the CLI's stdin-based --checklist. Any stale checklist
+    # key in an old draft is intentionally left unread. CLI --checklist is
+    # unchanged.
+
     append_flag(argv, '--progress', resolved.get('progress'))
     append_option(argv, '--supply', resolved.get('supply'))
     append_option(argv, '--demand', resolved.get('demand'))
