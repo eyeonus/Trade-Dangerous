@@ -668,7 +668,7 @@ class AppShell:
             with ui.row().classes('w-full justify-end gap-2'):
                 ui.button(
                     'Cancel', on_click=lambda: dialog.submit(False)
-                ).props('flat')
+                ).props('outline')
                 ui.button('Search', on_click=lambda: dialog.submit(True))
         return bool(await dialog)
 
