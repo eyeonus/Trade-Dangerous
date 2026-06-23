@@ -303,11 +303,23 @@ class TdExecutor:
             ):
                 errors.append('Run requires Jump Range (Full).')
             
+            has_from = bool(str(resolved.get('starting') or '').strip())
             has_to = bool(str(resolved.get('ending') or '').strip())
             has_towards = bool(str(resolved.get('goalSystem') or '').strip())
             if has_to and has_towards:
                 errors.append('Run To and Towards are mutually exclusive.')
-        
+            # With neither From nor To, run searches the whole galaxy -- which
+            # TD only does behind an interactive confirmation. The GUI has no
+            # such prompt yet, so block it here with guidance rather than let
+            # the worker reach run's input() prompt (which raises EOFError).
+            if not has_from and not has_to:
+                errors.append(
+                    'Run needs a From or To system. With neither set, Trade '
+                    'Dangerous searches the whole galaxy, which needs an '
+                    'interactive confirmation the GUI does not have yet -- '
+                    'name a From and/or To system.'
+                )
+
         if request.command == 'trade':
             validate_trade_request(
                 resolved=self._global_command_resolved_values(request),
