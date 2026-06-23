@@ -357,6 +357,10 @@ def _activate_native_mode_with_close_handler(
     # Channel for detached helper windows (the Run checklist). The server
     # process puts requests here; the spawned window process serves them.
     checklist_queue = multiprocessing.Queue()
+    # Requests are fire-and-forget, so never let the queue's background feeder
+    # thread block interpreter shutdown -- an unmanaged mp.Queue can otherwise
+    # hang the process (and so the terminal) on exit, notably on Windows.
+    checklist_queue.cancel_join_thread()
     native_bridge.set_checklist_window_channel(
         checklist_queue,
         f'{protocol}://{host}:{port}',
