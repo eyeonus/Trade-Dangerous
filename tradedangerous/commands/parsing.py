@@ -141,12 +141,6 @@ class RepairSwitch(SwitchArgument):
     help = 'Require stations known to offer repairs.'
 
 
-class NoPlanetSwitch(SwitchArgument):
-    switches = ['--no-planet']
-    dest = 'noPlanet'
-    help = 'Require stations to be in space.'
-
-
 class PlanetaryArgument(int):
     """
     argparse helper for --planetary

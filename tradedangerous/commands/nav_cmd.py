@@ -8,8 +8,8 @@ from sqlalchemy.orm import joinedload
 from .commandenv import Needs, ResultRow
 from .exceptions import CommandLineError
 from .parsing import (
-    AvoidPlacesArgument, FleetCarrierArgument, MutuallyExclusiveGroup,
-    NoPlanetSwitch, SettlementArgument, PadSizeArgument, ParseArgument,
+    AvoidPlacesArgument, FleetCarrierArgument,
+    SettlementArgument, PadSizeArgument, ParseArgument,
     PlanetaryArgument,
 )
 
@@ -53,10 +53,7 @@ switches = [
         action='store_true',
     ),
     PadSizeArgument(),
-    MutuallyExclusiveGroup(
-        NoPlanetSwitch(),
-        PlanetaryArgument(),
-    ),
+    PlanetaryArgument(),
     FleetCarrierArgument(),
     SettlementArgument(),
 ]
@@ -217,13 +214,10 @@ def _load_route_stations(session, cmdenv, sys_ids):
     planetary = cmdenv.planetary
     fleet = cmdenv.fleet
     settlement = cmdenv.settlement
-    noPlanet = cmdenv.noPlanet
     for stn in all_stations:
         if padSize and stn.max_pad_size not in padSize:
             continue
         if planetary and stn.planetary not in planetary:
-            continue
-        if noPlanet and stn.planetary != 'N':
             continue
         if fleet and _fleet_state(stn) not in fleet:
             continue

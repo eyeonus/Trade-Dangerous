@@ -341,12 +341,6 @@ def validate_run_request(request: RunRequest) -> None:
             option_name="--max-price",
         )
 
-    if request.no_planet and request.planetary_filter:
-        raise ContradictoryOptions(
-            "--no-planet cannot be combined with --planetary.",
-            option_name="--no-planet",
-        )
-
     # --pad-size is a single ship-fit threshold: the pad size the ship needs.
     # ?, multi-letter values, and anything that is not S, M, or L are rejected.
     if request.pad_size is not None and request.pad_size not in ("S", "M", "L"):

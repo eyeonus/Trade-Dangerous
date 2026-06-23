@@ -94,13 +94,6 @@ def validate_station_filters(
             entity_name=station.dbname,
         )
 
-    if request.no_planet and station.planetary != "N":
-        raise failure_type(
-            f"{option_prefix} station does not meet --no-planet.",
-            option_name="--no-planet",
-            entity_name=station.dbname,
-        )
-
     if request.planetary_filter and station.planetary not in request.planetary_filter:
         raise failure_type(
             f"{option_prefix} station does not meet --planetary.",
@@ -289,8 +282,6 @@ def _station_attribute_predicates(request: RunRequest):
         # large-only (see _qualifying_pad_sizes).
         Station.max_pad_size.in_(_qualifying_pad_sizes(request.pad_size)),
     ]
-    if request.no_planet:
-        predicates.append(Station.planetary == "N")
     if request.planetary_filter:
         predicates.append(Station.planetary.in_(request.planetary_filter))
     if request.black_market_filter:

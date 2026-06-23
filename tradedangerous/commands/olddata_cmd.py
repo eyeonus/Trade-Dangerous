@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload
 from .commandenv import Needs, ResultRow
 from .exceptions import CommandLineError
 from .parsing import (
-    FleetCarrierArgument, MutuallyExclusiveGroup, NoPlanetSwitch,
+    FleetCarrierArgument,
     SettlementArgument, ParseArgument, PadSizeArgument, PlanetaryArgument,
 )
 
@@ -59,10 +59,7 @@ switches = [
             dest='minAge',
     ),
     PadSizeArgument(),
-    MutuallyExclusiveGroup(
-        NoPlanetSwitch(),
-        PlanetaryArgument(),
-    ),
+    PlanetaryArgument(),
     FleetCarrierArgument(),
     SettlementArgument(),
     ParseArgument('--ls-max',
@@ -199,8 +196,6 @@ def run(results, cmdenv, tdb):
         query = query.filter(orm.Station.max_pad_size.in_(list(cmdenv.padSize)))
     if cmdenv.planetary:
         query = query.filter(orm.Station.planetary.in_(list(cmdenv.planetary)))
-    if cmdenv.noPlanet:
-        query = query.filter(orm.Station.planetary == 'N')
     if cmdenv.maxLs:
         query = query.filter(orm.Station.ls_from_star <= cmdenv.maxLs)
     if cmdenv.fleet:

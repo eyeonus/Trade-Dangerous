@@ -46,7 +46,6 @@ class RunRequest:
     no_bulk_cap: bool = False
     pad_size: str | None = None
     planetary_filter: tuple[str, ...] = ()
-    no_planet: bool = False
     fleet_carrier_filter: tuple[str, ...] = ()
     settlement_filter: tuple[str, ...] = ()
     black_market_filter: tuple[str, ...] = ()
@@ -133,7 +132,6 @@ def run_request_from_cmdenv(cmdenv: object) -> RunRequest:
         planetary_filter=_normalise_state_filter(
             getattr(cmdenv, "planetary", None),
         ),
-        no_planet=getattr(cmdenv, "noPlanet", False),
         fleet_carrier_filter=_normalise_state_filter(
             getattr(cmdenv, "fleet", None),
         ),

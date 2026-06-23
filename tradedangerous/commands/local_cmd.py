@@ -7,7 +7,7 @@ from sqlalchemy import exists, func
 from .commandenv import Needs, ResultRow
 from .exceptions import NoDataError
 from .parsing import (
-    ParseArgument, PadSizeArgument, MutuallyExclusiveGroup, NoPlanetSwitch,
+    ParseArgument, PadSizeArgument,
     PlanetaryArgument, FleetCarrierArgument, SettlementArgument, BlackMarketSwitch,
     ShipyardSwitch, OutfittingSwitch, RearmSwitch, RefuelSwitch, RepairSwitch,
 )
@@ -45,10 +45,7 @@ switches = [
             default=None,
     ),
     PadSizeArgument(),
-    MutuallyExclusiveGroup(
-        NoPlanetSwitch(),
-        PlanetaryArgument(),
-    ),
+    PlanetaryArgument(),
     FleetCarrierArgument(),
     SettlementArgument(),
     ParseArgument('--stations',
@@ -146,7 +143,6 @@ def run(results, cmdenv, tdb):
         planetary = cmdenv.planetary
         fleet = cmdenv.fleet
         settlement = cmdenv.settlement
-        wantNoPlanet = cmdenv.noPlanet
         wantTrading = cmdenv.trading
         maxAge = cmdenv.maxAge
         wantShipYard = cmdenv.shipyard
@@ -162,8 +158,6 @@ def run(results, cmdenv, tdb):
             .filter(orm.Station.system_id.in_(system_ids))
         )
 
-        if wantNoPlanet:
-            q = q.filter(orm.Station.planetary == 'N')
         if wantBlackMarket:
             q = q.filter(orm.Station.blackmarket == 'Y')
         if wantShipYard:

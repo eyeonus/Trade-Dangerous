@@ -6,7 +6,7 @@ from .commandenv import Needs
 from .exceptions import CommandLineError, PlannerResultError
 from .parsing import (
     BlackMarketSwitch, FleetCarrierArgument, MutuallyExclusiveGroup,
-    NoPlanetSwitch, SettlementArgument, ParseArgument,
+    SettlementArgument, ParseArgument,
     PlanetaryArgument,
 )
 
@@ -190,10 +190,7 @@ switches = [
         dest = 'padSize',
         type = _run_pad_size_threshold,
     ),
-    MutuallyExclusiveGroup(
-        NoPlanetSwitch(),
-        PlanetaryArgument(),
-    ),
+    PlanetaryArgument(),
     FleetCarrierArgument(),
     SettlementArgument(),
     BlackMarketSwitch(),

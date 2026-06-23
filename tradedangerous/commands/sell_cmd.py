@@ -16,8 +16,7 @@ from .commandenv import Needs, ResultRow
 from .exceptions import CommandLineError, NoDataError
 from .parsing import (
     AvoidPlacesArgument, BlackMarketSwitch, FleetCarrierArgument,
-    MutuallyExclusiveGroup, NoPlanetSwitch, SettlementArgument,
-    PadSizeArgument, ParseArgument, PlanetaryArgument,
+    SettlementArgument, PadSizeArgument, ParseArgument, PlanetaryArgument,
 )
 
 
@@ -78,10 +77,7 @@ switches = [
     ),
     AvoidPlacesArgument(),
     PadSizeArgument(),
-    MutuallyExclusiveGroup(
-        NoPlanetSwitch(),
-        PlanetaryArgument(),
-    ),
+    PlanetaryArgument(),
     FleetCarrierArgument(),
     SettlementArgument(),
     BlackMarketSwitch(),
@@ -235,7 +231,6 @@ def run(results, cmdenv, tdb):
     planetary = cmdenv.planetary
     fleet = cmdenv.fleet
     settlement = cmdenv.settlement
-    wantNoPlanet = cmdenv.noPlanet
     wantBlackMarket = cmdenv.blackMarket
 
     raw_rows = sql_query(cmdenv, tdb, item.item_id)
@@ -263,8 +258,6 @@ def run(results, cmdenv, tdb):
         if fleet and _fleet_state(station) not in fleet:
             continue
         if settlement and _settlement_state(station) not in settlement:
-            continue
-        if wantNoPlanet and station.planetary != 'N':
             continue
         if wantBlackMarket and station.blackmarket != 'Y':
             continue
