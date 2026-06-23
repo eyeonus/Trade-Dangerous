@@ -741,87 +741,153 @@ def _snapshot_structured_result(command: str, structured_result: Any) -> Any:
         return _snapshot_run_routes(structured_result)
     return _snapshot_value(structured_result)
 
-# `run` is the one command whose GUI view depends on a nested object graph
-# (route -> hop -> trade items -> jump path). Snapshot that graph explicitly
-# so the existing rich renderer keeps its semantics without live objects.
-def _snapshot_run_routes(routes: Any) -> Any:
-    if not isinstance(routes, (list, tuple)):
-        return _snapshot_value(routes)
-    
-    snapshots: list[dict[str, Any]] = []
-    for route in routes:
-        route_stations = list(getattr(route, 'route', ()) or ())
-        route_hops = list(getattr(route, 'hops', ()) or ())
-        route_jumps = list(getattr(route, 'jumps', ()) or ())
-        hop_snapshots: list[dict[str, Any]] = []
-        
-        for hop_index, hop in enumerate(route_hops):
-            items: list[dict[str, Any]] = []
-            for trade_item in getattr(hop, 'items', ()) or ():
-                try:
-                    trade, qty = trade_item
-                except (TypeError, ValueError):
-                    continue
-                cost = getattr(trade, 'costCr', None)
-                gain = getattr(trade, 'gainCr', None)
-                sell = None
-                if cost is not None and gain is not None:
-                    sell = cost + gain
-                total = None if gain is None else gain * qty
-                items.append(
-                    {
-                        'commodity': _named_display_value(trade),
-                        'qty': qty,
-                        'buy': cost,
-                        'sell': sell,
-                        'gain': gain,
-                        'total': total,
-                    }
-                )
-            
-            src_station = None
-            dst_station = None
-            if hop_index < len(route_stations):
-                src_station = _named_display_value(route_stations[hop_index])
-            if hop_index + 1 < len(route_stations):
-                dst_station = _named_display_value(route_stations[hop_index + 1])
-            
-            jump_path: list[str] = []
-            if hop_index < len(route_jumps):
-                jump_path = [
-                    name
-                    for name in (
-                        _named_display_value(system)
-                        for system in route_jumps[hop_index]
-                    )
-                    if name
-                ]
-            
-            hop_snapshots.append(
-                {
-                    'src_station': src_station,
-                    'dst_station': dst_station,
-                    'units': getattr(hop, 'units', None),
-                    'gainCr': getattr(hop, 'gainCr', None),
-                    'gpt': getattr(hop, 'gpt', None),
-                    'items': items,
-                    'jump_path': jump_path,
-                }
-            )
-        
-        snapshots.append(
+# `run` returns a post-L RunResult: a frozen object graph of routes -> hops ->
+# cargo lines and jump paths. It carries no live DB handles, but we still flatten
+# it to plain dicts here so the worker payload stays simple and picklable and the
+# GUI renderer reads one stable shape. The layout mirrors the CLI rich renderer
+# (planner/render_rich.py): a station-centric view where each stop sells what it
+# arrived carrying and buys what it leaves with.
+def _snapshot_run_routes(result: Any) -> Any:
+    routes = getattr(result, 'routes', None)
+    if routes is None:
+        # Guidance-only/empty run (run_cmd sets results.data == ()), or an
+        # unexpected shape. Either way there are no routes to render.
+        return {'routes': [], 'warnings': []}
+
+    warnings: list[str] = []
+    for warning in getattr(result, 'warnings', ()) or ():
+        warnings.append(_run_warning_text(warning))
+
+    return {
+        'routes': [_snapshot_run_route(route) for route in routes],
+        'warnings': warnings,
+    }
+
+def _run_warning_text(warning: Any) -> str:
+    # Reuse the planner's own warning wording so the GUI matches the CLI.
+    try:
+        from tradedangerous.planner.render_text import _render_warning
+        return _render_warning(warning)
+    except Exception:  # noqa: BLE001 - never let a warning break the snapshot
+        return str(warning)
+
+def _snapshot_run_route(route: Any) -> dict[str, Any]:
+    hops = list(getattr(route, 'hops', ()) or ())
+    stations = list(getattr(route, 'stations', ()) or ())
+    starting = int(getattr(route, 'starting_credits', 0) or 0)
+    total_jumps, total_ly = _run_jump_totals(hops)
+
+    if stations:
+        origin, destination = stations[0].dbname, stations[-1].dbname
+    elif hops:
+        origin = hops[0].source_station.dbname
+        destination = hops[-1].destination_station.dbname
+    else:
+        origin = destination = ''
+
+    capped = any(
+        _run_line_capped(line)
+        for hop in hops
+        for line in hop.cargo.lines
+    )
+
+    return {
+        'origin': origin,
+        'destination': destination,
+        'hop_count': len(hops),
+        'total_jumps': total_jumps,
+        'total_ly': total_ly,
+        'total_profit': int(getattr(route, 'total_raw_profit', 0) or 0),
+        'starting_credits': starting,
+        'ending_credits': int(getattr(route, 'ending_credits', 0) or 0),
+        'arrival_hops': getattr(route, 'arrival_hops', None),
+        'capped': capped,
+        'stops': _run_stops(hops, starting),
+    }
+
+def _run_stops(hops: list[Any], starting: int) -> list[dict[str, Any]]:
+    # A row per stop: the first hop's source, then every hop's destination. At
+    # stop index i you sell what the arriving hop (hops[i-1]) carried and buy
+    # what the departing hop (hops[i]) loads; profit and running balance land on
+    # the arrival row, matching planner/render_rich.py's _stops_table.
+    if not hops:
+        return []
+    stations = [hops[0].source_station]
+    stations.extend(hop.destination_station for hop in hops)
+
+    stops: list[dict[str, Any]] = []
+    running = starting
+    for index, station in enumerate(stations):
+        sell_hop = hops[index - 1] if index > 0 else None
+        buy_hop = hops[index] if index < len(hops) else None
+        profit = None
+        if sell_hop is not None:
+            profit = int(getattr(sell_hop, 'raw_profit', 0) or 0)
+            running += profit
+        stops.append(
             {
-                'first_station': _named_display_value(getattr(route, 'firstStation', None)),
-                'last_station': _named_display_value(getattr(route, 'lastStation', None)),
-                'startCr': getattr(route, 'startCr', None),
-                'gainCr': getattr(route, 'gainCr', None),
-                'gpt': getattr(route, 'gpt', None),
-                'score': getattr(route, 'score', None),
-                'hops': hop_snapshots,
+                'station': station.dbname,
+                'nav': _run_nav_text(buy_hop),
+                'sell': _run_cargo_lines(sell_hop, 'sell'),
+                'buy': _run_cargo_lines(buy_hop, 'buy'),
+                'profit': profit,
+                'balance': running,
             }
         )
-    
-    return snapshots
+    return stops
+
+def _run_cargo_lines(hop: Any, side: str) -> list[dict[str, Any]]:
+    if hop is None:
+        return []
+    lines: list[dict[str, Any]] = []
+    for line in hop.cargo.lines:
+        price = line.sell_price if side == 'sell' else line.buy_price
+        lines.append(
+            {
+                'qty': int(line.quantity),
+                'item': line.item_name,
+                'price': int(price),
+                'capped': side == 'buy' and _run_line_capped(line),
+            }
+        )
+    return lines
+
+def _run_nav_text(hop: Any) -> str | None:
+    # The leg leaving this station, condensed like render_rich's standard tier:
+    # the systems flown and the leg distance. None when the hop carries no jump
+    # path (--direct, where the commander plots it themselves).
+    if hop is None:
+        return None
+    leg = getattr(hop, 'jump_path', None)
+    if leg is None:
+        return None
+    if getattr(leg, 'is_same_system', False):
+        return f'Supercruise · {leg.distance_ly:.1f} ly'
+    systems = list(getattr(leg, 'systems', ()) or ())
+    chain = ' → '.join(system.dbname for system in systems[1:])
+    if not chain:
+        return None
+    return f'{chain} · {leg.distance_ly:.1f} ly'
+
+def _run_line_capped(line: Any) -> bool:
+    # Mirrors render_rich._bulk_capped: a Metals/Minerals line loaded right up to
+    # the 25%-capped destination demand is one the bulk-sale-tax cap held back.
+    return bool(
+        getattr(line, 'bulk_sale_tax_sensitive', False)
+        and getattr(line, 'quantity', None)
+        == getattr(line, 'effective_destination_demand_units', None)
+    )
+
+def _run_jump_totals(hops: list[Any]) -> tuple[int, float]:
+    # Same-system supercruise and --direct legs are not jumps; they add nothing.
+    total_jumps = 0
+    total_ly = 0.0
+    for hop in hops:
+        leg = getattr(hop, 'jump_path', None)
+        if leg is not None and not getattr(leg, 'is_same_system', False):
+            total_jumps += int(getattr(leg, 'jumps', 0) or 0)
+            total_ly += float(getattr(leg, 'distance_ly', 0.0) or 0.0)
+    return total_jumps, total_ly
 
 # Generic snapshot path for every non-import command other than `run`. This
 # intentionally prefers plain dict/list/scalar structures over cleverness so
