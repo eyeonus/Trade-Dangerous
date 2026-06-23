@@ -87,12 +87,14 @@ class RunWorkspace(DraftValueHelper):
             system_key='startSystem',
             station_key='startStation',
             combined_key='starting',
+            allow_bare_system=True,
         )
         end_system, _end_station = self._normalize_station_pair_value(
             self.draft.main_values,
             system_key='endSystem',
             station_key='endStation',
             combined_key='ending',
+            allow_bare_system=True,
         )
         self.selected_start_system_id = self._resolve_run_system_id(start_system)
         self.selected_end_system_id = self._resolve_run_system_id(end_system)
@@ -172,6 +174,7 @@ class RunWorkspace(DraftValueHelper):
             system_key=system_key,
             station_key=station_key,
             combined_key=combined_key,
+            allow_bare_system=True,
         )
         self.on_changed()
 
@@ -201,6 +204,7 @@ class RunWorkspace(DraftValueHelper):
             system_key=system_key,
             station_key=station_key,
             combined_key=combined_key,
+            allow_bare_system=True,
         )
         self.on_changed()
 
