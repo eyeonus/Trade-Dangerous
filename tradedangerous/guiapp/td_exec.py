@@ -655,6 +655,7 @@ class TdExecutor:
                         structured_snapshot = _snapshot_structured_result(
                             request.command,
                             structured_result,
+                            summary=bool(getattr(cmdenv, 'summary', False)),
                         )
                 finally:
                     if tdb is not None:
@@ -774,11 +775,15 @@ def _strip_ansi(text: str) -> str:
 # Child-process results must cross a multiprocessing pipe, so convert any TD
 # objects into plain Python data here rather than teaching the renderer or
 # shell about pickling quirks.
-def _snapshot_structured_result(command: str, structured_result: Any) -> Any:
+def _snapshot_structured_result(
+    command: str,
+    structured_result: Any,
+    summary: bool = False,
+) -> Any:
     if structured_result is None:
         return None
     if command == 'run':
-        return _snapshot_run_routes(structured_result)
+        return _snapshot_run_routes(structured_result, summary=summary)
     return _snapshot_value(structured_result)
 
 # `run` returns a post-L RunResult: a frozen object graph of routes -> hops ->
@@ -787,12 +792,15 @@ def _snapshot_structured_result(command: str, structured_result: Any) -> Any:
 # GUI renderer reads one stable shape. The layout mirrors the CLI rich renderer
 # (planner/render_rich.py): a station-centric view where each stop sells what it
 # arrived carrying and buys what it leaves with.
-def _snapshot_run_routes(result: Any) -> Any:
+def _snapshot_run_routes(result: Any, *, summary: bool = False) -> Any:
+    # `summary` records whether the user asked for --summary, so the GUI can
+    # pick its compact render mode. The RunResult itself is identical either
+    # way; only the chosen presentation differs.
     routes = getattr(result, 'routes', None)
     if routes is None:
         # Guidance-only/empty run (run_cmd sets results.data == ()), or an
         # unexpected shape. Either way there are no routes to render.
-        return {'routes': [], 'warnings': []}
+        return {'routes': [], 'warnings': [], 'summary': bool(summary)}
 
     warnings: list[str] = []
     for warning in getattr(result, 'warnings', ()) or ():
@@ -801,6 +809,7 @@ def _snapshot_run_routes(result: Any) -> Any:
     return {
         'routes': [_snapshot_run_route(route) for route in routes],
         'warnings': warnings,
+        'summary': bool(summary),
     }
 
 def _run_warning_text(warning: Any) -> str:
@@ -843,7 +852,32 @@ def _snapshot_run_route(route: Any) -> dict[str, Any]:
         'arrival_hops': getattr(route, 'arrival_hops', None),
         'capped': capped,
         'stops': _run_stops(hops, starting),
+        'hops': _run_hops(hops),
     }
+
+def _run_hops(hops: list[Any]) -> list[dict[str, Any]]:
+    # Per-hop rows for the compact summary view: the hop's destination, the
+    # load carried on it (the cargo bought at its source), the jump count, and
+    # the hop's profit. No prices -- the summary stays lean.
+    rows: list[dict[str, Any]] = []
+    for hop in hops:
+        leg = getattr(hop, 'jump_path', None)
+        jumps = 0
+        if leg is not None and not getattr(leg, 'is_same_system', False):
+            jumps = int(getattr(leg, 'jumps', 0) or 0)
+        load = [
+            {'qty': int(line.quantity), 'item': line.item_name}
+            for line in hop.cargo.lines
+        ]
+        rows.append(
+            {
+                'to': hop.destination_station.dbname,
+                'load': load,
+                'jumps': jumps,
+                'profit': int(getattr(hop, 'raw_profit', 0) or 0),
+            }
+        )
+    return rows
 
 def _run_stops(hops: list[Any], starting: int) -> list[dict[str, Any]]:
     # A row per stop: the first hop's source, then every hop's destination. At

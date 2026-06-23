@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import html
+
 from typing import Any
 
 from nicegui import ui
@@ -119,6 +121,10 @@ def _render_run_results(payload: dict[str, Any]) -> None:
             f'color: {_RUN_CAP}; white-space: pre-wrap'
         )
 
+    # The Summary-output checkbox picks the compact per-hop view; otherwise the
+    # full station-centric table. Both share the route header, totals and tabs.
+    summary = bool(payload.get('summary'))
+
     routes = payload.get('routes') or []
     if not routes:
         ui.label('No profitable routes were found.').classes(
@@ -127,7 +133,7 @@ def _render_run_results(payload: dict[str, Any]) -> None:
         return
 
     if len(routes) == 1:
-        _render_run_route(routes[0])
+        _render_run_route(routes[0], summary=summary)
         return
 
     # Multiple routes: one tab each, the first shown by default.
@@ -140,17 +146,22 @@ def _render_run_results(payload: dict[str, Any]) -> None:
     with ui.tab_panels(tabs, value=tab_refs[0]).classes('w-full'):
         for index, route in enumerate(routes, start=1):
             with ui.tab_panel(f'route-{index}'):
-                _render_run_route(route)
+                _render_run_route(route, summary=summary)
 
-def _render_run_route(route: dict[str, Any]) -> None:
+def _render_run_route(route: dict[str, Any], *, summary: bool = False) -> None:
     with ui.column().classes('w-full gap-2'):
         _render_run_route_header(route)
-        _render_run_route_table(route)
-        if route.get('capped'):
-            ui.label(
-                '⚑ Metals/Minerals capped at 25% of demand to avoid the '
-                'bulk-sale tax.'
-            ).classes('text-sm').style(f'color: {_RUN_CAP}')
+        if summary:
+            ui.html(_run_summary_table_html(route), sanitize=False)
+        else:
+            ui.html(_run_full_table_html(route), sanitize=False)
+            # The bulk-cap flag and its note belong to the priced full table;
+            # the lean summary stays clean, matching the CLI tiers.
+            if route.get('capped'):
+                ui.label(
+                    '⚑ Metals/Minerals capped at 25% of demand to avoid the '
+                    'bulk-sale tax.'
+                ).classes('text-sm').style(f'color: {_RUN_CAP}')
         arrival = route.get('arrival_hops')
         if arrival is not None:
             ui.label(
@@ -178,77 +189,137 @@ def _render_run_route_header(route: dict[str, Any]) -> None:
             f'{hops} {hop_word} · {jumps} {jump_word} · {ly:.2f} ly'
         ).style(f'color: {_RUN_CHROME}')
 
-def _render_run_route_table(route: dict[str, Any]) -> None:
-    stops = route.get('stops') or []
-    # Scroll wrapper: wide priced cargo cells size to content and scroll
-    # horizontally rather than fold (the packet rules out an 80-column mode).
-    with ui.element('div').classes('w-full').style('overflow-x: auto'):
-        grid = ui.grid().style(
-            'grid-template-columns: auto auto auto auto auto; '
-            'column-gap: 1.5rem; row-gap: 0.5rem; align-items: start; '
-            'width: max-content; min-width: 100%'
-        )
-        with grid:
-            for title, align in (
-                ('Station', 'start'), ('Sell', 'start'), ('Buy', 'start'),
-                ('Profit', 'end'), ('Balance', 'end'),
-            ):
-                ui.label(title).style(
-                    f'color: {_RUN_CHROME}; font-weight: 700; '
-                    f'justify-self: {align}; '
-                    f'border-bottom: 1px solid {_RUN_CHROME}; '
-                    'padding-bottom: 0.15rem'
-                )
-            for index, stop in enumerate(stops):
-                shade = index % 2
-                _render_run_station_cell(stop, shade)
-                _render_run_cargo_cell(stop.get('sell') or [], shade)
-                _render_run_cargo_cell(stop.get('buy') or [], shade)
-                _render_run_profit_cell(stop.get('profit'), shade)
-                _render_run_balance_cell(stop.get('balance'), shade)
+def _run_table_html(headers: list[tuple[str, str]], rows: list[list[str]]) -> str:
+    """Wrap a header spec and pre-built <td> cells into one scrollable table.
 
-def _render_run_station_cell(stop: dict[str, Any], shade: int) -> None:
-    with ui.column().classes('gap-0'):
-        ui.label(str(stop.get('station', ''))).style(
-            f'color: {_RUN_STATION_ALT[shade]}; font-weight: 600'
+    A real <table> makes thead and tbody share one column-width model, so a
+    column's header always sits over its values and the two scroll together --
+    a Profit/Balance value can never orphan from its header. width:100% fills
+    the results pane; the wrapper scrolls horizontally only when the content
+    genuinely cannot fit. All dynamic text is escaped by the cell builders, so
+    the trusted markup here is rendered without sanitisation.
+    """
+    head = ''.join(
+        f'<th style="text-align:{align};color:{_RUN_CHROME};font-weight:700;'
+        f'padding:0.2rem 0.9rem;border-bottom:2px solid {_RUN_CHROME};'
+        f'white-space:nowrap;">{html.escape(label)}</th>'
+        for label, align in headers
+    )
+    body = ''.join(
+        '<tr style="border-bottom:1px solid rgba(240,123,5,0.18);">'
+        + ''.join(cells) + '</tr>'
+        for cells in rows
+    )
+    return (
+        '<div style="overflow-x:auto;width:100%;">'
+        '<table style="width:100%;border-collapse:collapse;'
+        'font-size:0.9rem;line-height:1.4;">'
+        f'<thead><tr>{head}</tr></thead><tbody>{body}</tbody>'
+        '</table></div>'
+    )
+
+def _run_td(inner: str, *, align: str = 'left', nowrap: bool = False) -> str:
+    wrap = 'white-space:nowrap;' if nowrap else ''
+    return (
+        f'<td style="text-align:{align};vertical-align:top;'
+        f'padding:0.2rem 0.9rem;{wrap}">{inner}</td>'
+    )
+
+def _run_cargo_html(lines: list[dict[str, Any]], shade: int) -> str:
+    if not lines:
+        return f'<span style="color:{_RUN_DIM};">—</span>'
+    colour = _RUN_LOAD_ALT[shade]
+    parts = []
+    for line in lines:
+        qty = int(line.get('qty', 0) or 0)
+        item = str(line.get('item', ''))
+        price = int(line.get('price', 0) or 0)
+        text = html.escape(f'{qty:,} t {item} @ {price:,} cr/t')
+        flag = (f' <span style="color:{_RUN_CAP};">⚑</span>'
+                if line.get('capped') else '')
+        parts.append(f'<div style="color:{colour};">{text}{flag}</div>')
+    return ''.join(parts)
+
+def _run_full_table_html(route: dict[str, Any]) -> str:
+    # Station-centric full table: a row per stop, Sell and Buy side by side,
+    # the leg-out as a dim subline under the station, profit and running
+    # balance per row. Mirrors planner/render_rich.py.
+    headers = [('Station', 'left'), ('Sell', 'left'), ('Buy', 'left'),
+               ('Profit', 'right'), ('Balance', 'right')]
+    rows: list[list[str]] = []
+    for index, stop in enumerate(route.get('stops') or []):
+        shade = index % 2
+        station_html = (
+            f'<div style="color:{_RUN_STATION_ALT[shade]};font-weight:600;">'
+            f'{html.escape(str(stop.get("station", "")))}</div>'
         )
         nav = stop.get('nav')
         if nav:
-            ui.label(f'↓ {nav}').classes('text-xs').style(
-                f'color: {_RUN_DIM}'
+            station_html += (
+                f'<div style="color:{_RUN_DIM};font-size:0.8rem;">'
+                f'↓ {html.escape(str(nav))}</div>'
             )
+        profit = stop.get('profit')
+        if profit is None:
+            profit_html = f'<span style="color:{_RUN_DIM};">—</span>'
+        else:
+            profit_html = (
+                f'<span style="color:{_RUN_PROFIT_ALT[shade]};">'
+                f'+{int(profit):,} cr</span>'
+            )
+        balance_html = (
+            f'<span style="color:{_RUN_PROFIT_ALT[shade]};">'
+            f'{int(stop.get("balance", 0) or 0):,} cr</span>'
+        )
+        rows.append([
+            _run_td(station_html),
+            _run_td(_run_cargo_html(stop.get('sell') or [], shade)),
+            _run_td(_run_cargo_html(stop.get('buy') or [], shade)),
+            _run_td(profit_html, align='right', nowrap=True),
+            _run_td(balance_html, align='right', nowrap=True),
+        ])
+    return _run_table_html(headers, rows)
 
-def _render_run_cargo_cell(lines: list[dict[str, Any]], shade: int) -> None:
-    if not lines:
-        ui.label('—').style(f'color: {_RUN_DIM}')
-        return
-    with ui.column().classes('gap-0'):
-        for line in lines:
-            qty = int(line.get('qty', 0) or 0)
-            item = str(line.get('item', ''))
-            price = int(line.get('price', 0) or 0)
-            text = f'{qty:,} t {item} @ {price:,} cr/t'
-            if line.get('capped'):
-                with ui.row().classes('items-baseline gap-1 no-wrap'):
-                    ui.label(text).style(f'color: {_RUN_LOAD_ALT[shade]}')
-                    ui.label('⚑').style(f'color: {_RUN_CAP}')
-            else:
-                ui.label(text).style(f'color: {_RUN_LOAD_ALT[shade]}')
-
-def _render_run_profit_cell(profit: Any, shade: int) -> None:
-    if profit is None:
-        ui.label('—').style(f'color: {_RUN_DIM}; justify-self: end')
-        return
-    ui.label(f'+{int(profit):,} cr').style(
-        f'color: {_RUN_PROFIT_ALT[shade]}; justify-self: end; '
-        'white-space: nowrap'
-    )
-
-def _render_run_balance_cell(balance: Any, shade: int) -> None:
-    ui.label(f'{int(balance or 0):,} cr').style(
-        f'color: {_RUN_PROFIT_ALT[shade]}; justify-self: end; '
-        'white-space: nowrap'
-    )
+def _run_summary_table_html(route: dict[str, Any]) -> str:
+    # Compact per-hop view for long routes: one row per hop, no Sell/Buy split,
+    # no jump sublines, no prices -- just where you go, what you carry, how far,
+    # and what you make.
+    headers = [('Hop', 'left'), ('To', 'left'), ('Load', 'left'),
+               ('Jumps', 'right'), ('Profit', 'right')]
+    rows: list[list[str]] = []
+    for index, hop in enumerate(route.get('hops') or []):
+        shade = index % 2
+        load_items = hop.get('load') or []
+        if load_items:
+            load_text = html.escape(', '.join(
+                f'{int(item.get("qty", 0) or 0):,} t {item.get("item", "")}'
+                for item in load_items
+            ))
+            load_html = (
+                f'<span style="color:{_RUN_LOAD_ALT[shade]};">{load_text}</span>'
+            )
+        else:
+            load_html = f'<span style="color:{_RUN_DIM};">—</span>'
+        rows.append([
+            _run_td(f'<span style="color:{_RUN_DIM};">{index + 1}</span>'),
+            _run_td(
+                f'<span style="color:{_RUN_STATION_ALT[shade]};'
+                f'font-weight:600;">{html.escape(str(hop.get("to", "")))}'
+                '</span>'
+            ),
+            _run_td(load_html),
+            _run_td(
+                f'<span style="color:{_RUN_DIM};">'
+                f'{int(hop.get("jumps", 0) or 0)}</span>',
+                align='right', nowrap=True,
+            ),
+            _run_td(
+                f'<span style="color:{_RUN_PROFIT_ALT[shade]};">'
+                f'+{int(hop.get("profit", 0) or 0):,} cr</span>',
+                align='right', nowrap=True,
+            ),
+        ])
+    return _run_table_html(headers, rows)
 
 def _render_run_route_totals(route: dict[str, Any]) -> None:
     with ui.row().classes('items-baseline gap-2 flex-wrap'):
