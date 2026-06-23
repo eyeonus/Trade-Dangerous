@@ -6,7 +6,6 @@ from typing import Callable
 
 from nicegui import ui
 
-from .autocomplete import build_system_autocomplete_input
 from .autocomplete import AutocompleteInput, build_system_autocomplete_input
 from .profiles import CommandDraft
 from .shared_draft_helpers import DraftValueHelper

@@ -631,12 +631,36 @@ class LocalWorkspace(DraftValueHelper):
         # Local adds the simpler service-availability booleans underneath.
         def build_service_filters() -> None:
             with ui.row().classes('w-full gap-4'):
-                ui.checkbox('Black market', value=self._bool_value(self.draft.main_values, 'blackMarket'), on_change=lambda event: self._set_bool(self.draft.main_values, 'blackMarket', event.value)).tooltip('Require stations known to have a black market.')
-                ui.checkbox('Shipyard', value=self._bool_value(self.draft.main_values, 'shipyard'), on_change=lambda event: self._set_bool(self.draft.main_values, 'shipyard', event.value)).tooltip('Require stations known to have a Shipyard.')
-                ui.checkbox('Outfitting', value=self._bool_value(self.draft.main_values, 'outfitting'), on_change=lambda event: self._set_bool(self.draft.main_values, 'outfitting', event.value)).tooltip('Require stations known to have Outfitting.')
-                ui.checkbox('Rearm', value=self._bool_value(self.draft.main_values, 'rearm'), on_change=lambda event: self._set_bool(self.draft.main_values, 'rearm', event.value)).tooltip('Require stations known to sell munitions.')
-                ui.checkbox('Refuel', value=self._bool_value(self.draft.main_values, 'refuel'), on_change=lambda event: self._set_bool(self.draft.main_values, 'refuel', event.value)).tooltip('Require stations known to sell fuel.')
-                ui.checkbox('Repair', value=self._bool_value(self.draft.main_values, 'repair'), on_change=lambda event: self._set_bool(self.draft.main_values, 'repair', event.value)).tooltip('Require stations known to offer repairs.')
+                ui.checkbox(
+                    'Black market',
+                    value=self._bool_value(self.draft.main_values, 'blackMarket'),
+                    on_change=lambda event: self._set_bool(self.draft.main_values, 'blackMarket', event.value),
+                ).tooltip('Require stations known to have a black market.')
+                ui.checkbox(
+                    'Shipyard',
+                    value=self._bool_value(self.draft.main_values, 'shipyard'),
+                    on_change=lambda event: self._set_bool(self.draft.main_values, 'shipyard', event.value),
+                ).tooltip('Require stations known to have a Shipyard.')
+                ui.checkbox(
+                    'Outfitting',
+                    value=self._bool_value(self.draft.main_values, 'outfitting'),
+                    on_change=lambda event: self._set_bool(self.draft.main_values, 'outfitting', event.value),
+                ).tooltip('Require stations known to have Outfitting.')
+                ui.checkbox(
+                    'Rearm',
+                    value=self._bool_value(self.draft.main_values, 'rearm'),
+                    on_change=lambda event: self._set_bool(self.draft.main_values, 'rearm', event.value),
+                ).tooltip('Require stations known to sell munitions.')
+                ui.checkbox(
+                    'Refuel',
+                    value=self._bool_value(self.draft.main_values, 'refuel'),
+                    on_change=lambda event: self._set_bool(self.draft.main_values, 'refuel', event.value),
+                ).tooltip('Require stations known to sell fuel.')
+                ui.checkbox(
+                    'Repair',
+                    value=self._bool_value(self.draft.main_values, 'repair'),
+                    on_change=lambda event: self._set_bool(self.draft.main_values, 'repair', event.value),
+                ).tooltip('Require stations known to offer repairs.')
         
         build_shared_filter_section(
             get_bool=lambda key: self._bool_value(self.draft.main_values, key),
@@ -921,9 +945,27 @@ class OldDataWorkspace(DraftValueHelper):
                 input_classes='w-full',
             )
             with ui.row().classes('w-full items-end gap-3'):
-                ui.number('Distance (ly)', value=self._number_value(values, 'ly'), min=0, step=0.1, precision=2, on_change=lambda event: self._set_float(values, 'ly', event.value)).classes('w-40').tooltip('When Near is set, only include systems within this range.')
-                ui.number('Minimum age (days)', value=self._number_value(values, 'minAge'), min=0, step=0.1, precision=2, on_change=lambda event: self._set_float(values, 'minAge', event.value)).classes('w-48').tooltip('List data older than this number of days.')
-                ui.checkbox('Sort to shortest path', value=self._bool_value(values, 'route'), on_change=lambda event: self._set_bool(values, 'route', event.value)).tooltip('Requires Near. Sort results to the shortest path.')
+                ui.number(
+                    'Distance (ly)',
+                    value=self._number_value(values, 'ly'),
+                    min=0,
+                    step=0.1,
+                    precision=2,
+                    on_change=lambda event: self._set_float(values, 'ly', event.value),
+                ).classes('w-40').tooltip('When Near is set, only include systems within this range.')
+                ui.number(
+                    'Minimum age (days)',
+                    value=self._number_value(values, 'minAge'),
+                    min=0,
+                    step=0.1,
+                    precision=2,
+                    on_change=lambda event: self._set_float(values, 'minAge', event.value),
+                ).classes('w-48').tooltip('List data older than this number of days.')
+                ui.checkbox(
+                    'Sort to shortest path',
+                    value=self._bool_value(values, 'route'),
+                    on_change=lambda event: self._set_bool(values, 'route', event.value),
+                ).tooltip('Requires Near. Sort results to the shortest path.')
     
     def _build_filter_section(self) -> None:
         values = self.draft.main_values
@@ -944,10 +986,24 @@ class OldDataWorkspace(DraftValueHelper):
         with dialog, ui.card().style('min-width: 48rem; max-width: 95vw;'):
             ui.label('Extended Options')
             with ui.row().classes('w-full items-center gap-3'):
-                ui.number('Limit', value=self._number_value(values, 'limit'), min=0, step=1, precision=0, on_change=lambda event: self._set_int(values, 'limit', event.value, 'Limit')).classes('w-32').tooltip('Maximum number of results to show.')
+                ui.number(
+                    'Limit',
+                    value=self._number_value(values, 'limit'),
+                    min=0,
+                    step=1,
+                    precision=0,
+                    on_change=lambda event: self._set_int(values, 'limit', event.value, 'Limit'),
+                ).classes('w-32').tooltip('Maximum number of results to show.')
                 ui.label('Maximum number of stations to return.').classes('text-sm text-gray-600')
             with ui.row().classes('w-full items-center gap-3'):
-                ui.number('LS max', value=self._number_value(values, 'lsMax'), min=0, step=1, precision=0, on_change=lambda event: self._set_int(values, 'lsMax', event.value, 'LS max')).classes('w-40').tooltip('Only consider stations up to this many ls from their star.')
+                ui.number(
+                    'LS max',
+                    value=self._number_value(values, 'lsMax'),
+                    min=0,
+                    step=1,
+                    precision=0,
+                    on_change=lambda event: self._set_int(values, 'lsMax', event.value, 'LS max'),
+                ).classes('w-40').tooltip('Only consider stations up to this many ls from their star.')
                 ui.label('Only include stations within this many ls of arrival.').classes('text-sm text-gray-600')
         return dialog
 

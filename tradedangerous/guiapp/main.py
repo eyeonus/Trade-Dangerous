@@ -236,8 +236,6 @@ def _activate_native_mode_with_close_handler(
     shutdown_event: Any = None,
     native_favicon: str | Path | None = None,
 ) -> None:
-    global _ORIGINAL_NATIVE_ACTIVATE
-    
     if _NATIVE_WINDOW_CLOSE_SHARED_STATE is None:
         assert _ORIGINAL_NATIVE_ACTIVATE is not None
         _ORIGINAL_NATIVE_ACTIVATE(
@@ -500,7 +498,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         '--port',
         type=_parse_port_arg,
         default=None,
-        help='Port for the local NiceGUI server. Must be between 8000 and 8999; overrides the saved setting for this launch only. When omitted, Trade Dangerous tries 8542 first and then falls back to a random local port.',
+        help=(
+            'Port for the local NiceGUI server. Must be between 8000 and 8999; '
+            'overrides the saved setting for this launch only. When omitted, '
+            'Trade Dangerous tries 8542 first and then falls back to a random '
+            'local port.'
+        ),
     )
     return parser
 

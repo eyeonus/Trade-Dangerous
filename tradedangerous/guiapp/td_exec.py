@@ -721,6 +721,7 @@ class TdExecutor:
         if enabled:
             argv.append(option)
 
+
 # Some TD render paths still emit ANSI-coloured CLI text. Strip it before the
 # GUI sees fallback output so transport failures cannot leak escape sequences.
 _ANSI_ESCAPE_RE = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')

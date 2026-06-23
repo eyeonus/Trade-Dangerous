@@ -765,6 +765,7 @@ class GuiSearchService:
     def _clean_text(text: str) -> str:
         return str(text or '').strip()
 
+
 _DEFAULT_SEARCH_SERVICE: GuiSearchService | None = None
 
 def get_gui_search_service() -> GuiSearchService:

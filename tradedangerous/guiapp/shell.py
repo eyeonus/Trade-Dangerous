@@ -300,6 +300,7 @@ class AppShell:
                 ui.button('New', on_click=self._on_new_profile)
                 ui.button('Save', on_click=self._on_save_profile)
                 ui.button('Revert', on_click=self._on_revert_profile)    
+    
     def _build_right_pane(self) -> None:
         self.right_pane_host = ui.column().classes('w-full gap-3 pl-2')
     
@@ -932,6 +933,7 @@ class AppShell:
                     f'{self.session.selected_command} workspace '
                     'is not wired yet.'
                 ) 
+    
     def _render_right_pane(self) -> None:
         is_import = self.session.selected_command == 'import'
         is_input_only = self.session.selected_command in {
