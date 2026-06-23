@@ -281,44 +281,42 @@ def _run_full_table_html(route: dict[str, Any]) -> str:
         ])
     return _run_table_html(headers, rows)
 
+def _run_load_summary_html(lines: list[dict[str, Any]], shade: int) -> str:
+    # Loads as a single comma list with no prices -- the CLI --summary form.
+    if not lines:
+        return f'<span style="color:{_RUN_DIM};">—</span>'
+    text = html.escape(', '.join(
+        f'{int(line.get("qty", 0) or 0):,} t {line.get("item", "")}'
+        for line in lines
+    ))
+    return f'<span style="color:{_RUN_LOAD_ALT[shade]};">{text}</span>'
+
 def _run_summary_table_html(route: dict[str, Any]) -> str:
-    # Compact per-hop view for long routes: one row per hop, no Sell/Buy split,
-    # no jump sublines, no prices -- just where you go, what you carry, how far,
-    # and what you make.
-    headers = [('Hop', 'left'), ('To', 'left'), ('Load', 'left'),
-               ('Jumps', 'right'), ('Profit', 'right')]
+    # The CLI --summary tier: the same station-centric Station/Sell/Buy/Profit
+    # rows as the full table, but leaner -- loads as comma lists with no prices,
+    # no nav sublines, and no Balance column. Sell and Buy stay side by side.
+    headers = [('Station', 'left'), ('Sell', 'left'), ('Buy', 'left'),
+               ('Profit', 'right')]
     rows: list[list[str]] = []
-    for index, hop in enumerate(route.get('hops') or []):
+    for index, stop in enumerate(route.get('stops') or []):
         shade = index % 2
-        load_items = hop.get('load') or []
-        if load_items:
-            load_text = html.escape(', '.join(
-                f'{int(item.get("qty", 0) or 0):,} t {item.get("item", "")}'
-                for item in load_items
-            ))
-            load_html = (
-                f'<span style="color:{_RUN_LOAD_ALT[shade]};">{load_text}</span>'
-            )
+        station_html = (
+            f'<div style="color:{_RUN_STATION_ALT[shade]};font-weight:600;">'
+            f'{html.escape(str(stop.get("station", "")))}</div>'
+        )
+        profit = stop.get('profit')
+        if profit is None:
+            profit_html = f'<span style="color:{_RUN_DIM};">—</span>'
         else:
-            load_html = f'<span style="color:{_RUN_DIM};">—</span>'
-        rows.append([
-            _run_td(f'<span style="color:{_RUN_DIM};">{index + 1}</span>'),
-            _run_td(
-                f'<span style="color:{_RUN_STATION_ALT[shade]};'
-                f'font-weight:600;">{html.escape(str(hop.get("to", "")))}'
-                '</span>'
-            ),
-            _run_td(load_html),
-            _run_td(
-                f'<span style="color:{_RUN_DIM};">'
-                f'{int(hop.get("jumps", 0) or 0)}</span>',
-                align='right', nowrap=True,
-            ),
-            _run_td(
+            profit_html = (
                 f'<span style="color:{_RUN_PROFIT_ALT[shade]};">'
-                f'+{int(hop.get("profit", 0) or 0):,} cr</span>',
-                align='right', nowrap=True,
-            ),
+                f'+{int(profit):,} cr</span>'
+            )
+        rows.append([
+            _run_td(station_html),
+            _run_td(_run_load_summary_html(stop.get('sell') or [], shade)),
+            _run_td(_run_load_summary_html(stop.get('buy') or [], shade)),
+            _run_td(profit_html, align='right', nowrap=True),
         ])
     return _run_table_html(headers, rows)
 

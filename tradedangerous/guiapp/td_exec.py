@@ -852,33 +852,11 @@ def _snapshot_run_route(route: Any) -> dict[str, Any]:
         'ending_credits': int(getattr(route, 'ending_credits', 0) or 0),
         'arrival_hops': getattr(route, 'arrival_hops', None),
         'capped': capped,
+        # The summary view is the same station-centric stops as the full table,
+        # just rendered leaner (comma loads, no prices/nav/balance), so it needs
+        # no separate per-hop data.
         'stops': _run_stops(hops, starting),
-        'hops': _run_hops(hops),
     }
-
-def _run_hops(hops: list[Any]) -> list[dict[str, Any]]:
-    # Per-hop rows for the compact summary view: the hop's destination, the
-    # load carried on it (the cargo bought at its source), the jump count, and
-    # the hop's profit. No prices -- the summary stays lean.
-    rows: list[dict[str, Any]] = []
-    for hop in hops:
-        leg = getattr(hop, 'jump_path', None)
-        jumps = 0
-        if leg is not None and not getattr(leg, 'is_same_system', False):
-            jumps = int(getattr(leg, 'jumps', 0) or 0)
-        load = [
-            {'qty': int(line.quantity), 'item': line.item_name}
-            for line in hop.cargo.lines
-        ]
-        rows.append(
-            {
-                'to': hop.destination_station.dbname,
-                'load': load,
-                'jumps': jumps,
-                'profit': int(getattr(hop, 'raw_profit', 0) or 0),
-            }
-        )
-    return rows
 
 def _run_stops(hops: list[Any], starting: int) -> list[dict[str, Any]]:
     # A row per stop: the first hop's source, then every hop's destination. At
