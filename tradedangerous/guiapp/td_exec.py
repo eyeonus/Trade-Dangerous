@@ -5,6 +5,7 @@ from __future__ import annotations
 from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import dataclass, field
 import io
+import math
 import multiprocessing
 import os
 import re
@@ -901,7 +902,7 @@ def _run_stops(hops: list[Any], starting: int) -> list[dict[str, Any]]:
         stops.append(
             {
                 'station': station.dbname,
-                'nav': _run_nav_text(buy_hop),
+                'nav': _run_nav_lines(buy_hop),
                 'sell': _run_cargo_lines(sell_hop, 'sell'),
                 'buy': _run_cargo_lines(buy_hop, 'buy'),
                 'profit': profit,
@@ -926,22 +927,27 @@ def _run_cargo_lines(hop: Any, side: str) -> list[dict[str, Any]]:
         )
     return lines
 
-def _run_nav_text(hop: Any) -> str | None:
-    # The leg leaving this station, condensed like render_rich's standard tier:
-    # the systems flown and the leg distance. None when the hop carries no jump
-    # path (--direct, where the commander plots it themselves).
+def _run_nav_lines(hop: Any) -> list[str]:
+    # The leg leaving this station, one jump per line like render_rich's verbose
+    # tier: the system jumped to and that leg's own length. Empty when the hop
+    # carries no jump path (--direct, where the commander plots it themselves).
     if hop is None:
-        return None
+        return []
     leg = getattr(hop, 'jump_path', None)
     if leg is None:
-        return None
+        return []
     if getattr(leg, 'is_same_system', False):
-        return f'Supercruise · {leg.distance_ly:.1f} ly'
+        return [f'Supercruise · {leg.distance_ly:.1f} ly']
     systems = list(getattr(leg, 'systems', ()) or ())
-    chain = ' → '.join(system.dbname for system in systems[1:])
-    if not chain:
-        return None
-    return f'{chain} · {leg.distance_ly:.1f} ly'
+    lines: list[str] = []
+    for index in range(1, len(systems)):
+        previous, system = systems[index - 1], systems[index]
+        leg_ly = math.dist(
+            (previous.x, previous.y, previous.z),
+            (system.x, system.y, system.z),
+        )
+        lines.append(f'{system.dbname} · {leg_ly:.1f} ly')
+    return lines
 
 def _run_line_capped(line: Any) -> bool:
     # Mirrors render_rich._bulk_capped: a Metals/Minerals line loaded right up to

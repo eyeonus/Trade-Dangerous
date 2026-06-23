@@ -205,8 +205,10 @@ def _run_table_html(headers: list[tuple[str, str]], rows: list[list[str]]) -> st
         f'white-space:nowrap;">{html.escape(label)}</th>'
         for label, align in headers
     )
+    # A dim-orange rule between stops -- the CLI's _CHROME_DIM divider: clearly
+    # present but quieter than the solid orange header rule above.
     body = ''.join(
-        '<tr style="border-bottom:1px solid rgba(240,123,5,0.18);">'
+        '<tr style="border-bottom:1px solid rgba(240,123,5,0.35);">'
         + ''.join(cells) + '</tr>'
         for cells in rows
     )
@@ -253,11 +255,10 @@ def _run_full_table_html(route: dict[str, Any]) -> str:
             f'<div style="color:{_RUN_STATION_ALT[shade]};font-weight:600;">'
             f'{html.escape(str(stop.get("station", "")))}</div>'
         )
-        nav = stop.get('nav')
-        if nav:
+        for nav_line in stop.get('nav') or []:
             station_html += (
                 f'<div style="color:{_RUN_DIM};font-size:0.8rem;">'
-                f'↓ {html.escape(str(nav))}</div>'
+                f'↓ {html.escape(str(nav_line))}</div>'
             )
         profit = stop.get('profit')
         if profit is None:
