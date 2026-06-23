@@ -499,6 +499,9 @@ class AppShell:
     
     def _selected_launcher_port(self) -> int | None:
         return self.store.launcher_port
+
+    def _selected_journal_dir(self) -> str | None:
+        return self.store.journal_dir
     
     def _on_theme_changed(self, theme_name: str) -> None:
         theme = str(theme_name)
@@ -512,6 +515,10 @@ class AppShell:
     
     def _on_launcher_port_changed(self, port: int | None) -> None:
         self.store.launcher_port = port
+        save_gui_store(self.store)
+
+    def _on_journal_dir_changed(self, journal_dir: str | None) -> None:
+        self.store.journal_dir = self._clean_text(journal_dir)
         save_gui_store(self.store)
     
     def _on_begin_import_stop_confirmation(self) -> None:
@@ -611,6 +618,7 @@ class AppShell:
                 'jump_range_full_ly': self.session.ship_state.jump_range_full_ly,
                 'jump_range_empty_ly': self.session.ship_state.jump_range_empty_ly,
             },
+            journal_dir=self.store.journal_dir,
         )
         
         self.session.set_execution(
@@ -913,8 +921,10 @@ class AppShell:
                 workspace = SettingsWorkspace(
                     selected_theme=self._selected_theme(),
                     selected_launcher_port=self._selected_launcher_port(),
+                    selected_journal_dir=self._selected_journal_dir(),
                     on_theme_changed=self._on_theme_changed,
                     on_launcher_port_changed=self._on_launcher_port_changed,
+                    on_journal_dir_changed=self._on_journal_dir_changed,
                 )
                 workspace.build()
             else:

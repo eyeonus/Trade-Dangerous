@@ -46,6 +46,9 @@ class GuiCommandRequest:
     context_overrides: dict[str, Any] = field(default_factory=dict)
     global_values: dict[str, Any] = field(default_factory=dict)
     ship_profile_values: dict[str, Any] = field(default_factory=dict)
+    # Optional GUI override for the Elite journal directory. Blank/None keeps
+    # the CLI's normal discovery (ELITE_JOURNAL_PATH env var, then OS default).
+    journal_dir: str | None = None
     import_monitor: Any = None
     
     def effective_context(self) -> dict[str, Any]:
@@ -553,6 +556,13 @@ class TdExecutor:
         
         try:
             cmdenv = commands.CommandIndex().parse(list(argv))
+            # Honour an explicit GUI journal directory. journal_path() reads
+            # tdenv.journal_path ahead of the ELITE_JOURNAL_PATH env var and the
+            # OS default, so this is exactly the override the CLI already expects.
+            # Blank/None leaves cmdenv untouched and preserves auto-discovery.
+            journal_dir = getattr(request, 'journal_dir', None)
+            if journal_dir:
+                cmdenv.journal_path = journal_dir
             # Keep diagnostic/preflight output separate from rendered command
             # output so the right pane can show either view cleanly.
             diagnostics_console = Console(

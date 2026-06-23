@@ -22,15 +22,20 @@ class SettingsWorkspace:
         *,
         selected_theme: str,
         selected_launcher_port: int | None,
+        selected_journal_dir: str | None,
         on_theme_changed: Callable[[str], None],
         on_launcher_port_changed: Callable[[int | None], None],
+        on_journal_dir_changed: Callable[[str | None], None],
     ) -> None:
         self.selected_theme = selected_theme
         self.selected_launcher_port = selected_launcher_port
+        self.selected_journal_dir = selected_journal_dir
         self.on_theme_changed = on_theme_changed
         self.on_launcher_port_changed = on_launcher_port_changed
+        self.on_journal_dir_changed = on_journal_dir_changed
         self.theme_select = None
         self.launcher_port_input = None
+        self.journal_dir_input = None
         self.advanced_dialog = None
     
     def build(self) -> None:
@@ -88,6 +93,21 @@ class SettingsWorkspace:
                     'Choose the live GUI theme for this session and future '
                     'launches.'
                 )
+                self.journal_dir_input = ui.input(
+                    'Journal directory',
+                    value=self.selected_journal_dir or '',
+                    placeholder='Auto-detect',
+                    on_change=self._on_journal_dir_changed,
+                ).props('clearable').classes('w-full max-w-xl').tooltip(
+                    'Folder holding your Elite Dangerous journal files. Leave '
+                    'blank to let Trade Dangerous find it automatically; set it '
+                    'only if auto-detection picks the wrong place.'
+                )
+                ui.label(
+                    'Leave blank for automatic detection. Cargo-aware options '
+                    '(such as Direct --fill / --load) read your current ship '
+                    'from this folder.'
+                ).classes('text-sm text-gray-600 whitespace-pre-wrap')
                 ui.button(
                     'Advanced Settings',
                     on_click=self.advanced_dialog.open,
@@ -98,6 +118,13 @@ class SettingsWorkspace:
         if value is None:
             return
         self.on_theme_changed(str(value))
+
+    def _on_journal_dir_changed(self, event: Any) -> None:
+        value = getattr(event, 'value', None)
+        text = str(value or '').strip()
+        # Blank (or a cleared field) means "auto"; report None so the shell
+        # stores nothing and the CLI keeps its normal journal discovery.
+        self.on_journal_dir_changed(text or None)
     
     def _on_launcher_port_changed(self, event: Any) -> None:
         value = getattr(event, 'value', None)
