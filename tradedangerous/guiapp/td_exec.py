@@ -51,6 +51,10 @@ class GuiCommandRequest:
     # Optional GUI override for the Elite journal directory. Blank/None keeps
     # the CLI's normal discovery (ELITE_JOURNAL_PATH env var, then OS default).
     journal_dir: str | None = None
+    # Set when the GUI has already confirmed an unanchored (whole-galaxy) run.
+    # The worker then answers run's interactive 'Continue?' prompt so the search
+    # proceeds; without it an unanchored run aborts with guidance.
+    confirm_unanchored: bool = False
     import_monitor: Any = None
     
     def effective_context(self) -> dict[str, Any]:
@@ -178,21 +182,40 @@ class TdCommandProcess:
             ),
         )
 
+class _AutoConfirmStdin(io.StringIO):
+    """A stdin stand-in for a GUI-confirmed unanchored run.
+
+    run gates its whole-galaxy search behind sys.stdin.isatty() and an
+    interactive 'Continue?' input(). When the GUI has already confirmed, this
+    reports as a TTY (so the guard passes) and answers every prompt with 'y'
+    (so input() returns 'y' rather than EOF), letting the search proceed
+    without any change to run_cmd.
+    """
+
+    def isatty(self) -> bool:
+        return True
+
+    def readline(self, *args, **kwargs) -> str:  # noqa: ARG002
+        return 'y\n'
+
 def _execute_request_worker(
     request: GuiCommandRequest,
     result_conn: Connection,
 ) -> None:
-    # The worker has no usable interactive terminal. Point stdin at the null
-    # device so any command that would otherwise prompt -- notably run's
-    # unanchored galaxy-search confirmation -- sees a non-interactive stdin:
-    # sys.stdin.isatty() is then reliably False, so those paths take their clean
-    # non-interactive branch instead of blocking or raising "EOF when reading a
-    # line" on input(). A leftover console handle (seen on Windows) otherwise
-    # reports as a TTY yet EOFs immediately when read.
-    try:
-        sys.stdin = open(os.devnull, 'r')  # noqa: SIM115 (lives for the worker)
-    except OSError:
-        pass
+    # The worker has no usable interactive terminal, so give it a stdin that
+    # makes run's unanchored 'Continue?' prompt resolve without blocking or
+    # raising "EOF when reading a line". When the GUI has confirmed the
+    # whole-galaxy search, answer 'y' so it proceeds; otherwise a null-device
+    # stdin (isatty() False) makes run take its clean abort-with-guidance
+    # branch. A leftover console handle (seen on Windows) otherwise reports as a
+    # TTY yet EOFs immediately when read, which is the original crash.
+    if getattr(request, 'confirm_unanchored', False):
+        sys.stdin = _AutoConfirmStdin()
+    else:
+        try:
+            sys.stdin = open(os.devnull, 'r')  # noqa: SIM115 (lives for worker)
+        except OSError:
+            pass
     try:
         result = TdExecutor().execute(request)
         try:
@@ -303,22 +326,14 @@ class TdExecutor:
             ):
                 errors.append('Run requires Jump Range (Full).')
             
-            has_from = bool(str(resolved.get('starting') or '').strip())
             has_to = bool(str(resolved.get('ending') or '').strip())
             has_towards = bool(str(resolved.get('goalSystem') or '').strip())
             if has_to and has_towards:
                 errors.append('Run To and Towards are mutually exclusive.')
-            # With neither From nor To, run searches the whole galaxy -- which
-            # TD only does behind an interactive confirmation. The GUI has no
-            # such prompt yet, so block it here with guidance rather than let
-            # the worker reach run's input() prompt (which raises EOFError).
-            if not has_from and not has_to:
-                errors.append(
-                    'Run needs a From or To system. With neither set, Trade '
-                    'Dangerous searches the whole galaxy, which needs an '
-                    'interactive confirmation the GUI does not have yet -- '
-                    'name a From and/or To system.'
-                )
+            # An unanchored run (no From and no To) is a whole-galaxy search.
+            # It is allowed, but the GUI confirms it first (see the shell's
+            # unanchored-run confirmation) and the worker answers run's prompt;
+            # validation does not block it.
 
         if request.command == 'trade':
             validate_trade_request(

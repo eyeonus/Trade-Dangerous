@@ -645,7 +645,33 @@ class AppShell:
     def _on_journal_dir_changed(self, journal_dir: str | None) -> None:
         self.store.journal_dir = self._clean_text(journal_dir)
         save_gui_store(self.store)
-    
+
+    def _run_is_unanchored(self) -> bool:
+        # No From and no To means run will search the whole galaxy. Read the
+        # same draft keys build_run_argv maps onto --from/--to.
+        main = self.session.draft.main_values
+        has_from = bool(str(main.get('starting') or '').strip())
+        has_to = bool(str(main.get('ending') or '').strip())
+        return not has_from and not has_to
+
+    async def _confirm_unanchored_run(self) -> bool:
+        # Native GUI stand-in for run's terminal 'Continue?' prompt. The GUI
+        # never reads stdin; on confirmation the worker answers run's prompt.
+        dialog = ui.dialog()
+        with dialog, ui.card().style('min-width: 28rem; max-width: 90vw;'):
+            ui.label('Search the whole galaxy?').classes('text-lg')
+            ui.label(
+                'No From or To system is set. Trade Dangerous will search the '
+                'whole galaxy for the best trades, which can take several '
+                'minutes. You can stop it from the command controls.'
+            ).classes('whitespace-pre-wrap')
+            with ui.row().classes('w-full justify-end gap-2'):
+                ui.button(
+                    'Cancel', on_click=lambda: dialog.submit(False)
+                ).props('flat')
+                ui.button('Search', on_click=lambda: dialog.submit(True))
+        return bool(await dialog)
+
     def _on_begin_import_stop_confirmation(self) -> None:
         if begin_import_stop_confirmation(session=self.session):
             self._refresh_ui()
@@ -722,7 +748,20 @@ class AppShell:
             return
         if not self._capture_ship_inputs():
             return
-        
+
+        # An unanchored run (no From and no To) is a whole-galaxy search that TD
+        # gates behind a confirmation. Confirm it here in the GUI; the worker
+        # then answers run's prompt so it proceeds. Declining stops cleanly.
+        confirm_unanchored = False
+        if (
+            self.session.selected_command == 'run'
+            and self._run_is_unanchored()
+        ):
+            confirm_unanchored = await self._confirm_unanchored_run()
+            if not confirm_unanchored:
+                ui.notify('Galaxy-wide search cancelled.')
+                return
+
         # Drafts only store per-command fields. Snapshot the current left-pane
         # commander and ship context so execution is self-contained.
         request = GuiCommandRequest(
@@ -744,6 +783,7 @@ class AppShell:
                 'jump_range_empty_ly': self.session.ship_state.jump_range_empty_ly,
             },
             journal_dir=self.store.journal_dir,
+            confirm_unanchored=confirm_unanchored,
         )
         
         self.session.set_execution(
