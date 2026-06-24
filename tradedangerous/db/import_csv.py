@@ -1,9 +1,8 @@
 # CSV table importer for TradeDangerous.
 #
 # processImportFile() upserts a single CSV table file into the database. Used by
-# the eddblink importer and the buildcache command. Split out of the former
-# cache.py during the TradeDB retirement; the ".prices" file pathway lives in
-# tradedangerous/import_prices.py, and the database rebuild lives in
+# the eddblink importer and the buildcache command. The ".prices" file pathway
+# lives in tradedangerous/import_prices.py, and the database rebuild lives in
 # tradedangerous/commands/buildcache_cmd.py.
 
 from __future__ import annotations

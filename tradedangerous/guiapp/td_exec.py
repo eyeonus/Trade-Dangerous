@@ -1085,9 +1085,9 @@ def _named_display_value(value: Any) -> str | None:
     
     return None
 
-# Support both legacy TD objects and ORM models, which do not agree on whether
-# fields like `name`/`dbname` are plain attributes or helper methods.
-# Centralising that wrinkle keeps the snapshot code readable.
+# A result object may expose a display field (`name`, `dbname`, ...) either as a
+# plain attribute or as a callable helper method. Reading it through one
+# accessor keeps the snapshot code readable.
 def _display_attr(value: Any, *names: str) -> Any:
     for name in names:
         if not hasattr(value, name):

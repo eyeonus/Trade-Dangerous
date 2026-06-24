@@ -21,7 +21,6 @@ from .parsing import (
 )
 
 
-# TODO: Add UPGRADE_MODE
 ITEM_MODE = "Item"
 SHIP_MODE = "Ship"
 

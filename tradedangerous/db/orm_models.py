@@ -11,7 +11,6 @@ from sqlalchemy import (
     String,
     Enum,
     Index,
-    UniqueConstraint,
     CheckConstraint,
     text,
     Column,

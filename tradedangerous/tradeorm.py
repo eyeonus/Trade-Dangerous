@@ -1,6 +1,6 @@
 """
-tradeorm provides the TradeORM class which uses the application database
-rather than trying to be its own database in its own right like TradeDB.
+tradeorm provides the TradeORM class: a lookup and query layer over the
+application database, rather than an in-memory model of the whole dataset.
 
 Suggested use:
 
@@ -74,9 +74,8 @@ class TradeORM:
         self.sql_path = self.data_dir / (tdenv.sqlFilename or "TradeDangerous.sql")
 
         # Seed/template files: copy from templates/ into the data + csv dirs only
-        # when missing or newer (never overwrite on a pip upgrade). Carried over
-        # from the retired TradeDB so a fresh install still gets its Category
-        # seed and the schema.
+        # when missing or newer (never overwrite on a pip upgrade), so a fresh
+        # install still gets its Category seed and the schema.
         self.template_path = Path(tdenv.templateDir).resolve()
         self.csv_path = fs.ensurefolder(tdenv.csvDir)
         fs.copy_if_missing(self.template_path / "Category.csv", self.csv_path / "Category.csv")
@@ -150,7 +149,7 @@ class TradeORM:
         candidates,
         key,
     ) -> object:
-        """Python partial matching, mirrors TradeDB.listSearch.
+        """Python partial matching over an in-memory candidate list.
 
         *key* extracts the display/match string from each candidate.
         Returns the single matched candidate or raises LookupError /
@@ -199,7 +198,7 @@ class TradeORM:
         token: str,
         candidates,
     ) -> tuple[list, list, list, list]:
-        """Four-tier match against candidates, mirrors TradeDB.lookupPlace._lookup.
+        """Four-tier match against candidates (exact/close/word/any tiers).
 
         *candidates* must expose a .name attribute (System or Station ORM objects).
         Returns (exact_match, close_match, word_match, any_match).
@@ -442,9 +441,8 @@ class TradeORM:
         """ Exact-then-partial system lookup with optional '@N' disambiguation.
 
         Falls back to prefix ILIKE + _list_search when the exact query returns
-        nothing, mirroring the listSearch fallback in TradeDB.lookupSystem.
-        @N disambiguation is only available in the exact tier (PRESERVE FOR
-        PARITY — the listSearch fallback receives the full name including @N
+        nothing. @N disambiguation is only available in the exact tier (PRESERVE
+        FOR PARITY — the partial fallback receives the full name including @N
         as a literal search string, per the DOCUMENTED LEGACY BUG).
         """
         if isinstance(name, orm.System):
@@ -652,10 +650,9 @@ class TradeORM:
     def lookup_item(self, name: str | orm.Item) -> orm.Item:
         """Exact-then-normalised item lookup by name.
 
-        Mirrors TradeDB.lookupItem / listSearch. Exact CI match is tried first
-        (fast path). Partial/normalised fallback scans the full item catalogue
-        in Python via _list_search, which applies the same two-stage
-        normalisation as the legacy path. A full scan is used rather than ILIKE
+        Exact CI match is tried first (fast path). Partial/normalised fallback
+        scans the full item catalogue in Python via _list_search, which applies
+        the two-stage name normalisation. A full scan is used rather than ILIKE
         narrowing because raw SQL cannot replicate stage-1 punctuation deletion,
         so ILIKE is not a superset of normalised matches (e.g. "HESuits" must
         reach "H.E. Suits"). The item catalogue is small enough (~300 rows) that
@@ -688,10 +685,9 @@ class TradeORM:
     def lookup_category(self, name: str | orm.Category) -> orm.Category:
         """Exact-then-normalised category lookup by name.
 
-        Mirrors TradeDB.lookupCategory / listSearch. Exact CI match is tried
-        first (fast path, uses idx_category_by_name). Normalised fallback
-        scans all categories in Python via _list_search. The category
-        catalogue is tiny (~16 rows) so a full scan is acceptable.
+        Exact CI match is tried first (fast path, uses idx_category_by_name).
+        Normalised fallback scans all categories in Python via _list_search. The
+        category catalogue is tiny (~16 rows) so a full scan is acceptable.
         """
         if isinstance(name, orm.Category):
             return name
@@ -718,9 +714,9 @@ class TradeORM:
     def lookup_ship(self, name: str | orm.Ship) -> orm.Ship:
         """Exact-then-normalised ship lookup by name.
 
-        Mirrors TradeDB.lookupShip. Exact CI match is tried first (fast path).
-        Normalised fallback scans the full ship catalogue via _list_search.
-        The ship catalogue is small (~40 rows) so a full scan is acceptable.
+        Exact CI match is tried first (fast path). Normalised fallback scans the
+        full ship catalogue via _list_search. The ship catalogue is small
+        (~40 rows) so a full scan is acceptable.
         """
         if isinstance(name, orm.Ship):
             return name
@@ -747,9 +743,9 @@ class TradeORM:
     def item_by_id(self, item_id: int) -> orm.Item:
         """Look up an Item by its primary key.
 
-        Mirrors TradeDB.itemByID[ID]. Uses the SQLAlchemy identity map when
-        the item is already loaded in the session; otherwise issues a PK
-        query. Raises LookupError if the item_id does not exist.
+        Uses the SQLAlchemy identity map when the item is already loaded in the
+        session; otherwise issues a PK query. Raises LookupError if the item_id
+        does not exist.
         """
         item = self.session.get(orm.Item, item_id)
         if item is None:

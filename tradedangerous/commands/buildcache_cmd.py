@@ -66,7 +66,7 @@ switches = [
 
 # The standard TD tables and their CSV files, in dependency order (System
 # before Station, etc.). A destructive rebuild loads these from the CSV data
-# directory; this list was previously TradeDB.defaultTables.
+# directory.
 _STANDARD_TABLES = (
     ("System.csv", "System"),
     ("Station.csv", "Station"),

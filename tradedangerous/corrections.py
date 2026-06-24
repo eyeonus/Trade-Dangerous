@@ -61,7 +61,7 @@ def correctItem(oldName):
 # names. It lives here -- a dependency-free, top-level module -- so every writer
 # of those rows (the resolver, the CSV importer, the spansh upsert, and the
 # external listener) computes the same key without pulling in DB/ORM machinery.
-# Two-stage rule (mirrors the historical TradeDB.normalizeTrans / trimTrans):
+# Two-stage rule:
 #   stage 1 -- uppercase a-z, delete  [ ] ( ) * + - . , { } :
 #   stage 2 -- delete space and apostrophe
 

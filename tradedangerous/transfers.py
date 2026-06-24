@@ -7,7 +7,6 @@ from .tradeexcept import TradeException
 from .misc import progress as pbar
 from . import fs
 
-import json
 import time
 import typing
 

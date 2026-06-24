@@ -119,10 +119,6 @@ class CommandEnv(TradeEnv):
         self.tdb = tdb
         update_database_schema(self.tdb)
 
-        preloader = getattr(self._cmd, "preload", None)
-        if preloader and callable(preloader):
-            preloader(tdb)
-
         skip_resolver_prechecks = getattr(
             self._cmd,
             'skipResolverPrechecks',

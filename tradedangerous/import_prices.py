@@ -12,9 +12,8 @@
 #
 #  Reads TradeDangerous ".prices" files into the database. This is the legacy
 #  hand-editable price format; the spansh and eddblink importers are preferred,
-#  but the ".prices" pathway is retained. Split out of the former cache.py
-#  during the TradeDB retirement; CSV table import and the database rebuild now
-#  live in tradedangerous/db/import_csv.py.
+#  but the ".prices" pathway is retained. CSV table import and the database
+#  rebuild live in tradedangerous/db/import_csv.py.
 #
 
 from __future__ import annotations

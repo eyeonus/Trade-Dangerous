@@ -331,8 +331,8 @@ def verify_db(engine: Engine, data_dir: Path, tdenv) -> Dict[str, str]:
     A report-only wrapper over ensure_fresh_db(rebuild=False): it runs the
     seconds-only probes (core tables, primary keys, seed rows, connectivity) and
     logs the verdict. It never rebuilds -- loading the standard tables is the
-    `buildcache` command's job. This is the modern replacement for the legacy
-    TradeDB.reloadCache(); callers that need data act on the returned verdict.
+    `buildcache` command's job. It only reports; callers that need data act on
+    the returned verdict.
     """
     try:
         summary = ensure_fresh_db(

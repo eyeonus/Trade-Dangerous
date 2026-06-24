@@ -4,13 +4,11 @@ from pathlib import Path
 from typing import Any, Dict, Mapping
 import configparser
 import os
-import time
 
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine, URL
 from sqlalchemy.orm import sessionmaker, Session  # type: ignore
 from sqlalchemy.pool import NullPool
-from sqlalchemy.exc import OperationalError
 
 from .config import DEFAULTS, load_config
 from .paths import resolve_data_dir, resolve_tmp_dir, resolve_db_config_path
