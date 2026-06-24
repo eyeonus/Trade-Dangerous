@@ -135,8 +135,8 @@ WHERE station_id NOT IN (SELECT station_id FROM Station);
 DELETE FROM ShipVendor
 WHERE station_id NOT IN (SELECT station_id FROM Station);
 
-DELETE FROM UpgradeVendor
-WHERE station_id NOT IN (SELECT station_id FROM Station);
+-- Note: the Upgrade, UpgradeVendor, and FDevOutfitting tables were dropped from
+-- the schema, so there is no outfitting-vendor table to crop here.
 
 -- Item.rare_station_id is a nullable FK to Station; NULL out orphaned links
 UPDATE Item
@@ -199,9 +199,6 @@ Verify required files exist:
 - Category.csv
 - Ship.csv
 - ShipVendor.csv
-- Upgrade.csv
-- UpgradeVendor.csv
-- FDevOutfitting.csv
 - FDevShipyard.csv
 - TradeDangerous.db
 
