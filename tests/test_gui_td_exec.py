@@ -7,68 +7,6 @@ from tradedangerous.guiapp.td_exec import (
     _snapshot_structured_result,
 )
 
-class _FakeSystem:
-    def __init__(self, name):
-        self.dbname = name
-        self.posX = 1.0
-        self.posY = 2.0
-        self.posZ = 3.0
-        self.stations = []
-    
-    def name(self):
-        return self.dbname
-
-class _FakeStation:
-    def __init__(self, name, system):
-        self.dbname = name
-        self.system = system
-        self.lsFromStar = 42
-        self.market = 'Y'
-        self.blackMarket = 'N'
-        self.shipyard = 'Y'
-        self.outfitting = 'N'
-        self.rearm = 'Y'
-        self.refuel = 'Y'
-        self.repair = 'N'
-        self.maxPadSize = 'L'
-        self.planetary = 'N'
-        self.fleet = 'N'
-        self.settlement = 'Y'
-        self.itemCount = 3
-    
-    def name(self, *_args):
-        return f'{self.system.dbname}/{self.dbname}'
-    
-    def distFromStar(self):
-        return '42'
-
-class _FakeTrade:
-    def __init__(self, name, cost, gain):
-        self._name = name
-        self.costCr = cost
-        self.gainCr = gain
-    
-    def name(self):
-        return self._name
-
-class _FakeHop:
-    def __init__(self, items, units, gain, gpt):
-        self.items = items
-        self.units = units
-        self.gainCr = gain
-        self.gpt = gpt
-
-class _FakeRoute:
-    def __init__(self, route, hops, jumps):
-        self.route = route
-        self.hops = hops
-        self.jumps = jumps
-        self.firstStation = route[0]
-        self.lastStation = route[-1]
-        self.startCr = 1000
-        self.gainCr = 450
-        self.gpt = 45
-        self.score = 12.5
 
 def test_td_exec_request_context_precedence():
     request = GuiCommandRequest(
@@ -79,7 +17,7 @@ def test_td_exec_request_context_precedence():
         main_values={'starting': 'Achenar', 'hops': 4},
         advanced_values={'hops': 6, 'routes': 2},
     )
-    
+
     assert request.effective_context() == {
         'credits': 1000,
         'capacity': 30,
@@ -95,9 +33,10 @@ def test_td_exec_request_context_precedence():
         'routes': 2,
     }
 
+
 def test_td_executor_validate_request_core_rules_per_command():
     executor = TdExecutor()
-    
+
     run_errors = executor.validate_request(GuiCommandRequest(command='run'))
     trade_errors = executor.validate_request(GuiCommandRequest(command='trade'))
     local_errors = executor.validate_request(GuiCommandRequest(command='local'))
@@ -106,78 +45,107 @@ def test_td_executor_validate_request_core_rules_per_command():
     olddata_errors = executor.validate_request(
         GuiCommandRequest(command='olddata', main_values={'route': True})
     )
-    
+
     assert 'Run requires Capacity.' in run_errors
     assert 'Run requires Credits.' in run_errors
     assert 'Run requires Jump Range (Full).' in run_errors
-    assert trade_errors == ['Trade requires Origin.', 'Trade requires Destination.']
+    # The GUI's Trade workspace drives the `direct` command (trade is its CLI
+    # alias), so its validation speaks in Direct terms.
+    assert trade_errors == [
+        'Direct requires an origin system or station.',
+        'Direct requires a destination system or station.',
+    ]
     assert local_errors == ['Local requires Near.']
     assert market_errors == ['Market requires Station.']
     assert nav_errors == ['Nav requires Start.', 'Nav requires End.']
     assert olddata_errors == ['Old Data route sorting requires Near.']
 
-def test_td_exec_snapshot_helpers_convert_live_objects_to_plain_data():
-    origin_system = _FakeSystem('Sol')
-    dest_system = _FakeSystem('LHS 380')
-    origin = _FakeStation('Abraham Lincoln', origin_system)
-    destination = _FakeStation('Fisher Point', dest_system)
-    trade = _FakeTrade('Hydrogen Fuel', 50, 25)
-    hop = _FakeHop(items=[(trade, 10)], units=10, gain=250, gpt=25)
-    route = _FakeRoute(
-        route=[origin, destination],
-        hops=[hop],
-        jumps=[[origin_system, dest_system]],
+
+def test_td_exec_snapshot_helpers_flatten_run_result_to_plain_data():
+    # The post-L RunResult is a routes -> hops -> cargo-lines graph. The snapshot
+    # flattens it to plain dicts (carrying no live DB handles) so the worker
+    # payload stays simple and the GUI renderer reads one stable shape.
+    sol = SimpleNamespace(dbname='Sol', x=0.0, y=0.0, z=0.0)
+    lhs = SimpleNamespace(dbname='LHS 380', x=3.0, y=4.0, z=0.0)
+    origin = SimpleNamespace(dbname='Sol/Abraham Lincoln')
+    destination = SimpleNamespace(dbname='LHS 380/Fisher Point')
+
+    line = SimpleNamespace(
+        quantity=10,
+        item_name='Hydrogen Fuel',
+        buy_price=50,
+        sell_price=75,
+        bulk_sale_tax_sensitive=False,
+        effective_destination_demand_units=None,
     )
-    
-    snapshot = _snapshot_structured_result('run', [route])
-    
-    assert snapshot == [{
-        'first_station': 'Sol/Abraham Lincoln',
-        'last_station': 'LHS 380/Fisher Point',
-        'startCr': 1000,
-        'gainCr': 450,
-        'gpt': 45,
-        'score': 12.5,
-        'hops': [{
-            'src_station': 'Sol/Abraham Lincoln',
-            'dst_station': 'LHS 380/Fisher Point',
-            'units': 10,
-            'gainCr': 250,
-            'gpt': 25,
-            'items': [{
-                'commodity': 'Hydrogen Fuel',
-                'qty': 10,
-                'buy': 50,
-                'sell': 75,
-                'gain': 25,
-                'total': 250,
-            }],
-            'jump_path': ['Sol', 'LHS 380'],
-        }],
-    }]
+    leg = SimpleNamespace(
+        is_same_system=False, systems=[sol, lhs], jumps=1, distance_ly=5.0,
+    )
+    hop = SimpleNamespace(
+        source_station=origin,
+        destination_station=destination,
+        raw_profit=250,
+        cargo=SimpleNamespace(lines=[line]),
+        jump_path=leg,
+    )
+    route = SimpleNamespace(
+        hops=[hop],
+        stations=[origin, destination],
+        starting_credits=1000,
+        total_raw_profit=250,
+        ending_credits=1250,
+        arrival_hops=None,
+    )
+    result = SimpleNamespace(routes=[route], warnings=())
+
+    snapshot = _snapshot_structured_result('run', result)
+
+    assert snapshot['summary'] is False
+    assert snapshot['warnings'] == []
+    assert len(snapshot['routes']) == 1
+
+    r = snapshot['routes'][0]
+    assert r['origin'] == 'Sol/Abraham Lincoln'
+    assert r['destination'] == 'LHS 380/Fisher Point'
+    assert r['hop_count'] == 1
+    assert r['total_jumps'] == 1
+    assert r['total_profit'] == 250
+    assert r['starting_credits'] == 1000
+    assert r['ending_credits'] == 1250
+
+    stops = r['stops']
+    assert [s['station'] for s in stops] == [
+        'Sol/Abraham Lincoln', 'LHS 380/Fisher Point',
+    ]
+    # The departing hop's cargo is the 'buy' side of the source stop, and its
+    # jump path is the nav for that leg.
+    assert stops[0]['buy'] == [
+        {'qty': 10, 'item': 'Hydrogen Fuel', 'price': 50, 'capped': False},
+    ]
+    assert stops[0]['nav'] == ['LHS 380 · 5.0 ly']
+    # The arrival stop sells what it carried; profit and balance land there.
+    assert stops[1]['sell'] == [
+        {'qty': 10, 'item': 'Hydrogen Fuel', 'price': 75, 'capped': False},
+    ]
+    assert stops[1]['profit'] == 250
+    assert stops[1]['balance'] == 1250
 
 
-def _make_fake_cmdenv(*, needs_resolver, needs_legacy_db, needs_full_load):
-    """Minimal fake CommandEnv for backend-selection tests."""
+def _make_fake_cmdenv(*, needs_resolver):
+    """Minimal fake CommandEnv for the GUI backend-selection path."""
     env = MagicMock()
     env.needs_resolver = needs_resolver
-    env.needs_legacy_db = needs_legacy_db
-    env.needs_full_load = needs_full_load
-    env.wantsTradeDB = needs_legacy_db
     env.usesTradeData = False
     env.run.return_value = None
     env.preflight = None
     return env
 
 
-def test_execute_td_command_uses_tradeorm_for_resolver_commands():
-    """RESOLVER commands get TradeORM; TradeDB is not constructed."""
-    fake_cmdenv = _make_fake_cmdenv(
-        needs_resolver=True, needs_legacy_db=False, needs_full_load=False
-    )
+def test_execute_td_command_constructs_orm_for_resolver_commands():
+    """A resolver-tier command builds a TradeORM (via build_backend) and closes it."""
+    fake_cmdenv = _make_fake_cmdenv(needs_resolver=True)
     request = GuiCommandRequest(command='trade')
     mock_torm = MagicMock()
-    mock_torm.close = MagicMock()
 
     with (
         patch(
@@ -185,51 +153,21 @@ def test_execute_td_command_uses_tradeorm_for_resolver_commands():
             return_value=fake_cmdenv,
         ),
         patch(
-            'tradedangerous.guiapp.td_exec.TradeORM',
+            'tradedangerous.guiapp.td_backend.TradeORM',
             return_value=mock_torm,
         ) as torm_cls,
-        patch('tradedangerous.guiapp.td_exec.tradedb.TradeDB') as tdb_cls,
     ):
-        TdExecutor()._execute_td_command(request, ['trade.py', 'trade', 'Sol', 'Sol'])
+        TdExecutor()._execute_td_command(
+            request, ['trade.py', 'trade', 'Sol', 'Sol']
+        )
 
     torm_cls.assert_called_once()
-    tdb_cls.assert_not_called()
     mock_torm.close.assert_called_once_with(final=True)
 
 
-def test_execute_td_command_uses_tradedb_full_load_for_full_legacy_commands():
-    """FULL_LEGACY commands get TradeDB(load=True); TradeORM is not constructed."""
-    fake_cmdenv = _make_fake_cmdenv(
-        needs_resolver=False, needs_legacy_db=True, needs_full_load=True
-    )
-    request = GuiCommandRequest(command='run')
-    mock_tdb = MagicMock()
-    mock_tdb.tradingStationCount = 10
-    mock_tdb.close = MagicMock()
-
-    with (
-        patch(
-            'tradedangerous.guiapp.td_exec.commands.CommandIndex.parse',
-            return_value=fake_cmdenv,
-        ),
-        patch('tradedangerous.guiapp.td_exec.TradeORM') as torm_cls,
-        patch(
-            'tradedangerous.guiapp.td_exec.tradedb.TradeDB',
-            return_value=mock_tdb,
-        ) as tdb_cls,
-    ):
-        TdExecutor()._execute_td_command(request, ['trade.py', 'run'])
-
-    torm_cls.assert_not_called()
-    tdb_cls.assert_called_once_with(fake_cmdenv, load=True)
-    mock_tdb.close.assert_called_once_with(final=True)
-
-
 def test_execute_td_command_constructs_no_backend_for_nothing_commands():
-    """NOTHING commands construct neither TradeORM nor TradeDB; run() receives None."""
-    fake_cmdenv = _make_fake_cmdenv(
-        needs_resolver=False, needs_legacy_db=False, needs_full_load=False
-    )
+    """A no-backend command builds neither backend; run() receives None."""
+    fake_cmdenv = _make_fake_cmdenv(needs_resolver=False)
     request = GuiCommandRequest(command='update')
 
     with (
@@ -237,39 +175,9 @@ def test_execute_td_command_constructs_no_backend_for_nothing_commands():
             'tradedangerous.guiapp.td_exec.commands.CommandIndex.parse',
             return_value=fake_cmdenv,
         ),
-        patch('tradedangerous.guiapp.td_exec.TradeORM') as torm_cls,
-        patch('tradedangerous.guiapp.td_exec.tradedb.TradeDB') as tdb_cls,
+        patch('tradedangerous.guiapp.td_backend.TradeORM') as torm_cls,
     ):
         TdExecutor()._execute_td_command(request, ['trade.py', 'update'])
 
     torm_cls.assert_not_called()
-    tdb_cls.assert_not_called()
     fake_cmdenv.run.assert_called_once_with(None)
-
-
-def test_execute_td_command_uses_tradedb_no_load_for_legacy_handle_commands():
-    """LEGACY_HANDLE commands get TradeDB(load=False); TradeORM is not constructed."""
-    fake_cmdenv = _make_fake_cmdenv(
-        needs_resolver=False, needs_legacy_db=True, needs_full_load=False
-    )
-    request = GuiCommandRequest(command='import')
-    mock_tdb = MagicMock()
-    mock_tdb.tradingStationCount = 10
-    mock_tdb.close = MagicMock()
-
-    with (
-        patch(
-            'tradedangerous.guiapp.td_exec.commands.CommandIndex.parse',
-            return_value=fake_cmdenv,
-        ),
-        patch('tradedangerous.guiapp.td_exec.TradeORM') as torm_cls,
-        patch(
-            'tradedangerous.guiapp.td_exec.tradedb.TradeDB',
-            return_value=mock_tdb,
-        ) as tdb_cls,
-    ):
-        TdExecutor()._execute_td_command(request, ['trade.py', 'import'])
-
-    torm_cls.assert_not_called()
-    tdb_cls.assert_called_once_with(fake_cmdenv, load=False)
-    mock_tdb.close.assert_called_once_with(final=True)

@@ -17,7 +17,6 @@ def test_import_open_applies_defaults_and_clears_transient_flags():
     session = SessionState.from_store(store)
     
     assert session.draft.main_values['all'] is True
-    assert session.draft.main_values['skipvend'] is True
     assert 'clean' not in session.draft.main_values
     assert 'optimize' not in session.draft.main_values
     assert 'force' not in session.draft.main_values
@@ -30,7 +29,6 @@ def test_import_open_reapplies_defaults_each_time_it_is_selected():
     
     session.set_command(store, 'import')
     session.draft.main_values.pop('all', None)
-    session.draft.main_values.pop('skipvend', None)
     session.draft.main_values['clean'] = True
     session.draft.main_values['force'] = True
     
@@ -38,7 +36,6 @@ def test_import_open_reapplies_defaults_each_time_it_is_selected():
     session.set_command(store, 'import')
     
     assert session.draft.main_values['all'] is True
-    assert session.draft.main_values['skipvend'] is True
     assert 'clean' not in session.draft.main_values
     assert 'force' not in session.draft.main_values
     assert session.draft.main_values['solo'] is True
@@ -48,7 +45,6 @@ def test_import_transient_flags_are_not_serialized():
     store.drafts['import'] = CommandDraft(
         main_values={
             'all': True,
-            'skipvend': True,
             'clean': True,
             'optimize': True,
             'force': True,
@@ -61,7 +57,6 @@ def test_import_transient_flags_are_not_serialized():
     main_values = payload['drafts']['import']['main_values']
     
     assert 'all' not in main_values
-    assert 'skipvend' not in main_values
     assert 'clean' not in main_values
     assert 'optimize' not in main_values
     assert 'force' not in main_values

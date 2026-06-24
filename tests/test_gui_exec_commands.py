@@ -36,7 +36,6 @@ def test_build_run_argv_maps_expected_fields():
             'hops': 4,
             'maxJumpsPer': 3,
             'startJumps': 1,
-            'showJumps': True,
             'padSize': 'L',
             'fleet': 'Y',
             'settlement': 'N',
@@ -56,7 +55,6 @@ def test_build_run_argv_maps_expected_fields():
     assert '--from' in argv and 'Sol/Abraham Lincoln' in argv
     assert '--to' in argv and 'LHS 380/Fisher Point' in argv
     assert '--loop' in argv
-    assert '--show-jumps' in argv
     assert '--summary' in argv
 
 def test_build_trade_argv_and_validate_trade_request():
@@ -80,7 +78,7 @@ def test_build_trade_argv_and_validate_trade_request():
     )
     
     assert argv == [
-        'tradegui.py', 'trade', 'Sol/Abraham Lincoln', 'Sol/Burnell Station',
+        'tradegui.py', 'direct', 'Sol/Abraham Lincoln', 'Sol/Burnell Station',
         '--detail', '--gain-per-ton', '10', '--fill',
     ]
     assert errors == []
