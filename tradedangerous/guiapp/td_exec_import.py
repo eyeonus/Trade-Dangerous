@@ -18,7 +18,6 @@ EDDBLINK_OPTION_ORDER: tuple[str, ...] = (
     # Keep the option order stable so diagnostics and reproduced commands are
     # easy to compare with the old CLI usage.
     'all',
-    'skipvend',
     'clean',
     'force',
     'solo',
@@ -34,19 +33,6 @@ EDDBLINK_OPTION_ORDER: tuple[str, ...] = (
     'shipvend',
     'upvend',
     'listings',
-)
-EDDBLINK_GUI_SHIPVEND_KEY = 'shipvend_mode'
-EDDBLINK_GUI_SHIPVEND_BASE_OPTIONS: tuple[str, ...] = (
-    'upgrade',
-    'shipvend',
-    'listings',
-)
-EDDBLINK_GUI_SHIPVEND_PASS_THROUGH: tuple[str, ...] = (
-    'force',
-    'purge',
-    'optimize',
-    '7days',
-    'units',
 )
 
 @dataclass(slots=True)
@@ -95,19 +81,6 @@ def build_import_argv(
     
     argv = ['tradegui.py', 'import']
     append_option(argv, '-P', 'eddblink')
-    
-    if resolved.get(EDDBLINK_GUI_SHIPVEND_KEY):
-        # GUI-only mode: keep the normal fast-path defaults out of the emitted
-        # argv and request the explicit non-clean ship-vendor formula instead.
-        # Clean and Solo are intentionally not emitted in this mode.
-        for option in EDDBLINK_GUI_SHIPVEND_PASS_THROUGH:
-            if resolved.get(option):
-                append_option(argv, '-O', option)
-        
-        for option in EDDBLINK_GUI_SHIPVEND_BASE_OPTIONS:
-            append_option(argv, '-O', option)
-        
-        return argv
     
     for option in EDDBLINK_OPTION_ORDER:
         if resolved.get(option):

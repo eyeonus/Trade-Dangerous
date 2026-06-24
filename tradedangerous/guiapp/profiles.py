@@ -17,7 +17,6 @@ LAUNCHER_PORT_MIN = 8000
 LAUNCHER_PORT_MAX = 8999
 _IMPORT_TRANSIENT_FLAGS = frozenset({
     'all',
-    'skipvend',
     'clean',
     'optimize',
     'force',

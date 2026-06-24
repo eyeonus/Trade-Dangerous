@@ -158,10 +158,9 @@ class SessionState:
     @staticmethod
     def _normalize_command_draft(command: str, draft: CommandDraft) -> None:
         if command == 'import':
-            # Import always opens in the safe fast-path mode unless the user
-            # explicitly opts into heavier work for the current visit.
+            # Import always opens with All selected; heavier flags are cleared
+            # so each visit starts from the safe default unless the user opts in.
             draft.main_values['all'] = True
-            draft.main_values['skipvend'] = True
             for key in ('clean', 'optimize', 'force'):
                 draft.main_values.pop(key, None)
     
