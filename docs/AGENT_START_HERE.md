@@ -58,7 +58,7 @@ Meaning:
 This project is not “make a new engine”.
 It is “systematically remove preload-heavy legacy obligations while keeping the product working”.
 
-> **Status (2026-06): Checkpoints K, L, M, and N complete.** `trade run` was the
+> **Status (2026-06): Checkpoints K, L, M, N, and O complete.** `trade run` was the
 > preload-heaviest obligation. The K4 review concluded the preload-first
 > `TradeDB` / `TradeCalc` model should be replaced rather than narrowed, and the
 > clean-room planner rewrite (Slices 1–14, `docs/Planner/`) did so. `trade run`
@@ -68,8 +68,9 @@ It is “systematically remove preload-heavy legacy obligations while keeping th
 > remaining command surfaces (`olddata`, `nav`, `trade direct`); M restored the
 > GUI on the TradeORM-only backend and reconciled it with the post-L CLI surface.
 > N pruned the post-refactor leftovers and aligned docs/comments with reality.
-> Next: O (rebuild the test suite), then P (document the project). See
-> `REFACTOR_PROGRESS.md` §1 for live status.
+> O rebuilt the test suite against the post-rewrite codebase — the full suite is
+> green again (388 passed) and trustworthy as a gate. Next: P (document the
+> project). See `REFACTOR_PROGRESS.md` §1 for live status.
 
 ---
 
@@ -307,11 +308,16 @@ Goal:
   the K ground-up rewrite changed the upstream picture; documenting the project
   succeeds it as Checkpoint P)
 
-### O — Rebuild the test suite against the post-rewrite codebase
+### O — Rebuild the test suite against the post-rewrite codebase (complete)
 Goal:
 - restore a green, meaningful suite after the planner rewrite retired the modules
   the old tests targeted (`tradedb.py`, `tradecalc.py`, the preload model)
 - rebuild tests against the current architecture rather than patch the obsolete ones
+
+**Complete (2026-06-24).** Full suite green (388 passed, 0 failed, 0 collection
+errors). Retired-architecture tests removed or rewritten onto TradeORM/planner;
+one production change (the resolver bare-name fallback fix). See
+`REFACTOR_PROGRESS.md` Checkpoint O.
 
 ### P — Document the project
 Goal:
