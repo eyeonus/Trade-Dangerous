@@ -73,18 +73,6 @@ def _build_isolated_trade_env(tmp_path, monkeypatch):
 def isolated_trade_env(tmp_path, monkeypatch):
     return _build_isolated_trade_env(tmp_path, monkeypatch)
 
-@pytest.fixture()
-def isolated_tdb(tmp_path, monkeypatch):
-    _build_isolated_trade_env(tmp_path, monkeypatch)
-    
-    import tradedangerous.tradedb as tradedb_module
-    
-    instance = tradedb_module.TradeDB()
-    yield instance
-    instance.close(final=True)
-    del instance
-    gc.collect()
-
 @contextmanager
 def replace_stdin(target: typing.TextIO):  
     orig: typing.TextIO = sys.stdin

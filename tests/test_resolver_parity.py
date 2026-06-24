@@ -1,385 +1,266 @@
-"""
-Resolver parity tests — legacy TradeDB resolver.
+"""Resolver contract guardrail — TradeORM.
 
-Documents and locks the lookup semantics of the legacy TradeDB resolver so that
-the ORM-first replacement can be verified for parity.
+Protects the place / system / station / item resolution contract documented in
+``docs/RESOLVER_CONTRACT.md`` §0 (the v13 ORM resolver). These are scenario tests
+on the shared ``TradeORM`` lookups that every command and the planner depend on,
+so a failure here names the contract that broke.
 
-Every test here corresponds to a row in the parity matrix in docs/RESOLVER_CONTRACT.md.
-Tests are grouped by the function under test.  Fixture data comes from the regenerated
-sol-25ly fixture pack; Blanco Manufacturing Forge appears naturally in both Lushertha
-and Jastreb Sector CL-Y d145.  Synthetic duplicate-name systems are injected where
-needed.
+This is **not** legacy ``TradeDB`` parity — that comparison was retired with the
+in-memory engine. The exhaustive edge-case suite lives in
+``test_tradeorm_lookup_db.py``; this module is the focused, readable contract
+guard.
 """
 from __future__ import annotations
 
+import gc
+
 import pytest
 
-from tradedangerous.tradedb import TradeDB, System as TDBSystem
-from tradedangerous.tradeexcept import AmbiguityError, SystemNotStationError, TradeException
+from sqlalchemy import text
 
-from .helpers import isolated_tdb
+from tradedangerous.db import orm_models as orm
+from tradedangerous.tradeexcept import (
+    AmbiguityError, SystemNotStationError, TradeException,
+)
+from tradedangerous.tradeorm import TradeORM
+
+from .helpers import isolated_trade_env
 
 
 @pytest.fixture()
-def tdb_with_dupsys(isolated_tdb):
-    """TradeDB with two synthetic 'Zeta Dup' systems for @N disambiguation testing.
+def isolated_torm(isolated_trade_env):
+    """A TradeORM bound to the isolated fixture database."""
+    instance = TradeORM()
+    yield instance
+    instance.session.close()
+    instance.engine.dispose()
+    del instance
+    gc.collect()
 
-    Injects directly into the in-memory caches to avoid the SA/BigInteger PK issue
-    with addLocalSystem on SQLite.  The @N tests only exercise lookupSystem, which
-    operates entirely on systemByName/systemByID.
 
-    sys1 has posX=-100 → @1 (sorted first by X).
-    sys2 has posX=+100 → @2 (sorted second by X).
+@pytest.fixture()
+def torm_dup_systems(isolated_torm):
+    """Inject two same-named 'Zeta Dup' systems for duplicate / @N coverage.
+
+    Ordered by (pos_x, pos_y, pos_z, system_id), so @1 is the pos_x=-100 system
+    and @2 is the pos_x=+100 one.
     """
-    max_id = max(isolated_tdb.systemByID.keys())
-    sys1 = TDBSystem(max_id + 1, "ZETA DUP", -100.0, 0.0, 0.0)
-    sys2 = TDBSystem(max_id + 2, "ZETA DUP", 100.0, 0.0, 0.0)
-
-    isolated_tdb.systemByID[sys1.ID] = sys1
-    isolated_tdb.systemByID[sys2.ID] = sys2
-    isolated_tdb.systemByName["ZETA DUP"] = sorted(
-        [sys1, sys2], key=lambda s: (s.posX, s.posY, s.posZ, s.ID)
-    )
-
-    return isolated_tdb, sys1, sys2
-
-
-# ---------------------------------------------------------------------------
-# Normalization pipeline
-# ---------------------------------------------------------------------------
-
-class TestNormalization:
-    """Unit tests for the two-stage normalization pipeline (no DB fixture needed)."""
-
-    def test_stage1_uppercases_letters(self):
-        assert "hello world".translate(TradeDB.normalizeTrans) == "HELLO WORLD"
-
-    def test_stage1_strips_punctuation_set(self):
-        # Characters deleted by stage 1: [ ] ( ) * + - . , { } :
-        result = "A[B](C)*+-.D,{E}:F".translate(TradeDB.normalizeTrans)
-        assert result == "ABCDEF"
-
-    def test_stage1_preserves_spaces_and_apostrophes(self):
-        # Spaces and apostrophes survive stage 1 — stage 2 removes them.
-        result = "Foo Bar O'Brien".translate(TradeDB.normalizeTrans)
-        assert result == "FOO BAR O'BRIEN"
-
-    def test_stage2_strips_spaces_and_apostrophes(self):
-        result = "FOO BAR O'BRIEN".translate(TradeDB.trimTrans)
-        assert result == "FOOBAROBRIEN"
-
-    def test_combined_pipeline_apostrophe_item(self):
-        s = "Baltah'sine Vacuum Krill"
-        stage1 = s.translate(TradeDB.normalizeTrans)
-        assert stage1 == "BALTAH'SINE VACUUM KRILL"
-        stage2 = stage1.translate(TradeDB.trimTrans)
-        assert stage2 == "BALTAHSINEVACUUMKRILL"
-
-    def test_stage1_strips_hyphen_in_sector_name(self):
-        result = "Jastreb Sector CL-Y d145".translate(TradeDB.normalizeTrans)
-        assert result == "JASTREB SECTOR CLY D145"
+    session = isolated_torm.session
+    max_id = session.execute(text("SELECT MAX(system_id) FROM System")).scalar()
+    for offset, pos_x in ((1, -100.0), (2, 100.0)):
+        session.execute(
+            text(
+                "INSERT INTO System (system_id, name, pos_x, pos_y, pos_z, modified) "
+                "VALUES (:id, 'Zeta Dup', :x, 0.0, 0.0, datetime('now'))"
+            ),
+            {"id": max_id + offset, "x": pos_x},
+        )
+    session.commit()
+    session.expire_all()
+    yield isolated_torm
 
 
-# ---------------------------------------------------------------------------
-# lookupSystem
-# ---------------------------------------------------------------------------
+class TestLookupPlaceSyntax:
+    """The accepted-syntax table: the form picks the namespace."""
 
-class TestLookupSystem:
+    def test_bare_name_returns_system(self, isolated_torm):
+        result = isolated_torm.lookup_place("Sol")
+        assert isinstance(result, orm.System)
+        assert result.name == "Sol"
 
-    def test_exact_match_preserves_dbname(self, isolated_tdb):
-        assert isolated_tdb.lookupSystem("Sol").dbname == "Sol"
+    def test_bare_station_partial_falls_back_to_station(self, isolated_torm):
+        # "hamlinc" names no system, so it falls back to a station search.
+        result = isolated_torm.lookup_place("hamlinc")
+        assert isinstance(result, orm.Station)
+        assert result.name == "Abraham Lincoln"
+        assert result.system.name == "Sol"
 
-    def test_exact_match_case_insensitive(self, isolated_tdb):
-        # systemByName key is uppercased — "sol".upper() hits the same bucket as "Sol".
-        assert isolated_tdb.lookupSystem("sol").dbname == "Sol"
+    def test_leading_slash_forces_station(self, isolated_torm):
+        result = isolated_torm.lookup_place("/hamlinc")
+        assert isinstance(result, orm.Station)
+        assert result.name == "Abraham Lincoln"
 
-    def test_exact_match_mixed_case(self, isolated_tdb):
-        assert isolated_tdb.lookupSystem("sIrIuS").dbname == "Sirius"
+    def test_compound_scopes_station_to_system(self, isolated_torm):
+        result = isolated_torm.lookup_place("Sol/hamlinc")
+        assert isinstance(result, orm.Station)
+        assert result.name == "Abraham Lincoln"
+        assert result.system.name == "Sol"
 
-    def test_partial_match_via_list_search_fallback(self, isolated_tdb):
-        # "Sigma Dra" misses the exact dict key → listSearch → unique match on "Sigma Draconis".
-        assert isolated_tdb.lookupSystem("Sigma Dra").dbname == "Sigma Draconis"
+    def test_backslash_is_treated_as_forward_slash(self, isolated_torm):
+        fwd = isolated_torm.lookup_place("Sol/hamlinc")
+        bck = isolated_torm.lookup_place("Sol\\hamlinc")
+        assert isinstance(bck, orm.Station)
+        assert bck.station_id == fwd.station_id
 
-    def test_partial_match_ambiguous_raises(self, isolated_tdb):
-        # "Luyten" matches multiple Luyten systems → AmbiguityError.
-        with pytest.raises(AmbiguityError):
-            isolated_tdb.lookupSystem("Luyten")
+    def test_trailing_slash_forces_system(self, isolated_torm):
+        result = isolated_torm.lookup_place("Sol/")
+        assert isinstance(result, orm.System)
+        assert result.name == "Sol"
 
-    def test_not_found_raises_lookup_error(self, isolated_tdb):
+    def test_at_annotation_forces_system(self, isolated_torm):
+        result = isolated_torm.lookup_place("@Sol")
+        assert isinstance(result, orm.System)
+        assert result.name == "Sol"
+
+    def test_at_annotation_compound_scopes_station(self, isolated_torm):
+        result = isolated_torm.lookup_place("@Sol/hamlinc")
+        assert isinstance(result, orm.Station)
+        assert result.name == "Abraham Lincoln"
+        assert result.system.name == "Sol"
+
+
+class TestLookupPlaceResolution:
+    """Precedence, fallback, and ambiguity for lookup_place."""
+
+    def test_system_match_wins_over_station_fallback(self, isolated_torm):
+        # "Test" is a system (with one station); the bare name resolves to the
+        # SYSTEM because a system match wins before the station fallback runs.
+        result = isolated_torm.lookup_place("Test")
+        assert isinstance(result, orm.System)
+        assert result.name == "Test"
+
+    def test_unknown_bare_name_raises_lookup_error(self, isolated_torm):
         with pytest.raises(LookupError):
-            isolated_tdb.lookupSystem("xyzzy_not_a_system")
+            isolated_torm.lookup_place("xyzzy_no_such_place")
 
-    def test_pass_through_system_object(self, isolated_tdb):
-        sol = isolated_tdb.lookupSystem("Sol")
-        assert isolated_tdb.lookupSystem(sol) is sol
-
-    def test_pass_through_station_returns_its_system(self, isolated_tdb):
-        station = isolated_tdb.lookupPlace("Sol/Abraham Lincoln")
-        result = isolated_tdb.lookupSystem(station)
-        assert result.dbname == "Sol"
-
-    def test_leading_at_is_not_stripped_in_lookup_system(self, isolated_tdb):
-        # "@Sol" is a lookupPlace annotation concept, not a lookupSystem concept.
-        # lookupSystem looks for a system literally named "@SOL" — not found.
-        with pytest.raises(LookupError):
-            isolated_tdb.lookupSystem("@Sol")
-
-
-# ---------------------------------------------------------------------------
-# lookupSystem — @N disambiguation
-# ---------------------------------------------------------------------------
-
-class TestLookupSystemAtN:
-
-    def test_at1_returns_first_by_coordinate_order(self, tdb_with_dupsys):
-        tdb, sys1, sys2 = tdb_with_dupsys
-        assert tdb.lookupSystem("Zeta Dup@1") is sys1
-
-    def test_at2_returns_second_by_coordinate_order(self, tdb_with_dupsys):
-        tdb, sys1, sys2 = tdb_with_dupsys
-        assert tdb.lookupSystem("Zeta Dup@2") is sys2
-
-    def test_no_index_with_duplicate_name_raises_ambiguity(self, tdb_with_dupsys):
-        tdb, sys1, sys2 = tdb_with_dupsys
+    def test_ambiguous_station_fallback_raises(self, isolated_torm):
+        # No system is named "Blanco Manufacturing Forge"; the bare fallback
+        # finds that station in two systems -> ambiguity.
         with pytest.raises(AmbiguityError):
-            tdb.lookupSystem("Zeta Dup")
+            isolated_torm.lookup_place("Blanco Manufacturing Forge")
 
-    def test_index_out_of_range_raises_trade_exception(self, tdb_with_dupsys):
-        tdb, sys1, sys2 = tdb_with_dupsys
+    def test_compound_unknown_station_in_system_raises(self, isolated_torm):
+        with pytest.raises(LookupError):
+            isolated_torm.lookup_place("Sol/xyzzy_no_station")
+
+
+class TestLookupPlaceDuplicateSystems:
+    """@N disambiguation and duplicate-system ambiguity (synthetic fixture)."""
+
+    def test_bare_duplicate_system_name_raises_ambiguity(self, torm_dup_systems):
+        with pytest.raises(AmbiguityError):
+            torm_dup_systems.lookup_place("Zeta Dup")
+
+    def test_at_n_selects_first_duplicate(self, torm_dup_systems):
+        result = torm_dup_systems.lookup_place("Zeta Dup@1")
+        assert isinstance(result, orm.System)
+        assert result.pos_x == pytest.approx(-100.0)
+
+    def test_at_n_selects_second_duplicate(self, torm_dup_systems):
+        result = torm_dup_systems.lookup_place("Zeta Dup@2")
+        assert isinstance(result, orm.System)
+        assert result.pos_x == pytest.approx(100.0)
+
+    def test_invalid_at_n_reports_error(self, torm_dup_systems):
         with pytest.raises(TradeException):
-            tdb.lookupSystem("Zeta Dup@99")
+            torm_dup_systems.lookup_place("Zeta Dup@99")
 
-    def test_ordering_is_by_position_ascending_x(self, tdb_with_dupsys):
-        tdb, sys1, sys2 = tdb_with_dupsys
-        r1 = tdb.lookupSystem("Zeta Dup@1")
-        r2 = tdb.lookupSystem("Zeta Dup@2")
-        assert r1.posX < r2.posX
-
-
-# ---------------------------------------------------------------------------
-# lookupPlace — fast path
-# ---------------------------------------------------------------------------
-
-class TestLookupPlaceFastPath:
-
-    def test_bare_system_name_returns_system(self, isolated_tdb):
-        result = isolated_tdb.lookupPlace("Sol")
-        assert result is isolated_tdb.lookupSystem("Sol")
-
-    def test_at_annotation_returns_same_system_object(self, isolated_tdb):
-        # "@Sol" strips the leading @ then calls lookupSystem("Sol").
-        assert isolated_tdb.lookupPlace("@Sol") is isolated_tdb.lookupPlace("Sol")
-
-    def test_system_wins_over_station_for_bare_name(self, isolated_tdb):
-        # "Test" is a system whose only station is "Metallic Base 2".
-        # lookupPlace returns the System, not the station.
-        result = isolated_tdb.lookupPlace("Test")
-        assert result is isolated_tdb.lookupSystem("Test")
-
-    def test_fast_path_ambiguity_propagates_immediately(self, isolated_tdb):
-        # lookupSystem raises AmbiguityError; lookupPlace does not catch it.
-        with pytest.raises(AmbiguityError):
-            isolated_tdb.lookupPlace("Luyten")
-
-    def test_bare_name_misses_system_resolves_to_station(self, isolated_tdb):
-        # "Metallic Base 2" is not a system name → fast path LookupError → slow path → station.
-        result = isolated_tdb.lookupPlace("Metallic Base 2")
-        assert result.dbname == "Metallic Base 2"
-        assert result.system.dbname == "Test"
-
-    def test_unknown_bare_name_raises_lookup_error(self, isolated_tdb):
-        with pytest.raises(LookupError):
-            isolated_tdb.lookupPlace("xyzzy_no_such_place")
-
-
-# ---------------------------------------------------------------------------
-# lookupPlace — slow path / compound forms
-# ---------------------------------------------------------------------------
-
-class TestLookupPlaceSlowPath:
-
-    def test_explicit_station_leading_slash(self, isolated_tdb):
-        result = isolated_tdb.lookupPlace("/Abraham Lincoln")
-        assert result.dbname == "Abraham Lincoln"
-        assert result.system.dbname == "Sol"
-
-    def test_compound_exact_system_and_station(self, isolated_tdb):
-        result = isolated_tdb.lookupPlace("Ross 490/Dunyach Enterprise")
-        assert result.dbname == "Dunyach Enterprise"
-        assert result.system.dbname == "Ross 490"
-
-    def test_compound_partial_station_word_match(self, isolated_tdb):
-        # "Dunyach" is a word-start prefix of "Dunyach Enterprise" → word_match tier.
-        result = isolated_tdb.lookupPlace("Ross 490/Dunyach")
-        assert result.dbname == "Dunyach Enterprise"
-        assert result.system.dbname == "Ross 490"
-
-    def test_compound_partial_station_any_match(self, isolated_tdb):
-        # "braham" is found inside "Abraham Lincoln" but not at a word boundary → any_match.
-        result = isolated_tdb.lookupPlace("Sol/braham")
-        assert result.dbname == "Abraham Lincoln"
-        assert result.system.dbname == "Sol"
-
-    def test_compound_partial_both_parts(self, isolated_tdb):
-        # "barn" hits Barnard's Star via any_match; "levi" hits Levi-Strauss Installation via word_match.
-        result = isolated_tdb.lookupPlace("barn/levi")
-        assert result.dbname == "Levi-Strauss Installation"
-        assert result.system.dbname == "Barnard's Star"
-
-    def test_at_system_slash_station_form(self, isolated_tdb):
-        result = isolated_tdb.lookupPlace("@Sol/Abraham Lincoln")
-        assert result.dbname == "Abraham Lincoln"
-        assert result.system.dbname == "Sol"
-
-    def test_backslash_separator_identical_to_forward_slash(self, isolated_tdb):
-        fwd = isolated_tdb.lookupPlace("Sol/Abraham Lincoln")
-        bkd = isolated_tdb.lookupPlace("Sol\\Abraham Lincoln")
-        assert fwd.dbname == bkd.dbname
-        assert fwd.system.dbname == bkd.system.dbname
-
-    def test_compound_nonexistent_station_raises_lookup_error(self, isolated_tdb):
-        # Station not found within Sol → LookupError.
-        with pytest.raises(LookupError):
-            isolated_tdb.lookupPlace("Sol/xyzzy_no_station")
-
-    def test_compound_unknown_system_falls_back_to_global_station_search(self, isolated_tdb):
-        # When the system part matches nothing, station lookup is global.
-        # "Abraham Lincoln" is unique across all stations → returned without error.
-        result = isolated_tdb.lookupPlace("xyzzy_no_system/Abraham Lincoln")
-        assert result.dbname == "Abraham Lincoln"
-        assert result.system.dbname == "Sol"
-
-    def test_bare_duplicate_station_name_raises_ambiguity(self, isolated_tdb):
-        # "Blanco Manufacturing Forge" exists in both Lushertha and Jastreb Sector CL-Y d145.
-        # Fast path: lookupSystem raises LookupError. Slow path: station _lookup finds two
-        # exact matches → AmbiguityError.
-        with pytest.raises(AmbiguityError):
-            isolated_tdb.lookupPlace("Blanco Manufacturing Forge")
-
-
-# ---------------------------------------------------------------------------
-# lookupStation
-# ---------------------------------------------------------------------------
 
 class TestLookupStation:
+    """lookup_station is station-only: it returns a Station or raises."""
 
-    def test_exact_station_name(self, isolated_tdb):
-        result = isolated_tdb.lookupStation("Abraham Lincoln")
-        assert result.dbname == "Abraham Lincoln"
-        assert result.system.dbname == "Sol"
+    def test_exact_station_name(self, isolated_torm):
+        result = isolated_torm.lookup_station("Abraham Lincoln")
+        assert isinstance(result, orm.Station)
+        assert result.name == "Abraham Lincoln"
 
-    def test_pass_through_station_object(self, isolated_tdb):
-        station = isolated_tdb.lookupStation("Abraham Lincoln")
-        assert isolated_tdb.lookupStation(station) is station
+    def test_bare_partial_resolves_station(self, isolated_torm):
+        result = isolated_torm.lookup_station("hamlinc")
+        assert isinstance(result, orm.Station)
+        assert result.name == "Abraham Lincoln"
 
-    def test_system_with_one_station_returns_station(self, isolated_tdb):
-        test_sys = isolated_tdb.lookupSystem("Test")
-        result = isolated_tdb.lookupStation(test_sys)
-        assert result.dbname == "Metallic Base 2"
-        assert result.system is test_sys
+    def test_station_object_passthrough(self, isolated_torm):
+        station = isolated_torm.lookup_station("Abraham Lincoln")
+        assert isolated_torm.lookup_station(station) is station
 
-    def test_system_with_multiple_stations_raises(self, isolated_tdb):
-        sol = isolated_tdb.lookupSystem("Sol")
+    def test_system_with_one_station_returns_that_station(self, isolated_torm):
+        test_sys = isolated_torm.lookup_system("Test")
+        result = isolated_torm.lookup_station(test_sys)
+        assert isinstance(result, orm.Station)
+        assert result.name == "Metallic Base 2"
+
+    def test_system_with_many_stations_raises(self, isolated_torm):
+        sol = isolated_torm.lookup_system("Sol")
         with pytest.raises(SystemNotStationError):
-            isolated_tdb.lookupStation(sol)
+            isolated_torm.lookup_station(sol)
 
-    def test_with_system_arg_scopes_to_that_system(self, isolated_tdb):
-        result = isolated_tdb.lookupStation("Grandin Gateway", system="Altair")
-        assert result.dbname == "Grandin Gateway"
-        assert result.system.dbname == "Altair"
+    def test_scoped_by_system_argument(self, isolated_torm):
+        result = isolated_torm.lookup_station("Grandin Gateway", system="Altair")
+        assert isinstance(result, orm.Station)
+        assert result.name == "Grandin Gateway"
+        assert result.system.name == "Altair"
 
-    def test_exact_duplicate_station_name_returns_first_match(self, isolated_tdb):
-        # listSearch exact-match short-circuits: the first "Blanco Manufacturing Forge"
-        # hit returns immediately without checking for other candidates.
-        result = isolated_tdb.lookupStation("Blanco Manufacturing Forge")
-        assert result.dbname == "Blanco Manufacturing Forge"
-
-    def test_partial_duplicate_station_name_raises_ambiguity(self, isolated_tdb):
-        # A partial that isn't an exact normalized match hits partialMatch for both
-        # "Blanco Manufacturing Forge" stations → AmbiguityError.
+    def test_duplicate_station_partial_raises_ambiguity(self, isolated_torm):
+        # "Blanco Manuf" partially matches the duplicate station in two systems;
+        # ambiguity is still real for a station-only lookup.
         with pytest.raises(AmbiguityError):
-            isolated_tdb.lookupStation("Blanco Manuf")
+            isolated_torm.lookup_station("Blanco Manuf")
 
-    def test_duplicate_disambiguated_by_system_arg(self, isolated_tdb):
-        lushertha = isolated_tdb.lookupStation(
-            "Blanco Manufacturing Forge", system="Lushertha"
-        )
-        jastreb = isolated_tdb.lookupStation(
-            "Blanco Manufacturing Forge", system="Jastreb Sector CL-Y d145"
-        )
-        assert lushertha.dbname == "Blanco Manufacturing Forge"
-        assert lushertha.system.dbname == "Lushertha"
-        assert jastreb.dbname == "Blanco Manufacturing Forge"
-        assert jastreb.system.dbname == "Jastreb Sector CL-Y d145"
-        assert lushertha.ID != jastreb.ID
-
-    def test_not_found_raises_lookup_error(self, isolated_tdb):
+    def test_not_found_raises_lookup_error(self, isolated_torm):
         with pytest.raises(LookupError):
-            isolated_tdb.lookupStation("xyzzy_no_such_station")
+            isolated_torm.lookup_station("xyzzy_no_such_station")
 
 
-# ---------------------------------------------------------------------------
-# lookupItem
-# ---------------------------------------------------------------------------
+class TestLookupSystem:
+    """lookup_system is system-only: it returns a System or raises."""
+
+    def test_exact_match(self, isolated_torm):
+        assert isolated_torm.lookup_system("Sol").name == "Sol"
+
+    def test_case_insensitive(self, isolated_torm):
+        assert isolated_torm.lookup_system("sIrIuS").name == "Sirius"
+
+    def test_fuzzy_normalised_match(self, isolated_torm):
+        # Prefix / normalised match through the lookup_name column.
+        assert isolated_torm.lookup_system("Sigma Dra").name == "Sigma Draconis"
+
+    def test_ambiguous_partial_raises(self, isolated_torm):
+        # Many "Luyten ..." systems share the prefix -> ambiguity.
+        with pytest.raises(AmbiguityError):
+            isolated_torm.lookup_system("Luyten")
+
+    def test_unknown_raises_lookup_error(self, isolated_torm):
+        with pytest.raises(LookupError):
+            isolated_torm.lookup_system("xyzzy_not_a_system")
+
+    def test_system_object_passthrough(self, isolated_torm):
+        sol = isolated_torm.lookup_system("Sol")
+        assert isolated_torm.lookup_system(sol) is sol
+
+    def test_station_object_unwraps_to_parent_system(self, isolated_torm):
+        station = isolated_torm.lookup_station("Abraham Lincoln")
+        assert isolated_torm.lookup_system(station).name == "Sol"
+
+    def test_at_n_selects_duplicate(self, torm_dup_systems):
+        result = torm_dup_systems.lookup_system("Zeta Dup@1")
+        assert result.pos_x == pytest.approx(-100.0)
+
+    def test_invalid_at_n_raises(self, torm_dup_systems):
+        with pytest.raises(TradeException):
+            torm_dup_systems.lookup_system("Zeta Dup@99")
+
 
 class TestLookupItem:
+    """Item resolution: exact, fuzzy/normalised, ambiguous, unknown."""
 
-    def test_exact_item_name(self, isolated_tdb):
-        result = isolated_tdb.lookupItem("Gold")
-        assert result.dbname == "Gold"
+    def test_exact_item(self, isolated_torm):
+        assert isolated_torm.lookup_item("Gold").name == "Gold"
 
-    def test_exact_match_case_insensitive(self, isolated_tdb):
-        # Both "gold" and "Gold" normalize to "GOLD" — same exact-match bucket.
-        result = isolated_tdb.lookupItem("gold")
-        assert result.dbname == "Gold"
+    def test_case_insensitive(self, isolated_torm):
+        assert isolated_torm.lookup_item("gold").name == "Gold"
 
-    def test_partial_match_word_start(self, isolated_tdb):
-        # "Bertrand" is a word-start prefix of "Bertrandite" only → unique word_match.
-        result = isolated_tdb.lookupItem("Bertrand")
-        assert result.dbname == "Bertrandite"
+    def test_fuzzy_word_start(self, isolated_torm):
+        assert isolated_torm.lookup_item("Bertrand").name == "Bertrandite"
 
-    def test_apostrophe_item_partial_match(self, isolated_tdb):
-        # "Baltah" hits word boundary before the apostrophe in "Baltah'sine Vacuum Krill".
-        result = isolated_tdb.lookupItem("Baltah")
-        assert result.dbname == "Baltah'sine Vacuum Krill"
+    def test_normalised_apostrophe(self, isolated_torm):
+        # "Baltah" -> "Baltah'sine Vacuum Krill": the apostrophe is normalised out.
+        assert isolated_torm.lookup_item("Baltah").name == "Baltah'sine Vacuum Krill"
 
-    def test_not_found_raises_lookup_error(self, isolated_tdb):
+    def test_ambiguous_item_raises(self, isolated_torm):
+        # "hydrog" matches Hydrogen Fuel and Hydrogen Peroxide.
+        with pytest.raises(AmbiguityError):
+            isolated_torm.lookup_item("hydrog")
+
+    def test_unknown_item_raises(self, isolated_torm):
         with pytest.raises(LookupError):
-            isolated_tdb.lookupItem("xyzzy_no_such_item")
-
-
-# ---------------------------------------------------------------------------
-# @N boundary — lock down that @N is NOT silently extended
-# ---------------------------------------------------------------------------
-
-class TestAtNBoundary:
-    """These tests document intentional limitations of @N disambiguation.
-
-    Do not 'fix' these without an explicit decision and a test update — doing so
-    would silently change the resolver contract.
-    """
-
-    def test_at_n_works_in_fast_path_not_slow_path_compound(self, tdb_with_dupsys):
-        tdb, sys1, sys2 = tdb_with_dupsys
-        # Fast path (bare name): "Zeta Dup@1" IS resolved via @N.
-        assert tdb.lookupSystem("Zeta Dup@1") is sys1
-        # Slow path (compound form, slash present): "Zeta Dup@1" is a literal system name.
-        # "ZETA DUP@1" does not exist in systemByName → no system match → LookupError.
-        with pytest.raises(LookupError):
-            tdb.lookupPlace("Zeta Dup@1/zzz_no_station")
-
-    def test_at_n_not_applied_in_lookup_station(self, tdb_with_dupsys):
-        # lookupStation passes the name directly to listSearch; @N is not stripped.
-        tdb, sys1, sys2 = tdb_with_dupsys
-        with pytest.raises(LookupError):
-            tdb.lookupStation("Zeta Dup@1")
-
-    def test_at_n_silently_stops_working_when_exact_key_misses(self, tdb_with_dupsys):
-        # DOCUMENTED LEGACY BUG: if the exact-dict key for base_name misses,
-        # lookupSystem falls to listSearch with the *full* name including @N.
-        # listSearch treats "@1" as part of the search string — no disambiguation.
-        # "Zeta@1": base_name="Zeta", exact key "ZETA" → KeyError → listSearch("Zeta@1")
-        # → "ZETA@1" not found as a substring in any system name → LookupError.
-        tdb, sys1, sys2 = tdb_with_dupsys
-        with pytest.raises(LookupError):
-            tdb.lookupSystem("Zeta@1")
+            isolated_torm.lookup_item("xyzzy_no_such_item")
