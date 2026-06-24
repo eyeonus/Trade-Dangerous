@@ -50,11 +50,11 @@ Do not tick a task unless:
 
 ### Current active checkpoint
 - Status: `[x]`
-- Checkpoint: `L — Migrate remaining legacy command surfaces — complete`
-- Subtask: `All of L complete and accepted: L5 range-option contract; L1 olddata SQL-first; L2 nav basic A->B plotter; L3 rare cutover verified; L4 trade direct (Trade 2.0); L6 full-load audit (CLI has zero TradeDB.load callers — Needs is NOTHING|RESOLVER only and cli.py builds TradeORM; the two GUI TradeDB(load=...) callers are broken and deferred to M). Remaining programme: M (GUI compatibility + session reuse), N (closeout/prune), O (test-suite rebuild). The full test suite is broken by the planner rewrite — tracked as O; command work is smoke-validated, not gated on pytest. GUI broken and deferred to M.`
+- Checkpoint: `M — GUI compatibility pass and session reuse — complete`
+- Subtask: `GUI un-bricked on the TradeORM-only backend; every argv builder and result renderer reconciled with the post-L CLI surface; dead controls removed; run interactivity (unanchored confirmation + detached checklist window) and copy-from-render delivered; journal-driven ship import added; --no-planet and the obsolete import vendor controls removed. 31 accepted GUI commits, each Tromador-smoke-verified per packet. Session reuse beyond the existing autocomplete reuse is intentionally deferred (persistent-worker benchmark, D1). Full behavioural regression is Checkpoint O. Next: N (closeout/prune), then O (test-suite rebuild).`
 - Owner: `Tromador`
 - Started: `2026-06-22`
-- Goal: `Finish the main command migration set (olddata, nav, trade direct, the zero-range audit, and any remaining full-load callers) without turning it into a generic command-framework rewrite. See the Checkpoint L detail for the full goal and acceptance criteria.`
+- Goal: `Restore the NiceGUI GUI on the post-refactor CLI/TradeORM backend and reconcile every GUI command/option with the current CLI surface; recover session-scope reuse only where justified. See the Checkpoint M detail for the full goal, delivered work, and deferred items.`
 
 ### Current blocker
 - Status: `[ ]`
@@ -63,9 +63,9 @@ Do not tick a task unless:
 - Needed to unblock: `n/a`
 
 ### Last updated
-- Date: `2026-06-23`
+- Date: `2026-06-24`
 - By: `Tromador + assistant`
-- Session summary: `Removed the redundant --no-planet option (it duplicated --planetary N exactly; full rationale in the 2026-06-23 decisions entry and the Checkpoint M note). Dropped across the CLI and planner only — the parser, all six commands (run/buy/sell/local/olddata/nav), and the planner request/validation/gateway — leaving --planetary N as the single non-planetary filter. flake8 clean; smoke-verified (--no-planet now rejected; --planetary N filters on local; run routes end-to-end through the planner with --planetary N). Code commit 2ddf3e5b. GUI left untouched at Tromador's instruction (two in-flight edits reverted): its argv builders still emit --no-planet, which the CLI now rejects, so reconciliation is deferred to Checkpoint M. Tests left to Checkpoint O. Prior session: Investigated olddata/nav for L1/L2 and traced the --ly / --ly-per / --link-ly grey area through the live code. Settled the L5 range-option contract and did L5 first (reordered): --ly = search radius (default 64), --ly-per = per-jump (no default, raise if missing), zero honoured via is-not-None, global --link-ly removed outright (hard break). Applied to buy/sell/__init__; local already compliant; olddata/nav inherit at L1/L2; GUI argv builders deferred to Checkpoint M (M scope note added). flake8 clean. The full test suite is broken by the rewrite (it tests retired modules) — added Checkpoint O to rebuild it — so L5 is smoke-validated rather than gated on pytest. L5 is now smoke-verified and closed; Checkpoint O mirrored into AGENT_START_HERE's checkpoint map and execution order. olddata (L1) migrated SQL-first, audit-fixed (chunked hydration, preflight --route check, house-style blanks) and passed; commits 2be80d7e, c932d89d, 29ee5ba0. nav (L2) rebuilt as a basic A->B route plotter on the planner engine (--refuel-jumps dropped, deferred to Spansh), audit-fixed (avoided-waypoint conflict) and passed; commits 753ba10a, 2b3cccf2. L3 (rare lookup cutover on buy) verified and closed with no code change: the cutover landed in Checkpoint E, and a package sweep confirms zero live references to the retired rares command or RareItem table; buy --rare runs on the canonical Item.rare_station_id predicate (validated end-to-end at E5). The diminished in-game role of rares is a deliberate prior decision; the live-market-view narrowing was signed off as intended. L4 (trade trade -> trade direct) rebuilt to the full "Trade 2.0" scope (issue #241): renamed with trade kept as a live alias; lookup_place endpoints (system or station); --best window-function collapse, --local, --age, From/To columns and a summary header; --fill kept per-row while --load/--full-load are rejected in multi-station; the self-trade predicate was made universal after audit. Commits 52fcf35e, 730d05e2, bced88b3, 70fe7dbc, 51856299, 767c6ede, d899f7a2; smoke-verified incl. live cargo via the journal, audit passed. L6 (full-load caller audit) then verified and closed with no code change: the CLI has zero TradeDB.load() callers (Needs = NOTHING|RESOLVER only; cli.py builds TradeORM), tradecalc is wholly dead, and the sole TradeDB(load=...) sites are the two broken GUI exec modules deferred to M. That completes Checkpoint L (L1-L6); the next checkpoint is M (GUI compatibility + session reuse).`
+- Session summary: `Closed Checkpoint M (GUI compatibility pass + session reuse). The GUI began M non-functional — it died at import on the retired tradedb module and selected a backend through a dead four-tier Needs model. M rebuilt GUI backend construction on TradeORM only via a shared build_backend (f88ac680), reconciled every argv builder with the post-L CLI surface (sell --ly, dropped run/nav phantom flags; 719d1f1e) and removed the dead controls (65949d90); fixed the three provable render defects — structured run tables, direct From/To columns, nav/local item counts read from the row (ef577b48, ee6b3dcf, ca089497, 2218cf7d, 29f1acc9) — and polished the run renderer (18742910, 674d0861, 3fa62331, 6b6f62de). Run interactivity was delivered: a non-interactive worker stdin (51e55665), bare From/To systems treated as endpoints (167801ea), confirm-and-run for unanchored routes (17b39f2e, superseding the earlier block 5f9fa7ce). The standout new feature is a detached, movable run checklist window that steps a route hop by hop, with several route checklists open at once (843d39b1 stepper; b29c5649 detached window; a4a40545 icon; c03323be shutdown-queue fix). New run options --sco/--max-price/--no-bulk-cap exposed (78d752aa); direct --local/--best/--age exposed (2ae7e42d); copy-from-render added (54f3adc6, 4259fe91); journal directory + commander ship import added (f6dbcc44, 6e4493d3); --no-planet removed from the GUI (9bb5309b + full removal pass; CLI side 2ddf3e5b); obsolete Skip Vendors/Ship Vendors import controls removed (ab672972); lint tidied (35f9e343). 31 accepted GUI commits in all, each Tromador-smoke-verified per packet. Deferred and recorded as non-defects: persistent-worker reuse (surviving substance of M1-M4, gated on a benchmark, D1); exact --raw copy formatting (CLI-presentation only); residual --no-planet breadcrumb tidy (N); EDSY/Coriolis import and ship performance calculation (future features); live run --progress streaming (the run worker has no progress channel and returns at completion). Session reuse: autocomplete already holds a process-long engine with a session per query, so M1 is satisfied in the scope that benefits; M2/M3 are unjustified/unnecessary under NullPool + session-per-query. Verification was flake8 + non-destructive import/argv-parse/build_backend checks + per-packet GUI smoke; the full pytest suite is broken by the planner rewrite, so full behavioural regression moves to Checkpoint O. Deleted the spent CHECKPOINT_M_GUI_AUDIT_FINAL.md scoping doc. Next: N (closeout/prune), then O (test-suite rebuild). Prior session: Removed the redundant --no-planet option (it duplicated --planetary N exactly; full rationale in the 2026-06-23 decisions entry and the Checkpoint M note). Dropped across the CLI and planner only — the parser, all six commands (run/buy/sell/local/olddata/nav), and the planner request/validation/gateway — leaving --planetary N as the single non-planetary filter. flake8 clean; smoke-verified (--no-planet now rejected; --planetary N filters on local; run routes end-to-end through the planner with --planetary N). Code commit 2ddf3e5b. GUI left untouched at Tromador's instruction (two in-flight edits reverted): its argv builders still emit --no-planet, which the CLI now rejects, so reconciliation is deferred to Checkpoint M. Tests left to Checkpoint O. Prior session: Investigated olddata/nav for L1/L2 and traced the --ly / --ly-per / --link-ly grey area through the live code. Settled the L5 range-option contract and did L5 first (reordered): --ly = search radius (default 64), --ly-per = per-jump (no default, raise if missing), zero honoured via is-not-None, global --link-ly removed outright (hard break). Applied to buy/sell/__init__; local already compliant; olddata/nav inherit at L1/L2; GUI argv builders deferred to Checkpoint M (M scope note added). flake8 clean. The full test suite is broken by the rewrite (it tests retired modules) — added Checkpoint O to rebuild it — so L5 is smoke-validated rather than gated on pytest. L5 is now smoke-verified and closed; Checkpoint O mirrored into AGENT_START_HERE's checkpoint map and execution order. olddata (L1) migrated SQL-first, audit-fixed (chunked hydration, preflight --route check, house-style blanks) and passed; commits 2be80d7e, c932d89d, 29ee5ba0. nav (L2) rebuilt as a basic A->B route plotter on the planner engine (--refuel-jumps dropped, deferred to Spansh), audit-fixed (avoided-waypoint conflict) and passed; commits 753ba10a, 2b3cccf2. L3 (rare lookup cutover on buy) verified and closed with no code change: the cutover landed in Checkpoint E, and a package sweep confirms zero live references to the retired rares command or RareItem table; buy --rare runs on the canonical Item.rare_station_id predicate (validated end-to-end at E5). The diminished in-game role of rares is a deliberate prior decision; the live-market-view narrowing was signed off as intended. L4 (trade trade -> trade direct) rebuilt to the full "Trade 2.0" scope (issue #241): renamed with trade kept as a live alias; lookup_place endpoints (system or station); --best window-function collapse, --local, --age, From/To columns and a summary header; --fill kept per-row while --load/--full-load are rejected in multi-station; the self-trade predicate was made universal after audit. Commits 52fcf35e, 730d05e2, bced88b3, 70fe7dbc, 51856299, 767c6ede, d899f7a2; smoke-verified incl. live cargo via the journal, audit passed. L6 (full-load caller audit) then verified and closed with no code change: the CLI has zero TradeDB.load() callers (Needs = NOTHING|RESOLVER only; cli.py builds TradeORM), tradecalc is wholly dead, and the sole TradeDB(load=...) sites are the two broken GUI exec modules deferred to M. That completes Checkpoint L (L1-L6); the next checkpoint is M (GUI compatibility + session reuse).`
 
 ### Last known good rollback point
 - Commit: `ee777adc`
@@ -559,48 +559,84 @@ Finish the main command migration set without turning command migration into a g
 
 ---
 
-## Checkpoint M — GUI session reuse and cache discipline
+## Checkpoint M — GUI compatibility pass and session reuse — complete
 
 ### Goal
 Recover “load once, answer many questions” only where it belongs: GUI session scope.
-
-M has also absorbed a GUI↔CLI compatibility pass. The CLI command and option
+M also absorbed a full GUI↔CLI compatibility pass. The CLI command and option
 surface changed substantially across v13 — the planner rewrite of `run`, the L5
 range-option standardisation, and the L1/L2 rebuilds of `olddata`/`nav` — and the
-GUI argv builders in `guiapp/td_exec_commands.py` were not kept in step. The GUI is
-deliberately left untouched until this checkpoint rather than patched piecemeal per
-command change. M must reconcile every GUI command/option builder with the current
-CLI surface (for example: `sell` now takes `--ly`, not `--ly-per`; the global
-`--link-ly`/`-L` switch is gone; `olddata`/`nav` options match their rebuilt forms)
-before, or alongside, the session-reuse work.
+GUI was deliberately left untouched until this checkpoint rather than patched
+piecemeal per command change.
 
-Stef random note to please remind him: Add copy from render.
+### Outcome
+The GUI began M non-functional: it died at import because the executor modules
+pulled in the retired `tradedb` module, and the backend selection mirrored a dead
+four-tier `Needs` model. M rebuilt GUI backend construction on `TradeORM` only,
+reconciled every argv builder and result renderer with the post-L CLI surface,
+removed every control that mapped to a dropped flag, delivered run interactivity
+(unanchored confirmation) and copy-from-render, added journal-driven ship/commander
+import, and — the standout new feature — a detached, movable run checklist window
+that steps a route hop by hop, with several route checklists open at once. The GUI
+now starts, runs every exposed command end-to-end, and only ever emits flags the
+live commands accept.
+
+The compatibility pass (M5) was the foundation and is complete. Session reuse beyond
+what already exists is intentionally deferred — the per-command spawn model is kept,
+and the persistent-worker benchmark (the surviving substance of M1–M4) is
+evidence-gated and carried forward. See Deferred.
 
 ### Acceptance criteria
-- GUI argv builders match the current CLI command/option surface (no stale or removed flags)
-- repeated GUI actions are faster than cold CLI runs where appropriate
-- no aggressive stale-data bugs
-- GUI still uses the same business logic as CLI
+- [x] GUI argv builders match the current CLI command/option surface (no stale or removed flags)
+- [~] repeated GUI actions are faster than cold CLI runs where appropriate — deferred: gated on the persistent-worker benchmark (D1); the per-command spawn model is retained for now
+- [x] no aggressive stale-data bugs — by design: subprocess-per-command shares nothing, and the autocomplete engine uses `NullPool` + a fresh session per query
+- [x] GUI still uses the same business logic as CLI — every command runs the same `CommandIndex().parse → cmdenv.run(TradeORM)` path the CLI uses
 
 ### Tasks
-- [ ] M1. Keep long-lived resolver in GUI scope
-  - Status note:
-  - Evidence:
-- [ ] M2. Add lightweight system/station shell cache if justified
-  - Status note:
-  - Evidence:
-- [ ] M3. Add invalidation rules
-  - Status note:
-  - Evidence:
-- [ ] M4. Verify repeated GUI actions and stale-data behavior
-  - Status note:
-  - Evidence:
-- [ ] M5. GUI↔CLI compatibility pass — reconcile `guiapp/td_exec_commands.py` and the GUI workspaces with the post-L CLI command/option surface (foundational; likely tackled before the session-reuse tasks)
-  - Status note:
-  - Evidence:
+- [x] M1. Keep long-lived resolver in GUI scope
+  - Status note: Satisfied within the scope that benefits from it. The autocomplete service (`GuiSearchService`) builds its engine once and holds it for the process lifetime, opening a fresh short session per query — exactly "long-lived engine, request-scoped session." Cross-command resolver reuse (a persistent worker serving every action) is a separate, evidence-gated decision deferred to a future packet (D1) — see Deferred.
+  - Evidence: `guiapp/gui_search.py` (process-long engine, session-per-query).
+- [~] M2. Add lightweight system/station shell cache if justified
+  - Status note: Not justified on current evidence. `GuiSearchService` caches no suggestions, no measurement shows the per-query cost is a problem, and SQLite already caches at the OS page level. No cache added — it would be speculative.
+  - Evidence: `guiapp/gui_search.py`.
+- [~] M3. Add invalidation rules
+  - Status note: Not needed. The autocomplete engine uses `NullPool` (`db/engine.py`), so it holds no connection between queries; a `clean`/rebuild import (SQLite file swap) or a MariaDB update is picked up by the next query automatically. There is no cache to invalidate.
+  - Evidence: `db/engine.py` (NullPool); `guiapp/import_runtime.py` post-import refresh.
+- [x] M4. Verify repeated GUI actions and stale-data behaviour
+  - Status note: Nothing is shared across actions (subprocess-per-command) and there is no autocomplete suggestion cache, so there is no stale-data surface beyond ordinary functional behaviour. Per-packet GUI smoke by Tromador confirmed repeated actions; full behavioural regression is Checkpoint O.
+  - Evidence: per-packet GUI smoke (run, direct, nav, local, buy, sell, import, checklist).
+- [x] M5. GUI↔CLI compatibility pass — reconcile the GUI argv builders and workspaces with the post-L CLI command/option surface
+  - Status note: Complete and accepted across 31 GUI commits. The GUI was un-bricked (TradeORM backend, retired `tradedb` removed), every argv builder reconciled, dead controls removed, the three provable render defects fixed, run interactivity delivered, and copy-from-render added. Grouped evidence in Delivered work.
+  - Evidence: see Delivered work.
+
+### Delivered work (accepted commits, grouped)
+- **Un-brick / backend:** `f88ac680` construct TradeORM and drop the retired TradeDB path (shared `build_backend` in a neutral `td_backend.py`).
+- **Argv reconciliation + dead controls:** `719d1f1e` align argv builders with post-L options (sell `--ly`, drop the run/nav phantom flags); `65949d90` remove the controls for removed run/nav options.
+- **Render defects:** `ef577b48` + `ee6b3dcf` render run routes as structured tables / snapshot ORM results; `ca089497` + `2218cf7d` direct From/To station columns for system endpoints; `29f1acc9` nav and local item counts read from the result row; `aa537f15` black-market checkbox as a tri-state.
+- **Run renderer polish:** `18742910` honour summary output; `674d0861` verbose full table with per-jump nav lines; `3fa62331` match the summary to the current CLI layout; `6b6f62de` theme the multi-route tab panels on the dark theme.
+- **Run interactivity:** `51e55665` non-interactive worker stdin; `167801ea` treat bare From/To systems as endpoints; `17b39f2e` confirm-and-run an unanchored route (superseding the earlier block-with-guidance `5f9fa7ce`); `4b3c6f29` readable Cancel button.
+- **Detached run checklist window (headline new feature):** a movable native window that walks a route hop by hop — what to sell, what to buy, and the jumps to the next stop — living independently of the main window, with several route checklists open side by side at once, and an in-window dialog fallback in browser/non-native mode. `843d39b1` the checklist stepper; `b29c5649` promote it to a detached native window; `a4a40545` match its window icon to the main window; `c03323be` stop the checklist queue blocking shutdown.
+- **New run options:** `78d752aa` expose `--sco` / `--max-price` / `--no-bulk-cap`.
+- **Direct/Trade 2.0 coverage:** `2ae7e42d` expose `--local` / `--best` / `--age`.
+- **Copy from render (Stef's M note — now delivered):** `54f3adc6` copy results; `4259fe91` readable error/diagnostics copy buttons.
+- **Journal-driven import:** `f6dbcc44` configurable journal directory; `6e4493d3` import commander ship details from the journal.
+- **`--no-planet` removal:** `9bb5309b` remove the redundant "space stations only" filter, plus the full GUI `--no-planet` removal pass (CLI side removed in `2ddf3e5b`).
+- **Import vendor controls:** `ab672972` remove the obsolete Skip Vendors / Ship Vendors controls (upgrade-vendor data is gone; ship download is light; CLI `skipvendor` stays).
+- **Housekeeping:** `35f9e343` tidy lint artefacts to pass flake8.
+
+### Deferred (intentional — not defects)
+- **Persistent-worker reuse (D1).** The surviving substance of M1–M4. The per-command spawn model is kept (full isolation, instant cancel). Whether to reuse `TradeORM` across actions via a persistent disposable worker is gated on a benchmark — adopt only if the gain is real. Future packet.
+- **Exact `--raw` copy behaviour (D3).** Copy-from-render copies the captured plain-text render. Reproducing the CLI `--raw` machine format exactly is a CLI-presentation concern, not wired into GUI copy; no GUI need evidenced.
+- **CLI `--no-planet` cleanup.** Removed from the CLI/planner (`2ddf3e5b`) and from the GUI (`9bb5309b` + the full GUI removal pass); no emitter remains. Any residual breadcrumb/comment tidy belongs to Checkpoint N.
+- **EDSY / Coriolis import.** Not in M scope and no GUI surface exists. Ship details are now read from the journal (`6e4493d3`); an EDSY/Coriolis build importer is a separate future feature.
+- **Ship performance calculation.** Commander ship details are imported, but performance (jump range etc.) is not computed from them. Future feature, not an M defect.
+- **Live run `--progress` streaming.** Unanchored confirmation and checklist stepping landed; live streaming of run's transient search bar did not. The command worker has no progress channel (only the import path streams progress) and the run path returns its rendered result at completion. A bounded outcome, not a defect — a small carry-forward if live run progress is later wanted.
+
+### Verification and testing
+Per-packet verification was flake8, non-destructive checks (clean-import, `CommandIndex().parse` argv-parse, isolated `build_backend` construction), and Tromador-driven GUI smoke against known routes/systems. The full pytest suite is broken by the planner rewrite (it tests retired modules); rebuilding it and running full behavioural regression is **Checkpoint O**. M was therefore smoke-validated per packet, not gated on pytest — consistent with L.
 
 ### Notes
-- `--no-planet` was removed from the CLI and planner (commit 2ddf3e5b, 2026-06-23) as redundant with `--planetary N`. The GUI was deliberately left untouched: the buy/sell/olddata/nav argv builders in `guiapp/td_exec_commands.py` still emit `--no-planet` (the three `append_flag(argv, '--no-planet', ...)` lines), which the CLI now rejects — a saved draft with that box ticked would throw "unrecognized arguments". M5 must drop those emitters and the matching `noPlanet` GUI controls (e.g. the buy/sell "Space stations only" checkbox) so the GUI only ever sends `--planetary`.
+- `--no-planet` was removed from the CLI and planner (`2ddf3e5b`, 2026-06-23) as redundant with `--planetary N`, and subsequently removed from the GUI during M (`9bb5309b` and the full GUI removal pass). No GUI builder emits it and the matching controls are gone; the GUI sends only `--planetary`.
 
 ---
 

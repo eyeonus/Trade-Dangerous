@@ -58,13 +58,17 @@ Meaning:
 This project is not “make a new engine”.
 It is “systematically remove preload-heavy legacy obligations while keeping the product working”.
 
-> **Status (2026-06): Checkpoint K complete.** `trade run` was the
+> **Status (2026-06): Checkpoints K, L, and M complete.** `trade run` was the
 > preload-heaviest obligation. The K4 review concluded the preload-first
 > `TradeDB` / `TradeCalc` model should be replaced rather than narrowed, and the
 > clean-room planner rewrite (Slices 1–14, `docs/Planner/`) did so. `trade run`
 > is now planner-only, and `tradecalc.py` / `tradedb.py` are retired to
 > `archive/`. The "do not delete `TradeDB` up front" rule (§16) was honoured —
-> the deletion came at the end, once the replacement was proven.
+> the deletion came at the end, once the replacement was proven. L migrated the
+> remaining command surfaces (`olddata`, `nav`, `trade direct`); M restored the
+> GUI on the TradeORM-only backend and reconciled it with the post-L CLI surface.
+> Next: N (closeout/prune), then O (rebuild the test suite). See
+> `REFACTOR_PROGRESS.md` §1 for live status.
 
 ---
 
