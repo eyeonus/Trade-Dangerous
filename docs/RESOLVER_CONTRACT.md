@@ -1,8 +1,58 @@
 # RESOLVER CONTRACT
 
-Purpose: define the lookup and ambiguity behavior that must be preserved or deliberately changed during ORM-first migration.
+Purpose: define the place-resolution and ambiguity behaviour the CLI and the
+`trade run` planner share.
 
-All facts in this document are derived by reading the current implementation in `tradedangerous/tradedb.py` and `tradedangerous/tradeexcept.py`. Nothing here is inferred or assumed.
+> **Status:** §0 below is the **current contract** (v13, TradeORM). Sections 1–14
+> are retained as historical background — they describe the legacy in-memory
+> `TradeDB` resolver (`tradedb.py`, now archived) that the ORM resolver was
+> verified against. Where the two disagree, §0 wins.
+
+---
+
+## 0. Current contract (v13 — TradeORM resolver)
+
+Resolution is owned by `TradeORM.lookup_place` / `lookup_system` /
+`lookup_station` in `tradedangerous/tradeorm.py`, querying the ORM directly. The
+`trade run` planner resolves its endpoints through the **same** `lookup_place`
+(`planner/resolver.py` is a thin adapter), so the CLI and the planner share one
+syntax contract — there is no separate planner namespace.
+
+### Accepted syntax
+
+| Form | Example | Meaning |
+|------|---------|---------|
+| bare name | `Sol` | Try as a **system** first; fall back to a **station** if no system matches |
+| `@system` | `@Sol` | Explicitly a system; `@` is stripped. **No** station fallback |
+| `/station` | `/Abraham Lincoln` | Explicitly a station; the system is not searched |
+| `system/station` | `Sol/Abraham Lincoln` | A station within the named system; both parts partial-matchable |
+| `@system/station` | `@Sol/Abraham Lincoln` | As `system/station`; the `@` is stripped |
+| backslash | `Sol\Abraham Lincoln` | Treated identically to `/` |
+| `system/` | `Sol/` | The named system |
+| `system@N` | `Lorionis@2` | Disambiguate duplicate-name systems by 1-based index |
+
+Worked examples: `Sol` → system Sol; `hamlinc` → no system, falls back to
+`Sol/Abraham Lincoln`; `/hamlinc` and `Sol/hamlinc` → `Sol/Abraham Lincoln`;
+`Sol/` → system Sol. A successful system match wins **before** the station
+fallback is tried. Ambiguity raises `AmbiguityError` (candidates listed) rather
+than picking silently.
+
+### Normalised matching
+
+`System.lookup_name` and `Station.lookup_name` hold a normalised form of each
+name (case-folded, punctuation- and space-stripped). Partial matching searches
+that column, so punctuation in the user's token no longer blocks a match:
+`lookup_system("CD37")` resolves `CD-37 15492`. (Earlier ORM builds had no such
+column; the "punctuation-normalised interior not supported" limitation noted in
+the historical sections below no longer applies.)
+
+### Resolved-as echo
+
+Every resolver-tier command echoes a `<arg> <input> resolved as <canonical>`
+line when a fuzzy or abbreviated token expands to a different canonical name; an
+exact match — including a pure case difference or an `@N` selection — stays
+quiet. `trade run` prints this for its endpoints (`run_cmd.py`); the non-planner
+commands print it via `commandenv.echo_resolution`.
 
 ---
 
@@ -354,7 +404,7 @@ Each notable quirk is classified so future sessions can distinguish what must be
 | `lookupSystem` `listSearch` fallback passes the full `name` including `@N` suffix — `@N` silently stops working for partial matches | DOCUMENTED LEGACY BUG |
 | `lookupPlace` slow path system resolution does not support `@N` | PRESERVE FOR PARITY (limitation is consistent with the fast path owning `@N`) |
 | `listSearch` short-circuits on the first exact station-name match — no ambiguity check even when duplicate rows exist | DELIBERATE ORM CHANGE — `TradeORM.lookup_station` raises `AmbiguityError` for multiple exact DB rows; returning an arbitrary duplicate is less correct than asking the caller to disambiguate |
-| `listSearch` normalises both needle and candidate before substring search — so `"CD37"` matches `"CD-37 15492"` (hyphen stripped from both sides) | DELIBERATE ORM CHANGE — the ORM searches raw stored names via `ILIKE`; without a normalised generated column, punctuation-stripped interior matches are not supported. `lookup_system("CD37")` raises `LookupError`. |
+| `listSearch` normalises both needle and candidate before substring search — so `"CD37"` matches `"CD-37 15492"` (hyphen stripped from both sides) | **SUPERSEDED (see §0)** — the ORM now carries normalised `lookup_name` columns and searches them, so this matches as the legacy resolver did: `lookup_system("CD37")` resolves `CD-37 15492`. The earlier "raw names, no normalised column" divergence no longer holds. |
 
 ---
 

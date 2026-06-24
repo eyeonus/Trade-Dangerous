@@ -210,17 +210,22 @@ once, when the run starts, with partial matching: exact first, then prefix, then
 substring, with no typo tolerance. A non-exact match is echoed back as
 `… resolved as …` so you can see what was chosen.
 
-Syntax picks the namespace, with no cross-namespace fall-through:
+Syntax picks the namespace, and a **bare name resolves system-first, then falls
+back to a station**:
 
-- a **bare name** is a system;
+- a **bare name** is tried as a system, then as a station if no system matches;
+- **`@name`** forces a system (no station fallback);
 - **`/name`** is a station;
 - **`system/station`** is a station within the named system;
 - **`system/`** is the named system.
 
-A miss reports the kind it was looking for — an unknown *system* or an unknown
-*station*, never a vague "place". Where two real systems share a name, they are
-disambiguated with `@N` and their coordinates: a bare collision lists the
-candidates, and `Name@2` selects the second.
+So a bare `hamlinc` with no matching system resolves to the station
+`Sol/Abraham Lincoln`, exactly as the non-planner commands resolve it — `trade
+run` shares one place-resolution contract with the rest of the tool rather than a
+strict system-only namespace. An unresolved name reports the kind it ended on.
+Where two real systems share a name, they are disambiguated with `@N` and their
+coordinates: a bare collision lists the candidates, and `Name@2` selects the
+second.
 
 ---
 
