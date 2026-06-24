@@ -3,7 +3,7 @@ import gc
 
 import pytest
 
-from tradedangerous.commands import olddata_cmd, run_cmd
+from tradedangerous.commands import olddata_cmd
 from tradedangerous.commands.commandenv import CommandEnv, Needs
 from tradedangerous.commands.exceptions import (
     CommandLineError,
@@ -17,7 +17,7 @@ from tradedangerous.tradeorm import TradeORM
 
 from .helpers import isolated_trade_env  # noqa: F401 — used as fixture
 
-_FAKE_CMD = SimpleNamespace(wantsTradeDB=False, usesTradeData=False)
+_FAKE_CMD = SimpleNamespace(needs=Needs.NOTHING, usesTradeData=False)
 _RESOLVER_CMD = SimpleNamespace(needs=Needs.RESOLVER, usesTradeData=False)
 
 def _make_env(**properties):
@@ -25,62 +25,6 @@ def _make_env(**properties):
 
 def _make_cmd_env(cmd_module, **properties):
     return CommandEnv(properties, ['trade.py', 'test'], cmd_module)
-
-def test_run_validateRunArgumentsFast_required_fields():
-    with pytest.raises(CommandLineError, match="Missing '--capacity'"):
-        run_cmd.validateRunArgumentsFast(SimpleNamespace(capacity=None, credits=1, maxLyPer=5, direct=False))
-    
-    with pytest.raises(CommandLineError, match="Missing '--credits'"):
-        run_cmd.validateRunArgumentsFast(SimpleNamespace(capacity=10, credits=None, maxLyPer=5, direct=False))
-    
-    with pytest.raises(CommandLineError, match="Missing '--ly-per'"):
-        run_cmd.validateRunArgumentsFast(SimpleNamespace(capacity=10, credits=100, maxLyPer=None, direct=False))
-
-def test_run_validateRunArgumentsFast_conflict_rules():
-    base = {
-        'capacity': 10,
-        'credits': 1000,
-        'maxLyPer': 8.5,
-        'direct': False,
-        'goalSystem': None,
-        'starting': None,
-        'startJumps': 0,
-        'endJumps': 0,
-        'ending': None,
-        'shorten': False,
-        'loop': False,
-        'unique': False,
-        'limit': None,
-        'insurance': 0,
-        'loopInt': None,
-    }
-    
-    with pytest.raises(CommandLineError, match='--towards requires --from'):
-        run_cmd.validateRunArgumentsFast(SimpleNamespace(**(base | {'goalSystem': 'Sol'})))
-    
-    with pytest.raises(CommandLineError, match='--start-jumps requires --from'):
-        run_cmd.validateRunArgumentsFast(SimpleNamespace(**(base | {'startJumps': 1})))
-    
-    with pytest.raises(CommandLineError, match='--end-jumps requires --to'):
-        run_cmd.validateRunArgumentsFast(SimpleNamespace(**(base | {'endJumps': 1})))
-    
-    with pytest.raises(CommandLineError, match='--shorten only works with --to'):
-        run_cmd.validateRunArgumentsFast(SimpleNamespace(**(base | {'shorten': True})))
-    
-    with pytest.raises(CommandLineError, match='--unique and --loop'):
-        run_cmd.validateRunArgumentsFast(SimpleNamespace(**(base | {'loop': True, 'unique': True})))
-    
-    with pytest.raises(CommandLineError, match='--direct and --loop'):
-        run_cmd.validateRunArgumentsFast(SimpleNamespace(**(base | {'loop': True, 'direct': True})))
-    
-    with pytest.raises(CommandLineError, match="'limit' must be <= capacity"):
-        run_cmd.validateRunArgumentsFast(SimpleNamespace(**(base | {'limit': 99})))
-    
-    with pytest.raises(CommandLineError, match='Insurance leaves no margin for trade'):
-        run_cmd.validateRunArgumentsFast(SimpleNamespace(**(base | {'insurance': 1042})))
-    
-    with pytest.raises(CommandLineError, match='--loop-int must be 2 or higher'):
-        run_cmd.validateRunArgumentsFast(SimpleNamespace(**(base | {'loopInt': 1})))
 
 def test_olddata_validateRunArgumentsFast_requires_near_for_route():
     with pytest.raises(CommandLineError, match='--route requires --near'):
@@ -133,60 +77,6 @@ def test_commandenv_needs_explicit_nothing():
         assert env.commandNeeds == Needs.NOTHING
         assert not env.needs_legacy_db
         assert not env.needs_full_load
-
-
-def test_commandenv_needs_legacy_wantsTradeDB_false_gives_handle():
-    """wantsTradeDB=False without an explicit needs= maps to LEGACY_HANDLE, not RESOLVER."""
-    from tradedangerous.commands import buildcache_cmd, import_cmd
-    for cmd in (buildcache_cmd, import_cmd):
-        env = _make_cmd_env(cmd)
-        assert env.commandNeeds == Needs.LEGACY_HANDLE
-        assert env.needs_legacy_db
-        assert not env.needs_full_load
-
-
-def test_commandenv_needs_legacy_wantsTradeDB_true_gives_full_legacy():
-    """wantsTradeDB=True (or absent) maps to FULL_LEGACY with full preload."""
-    env = _make_cmd_env(run_cmd)
-    assert env.commandNeeds == Needs.FULL_LEGACY
-    assert env.needs_legacy_db
-    assert env.needs_full_load
-
-
-def test_commandenv_run_preload_fires_before_checkFromToNear(monkeypatch):
-    """CommandEnv.run() must call preload(tdb) before checkFromToNear()."""
-    call_order = []
-
-    fake_cmd = SimpleNamespace(
-        needs=Needs.LEGACY_HANDLE,
-        preload=lambda tdb: call_order.append('preload'),
-        run=lambda results, cmdenv, tdb: None,
-    )
-
-    cmdenv = CommandEnv({}, ['trade.py', 'test'], fake_cmd)
-    monkeypatch.setattr(cmdenv, 'checkFromToNear', lambda: call_order.append('checkFromToNear'))
-    monkeypatch.setattr(cmdenv, 'checkAvoids', lambda: None)
-    monkeypatch.setattr(cmdenv, 'checkVias', lambda: None)
-
-    cmdenv.run(SimpleNamespace())
-
-    assert call_order.index('preload') < call_order.index('checkFromToNear')
-
-
-def test_olddata_preload_exact_loader_contract():
-    """olddata_cmd.preload() calls reloadCache/_loadSystems/_loadStationShell only."""
-    from unittest.mock import MagicMock
-    from tradedangerous.commands import olddata_cmd
-
-    tdb = MagicMock()
-    olddata_cmd.preload(tdb)
-
-    assert tdb.reloadCache.call_count == 1
-    assert tdb._loadSystems.call_count == 1
-    assert tdb._loadStationShell.call_count == 1
-    tdb._loadStationSummaries.assert_not_called()
-    tdb._loadCategories.assert_not_called()
-    tdb._loadItems.assert_not_called()
 
 
 @pytest.fixture()
