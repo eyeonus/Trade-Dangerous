@@ -50,11 +50,11 @@ Do not tick a task unless:
 
 ### Current active checkpoint
 - Status: `[x]`
-- Checkpoint: `M — GUI compatibility pass and session reuse — complete`
-- Subtask: `GUI un-bricked on the TradeORM-only backend; every argv builder and result renderer reconciled with the post-L CLI surface; dead controls removed; run interactivity (unanchored confirmation + detached checklist window) and copy-from-render delivered; journal-driven ship import added; --no-planet and the obsolete import vendor controls removed. 31 accepted GUI commits, each Tromador-smoke-verified per packet. Session reuse beyond the existing autocomplete reuse is intentionally deferred (persistent-worker benchmark, D1). Full behavioural regression is Checkpoint O. Next: N (closeout/prune), then O (test-suite rebuild).`
+- Checkpoint: `N — Legacy prune wave 2 and closeout — complete`
+- Subtask: `Post-refactor leftovers pruned and docs/comments aligned with current truth. Removed five unused imports (db/engine.py, db/orm_models.py, transfers.py), the orphaned preload lifecycle hook in commandenv.py (no command defines preload since olddata moved to Needs.RESOLVER at L1), and the stale UPGRADE_MODE TODO in buy_cmd.py (the Upgrade/UpgradeVendor tables were deliberately dropped in the K follow-up). Reworded the live-code comments/docstrings that named the retired TradeDB so they describe current behaviour on their own terms (tradeorm x8, corrections, lifecycle, import_csv, import_prices, buildcache, guiapp/td_exec). Doc truth: Stef -> Tromador in this tracker; --no-planet marked [removed] in SPEC_STATUS and dropped from the v13.0.0 release notes; a superseded-for-live-planning pointer added atop the consolidated doc. Code commit 4d70f9e1 (12 files); docs commit f1ab12e2 (4 files). Verified by flake8 + py_compile on every touched file and rg sweeps (zero live TradeDB/TradeCalc/tier-vocab/loader/removed-option references); no pytest (Checkpoint O owns the suite). N5 (release/merge notes) was retired as stale: the K ground-up rewrite changed the upstream-merge picture, so project documentation becomes the new Checkpoint P. N is complete. Next: O (test-suite rebuild), then P (document the project).`
 - Owner: `Tromador`
-- Started: `2026-06-22`
-- Goal: `Restore the NiceGUI GUI on the post-refactor CLI/TradeORM backend and reconcile every GUI command/option with the current CLI surface; recover session-scope reuse only where justified. See the Checkpoint M detail for the full goal, delivered work, and deferred items.`
+- Started: `2026-06-24`
+- Goal: `Remove proven-dead runtime code, stale compatibility leftovers, false comments, and refactor-era breadcrumbs now that L and M are complete and the GUI is restored. See the Checkpoint N detail for the full task breakdown and the retained-compatibility list.`
 
 ### Current blocker
 - Status: `[ ]`
@@ -65,7 +65,7 @@ Do not tick a task unless:
 ### Last updated
 - Date: `2026-06-24`
 - By: `Tromador + assistant`
-- Session summary: `Closed Checkpoint M (GUI compatibility pass + session reuse). The GUI began M non-functional — it died at import on the retired tradedb module and selected a backend through a dead four-tier Needs model. M rebuilt GUI backend construction on TradeORM only via a shared build_backend (f88ac680), reconciled every argv builder with the post-L CLI surface (sell --ly, dropped run/nav phantom flags; 719d1f1e) and removed the dead controls (65949d90); fixed the three provable render defects — structured run tables, direct From/To columns, nav/local item counts read from the row (ef577b48, ee6b3dcf, ca089497, 2218cf7d, 29f1acc9) — and polished the run renderer (18742910, 674d0861, 3fa62331, 6b6f62de). Run interactivity was delivered: a non-interactive worker stdin (51e55665), bare From/To systems treated as endpoints (167801ea), confirm-and-run for unanchored routes (17b39f2e, superseding the earlier block 5f9fa7ce). The standout new feature is a detached, movable run checklist window that steps a route hop by hop, with several route checklists open at once (843d39b1 stepper; b29c5649 detached window; a4a40545 icon; c03323be shutdown-queue fix). New run options --sco/--max-price/--no-bulk-cap exposed (78d752aa); direct --local/--best/--age exposed (2ae7e42d); copy-from-render added (54f3adc6, 4259fe91); journal directory + commander ship import added (f6dbcc44, 6e4493d3); --no-planet removed from the GUI (9bb5309b + full removal pass; CLI side 2ddf3e5b); obsolete Skip Vendors/Ship Vendors import controls removed (ab672972); lint tidied (35f9e343). 31 accepted GUI commits in all, each Tromador-smoke-verified per packet. Deferred and recorded as non-defects: persistent-worker reuse (surviving substance of M1-M4, gated on a benchmark, D1); exact --raw copy formatting (CLI-presentation only); residual --no-planet breadcrumb tidy (N); EDSY/Coriolis import and ship performance calculation (future features); live run --progress streaming (the run worker has no progress channel and returns at completion). Session reuse: autocomplete already holds a process-long engine with a session per query, so M1 is satisfied in the scope that benefits; M2/M3 are unjustified/unnecessary under NullPool + session-per-query. Verification was flake8 + non-destructive import/argv-parse/build_backend checks + per-packet GUI smoke; the full pytest suite is broken by the planner rewrite, so full behavioural regression moves to Checkpoint O. Deleted the spent CHECKPOINT_M_GUI_AUDIT_FINAL.md scoping doc. Next: N (closeout/prune), then O (test-suite rebuild). Prior session: Removed the redundant --no-planet option (it duplicated --planetary N exactly; full rationale in the 2026-06-23 decisions entry and the Checkpoint M note). Dropped across the CLI and planner only — the parser, all six commands (run/buy/sell/local/olddata/nav), and the planner request/validation/gateway — leaving --planetary N as the single non-planetary filter. flake8 clean; smoke-verified (--no-planet now rejected; --planetary N filters on local; run routes end-to-end through the planner with --planetary N). Code commit 2ddf3e5b. GUI left untouched at Tromador's instruction (two in-flight edits reverted): its argv builders still emit --no-planet, which the CLI now rejects, so reconciliation is deferred to Checkpoint M. Tests left to Checkpoint O. Prior session: Investigated olddata/nav for L1/L2 and traced the --ly / --ly-per / --link-ly grey area through the live code. Settled the L5 range-option contract and did L5 first (reordered): --ly = search radius (default 64), --ly-per = per-jump (no default, raise if missing), zero honoured via is-not-None, global --link-ly removed outright (hard break). Applied to buy/sell/__init__; local already compliant; olddata/nav inherit at L1/L2; GUI argv builders deferred to Checkpoint M (M scope note added). flake8 clean. The full test suite is broken by the rewrite (it tests retired modules) — added Checkpoint O to rebuild it — so L5 is smoke-validated rather than gated on pytest. L5 is now smoke-verified and closed; Checkpoint O mirrored into AGENT_START_HERE's checkpoint map and execution order. olddata (L1) migrated SQL-first, audit-fixed (chunked hydration, preflight --route check, house-style blanks) and passed; commits 2be80d7e, c932d89d, 29ee5ba0. nav (L2) rebuilt as a basic A->B route plotter on the planner engine (--refuel-jumps dropped, deferred to Spansh), audit-fixed (avoided-waypoint conflict) and passed; commits 753ba10a, 2b3cccf2. L3 (rare lookup cutover on buy) verified and closed with no code change: the cutover landed in Checkpoint E, and a package sweep confirms zero live references to the retired rares command or RareItem table; buy --rare runs on the canonical Item.rare_station_id predicate (validated end-to-end at E5). The diminished in-game role of rares is a deliberate prior decision; the live-market-view narrowing was signed off as intended. L4 (trade trade -> trade direct) rebuilt to the full "Trade 2.0" scope (issue #241): renamed with trade kept as a live alias; lookup_place endpoints (system or station); --best window-function collapse, --local, --age, From/To columns and a summary header; --fill kept per-row while --load/--full-load are rejected in multi-station; the self-trade predicate was made universal after audit. Commits 52fcf35e, 730d05e2, bced88b3, 70fe7dbc, 51856299, 767c6ede, d899f7a2; smoke-verified incl. live cargo via the journal, audit passed. L6 (full-load caller audit) then verified and closed with no code change: the CLI has zero TradeDB.load() callers (Needs = NOTHING|RESOLVER only; cli.py builds TradeORM), tradecalc is wholly dead, and the sole TradeDB(load=...) sites are the two broken GUI exec modules deferred to M. That completes Checkpoint L (L1-L6); the next checkpoint is M (GUI compatibility + session reuse).`
+- Session summary: `Closed Checkpoint N (legacy prune wave 2 and closeout). Audited the live tree for retired-backend leftovers, removed-option breadcrumbs, GUI leftovers, command/planner migration shims, and stale docs/comments. Removed five unused imports (db/engine.py: time, sqlalchemy.text, exc.OperationalError; db/orm_models.py: UniqueConstraint; transfers.py: json), the orphaned preload lifecycle hook in commandenv.py (rg confirmed no command defines preload since olddata moved to Needs.RESOLVER at L1), and the stale UPGRADE_MODE TODO in buy_cmd.py (the Upgrade/UpgradeVendor tables were deliberately dropped in the K follow-up). Reworded every live-code comment/docstring that named the retired TradeDB so it describes current behaviour on its own terms (tradeorm x8, corrections, lifecycle, import_csv, import_prices, buildcache, guiapp/td_exec). Code commit 4d70f9e1 (12 files). Doc truth (commit f1ab12e2, 4 files): Stef -> Tromador here; --no-planet marked [removed] in SPEC_STATUS and dropped from the v13.0.0 release notes; superseded-for-live-planning pointer added atop trade_dangerous_refactor_consolidated.md. Verified by flake8 + py_compile on all 13 touched files and rg sweeps (zero live TradeDB/TradeCalc/tier-vocab/loader/removed-option/legacy-TD references); no pytest run and no test-suite inspection — Checkpoint O owns the suite. Intentionally retained: eddblink skipvend (live CLI option), the profiles insurance bridge (saved-profile back-compat), td_exec _display_attr (helper kept, comment reworded), the results_view raw fallback, and the legacy-preload design-rationale comments in data_gateway/run_cmd/olddata_cmd (they name a retired pattern to justify a current design choice, not TradeDB). Pre-existing uncommitted tests/fixtures and docs/Create_Fixtures.md changes (not this session's work; Checkpoint O groundwork) were left untouched. N5 (prepare release/merge notes) retired as stale: the K ground-up rewrite changed the upstream-merge picture; project documentation becomes the new Checkpoint P (details to be defined with Tromador). N is complete. Next: O (test-suite rebuild), then P (document the project). Prior session: Closed Checkpoint M (GUI compatibility pass + session reuse). The GUI began M non-functional — it died at import on the retired tradedb module and selected a backend through a dead four-tier Needs model. M rebuilt GUI backend construction on TradeORM only via a shared build_backend (f88ac680), reconciled every argv builder with the post-L CLI surface (sell --ly, dropped run/nav phantom flags; 719d1f1e) and removed the dead controls (65949d90); fixed the three provable render defects — structured run tables, direct From/To columns, nav/local item counts read from the row (ef577b48, ee6b3dcf, ca089497, 2218cf7d, 29f1acc9) — and polished the run renderer (18742910, 674d0861, 3fa62331, 6b6f62de). Run interactivity was delivered: a non-interactive worker stdin (51e55665), bare From/To systems treated as endpoints (167801ea), confirm-and-run for unanchored routes (17b39f2e, superseding the earlier block 5f9fa7ce). The standout new feature is a detached, movable run checklist window that steps a route hop by hop, with several route checklists open at once (843d39b1 stepper; b29c5649 detached window; a4a40545 icon; c03323be shutdown-queue fix). New run options --sco/--max-price/--no-bulk-cap exposed (78d752aa); direct --local/--best/--age exposed (2ae7e42d); copy-from-render added (54f3adc6, 4259fe91); journal directory + commander ship import added (f6dbcc44, 6e4493d3); --no-planet removed from the GUI (9bb5309b + full removal pass; CLI side 2ddf3e5b); obsolete Skip Vendors/Ship Vendors import controls removed (ab672972); lint tidied (35f9e343). 31 accepted GUI commits in all, each Tromador-smoke-verified per packet. Deferred and recorded as non-defects: persistent-worker reuse (surviving substance of M1-M4, gated on a benchmark, D1); exact --raw copy formatting (CLI-presentation only); residual --no-planet breadcrumb tidy (N); EDSY/Coriolis import and ship performance calculation (future features); live run --progress streaming (the run worker has no progress channel and returns at completion). Session reuse: autocomplete already holds a process-long engine with a session per query, so M1 is satisfied in the scope that benefits; M2/M3 are unjustified/unnecessary under NullPool + session-per-query. Verification was flake8 + non-destructive import/argv-parse/build_backend checks + per-packet GUI smoke; the full pytest suite is broken by the planner rewrite, so full behavioural regression moves to Checkpoint O. Deleted the spent CHECKPOINT_M_GUI_AUDIT_FINAL.md scoping doc. Next: N (closeout/prune), then O (test-suite rebuild). Prior session: Removed the redundant --no-planet option (it duplicated --planetary N exactly; full rationale in the 2026-06-23 decisions entry and the Checkpoint M note). Dropped across the CLI and planner only — the parser, all six commands (run/buy/sell/local/olddata/nav), and the planner request/validation/gateway — leaving --planetary N as the single non-planetary filter. flake8 clean; smoke-verified (--no-planet now rejected; --planetary N filters on local; run routes end-to-end through the planner with --planetary N). Code commit 2ddf3e5b. GUI left untouched at Tromador's instruction (two in-flight edits reverted): its argv builders still emit --no-planet, which the CLI now rejects, so reconciliation is deferred to Checkpoint M. Tests left to Checkpoint O. Prior session: Investigated olddata/nav for L1/L2 and traced the --ly / --ly-per / --link-ly grey area through the live code. Settled the L5 range-option contract and did L5 first (reordered): --ly = search radius (default 64), --ly-per = per-jump (no default, raise if missing), zero honoured via is-not-None, global --link-ly removed outright (hard break). Applied to buy/sell/__init__; local already compliant; olddata/nav inherit at L1/L2; GUI argv builders deferred to Checkpoint M (M scope note added). flake8 clean. The full test suite is broken by the rewrite (it tests retired modules) — added Checkpoint O to rebuild it — so L5 is smoke-validated rather than gated on pytest. L5 is now smoke-verified and closed; Checkpoint O mirrored into AGENT_START_HERE's checkpoint map and execution order. olddata (L1) migrated SQL-first, audit-fixed (chunked hydration, preflight --route check, house-style blanks) and passed; commits 2be80d7e, c932d89d, 29ee5ba0. nav (L2) rebuilt as a basic A->B route plotter on the planner engine (--refuel-jumps dropped, deferred to Spansh), audit-fixed (avoided-waypoint conflict) and passed; commits 753ba10a, 2b3cccf2. L3 (rare lookup cutover on buy) verified and closed with no code change: the cutover landed in Checkpoint E, and a package sweep confirms zero live references to the retired rares command or RareItem table; buy --rare runs on the canonical Item.rare_station_id predicate (validated end-to-end at E5). The diminished in-game role of rares is a deliberate prior decision; the live-market-view narrowing was signed off as intended. L4 (trade trade -> trade direct) rebuilt to the full "Trade 2.0" scope (issue #241): renamed with trade kept as a live alias; lookup_place endpoints (system or station); --best window-function collapse, --local, --age, From/To columns and a summary header; --fill kept per-row while --load/--full-load are rejected in multi-station; the self-trade predicate was made universal after audit. Commits 52fcf35e, 730d05e2, bced88b3, 70fe7dbc, 51856299, 767c6ede, d899f7a2; smoke-verified incl. live cargo via the journal, audit passed. L6 (full-load caller audit) then verified and closed with no code change: the CLI has zero TradeDB.load() callers (Needs = NOTHING|RESOLVER only; cli.py builds TradeORM), tradecalc is wholly dead, and the sole TradeDB(load=...) sites are the two broken GUI exec modules deferred to M. That completes Checkpoint L (L1-L6); the next checkpoint is M (GUI compatibility + session reuse).`
 
 ### Last known good rollback point
 - Commit: `ee777adc`
@@ -105,9 +105,10 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 - [x] J — Split `TradeDB` by capability
 - [x] K — Reduce `TradeCalc` setup cost (realised by the clean-room planner rewrite)
 - [x] L — Migrate remaining legacy command surfaces (olddata, nav, direct, rare cutover, range-option contract, full-load audit)
-- [ ] M — GUI session reuse and cache discipline
-- [ ] N — Legacy prune wave 2 and closeout
+- [x] M — GUI session reuse and cache discipline
+- [x] N — Legacy prune wave 2 and closeout
 - [ ] O — Rebuild the test suite against the post-rewrite codebase
+- [ ] P — Document the project
 
 ---
 
@@ -643,32 +644,34 @@ Per-packet verification was flake8, non-destructive checks (clean-import, `Comma
 ## Checkpoint N — Legacy prune wave 2 and closeout
 
 ### Goal
-Delete quarantined dead code and align docs/comments with reality.
+Delete proven-dead code and align docs/comments with reality.
 
 ### Acceptance criteria
 - dead code proven by audit is removed
 - comments/docs no longer lie
-- fork is ready for selective upstream merge/PR work
+- the live tree is free of retired-backend, removed-option, and migration-era leftovers
 
 ### Tasks
-- [ ] N1. Delete proven-dead runtime code in small packets
-  - Status note:
-  - Evidence:
-- [ ] N2. Move remaining compatibility-only code under explicit legacy labeling
-  - Status note:
-  - Evidence:
-- [ ] N3. Update docs/comments to match current truth
-  - Status note:
-  - Evidence:
-- [ ] N4. Run final verification set
-  - Status note:
-  - Evidence:
-- [ ] N5. Prepare release/merge notes
-  - Status note:
-  - Evidence:
+- [x] N1. Delete proven-dead runtime code in small packets
+  - Status note: `Removed five unused imports (db/engine.py: time, sqlalchemy.text, exc.OperationalError; db/orm_models.py: UniqueConstraint; transfers.py: json), the orphaned preload lifecycle hook in commandenv.py (rg confirmed no command defines preload since olddata moved to Needs.RESOLVER at L1), and the stale UPGRADE_MODE TODO in buy_cmd.py (Upgrade/UpgradeVendor were deliberately dropped in the K follow-up). flake8 + py_compile clean.`
+  - Evidence: `commit 4d70f9e1; rg "def preload" = none; flake8 --select=F401`
+- [x] N2. Move remaining compatibility-only code under explicit legacy labeling
+  - Status note: `No action needed. The audit found no quarantined compatibility-only code awaiting a label. The live compatibility paths that remain — eddblink skipvend and the profiles insurance bridge — are intentional and already commented in current terms, not parked legacy.`
+  - Evidence: `in-session audit; commit 4d70f9e1 retained-compatibility list`
+- [x] N3. Update docs/comments to match current truth
+  - Status note: `Reworded every live-code comment/docstring that named the retired TradeDB so it stands on its own in current terms (tradeorm x8, corrections, lifecycle, import_csv, import_prices, buildcache, guiapp/td_exec). Docs: Stef -> Tromador here; --no-planet marked [removed] in SPEC_STATUS and dropped from the v13.0.0 release notes; superseded pointer added atop the consolidated doc.`
+  - Evidence: `commits 4d70f9e1, f1ab12e2; rg confirms zero live TradeDB/TradeCalc/legacy-TD references and no Stef in docs`
+- [x] N4. Run final verification set
+  - Status note: `N-appropriate checks only: flake8 + py_compile on all 13 touched files (clean) and rg sweeps confirming zero live references to TradeDB/TradeCalc, the dead tier vocabulary, retired loaders, or removed options. Full pytest deliberately not run — the suite is broken by the rewrite and is Checkpoint O's job.`
+  - Evidence: `in-session flake8 / py_compile / rg output`
+- [~] N5. Prepare release/merge notes
+  - Status note: `Retired as stale. N5 was framed for selective upstream merge / PRs back when the refactor was an incremental ORM migration. Checkpoint K became a ground-up rewrite of the trade run core, which changes the upstream-merge picture entirely, so preparing merge notes against upstream is no longer the right deliverable. Documenting the project for its own sake supersedes it — that becomes Checkpoint P.`
+  - Evidence: `2026-06-24 decision (see Decisions log)`
 
 ### Notes
--
+- N is complete. N5 is retired (not done-as-scoped); its successor concern — documenting the project — is Checkpoint P.
+- Retained compatibility code (with reason): eddblink skipvend (live CLI power-user option); the profiles insurance bridge (migrates older saved-profile state); guiapp/td_exec _display_attr (helper kept, comment reworded); the results_view raw fallback. The legacy-preload design-rationale comments in data_gateway/run_cmd/olddata_cmd were left as current design rationale (they name a retired pattern to justify present code, not TradeDB).
+- Pre-existing uncommitted tests/fixtures and docs/Create_Fixtures.md changes were present in the working tree at N (not this work; Checkpoint O groundwork) and were left untouched.
 
 ---
 
@@ -706,6 +709,25 @@ the current architecture rather than patching the obsolete ones.
 - Surfaced during L5: the suite is broken by the deliberate engine swap, not by any
   single command change. Validate interim command work (L5, L1, L2) with targeted
   smoke checks until O restores the suite.
+
+---
+
+## Checkpoint P — Document the project
+
+### Goal
+Document the project. Detailed scope and acceptance criteria to be defined with
+Tromador.
+
+### Status
+Placeholder. Added 2026-06-24 when N5 was retired — see the Decisions log.
+
+### Tasks
+- [ ] P1. (scope to be defined with Tromador)
+
+### Notes
+- Succeeds the retired N5 closeout concern. The K ground-up rewrite changed the
+  upstream-merge picture, so documenting the project supersedes preparing
+  release/merge notes against upstream.
 
 ---
 
@@ -794,6 +816,11 @@ Record decisions that materially affect later work.
   - Decision: `Remove --no-planet entirely from the CLI and planner. It duplicated --planetary N exactly — both resolve to the filter Station.planetary == 'N' — through separate plumbing, and the two were mutually exclusive (an argparse MutuallyExclusiveGroup on run/buy/sell/local/olddata/nav plus a planner validation guard). --planetary is the broader lever (Y/N/? and combinations), so --no-planet carried no capability of its own. --planetary N is the single non-planetary filter.`
   - Reason: `Pure redundancy, surfaced while laying out the run options as a GUI dialog for M. Keeping a second, mutually-exclusive option for the one case --planetary N already covers is noise. v13 is already a hard-break release, consistent with the L5 --link-ly removal.`
   - Revisit trigger: `Only if a concrete need appears for a non-planetary filter distinct from --planetary N, which is not currently the case.`
+- Date: `2026-06-24`
+  - Topic: `Retire N5; add Checkpoint P (document the project)`
+  - Decision: `N5 ("prepare release/merge notes") is retired rather than done, which completes Checkpoint N. The original closeout assumed an incremental ORM migration feeding selective upstream PRs. Checkpoint K became a ground-up rewrite of the trade run core, so the fork has diverged from upstream by design and preparing merge notes against upstream is no longer the right deliverable. A new Checkpoint P — document the project — succeeds it; detailed scope to be defined with Tromador.`
+  - Reason: `The valuable next step after the rewrite is documenting what the project now is, not packaging diffs for a merge that is no longer the plan.`
+  - Revisit trigger: `Only if an upstream merge/PR effort is explicitly revived, which would reinstate a release/merge-notes task.`
 
 ---
 
@@ -895,6 +922,14 @@ Use this as the short “what is already definitely done” section for quick sc
   - Date completed: `2026-06-21`
   - Commit: `f6958820` (Slice 14 legacy-retirement closeout); planner build continued across docs/Planner/ through the v13.0.0 release notes
   - Notes: `Checkpoint K's incremental TradeCalc-narrowing goal was superseded by a full clean-room rewrite of trade run. The preload-first model was retired (tradecalc.py / tradedb.py archived; trade run is planner-only, querying the database directly), and the planner is now feature-complete — every route shape plus the full route-modifier, search, and output option surface — documented in docs/Planner/ with v13.0.0 release notes. Original K acceptance criteria superseded, not individually met.`
+- [x] Milestone: `Checkpoint M complete — GUI restored on the TradeORM backend and reconciled with the post-L CLI surface`
+  - Date completed: `2026-06-24`
+  - Commit: `e8c9be5a` (M closeout); 31 accepted GUI commits across M
+  - Notes: `GUI un-bricked on TradeORM-only; every argv builder/renderer reconciled with the post-L CLI surface; dead controls removed; run interactivity (unanchored confirmation + detached checklist window) and copy-from-render delivered; journal-driven ship import added. Session reuse beyond the existing autocomplete reuse deferred (persistent-worker benchmark, D1). Smoke-verified per packet; full behavioural regression is Checkpoint O. See the Checkpoint M section for detail.`
+- [x] Milestone: `Checkpoint N complete — post-refactor leftovers pruned, docs/comments aligned`
+  - Date completed: `2026-06-24`
+  - Commit: `4d70f9e1` (code prune); `f1ab12e2` (doc alignment)
+  - Notes: `Removed unused imports, the orphaned preload hook, and the stale UPGRADE_MODE TODO; reworded live-code TradeDB-ancestry comments into current terms; Stef -> Tromador; --no-planet marked [removed] / dropped in the planner docs; superseded pointer atop the consolidated doc. Verified by flake8 + py_compile + rg sweeps; no pytest (Checkpoint O owns the suite). N5 retired as stale (the K rewrite changed the upstream-merge picture); project documentation becomes Checkpoint P.`
 
 ---
 

@@ -58,7 +58,7 @@ Meaning:
 This project is not “make a new engine”.
 It is “systematically remove preload-heavy legacy obligations while keeping the product working”.
 
-> **Status (2026-06): Checkpoints K, L, and M complete.** `trade run` was the
+> **Status (2026-06): Checkpoints K, L, M, and N complete.** `trade run` was the
 > preload-heaviest obligation. The K4 review concluded the preload-first
 > `TradeDB` / `TradeCalc` model should be replaced rather than narrowed, and the
 > clean-room planner rewrite (Slices 1–14, `docs/Planner/`) did so. `trade run`
@@ -67,7 +67,8 @@ It is “systematically remove preload-heavy legacy obligations while keeping th
 > the deletion came at the end, once the replacement was proven. L migrated the
 > remaining command surfaces (`olddata`, `nav`, `trade direct`); M restored the
 > GUI on the TradeORM-only backend and reconciled it with the post-L CLI surface.
-> Next: N (closeout/prune), then O (rebuild the test suite). See
+> N pruned the post-refactor leftovers and aligned docs/comments with reality.
+> Next: O (rebuild the test suite), then P (document the project). See
 > `REFACTOR_PROGRESS.md` §1 for live status.
 
 ---
@@ -298,17 +299,23 @@ Goal:
 Goal:
 - recover “load once, answer many questions” only where it actually belongs
 
-### N — Legacy prune wave 2 and closeout
+### N — Legacy prune wave 2 and closeout (complete)
 Goal:
-- remove quarantined dead code
+- remove proven-dead code
 - align docs/comments with reality
-- prepare for upstream merge or selective PRs
+- (the original "prepare for upstream merge / selective PRs" goal was retired —
+  the K ground-up rewrite changed the upstream picture; documenting the project
+  succeeds it as Checkpoint P)
 
 ### O — Rebuild the test suite against the post-rewrite codebase
 Goal:
 - restore a green, meaningful suite after the planner rewrite retired the modules
   the old tests targeted (`tradedb.py`, `tradecalc.py`, the preload model)
 - rebuild tests against the current architecture rather than patch the obsolete ones
+
+### P — Document the project
+Goal:
+- document the project; detailed scope to be defined with Tromador
 
 ---
 
@@ -331,6 +338,7 @@ If only one stream is active, use this order:
 13. M — GUI session reuse
 14. N — closeout/prune wave 2
 15. O — rebuild the test suite against the post-rewrite codebase
+16. P — document the project
 
 ---
 
