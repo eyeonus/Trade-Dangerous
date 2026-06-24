@@ -68,7 +68,7 @@ Status as verified against `validation.py`, `run_request.py`, and the parser in
 | Option | Status | Note |
 |--------|--------|------|
 | `--planetary` | `[done]` | Y/N/? accepted-state set. |
-| `--no-planet` | `[done]` | Rejected if combined with `--planetary`. |
+| `--no-planet` | `[removed]` | Removed — rejected as an unknown option. Duplicated `--planetary N` exactly, so it carried no capability of its own. |
 | `--fleet-carrier` | `[done]` | Y/N/? set. |
 | `--settlement` | `[done]` | Y/N/? set. |
 | `--black-market` | `[done]` | Y/N/? set. |

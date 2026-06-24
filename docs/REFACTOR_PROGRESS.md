@@ -173,10 +173,10 @@ Ship the first narrow additive read-performance schema batch through the support
   - Evidence: `1bd9ba9`; `tradedangerous/db/orm_models.py`; `tradedangerous/templates/TradeDangerous.sql`
 - [~] B3. Add narrow in-place reconciliation helper
   - Status note: `Not planned. Supported rollout is rebuild/reset via clean import, and later schema breakage makes additive in-place reconciliation unnecessary.`
-  - Evidence: `2026-04-17 policy clarification from Stef`
+  - Evidence: `2026-04-17 policy clarification from Tromador`
 - [~] B4. Wire reconciliation through central lifecycle path
   - Status note: `Not planned for the same reason as B3.`
-  - Evidence: `2026-04-17 policy clarification from Stef`
+  - Evidence: `2026-04-17 policy clarification from Tromador`
 - [x] B5. Verify SQLite fresh-build/reset path
   - Status note: `Verified on 2026-04-17 against the packaged SQLite database after the supported rebuild/reset flow. PRAGMA output showed idx_system_by_name and idx_station_by_system_name, and EXPLAIN QUERY PLAN used idx_system_by_name for exact system lookup plus covering idx_station_by_system_name for exact system/station join lookup.`
   - Evidence: `packaged SQLite runtime output on 2026-04-17 using %LOCALAPPDATA%\TradeDangerous\data\TradeDangerous.db`
@@ -618,7 +618,7 @@ evidence-gated and carried forward. See Deferred.
 - **Detached run checklist window (headline new feature):** a movable native window that walks a route hop by hop — what to sell, what to buy, and the jumps to the next stop — living independently of the main window, with several route checklists open side by side at once, and an in-window dialog fallback in browser/non-native mode. `843d39b1` the checklist stepper; `b29c5649` promote it to a detached native window; `a4a40545` match its window icon to the main window; `c03323be` stop the checklist queue blocking shutdown.
 - **New run options:** `78d752aa` expose `--sco` / `--max-price` / `--no-bulk-cap`.
 - **Direct/Trade 2.0 coverage:** `2ae7e42d` expose `--local` / `--best` / `--age`.
-- **Copy from render (Stef's M note — now delivered):** `54f3adc6` copy results; `4259fe91` readable error/diagnostics copy buttons.
+- **Copy from render (Tromador's M note — now delivered):** `54f3adc6` copy results; `4259fe91` readable error/diagnostics copy buttons.
 - **Journal-driven import:** `f6dbcc44` configurable journal directory; `6e4493d3` import commander ship details from the journal.
 - **`--no-planet` removal:** `9bb5309b` remove the redundant "space stations only" filter, plus the full GUI `--no-planet` removal pass (CLI side removed in `2ddf3e5b`).
 - **Import vendor controls:** `ab672972` remove the obsolete Skip Vendors / Ship Vendors controls (upgrade-vendor data is gone; ship download is light; CLI `skipvendor` stays).

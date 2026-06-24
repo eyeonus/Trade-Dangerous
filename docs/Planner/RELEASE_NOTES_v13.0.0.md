@@ -179,10 +179,10 @@ Two caps protect the search from prices that would otherwise distort it:
   least this pad". `L` keeps only large-max stations; `M` keeps medium- and
   large-max stations plus those whose pad size is unknown; `S` keeps every station.
   A station whose pad size is unknown is admitted unless `--pad-size L` is set.
-- **`--planetary` / `--no-planet` / `--fleet-carrier` / `--settlement` /
+- **`--planetary` / `--fleet-carrier` / `--settlement` /
   `--black-market`** — accepted-state filters. Each takes a set drawn from `Y`
   (known yes), `N` (known no), and `?` (unknown) — for example `Y?` for "yes or
-  unknown". `--no-planet` cannot be combined with `--planetary`.
+  unknown".
 - **`--ls-max`** — maximum station distance from the arrival star, in
   light-seconds.
 - **`--age`** — a freshness window: exclude market rows older than `N` days. It

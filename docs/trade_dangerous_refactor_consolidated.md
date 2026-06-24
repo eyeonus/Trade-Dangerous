@@ -1,5 +1,7 @@
 # Trade Dangerous Refactor — Consolidated Project Context and Execution Plan
 
+> Status: superseded for live planning; see `REFACTOR_PROGRESS.md` for current state.
+
 Status: canonical consolidated worker context  
 Generated: 2026-05-07  
 Scope: legacy cleanup, ORM-first performance refactor, and schema Batch A context  
