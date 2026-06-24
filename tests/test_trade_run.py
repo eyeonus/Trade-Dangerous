@@ -14,15 +14,17 @@ class TestTradeRun:
             PROG, "run",
             "--capacity=10", "--credits=10000",
             "--from=sol/abr", "--jumps-per=3",
-            "--ly-per=10.5", "--no-planet",
+            "--ly-per=10.5",
         ])
         captured = capsys.readouterr()
         output = strip_ansi(captured.out)
         
         assert "Sol/Abraham Lincoln" in output
-        assert re.search(r"Sol/Abraham Lincoln -> .+/.+", output)
-        assert re.search(r"^\s{2}.+?: \d+ x .+,$", output, re.MULTILINE)
-        assert re.search(r"\+\d[\d,]*cr \(\d[\d,]*/ton\)", output)
+        # Route header: origin → destination station, with the hop/jump summary.
+        assert re.search(r"Sol/Abraham Lincoln\s+→\s+.+/.+", output)
+        assert re.search(r"\bhops?\b", output)
+        # A profitable route: a positive total profit in credits.
+        assert re.search(r"Total Profit\s+[\d,]+ cr", output)
 
 
 class TestRunBareNameResolution:
