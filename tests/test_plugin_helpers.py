@@ -19,6 +19,7 @@ def _make_tdb(tmp_path):
     return SimpleNamespace(
         dataPath=(tmp_path / 'data'),
         dataDir=str(tmp_path / 'data'),
+        data_dir=(tmp_path / 'data'),
         tmpDir=str(tmp_path / 'tmp'),
     )
 
