@@ -380,10 +380,11 @@ class TestLookupPlace:
 def torm_with_crossname_ambiguity(isolated_torm):
     """System 'Crossmatch' + station 'Crossmatch' in Sol (a different system).
 
-    When lookup_station("Crossmatch") runs the dual scan:
-    - stn_results: 1 station (in Sol)
-    - sys_results: 1 system (Crossmatch)
-    - station.system_id != sys_obj.system_id → AmbiguityError
+    Exercises both contracts on the same data:
+    - lookup_station("Crossmatch") -> the Sol station: a station wins outright,
+      and the same-named system is not a station-lookup alternative (Slice 19,
+      station-only).
+    - lookup_place("Crossmatch") -> the system: a bare name is system-first.
     """
     from sqlalchemy import text
     session = isolated_torm.session
@@ -447,11 +448,15 @@ class TestAmbiguityAndAtNDisambiguation:
         with pytest.raises(LookupError):
             torm_with_dupsys.lookup_station("Zeta Dup@1")
 
-    def test_lookup_station_dual_scan_cross_name_ambiguity(self, torm_with_crossname_ambiguity):
-        # Station "Crossmatch" (in Sol) + system "Crossmatch" both match exactly,
-        # but they refer to different systems → AmbiguityError.
-        with pytest.raises(AmbiguityError):
-            torm_with_crossname_ambiguity.lookup_station("Crossmatch")
+    def test_lookup_station_cross_name_station_wins_over_system(self, torm_with_crossname_ambiguity):
+        # Station "Crossmatch" (in Sol) and a same-named system both exist.
+        # lookup_station is station-only (Slice 19): the station wins outright
+        # and the coincidental same-named system is not an alternative the
+        # caller could pick, so there is no AmbiguityError.
+        result = torm_with_crossname_ambiguity.lookup_station("Crossmatch")
+        assert isinstance(result, orm.Station)
+        assert result.name == "Crossmatch"
+        assert result.system.name == "Sol"
 
     def test_lookup_place_bare_name_system_wins_over_station(self, torm_with_crossname_ambiguity):
         # A bare name that matches a system returns that system and never falls
