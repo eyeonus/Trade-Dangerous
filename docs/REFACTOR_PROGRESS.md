@@ -830,6 +830,11 @@ Record decisions that materially affect later work.
   - Decision: `N5 ("prepare release/merge notes") is retired rather than done, which completes Checkpoint N. The original closeout assumed an incremental ORM migration feeding selective upstream PRs. Checkpoint K became a ground-up rewrite of the trade run core, so the fork has diverged from upstream by design and preparing merge notes against upstream is no longer the right deliverable. A new Checkpoint P — document the project — succeeds it; detailed scope to be defined with Tromador.`
   - Reason: `The valuable next step after the rewrite is documenting what the project now is, not packaging diffs for a merge that is no longer the plan.`
   - Revisit trigger: `Only if an upstream merge/PR effort is explicitly revived, which would reinstate a release/merge-notes task.`
+- Date: `2026-06-24`
+  - Topic: `Global place-resolver contract (O2)`
+  - Decision: `lookup_place resolves a bare name system-first, then falls back to a station when no system matches; @name forces a system and /name forces a station. trade run follows the same user-facing place contract — the planner resolves its endpoints through lookup_place — correcting the v13 release note's strict "bare = system, no fall-through" wording. RESOLVER_CONTRACT.md is kept as the current post-release developer reference: its §0 is canonical and the legacy TradeDB sections are marked historical.`
+  - Reason: `The planner rewrite had narrowed lookup_place to system-only for bare names, so a bare station partial (e.g. "hamlinc") was rejected as an unknown system while resolving everywhere else. Restoring the documented fallback gives the CLI and the planner one resolution rule.`
+  - Revisit trigger: `Only if a deliberate decision is taken to make bare names strict (system-only) across the tool, which would reinstate the v13 wording and update the contract and tests together.`
 
 ---
 
