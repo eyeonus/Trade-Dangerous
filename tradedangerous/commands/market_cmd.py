@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from sqlalchemy import func, select, table, column
 
-from .commandenv import Needs, ResultRow
+from .commandenv import Needs, ResultRow, echo_resolution
 from .exceptions import CommandLineError
 from .parsing import (
     ParseArgument, MutuallyExclusiveGroup,
@@ -62,6 +62,7 @@ def run(results, cmdenv, tdb):
         raise CommandLineError(
             "Unrecognized origin station: {}".format(cmdenv.origin)
         )
+    echo_resolution("station", cmdenv.origin, origin)
 
     buying, selling = cmdenv.buying, cmdenv.selling
 

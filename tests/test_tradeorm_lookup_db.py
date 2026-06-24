@@ -453,6 +453,14 @@ class TestAmbiguityAndAtNDisambiguation:
         with pytest.raises(AmbiguityError):
             torm_with_crossname_ambiguity.lookup_station("Crossmatch")
 
+    def test_lookup_place_bare_name_system_wins_over_station(self, torm_with_crossname_ambiguity):
+        # A bare name that matches a system returns that system and never falls
+        # through to a same-named station: the system match wins before the
+        # station fallback is tried (contract: system-first, then fallback).
+        result = torm_with_crossname_ambiguity.lookup_place("Crossmatch")
+        assert isinstance(result, orm.System)
+        assert result.name == "Crossmatch"
+
 
 class TestPartialMatching:
     """Partial (prefix and substring) matching for all three lookup methods."""
@@ -562,15 +570,16 @@ class TestPartialMatching:
         assert result.name == "Grandin Gateway"
         assert result.system.name == "Altair"
 
-    # -- deliberate limitation: punctuation-normalised interior not supported --
+    # -- punctuation-normalised interior matching via the lookup_name column --
 
-    def test_lookup_system_punctuation_normalised_interior_no_match(self, isolated_torm):
-        # "CD37" would match "CD-37 15492" after stage-1 normalisation strips the
-        # hyphen, but the ORM searches raw names via ILIKE with no normalised column.
-        # Deliberate divergence from the legacy resolver — documented in
-        # RESOLVER_CONTRACT.md under "DELIBERATE ORM CHANGE".
-        with pytest.raises(LookupError):
-            isolated_torm.lookup_system("CD37")
+    def test_lookup_system_punctuation_normalised_interior_match(self, isolated_torm):
+        # "CD37" matches "CD-37 15492": System.lookup_name holds the normalised
+        # form ("CD3715492"), so a punctuation-stripped needle finds it even
+        # though the hyphen breaks a raw-name match. Earlier ORM builds had no
+        # normalised column and could not do this; lookup_name now can.
+        result = isolated_torm.lookup_system("CD37")
+        assert isinstance(result, orm.System)
+        assert result.name == "CD-37 15492"
 
 
 class TestLookupItem:

@@ -22,6 +22,46 @@ if typing.TYPE_CHECKING:
     
     from tradedangerous import TradeORM
 
+
+def _canonical_place_name(place):
+    """Display name a resolved place echoes as: 'Sol' for a system,
+    'Sol/Abraham Lincoln' for a station."""
+    if isinstance(place, orm.Station):
+        return place.dbname()
+    return place.name
+
+
+def _resolution_is_exact(raw, place):
+    """True when the user's token already names ``place`` exactly (ignoring
+    case), so no resolved-as echo is warranted. Strips the namespace decoration
+    the syntax uses — a leading @, a leading/trailing slash, and an @N index —
+    before comparing, so 'Sol', 'Sol/' and '@Sol' are all exact for system Sol,
+    and 'Sol/Abraham Lincoln' / '/Abraham Lincoln' are exact for that station."""
+    token = (raw or "").strip().replace("\\", "/")
+    if token.startswith("@"):
+        token = token[1:]
+    at = token.rfind("@")
+    if at > 0 and token[at + 1:].isdigit():
+        token = token[:at]
+    token = token.strip("/").strip().casefold()
+    if isinstance(place, orm.Station):
+        return token in (place.dbname().casefold(), place.name.casefold())
+    return token == place.name.casefold()
+
+
+def echo_resolution(label, raw, place):
+    """Print a 'resolved as' line when a fuzzy or abbreviated token expanded to
+    a different canonical name. Exact input — including a pure case difference
+    or an @N selection — stays quiet. This gives every resolver-tier command the
+    same expansion feedback ``trade run`` already prints for its endpoints."""
+    if place is None or _resolution_is_exact(raw, place):
+        return
+    print(
+        "{} {} resolved as {}".format(label, raw, _canonical_place_name(place)),
+        flush=True,
+    )
+
+
 class Needs(Flag):
     """Backend capability requirements for a command.
 
@@ -143,11 +183,13 @@ class CommandEnv(TradeEnv):
             if not key:
                 return None
             try:
-                return self.tdb.lookup_place(key)
+                place = self.tdb.lookup_place(key)
             except LookupError:
                 raise CommandLineError(
                     "Unrecognized {}: {}".format(label, key)
                 )
+            echo_resolution(label, key, place)
+            return place
 
         def _resolve_system(label, fieldName):
             place = _resolve_place(label, fieldName)
@@ -187,7 +229,9 @@ class CommandEnv(TradeEnv):
             except LookupError:
                 pass
             try:
-                avoidPlaces.append(self.tdb.lookup_place(avoid))
+                place = self.tdb.lookup_place(avoid)
+                avoidPlaces.append(place)
+                echo_resolution('avoid', avoid, place)
                 continue
             except LookupError:
                 pass
@@ -207,7 +251,9 @@ class CommandEnv(TradeEnv):
             if not via:
                 continue
             try:
-                viaPlaces.append(self.tdb.lookup_place(via))
+                place = self.tdb.lookup_place(via)
+                viaPlaces.append(place)
+                echo_resolution('via', via, place)
             except LookupError:
                 raise CommandLineError(
                     "Unknown system/station: {}".format(via)

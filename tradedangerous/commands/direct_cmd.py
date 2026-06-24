@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import typing
 
-from .commandenv import Needs, ResultRow
+from .commandenv import Needs, ResultRow, echo_resolution
 from .exceptions import CommandLineError, NoDataError, GameDataError
 from .parsing import ParseArgument, MutuallyExclusiveGroup
 from tradedangerous import TradeException, TradeORM
@@ -232,6 +232,7 @@ def _resolve_place(cmdenv: CommandEnv, tdb: TradeORM, raw_name: str, what: str):
         place = tdb.lookup_place(raw_name)
     except LookupError as e:
         raise CommandLineError(f"Unknown {what}: {raw_name}") from e
+    echo_resolution(what, raw_name, place)
     cmdenv.DEBUG0("{}: {}", what, _place_label(place))
     return place
 

@@ -546,15 +546,26 @@ class TradeORM:
         slash_pos = norm.find("/")
 
         if slash_pos == -1:
-            # Bare name (optionally @-prefixed) names a SYSTEM. The syntax
-            # picks the namespace: a name with no slash is always a system,
-            # with no fall-through to a station search. To name a station, use
-            # the "/station" form. A leading @ is accepted as a redundant
-            # "this is a system" marker; @N disambiguation still flows through
-            # to lookup_system. LookupError ("unknown system") and
-            # AmbiguityError("System", ...) propagate from there.
+            # Bare name: try SYSTEM first, then fall back to a STATION search.
+            # An unambiguous system match wins before the station fallback is
+            # tried; an AmbiguityError from a duplicate system name propagates
+            # so the user disambiguates rather than getting a silent pick. @N
+            # disambiguation and partial system matching flow through
+            # lookup_system.
+            #
+            # A leading @ is the explicit "this is a system" annotation — the
+            # symmetric counterpart of the "/station" form — so @name is system
+            # only, with no station fallback.
             bare = norm[1:] if at_prefix else norm
-            return self.lookup_system(bare)
+            if at_prefix:
+                return self.lookup_system(bare)
+            try:
+                return self.lookup_system(bare)
+            except LookupError:
+                pass
+            return self._global_station_lookup(
+                bare, f"unknown system or station: {bare!r}"
+            )
 
         # Slow path: compound form with slash.
         # Strip leading @ annotation (not @N — that is suppressed here).
@@ -620,32 +631,44 @@ class TradeORM:
                 return self._resolve_place_tiers(name, exact_m, close_m, word_m, any_m)
         else:
             # Global station search (no system context).
-            results = (
-                self.session.query(orm.Station)
-                .filter(orm.Station.name == stn_part)
-                .all()
+            return self._global_station_lookup(
+                stn_part, f"unknown station: {name!r}"
             )
-            if not results:
-                # Partial global search — gather candidates via the normalised
-                # lookup_name superset, then tier them.
-                needle = normalize_str(stn_part)
-                stn_cands = (
-                    self.session.query(orm.Station)
-                    .filter(orm.Station.lookup_name.ilike(f"%{needle}%"))
-                    .all()
-                )
-                if not stn_cands:
-                    raise LookupError(f"unknown station: {name!r}")
-                exact_m, close_m, word_m, any_m = self._place_lookup(
-                    stn_part, stn_cands
-                )
-                return self._resolve_place_tiers(name, exact_m, close_m, word_m, any_m)
 
         if not results:
             raise LookupError(f"unknown station: {name!r}")
         if len(results) == 1:
             return results[0]
         raise AmbiguityError("Station", stn_part, results, key=lambda s: s.dbname())
+
+    def _global_station_lookup(self, term, miss_msg):
+        """Resolve a station by name without a system scope.
+
+        Exact name match first; on a miss, gather a normalised-name superset
+        via Station.lookup_name and tier it with _place_lookup. Returns the
+        unique match, raises AmbiguityError when several match, or
+        LookupError(miss_msg) when nothing does. Shared by the bare-name
+        station fallback and the "/station" global form.
+        """
+        exact = (
+            self.session.query(orm.Station)
+            .filter(orm.Station.name == term)
+            .all()
+        )
+        if exact:
+            if len(exact) == 1:
+                return exact[0]
+            raise AmbiguityError("Station", term, exact, key=lambda s: s.dbname())
+        needle = normalize_str(term)
+        cands = (
+            self.session.query(orm.Station)
+            .filter(orm.Station.lookup_name.ilike(f"%{needle}%"))
+            .all()
+        )
+        if not cands:
+            raise LookupError(miss_msg)
+        exact_m, close_m, word_m, any_m = self._place_lookup(term, cands)
+        return self._resolve_place_tiers(term, exact_m, close_m, word_m, any_m)
 
     def lookup_item(self, name: str | orm.Item) -> orm.Item:
         """Exact-then-normalised item lookup by name.
