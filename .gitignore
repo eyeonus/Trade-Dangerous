@@ -55,3 +55,8 @@ tests/fixtures/db_config.ini
 tmp/
 /*.ipynb
 TradeDangerous-listener/
+
+# --- Docs ---
+docs/_build/
+# Quarantined interim/refactor documentation: kept on disk, out of git.
+docs/_quarantine/
