@@ -1,1 +1,4 @@
 _build/
+
+# Quarantined interim/refactor documentation: kept on disk, out of git.
+_quarantine/
