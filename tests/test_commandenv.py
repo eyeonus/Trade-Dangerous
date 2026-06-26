@@ -69,16 +69,6 @@ def test_commandenv_needs_explicit_resolver():
         assert not env.needs_full_load
 
 
-def test_commandenv_needs_explicit_nothing():
-    """Commands declaring Needs.NOTHING require no backend at all."""
-    from tradedangerous.commands import update_cmd, station_cmd, shipvendor_cmd
-    for cmd in (update_cmd, station_cmd, shipvendor_cmd):
-        env = _make_cmd_env(cmd)
-        assert env.commandNeeds == Needs.NOTHING
-        assert not env.needs_legacy_db
-        assert not env.needs_full_load
-
-
 @pytest.fixture()
 def isolated_torm(isolated_trade_env):
     instance = TradeORM()

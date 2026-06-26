@@ -168,7 +168,7 @@ def test_execute_td_command_constructs_orm_for_resolver_commands():
 def test_execute_td_command_constructs_no_backend_for_nothing_commands():
     """A no-backend command builds neither backend; run() receives None."""
     fake_cmdenv = _make_fake_cmdenv(needs_resolver=False)
-    request = GuiCommandRequest(command='update')
+    request = GuiCommandRequest(command='noop')
 
     with (
         patch(
@@ -177,7 +177,7 @@ def test_execute_td_command_constructs_no_backend_for_nothing_commands():
         ),
         patch('tradedangerous.guiapp.td_backend.TradeORM') as torm_cls,
     ):
-        TdExecutor()._execute_td_command(request, ['trade.py', 'update'])
+        TdExecutor()._execute_td_command(request, ['trade.py', 'noop'])
 
     torm_cls.assert_not_called()
     fake_cmdenv.run.assert_called_once_with(None)
