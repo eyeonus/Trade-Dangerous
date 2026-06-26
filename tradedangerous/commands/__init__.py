@@ -20,10 +20,7 @@ from . import nav_cmd
 from . import olddata_cmd
 from . import run_cmd
 from . import sell_cmd
-from . import shipvendor_cmd
-from . import station_cmd
 from . import trade_cmd
-from . import update_cmd
 
 from tradedangerous import version
 

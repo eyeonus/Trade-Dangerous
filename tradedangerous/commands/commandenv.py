@@ -69,7 +69,7 @@ class Needs(Flag):
     attribute. Every command must declare one; a module with no declaration
     is treated as incomplete and fails during command setup.
     """
-    NOTHING  = 0        # no backend required (e.g. deprecated no-ops)
+    NOTHING  = 0        # no backend required (a command that touches no database)
     RESOLVER = auto()   # TradeORM resolver only
 
 
