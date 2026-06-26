@@ -2,6 +2,244 @@
 
 <!-- version list -->
 
+## v12.22.5 (2026-05-29)
+
+### Bug Fixes
+
+- Change default min to 2
+  ([`29147f0`](https://github.com/eyeonus/Trade-Dangerous/commit/29147f04d677675fb464ef778b531a5d41be7351))
+
+Lots of stations that don't buy have a demand of 1, and similar with supply of 1, so by default
+  stations have to have a minimum supply/demand of at least 2 to be considered a selling/buying
+  station respectively.
+
+This prevents the situation where a CMDR loads up on Hydrogen and lands in a station that produces
+  Hydrogen, for example.
+
+### Chores
+
+- **deps**: Bump idna from 3.11 to 3.15
+  ([#314](https://github.com/eyeonus/Trade-Dangerous/pull/314),
+  [`a5f3e5e`](https://github.com/eyeonus/Trade-Dangerous/commit/a5f3e5e4e4ef5b8285713f20f3124a6c35c138c5))
+
+Bumps [idna](https://github.com/kjd/idna) from 3.11 to 3.15. - [Release
+  notes](https://github.com/kjd/idna/releases) -
+  [Changelog](https://github.com/kjd/idna/blob/master/HISTORY.md) -
+  [Commits](https://github.com/kjd/idna/compare/v3.11...v3.15)
+
+--- updated-dependencies: - dependency-name: idna dependency-version: '3.15'
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+
+## v12.22.4 (2026-05-14)
+
+### Bug Fixes
+
+- **gui**: Restore system inputs in Local and Rare Search
+  ([#312](https://github.com/eyeonus/Trade-Dangerous/pull/312),
+  [`974e9d6`](https://github.com/eyeonus/Trade-Dangerous/commit/974e9d6c4936e12a2a1edeeaf4d7518fe12821ef))
+
+Use the correctly imported system autocomplete helper when building the Local and Rare Search GUI
+  sections.
+
+Previously these panes called `_build_system_autocomplete_input`, which is not defined, so the
+  affected search controls failed to render.
+
+### Chores
+
+- **deps**: Bump gitpython from 3.1.47 to 3.1.50
+  ([#310](https://github.com/eyeonus/Trade-Dangerous/pull/310),
+  [`3592d4f`](https://github.com/eyeonus/Trade-Dangerous/commit/3592d4fb8d30df5a722e47d6050c0ed3e1003e91))
+
+Bumps [gitpython](https://github.com/gitpython-developers/GitPython) from 3.1.47 to 3.1.50. -
+  [Release notes](https://github.com/gitpython-developers/GitPython/releases) -
+  [Changelog](https://github.com/gitpython-developers/GitPython/blob/main/CHANGES) -
+  [Commits](https://github.com/gitpython-developers/GitPython/compare/3.1.47...3.1.50)
+
+--- updated-dependencies: - dependency-name: gitpython dependency-version: 3.1.50
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump python-multipart from 0.0.26 to 0.0.27
+  ([#309](https://github.com/eyeonus/Trade-Dangerous/pull/309),
+  [`e6d3e68`](https://github.com/eyeonus/Trade-Dangerous/commit/e6d3e6818f9ddec93af3a02199dace84b73c150a))
+
+Bumps [python-multipart](https://github.com/Kludex/python-multipart) from 0.0.26 to 0.0.27. -
+  [Release notes](https://github.com/Kludex/python-multipart/releases) -
+  [Changelog](https://github.com/Kludex/python-multipart/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/Kludex/python-multipart/compare/0.0.26...0.0.27)
+
+--- updated-dependencies: - dependency-name: python-multipart dependency-version: 0.0.27
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump urllib3 from 2.6.3 to 2.7.0
+  ([#311](https://github.com/eyeonus/Trade-Dangerous/pull/311),
+  [`19927ec`](https://github.com/eyeonus/Trade-Dangerous/commit/19927ec125d58b8597708fc6da2052dd24a171d3))
+
+Bumps [urllib3](https://github.com/urllib3/urllib3) from 2.6.3 to 2.7.0. - [Release
+  notes](https://github.com/urllib3/urllib3/releases) -
+  [Changelog](https://github.com/urllib3/urllib3/blob/main/CHANGES.rst) -
+  [Commits](https://github.com/urllib3/urllib3/compare/2.6.3...2.7.0)
+
+--- updated-dependencies: - dependency-name: urllib3 dependency-version: 2.7.0
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+
+## v12.22.3 (2026-05-02)
+
+### Bug Fixes
+
+- **gui**: Pin NiceGUI below native activation API break
+  ([`291da24`](https://github.com/eyeonus/Trade-Dangerous/commit/291da24ad4e7a3c1a9bda24bc8aa2375889f088d))
+
+Pin NiceGUI below 3.11 on live because NiceGUI 3.11 passes an additional native_favicon argument to
+  native-mode activation. Our native close-handler shim still uses the NiceGUI 3.10 signature,
+  causing tradegui startup to fail with:
+
+TypeError: _activate_native_mode_with_close_handler() takes from 8 to 9 positional arguments but 10
+  were given
+
+This is a live containment fix only. v13/refactor will implement a proper compatibility update to
+  the native activation shim rather than relying on the dependency pin long-term.
+
+### Documentation
+
+- Add fixtures procedure
+  ([`d9e252d`](https://github.com/eyeonus/Trade-Dangerous/commit/d9e252daa5592b6957141a75149b9cd2fae9d852))
+
+- Update Create_Fixtures.md with regex cleanup instructions
+  ([`a6d0289`](https://github.com/eyeonus/Trade-Dangerous/commit/a6d028939997766c1e03abe2dac1f07439474e57))
+
+Added regex instructions for cleaning up system names in fixtures.
+
+
+## v12.22.2 (2026-04-26)
+
+### Bug Fixes
+
+- **import**: Skip stations with sentinel or invalid market IDs
+  ([`cc4c6b1`](https://github.com/eyeonus/Trade-Dangerous/commit/cc4c6b1a1673efd72e8a90e0de46f50b99c04da1))
+
+Station entries with market_id 0xFFFFFFFFFFFFFFFF (UINT64_MAX) overflow MariaDB BIGINT (signed) and
+  abort the import. Guard added to skip any station_id outside the valid signed BIGINT range and any
+  station with an empty name.
+
+- **spansh**: Skip stations with sentinel or invalid market IDs
+  ([`cc4c6b1`](https://github.com/eyeonus/Trade-Dangerous/commit/cc4c6b1a1673efd72e8a90e0de46f50b99c04da1))
+
+### Chores
+
+- **dependabot**: Archive dependabot.yml
+  ([`7bf1f57`](https://github.com/eyeonus/Trade-Dangerous/commit/7bf1f5754dc1d375399ba81b63e9fb90bf400b71))
+
+Really not convinced this is fit for purpose. Oliver's comment at the end says it's for security
+  updates only, but in fact this is collating a monthly digest of major updates. Security updates
+  come via a different pathway and they generally appear when GitHub has a matching advisory and the
+  repo/settings support security updates. We don't need this file for that to continue to happen.
+
+- **deps**: Bump gitpython from 3.1.46 to 3.1.47
+  ([#307](https://github.com/eyeonus/Trade-Dangerous/pull/307),
+  [`876f2b0`](https://github.com/eyeonus/Trade-Dangerous/commit/876f2b082bd0e4848b5cba60d0f6f424b8874b35))
+
+Bumps [gitpython](https://github.com/gitpython-developers/GitPython) from 3.1.46 to 3.1.47. -
+  [Release notes](https://github.com/gitpython-developers/GitPython/releases) -
+  [Changelog](https://github.com/gitpython-developers/GitPython/blob/main/CHANGES) -
+  [Commits](https://github.com/gitpython-developers/GitPython/compare/3.1.46...3.1.47)
+
+--- updated-dependencies: - dependency-name: gitpython dependency-version: 3.1.47
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump lxml from 6.0.3 to 6.1.0
+  ([#306](https://github.com/eyeonus/Trade-Dangerous/pull/306),
+  [`5b470b3`](https://github.com/eyeonus/Trade-Dangerous/commit/5b470b3298c5c2c607b379515ec35d82f1f8c369))
+
+Bumps [lxml](https://github.com/lxml/lxml) from 6.0.3 to 6.1.0. - [Release
+  notes](https://github.com/lxml/lxml/releases) -
+  [Changelog](https://github.com/lxml/lxml/blob/master/CHANGES.txt) -
+  [Commits](https://github.com/lxml/lxml/compare/lxml-6.0.3...lxml-6.1.0)
+
+--- updated-dependencies: - dependency-name: lxml dependency-version: 6.1.0
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump python-multipart from 0.0.24 to 0.0.26
+  ([#304](https://github.com/eyeonus/Trade-Dangerous/pull/304),
+  [`7250ef2`](https://github.com/eyeonus/Trade-Dangerous/commit/7250ef2a2c810c9d26d91d7f5ea3f467c85507d0))
+
+Bumps [python-multipart](https://github.com/Kludex/python-multipart) from 0.0.24 to 0.0.26. -
+  [Release notes](https://github.com/Kludex/python-multipart/releases) -
+  [Changelog](https://github.com/Kludex/python-multipart/blob/master/CHANGELOG.md) -
+  [Commits](https://github.com/Kludex/python-multipart/compare/0.0.24...0.0.26)
+
+--- updated-dependencies: - dependency-name: python-multipart dependency-version: 0.0.26
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump rich in the all-dependencies group
+  ([#305](https://github.com/eyeonus/Trade-Dangerous/pull/305),
+  [`8c8fcc7`](https://github.com/eyeonus/Trade-Dangerous/commit/8c8fcc747933e881a149b58d7dbe4af44492460d))
+
+Bumps the all-dependencies group with 1 update: [rich](https://github.com/Textualize/rich).
+
+Updates `rich` from 13.7.1 to 15.0.0 - [Release notes](https://github.com/Textualize/rich/releases)
+  - [Changelog](https://github.com/Textualize/rich/blob/master/CHANGELOG.md) -
+  [Commits](https://github.com/Textualize/rich/compare/v13.7.1...v15.0.0)
+
+--- updated-dependencies: - dependency-name: rich dependency-version: 15.0.0
+
+dependency-type: direct:production
+
+update-type: version-update:semver-major
+
+dependency-group: all-dependencies ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+### Continuous Integration
+
+- Ensure correct changelog updates on merge
+  ([`6eb4cb6`](https://github.com/eyeonus/Trade-Dangerous/commit/6eb4cb69d650eade22666c379ba566e44543cf22))
+
+- **dependabot script**: Fix tab where should be spaces
+  ([`d084914`](https://github.com/eyeonus/Trade-Dangerous/commit/d0849144add0c0db748589c1b00606e20b04b92d))
+
+Actively causing problems checking the dependabot update path as it failed at lint.
+
+
 ## v12.22.1 (2026-04-16)
 
 ### Bug Fixes
