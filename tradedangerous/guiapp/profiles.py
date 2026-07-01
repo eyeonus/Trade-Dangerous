@@ -275,6 +275,22 @@ class GuiStore:
         self.upsert_profile(profile)
         return profile
     
+    def delete_profile(self, profile_id: str | None) -> ShipProfile | None:
+        if profile_id is None or len(self.profiles) <= 1:
+            return None
+        
+        for index, profile in enumerate(self.profiles):
+            if profile.profile_id != profile_id:
+                continue
+            
+            deleted = self.profiles.pop(index)
+            if self.selected_profile_id == profile_id:
+                replacement_index = min(index, len(self.profiles) - 1)
+                self.selected_profile_id = self.profiles[replacement_index].profile_id
+            return deleted
+        
+        return None
+    
     def existing_profile_ids(self) -> set[str]:
         return {profile.profile_id for profile in self.profiles}
 

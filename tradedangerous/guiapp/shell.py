@@ -317,7 +317,13 @@ class AppShell:
             with ui.row().classes('w-full gap-2'):
                 ui.button('New', on_click=self._on_new_profile)
                 ui.button('Save', on_click=self._on_save_profile)
-                ui.button('Revert', on_click=self._on_revert_profile)    
+                ui.button('Revert', on_click=self._on_revert_profile)
+                ui.button(
+                    'Delete',
+                    on_click=self._on_delete_profile,
+                ).props('outline color=primary text-color=negative').style(
+                    'background: #000000;'
+                )   
     
     def _build_right_pane(self) -> None:
         self.right_pane_host = ui.column().classes('w-full gap-3 pl-2')
@@ -488,6 +494,54 @@ class AppShell:
         self.session.revert_ship_profile(self.store)
         self._refresh_ui()
         ui.notify('Ship profile reverted.')
+    
+    async def _on_delete_profile(self) -> None:
+        if len(self.store.profiles) <= 1:
+            ui.notify(
+                'At least one ship profile is required.',
+                color='warning',
+            )
+            return
+        
+        profile = self.store.get_profile(self.session.selected_profile_id)
+        if profile is None:
+            ui.notify('Selected ship profile no longer exists.', color='warning')
+            self._refresh_ui()
+            return
+        
+        profile_name = profile.ship_name or profile.profile_id
+        dialog = ui.dialog()
+        with dialog, ui.card().style('min-width: 28rem; max-width: 90vw;'):
+            ui.label('Delete ship profile?').classes('text-lg')
+            ui.label(
+                f'Are you sure you want to delete "{profile_name}"? '
+                'This cannot be undone.'
+            ).classes('whitespace-pre-wrap')
+            with ui.row().classes('w-full justify-end gap-2'):
+                ui.button(
+                    'Cancel',
+                    on_click=lambda: dialog.submit(False),
+                ).props('outline')
+                ui.button(
+                    'Delete',
+                    on_click=lambda: dialog.submit(True),
+                ).props('outline color=primary text-color=negative').style(
+                    'background: #000000;'
+                )
+        
+        if not await dialog:
+            return
+        
+        deleted = self.store.delete_profile(profile.profile_id)
+        if deleted is None:
+            ui.notify('Ship profile was not deleted.', color='warning')
+            self._refresh_ui()
+            return
+        
+        self.session.load_profile(self.store, self.store.selected_profile_id)
+        save_gui_store(self.store)
+        self._refresh_ui()
+        ui.notify(f'Deleted ship profile "{profile_name}".')
 
     def _on_import_from_journal(self) -> None:
         # Read current commander/ship facts from the configured (or
