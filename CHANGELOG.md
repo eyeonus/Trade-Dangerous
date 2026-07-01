@@ -2,6 +2,137 @@
 
 <!-- version list -->
 
+## v13.0.0 (2026-07-01)
+
+### Chores
+
+- **deps**: Bump aiohttp from 3.13.5 to 3.14.0
+  ([#316](https://github.com/eyeonus/Trade-Dangerous/pull/316),
+  [`550e078`](https://github.com/eyeonus/Trade-Dangerous/commit/550e078358e1302eaa4da68b3bf7d88c60d89156))
+
+--- updated-dependencies: - dependency-name: aiohttp dependency-version: 3.14.0
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump aiohttp from 3.14.0 to 3.14.1
+  ([#321](https://github.com/eyeonus/Trade-Dangerous/pull/321),
+  [`1fbda1b`](https://github.com/eyeonus/Trade-Dangerous/commit/1fbda1bce5f949d647d494a6370495c67eee6dff))
+
+--- updated-dependencies: - dependency-name: aiohttp dependency-version: 3.14.1
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump cryptography from 46.0.7 to 48.0.1
+  ([#320](https://github.com/eyeonus/Trade-Dangerous/pull/320),
+  [`4ec65d2`](https://github.com/eyeonus/Trade-Dangerous/commit/4ec65d21baadc8d017294394024c7d51ad6067cc))
+
+Bumps [cryptography](https://github.com/pyca/cryptography) from 46.0.7 to 48.0.1. -
+  [Changelog](https://github.com/pyca/cryptography/blob/main/CHANGELOG.rst) -
+  [Commits](https://github.com/pyca/cryptography/compare/46.0.7...48.0.1)
+
+--- updated-dependencies: - dependency-name: cryptography dependency-version: 48.0.1
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump python-multipart from 0.0.27 to 0.0.31
+  ([#318](https://github.com/eyeonus/Trade-Dangerous/pull/318),
+  [`66ca1c8`](https://github.com/eyeonus/Trade-Dangerous/commit/66ca1c8f8e19cbb23e70021cefb518e9fa955849))
+
+Bumps [python-multipart](https://github.com/Kludex/python-multipart) from 0.0.27 to 0.0.31. -
+  [Release notes](https://github.com/Kludex/python-multipart/releases) -
+  [Changelog](https://github.com/Kludex/python-multipart/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/Kludex/python-multipart/compare/0.0.27...0.0.31)
+
+--- updated-dependencies: - dependency-name: python-multipart dependency-version: 0.0.31
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump starlette from 1.0.0 to 1.0.1
+  ([#317](https://github.com/eyeonus/Trade-Dangerous/pull/317),
+  [`19a6f42`](https://github.com/eyeonus/Trade-Dangerous/commit/19a6f42f0b76216c1650e1d8255c04c2eec72834))
+
+Bumps [starlette](https://github.com/Kludex/starlette) from 1.0.0 to 1.0.1. - [Release
+  notes](https://github.com/Kludex/starlette/releases) -
+  [Changelog](https://github.com/Kludex/starlette/blob/main/docs/release-notes.md) -
+  [Commits](https://github.com/Kludex/starlette/compare/1.0.0...1.0.1)
+
+--- updated-dependencies: - dependency-name: starlette dependency-version: 1.0.1
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump starlette from 1.0.1 to 1.3.1
+  ([#319](https://github.com/eyeonus/Trade-Dangerous/pull/319),
+  [`3d507e9`](https://github.com/eyeonus/Trade-Dangerous/commit/3d507e9c8fbcb4e912d7cbf1a0cb47f7a89ae689))
+
+Bumps [starlette](https://github.com/Kludex/starlette) from 1.0.1 to 1.3.1. - [Release
+  notes](https://github.com/Kludex/starlette/releases) -
+  [Changelog](https://github.com/Kludex/starlette/blob/main/docs/release-notes.md) -
+  [Commits](https://github.com/Kludex/starlette/compare/1.0.1...1.3.1)
+
+--- updated-dependencies: - dependency-name: starlette dependency-version: 1.3.1
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps-dev**: Bump uv from 0.11.6 to 0.11.15
+  ([#315](https://github.com/eyeonus/Trade-Dangerous/pull/315),
+  [`9b16c81`](https://github.com/eyeonus/Trade-Dangerous/commit/9b16c8192af58dcc04ce05735cb2060913735a23))
+
+Bumps [uv](https://github.com/astral-sh/uv) from 0.11.6 to 0.11.15. - [Release
+  notes](https://github.com/astral-sh/uv/releases) -
+  [Changelog](https://github.com/astral-sh/uv/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/astral-sh/uv/compare/0.11.6...0.11.15)
+
+--- updated-dependencies: - dependency-name: uv dependency-version: 0.11.15
+
+dependency-type: direct:development ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+### Features
+
+- Release v13 — rebuilt route planner and ORM-backed core
+  ([`37bd909`](https://github.com/eyeonus/Trade-Dangerous/commit/37bd909c9e5ebe1daa049c8bac34624f2732303e))
+
+Ground-up rewrite of the trade run route engine, with a new database-backed data layer across the
+  whole tool. See docs/RELEASE_NOTES_v13.0.0.md for the full picture and docs/CHANGELOGv13.md for
+  the change list.
+
+BREAKING CHANGE: v13 changes the database schema and is not backward-compatible. A clean rebuild is
+  required — existing databases are not upgraded in place, and the data feed no longer serves v12
+  clients.
+
+### Breaking Changes
+
+- V13 changes the database schema and is not backward-compatible. A clean rebuild is required —
+  existing databases are not upgraded in place, and the data feed no longer serves v12 clients.
+
+
 ## v12.22.5 (2026-05-29)
 
 ### Bug Fixes
