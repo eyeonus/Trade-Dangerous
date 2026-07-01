@@ -2,6 +2,43 @@
 
 <!-- version list -->
 
+## v13.1.0 (2026-07-01)
+
+### Bug Fixes
+
+- Handle broken pipes without barfing
+  ([`2eb460e`](https://github.com/eyeonus/Trade-Dangerous/commit/2eb460e35cbc323318fcdf14533f8f92c5652652))
+
+### Chores
+
+- **deps**: Bump python-engineio from 4.13.1 to 4.13.2
+  ([#323](https://github.com/eyeonus/Trade-Dangerous/pull/323),
+  [`9e8eb69`](https://github.com/eyeonus/Trade-Dangerous/commit/9e8eb6918de6d71748e2a2c581f148f391b1073e))
+
+Bumps [python-engineio](https://github.com/miguelgrinberg/python-engineio) from 4.13.1 to 4.13.2. -
+  [Release notes](https://github.com/miguelgrinberg/python-engineio/releases) -
+  [Changelog](https://github.com/miguelgrinberg/python-engineio/blob/main/CHANGES.md) -
+  [Commits](https://github.com/miguelgrinberg/python-engineio/compare/v4.13.1...v4.13.2)
+
+--- updated-dependencies: - dependency-name: python-engineio dependency-version: 4.13.2
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+### Documentation
+
+- Update copyright year for Jonathan 'eyeonus' Jones
+  ([`84ebf59`](https://github.com/eyeonus/Trade-Dangerous/commit/84ebf59cc2577dc887d86d83eb8f891f4184bc4a))
+
+### Features
+
+- **gui**: Add delete button for removing ship profiles
+  ([`a16c9b4`](https://github.com/eyeonus/Trade-Dangerous/commit/a16c9b4e2dac543fadf77544fa44cef37e456b95))
+
+
 ## v13.0.0 (2026-07-01)
 
 ### Chores
