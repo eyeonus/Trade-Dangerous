@@ -45,6 +45,12 @@ but are retained for reference and historical context.
   Small maintenance helper for normalizing indentation around blank lines in
   Python files. Retained as a historical repo utility.
 
+- **dependabot.yml**  
+  Archived from `.github/dependabot.yml` in commit `7bf1f57`. The file was a
+  monthly grouped Dependabot update configuration and is retained only as a
+  historical repo configuration snapshot. GitHub security advisories and alert
+  handling do not depend on this archived file remaining active.
+
 ## Archived Scripts
 
 The `scripts/` folder has been fully archived.  
@@ -60,6 +66,29 @@ maintained. Notable examples:
 - `README.txt` — bootstrap instructions.
 
 If needed in future, they can be restored from `archive/scripts/`.
+
+## Archived Misc Utilities
+
+The `archive/misc/` folder contains standalone helper scripts moved out of
+`tradedangerous/misc/` because they have no evidenced route from the current
+live entry surfaces (`trade`, `tradegui`), CLI command dispatch, GUI execution
+adapters, or plugin/import runtime hooks.
+
+First packet archived under Chapter C:
+
+- `checkpricebounds.py`
+- `coord64.py`
+- `csvdialect.py`
+- `derp-sentinel.py`
+- `diff-system-csvs.py`
+- `eddb.py`
+- `eddn.py`
+- `edsm.py`
+- `importeddbstats.py`
+- `prices-json-exp.py`
+
+These files are retained for reference, but are not part of supported current
+workflows.
 
 # Archived Docs Notes
 

@@ -22,7 +22,9 @@ class TestTradeCommand:
         captured = capsys.readouterr()
         output = strip_ansi(captured.out)
         
-        assert "trades found between Sol/Abraham Lincoln and Sol/Burnell Station" in output
+        assert "From: Sol/Abraham Lincoln" in output
+        assert "To: Sol/Burnell Station" in output
+        assert "trades found" in output
         assert "Hydrogen Fuel" in output
         assert re.search(r"\bHydrogen Fuel\b", output)
         assert re.search(r"\bProfit\b", output)
@@ -49,12 +51,14 @@ class TestTradeCommand:
             line
             for line in output.splitlines()
             if line.strip()
-            and "trades found between" not in line
+            and "trades found" not in line
+            and "From:" not in line
             and "Item" not in line
             and set(line.strip()) != {"-"}
         ]
-        
-        assert "trades found between Sol/Abraham Lincoln and Sol/Burnell Station" in output
+
+        assert "From: Sol/Abraham Lincoln" in output
+        assert "To: Sol/Burnell Station" in output
         assert len(data_lines) == 1
         assert "Hydrogen Fuel" in data_lines[0]
     
@@ -66,7 +70,7 @@ class TestTradeCommand:
     ):
         from types import SimpleNamespace
         
-        import tradedangerous.commands.trade_cmd as trade_cmd_module
+        import tradedangerous.commands.direct_cmd as direct_cmd_module
         
         class FakeGame:
             def __init__(self, tdenv=None, extra_jsons=None):
@@ -76,8 +80,8 @@ class TestTradeCommand:
             def get_status(self):
                 return SimpleNamespace(cargo_space=7, cargo_load=2)
         
-        monkeypatch.setattr(trade_cmd_module, "EliteGame", FakeGame)
-        monkeypatch.setattr(trade_cmd_module, "require_game_data", lambda *args, **kwargs: None)
+        monkeypatch.setattr(direct_cmd_module, "EliteGame", FakeGame)
+        monkeypatch.setattr(direct_cmd_module, "require_game_data", lambda *args, **kwargs: None)
         
         trade = isolated_trade_env["trade"]
         

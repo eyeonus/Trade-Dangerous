@@ -56,6 +56,13 @@ class BaseColorTheme:
     itm_name:   str = ""        # name of that unit
     itm_price:  str = ""        # how much does it cost?
     
+    # Rich Text styles used by structured renderers.
+    text_seq_first:     str = ""    # first station/system in a route
+    text_seq_last:      str = ""    # final station/system in a route
+    text_route_unload:  str = ""    # intermediate unload/dock station
+    text_itm_units:     str = ""    # quantity field in route/item tables
+    text_itm_name:      str = ""    # commodity/item name in route/item tables
+    
     def render(self, renderable: Any, style: str) -> str:  # pragma: no cover, pylint: disable=unused-argument
         """ Renders the given printable item with the given style; BaseColorTheme simply uses a string transformation. """
         if isinstance(renderable, str):
@@ -82,13 +89,12 @@ class BasicRichColorTheme(BaseColorTheme):
             return renderable if isinstance(renderable, str) else str(renderable)
         return f"{style_attr}{renderable}{self.CLOSE}"
 
-
 class RichColorTheme(BasicRichColorTheme):
     """ Demonstrates how you might augment the rich theme with colors to be used fin e.g tradecal. """
-    DEBUG = ":spider_web:"
-    NOTE  = ":information_source:"
-    WARN  = ":warning:"
-    INFO  = ":gear:"
+    DEBUG = "#"
+    NOTE  = "NOTE"
+    WARN  = "WARNING"
+    INFO  = "INFO"
     
     # e.g. First station
     seq_first = "[cyan]"
@@ -98,7 +104,13 @@ class RichColorTheme(BasicRichColorTheme):
     # Included as examples of how you might use this to manipulate tradecal output.
     itm_units = "[yellow3]"
     itm_name  = "[yellow]"
-    itm_price = "[bold]"
+    
+    # Rich Text styles used by the route/detail renderer.
+    text_seq_first = "cyan"
+    text_seq_last = "blue"
+    text_route_unload = "bright_blue"
+    text_itm_units = "yellow3"
+    text_itm_name = "yellow"
 
 
 class BaseConsoleIOMixin:
@@ -237,6 +249,37 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
             install_rich_traces(console=STDERR, show_locals=True, extra_lines=2)
         
         self.theme = RichColorTheme() if self.__dict__['color'] else BasicRichColorTheme()
+    
+    def time_block(self, label: str, level: int = 0):
+        """
+        Return a lightweight context manager that records elapsed time for a named
+        phase and emits it through DEBUG<level> when that debug level is enabled.
+        """
+        if int(getattr(self, "debug", 0) or 0) <= level:
+            class _NullTimingBlock:
+                def __enter__(self_nonlocal):
+                    return self_nonlocal
+                
+                def __exit__(self_nonlocal, exc_type, exc, tb):
+                    return False
+            
+            return _NullTimingBlock()
+        
+        import time
+        
+        logger = getattr(self, f"DEBUG{level}")
+        
+        class _TimingBlock:
+            def __enter__(self_nonlocal):
+                self_nonlocal.started = time.perf_counter()
+                return self_nonlocal
+            
+            def __exit__(self_nonlocal, exc_type, exc, tb):
+                elapsed_ms = (time.perf_counter() - self_nonlocal.started) * 1000.0
+                logger("TIMING {}: {:.3f}ms", label, elapsed_ms)
+                return False
+        
+        return _TimingBlock()
     
     @staticmethod
     def __disabled_uprint(*args: Any, **kwargs: Any) -> None:

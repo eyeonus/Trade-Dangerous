@@ -6,6 +6,7 @@ import _thread
 import argparse
 import multiprocessing
 import os
+from pathlib import Path
 import socket
 import signal
 import sys
@@ -21,6 +22,15 @@ from .profiles import (
     load_gui_store,
 )
 from .shell import AppShell, COMMAND_OPTIONS
+from . import native_bridge
+
+# Let the user select (and so manually copy) text in the native window. pywebview
+# disables document text selection by default; NiceGUI forwards native window
+# arguments through app.native.window_args. This is set at module import — not
+# inside main() — so it also takes effect in the spawned native-window process,
+# which re-imports this module and reads core.app.native.window_args when it
+# creates the window (spawn does not inherit the parent's runtime state).
+app.native.window_args['text_select'] = True
 
 _ORIGINAL_NATIVE_ACTIVATE: Callable[..., None] | None = None
 _NATIVE_WINDOW_CLOSE_SHARED_STATE: Any = None
@@ -165,14 +175,16 @@ def _open_window_with_close_handler(
     method_queue: Any,
     response_queue: Any,
     event_sender: Any,
+    native_favicon: str | Path | None,
     shared_state: Any,
+    checklist_queue: Any = None,
 ) -> None:
     from nicegui import core, helpers
-    from nicegui.native import native_mode
-
+    from nicegui.native import native_mode, window_icon
+    
     while not helpers.is_port_open(host, port):
         time.sleep(0.1)
-
+    
     window_kwargs = {
         'url': f'{protocol}://{host}:{port}',
         'title': title,
@@ -185,20 +197,89 @@ def _open_window_with_close_handler(
     native_mode.webview.settings.update(**core.app.native.settings)
     window = native_mode.webview.create_window(**window_kwargs)
     assert window is not None
-
+    
     closed = Event()
     window.events.closed += closed.set
     if shared_state is not None:
         _bind_native_close_handler(window, shared_state)
     native_mode._bind_pywebview_events(window, event_sender)
+    
+    if sys.platform == 'win32' and native_favicon is not None:
+        def on_shown() -> None:
+            window_icon.apply_icon(
+                window.native.Handle.ToInt32(),
+                title,
+                str(native_favicon),
+            )
+            window.events.shown -= on_shown
+        
+        window.events.shown += on_shown
+    
     native_mode._start_window_method_executor(
         window,
         method_queue,
         response_queue,
         closed,
     )
-    native_mode.webview.start(**core.app.native.start_args)
 
+    # Detached helper windows (the Run checklist). The server process puts
+    # {'url', 'title'} requests on checklist_queue; each becomes its own
+    # pywebview window created here in the GUI process. They carry no close
+    # veto -- closing one leaves the main window running. When the main window
+    # closes we destroy any survivors so webview.start() can return and the
+    # process exits cleanly.
+    checklist_windows: list[Any] = []
+
+    def _apply_checklist_window_icon(win: Any, win_title: str) -> None:
+        # Give detached checklist windows the same Windows icon as the main
+        # window. Best-effort: an icon failure must never break the window.
+        try:
+            window_icon.apply_icon(
+                win.native.Handle.ToInt32(),
+                win_title,
+                str(native_favicon),
+            )
+        except Exception:
+            pass
+
+    def _serve_checklist_requests() -> None:
+        while not closed.is_set():
+            try:
+                request = checklist_queue.get(timeout=0.2)
+            except Exception:
+                continue
+            if not request:
+                continue
+            try:
+                window_title = request.get('title', 'Run Checklist')
+                extra = native_mode.webview.create_window(
+                    window_title,
+                    request.get('url'),
+                    width=520,
+                    height=720,
+                )
+                checklist_windows.append(extra)
+                if sys.platform == 'win32' and native_favicon is not None:
+                    extra.events.shown += (
+                        lambda win=extra, title=window_title:
+                        _apply_checklist_window_icon(win, title)
+                    )
+            except Exception:
+                pass
+
+    def _destroy_checklist_windows() -> None:
+        for extra in list(checklist_windows):
+            try:
+                extra.destroy()
+            except Exception:
+                pass
+        checklist_windows.clear()
+
+    if checklist_queue is not None:
+        window.events.closed += _destroy_checklist_windows
+        Thread(target=_serve_checklist_requests, daemon=True).start()
+
+    native_mode.webview.start(**core.app.native.start_args)
 
 # This is a local shim around NiceGUI's native activation path. It exists only
 # to thread our shared close-state into the spawned pywebview process without
@@ -213,9 +294,8 @@ def _activate_native_mode_with_close_handler(
     fullscreen: bool,
     frameless: bool,
     shutdown_event: Any = None,
+    native_favicon: str | Path | None = None,
 ) -> None:
-    global _ORIGINAL_NATIVE_ACTIVATE
-
     if _NATIVE_WINDOW_CLOSE_SHARED_STATE is None:
         assert _ORIGINAL_NATIVE_ACTIVATE is not None
         _ORIGINAL_NATIVE_ACTIVATE(
@@ -228,18 +308,19 @@ def _activate_native_mode_with_close_handler(
             fullscreen,
             frameless,
             shutdown_event,
+            native_favicon,
         )
         return
-
+    
     from nicegui import core, optional_features
     from nicegui.logging import log
     from nicegui.native import native, native_mode
     from nicegui.server import Server
-
+    
     def check_shutdown() -> None:
         while process.is_alive():
             time.sleep(0.1)
-
+        
         server = getattr(Server, 'instance', None)
         _shutdown_debug_note('native window process exited', server=server)
         if shutdown_event is not None:
@@ -249,30 +330,41 @@ def _activate_native_mode_with_close_handler(
             _shutdown_debug_note('setting server should_exit', server=server)
             server.should_exit = True
             _shutdown_debug_note('server should_exit set', server=server)
-
+        
         next_log_at = time.monotonic() + 1.0
         while not core.app.is_stopped:
             if time.monotonic() >= next_log_at:
                 _shutdown_debug_note('waiting for app stop', server=server)
                 next_log_at = time.monotonic() + 1.0
             time.sleep(0.1)
-
+        
         _shutdown_debug_note('app reported stopped', server=server)
         _thread.interrupt_main()
         native_mode.event_manager.stop()
         native.remove_queues()
         _shutdown_debug_note('native queues removed', server=server)
-
+    
     if not optional_features.has('webview'):
         log.error(
             'Native mode is not supported in this configuration.\n'
             'Please run "pip install pywebview" to use it.'
         )
         sys.exit(1)
-
+    
     multiprocessing.freeze_support()
     native.create_queues()
     native_mode.event_manager.start()
+    # Channel for detached helper windows (the Run checklist). The server
+    # process puts requests here; the spawned window process serves them.
+    checklist_queue = multiprocessing.Queue()
+    # Requests are fire-and-forget, so never let the queue's background feeder
+    # thread block interpreter shutdown -- an unmanaged mp.Queue can otherwise
+    # hang the process (and so the terminal) on exit, notably on Windows.
+    checklist_queue.cancel_join_thread()
+    native_bridge.set_checklist_window_channel(
+        checklist_queue,
+        f'{protocol}://{host}:{port}',
+    )
     args = (
         protocol,
         host,
@@ -285,7 +377,9 @@ def _activate_native_mode_with_close_handler(
         native.method_queue,
         native.response_queue,
         native.event_sender,
+        native_favicon,
         _NATIVE_WINDOW_CLOSE_SHARED_STATE,
+        checklist_queue,
     )
     process = multiprocessing.Process(
         target=_open_window_with_close_handler,
@@ -293,7 +387,7 @@ def _activate_native_mode_with_close_handler(
         daemon=True,
     )
     process.start()
-
+    
     Thread(target=check_shutdown, daemon=True).start()
 
 
@@ -476,7 +570,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         '--port',
         type=_parse_port_arg,
         default=None,
-        help='Port for the local NiceGUI server. Must be between 8000 and 8999; overrides the saved setting for this launch only. When omitted, Trade Dangerous tries 8542 first and then falls back to a random local port.',
+        help=(
+            'Port for the local NiceGUI server. Must be between 8000 and 8999; '
+            'overrides the saved setting for this launch only. When omitted, '
+            'Trade Dangerous tries 8542 first and then falls back to a random '
+            'local port.'
+        ),
     )
     return parser
 
@@ -504,6 +603,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         shell = AppShell(store, window_close_state=window_close_state)
         shell.build()
 
+    favicon_path = Path(__file__).resolve().parents[2] / 'tradedangerouscrest.ico'
+    favicon = str(favicon_path) if favicon_path.exists() else None
+    
     try:
         ui.run(
             host=args.host,
@@ -511,6 +613,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             port=resolved_port,
             reload=False,
             title='Trade Dangerous',
+            favicon=favicon,
             window_size=(1550, 1000),
         )
     finally:

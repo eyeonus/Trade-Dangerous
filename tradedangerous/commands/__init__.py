@@ -11,22 +11,18 @@ from . import parsing
 
 from . import buildcache_cmd
 from . import buy_cmd
+from . import direct_cmd
 from . import export_cmd
 from . import import_cmd
 from . import local_cmd
 from . import market_cmd
 from . import nav_cmd
 from . import olddata_cmd
-from . import rares_cmd
 from . import run_cmd
 from . import sell_cmd
-from . import shipvendor_cmd
-from . import station_cmd
 from . import trade_cmd
-from . import update_cmd
 
 from tradedangerous import version
-from tradedangerous.tradeenv import ENV_DEFAULTS
 
 
 thismodule = sys.modules[__name__]
@@ -214,12 +210,7 @@ class CommandIndex:
                     help = 'Reduce level of detail in output.',
                     default = 0, required = False, action = 'count',
                 )
-        stdArgs.add_argument('--link-ly', '-L',
-                    help = 'Maximum lightyears between systems to be considered linked.',
-                    type = float,
-                    default = ENV_DEFAULTS['maxSystemLinkLy'], dest = 'maxSystemLinkLy',
-                )
-        
+
         fromfilePath = _findFromFile(cmdModule.name)
         if fromfilePath:
             argv.insert(2, f'{fromfile_prefix}{fromfilePath}')

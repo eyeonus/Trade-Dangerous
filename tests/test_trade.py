@@ -63,7 +63,7 @@ class TestTrade:
         
         trade([PROG, "nav", "--ly-per=50", "sol", "Alpha Centauri"])
         captured = capsys.readouterr()
-        
+
         assert "Sol" in captured.out
         assert "Alpha Centauri" in captured.out
     

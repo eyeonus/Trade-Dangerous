@@ -16,14 +16,14 @@ import requests
 import time
 import typing
 
-from sqlalchemy import func, delete, select, exists, text
+from sqlalchemy import delete, exists, func, insert, select, text
 
 from tradedangerous import plugins, transfers, TradeException
-from tradedangerous import cache as td_cache
+from tradedangerous.db import import_csv as td_cache
 from tradedangerous.db import orm_models as SA, lifecycle
 from tradedangerous.db.utils import (
     begin_bulk_mode, end_bulk_mode,
-    get_import_batch_size, get_upsert_fn,
+    get_import_batch_size,
 )
 from tradedangerous.fs import file_line_count
 from tradedangerous.misc import progress as pbar
@@ -83,23 +83,6 @@ def _make_station_id_lookup(tdenv: TradeEnv, session: Session) -> frozenset[int]
     return frozenset(r[0] for r in rows)
 
 
-def _collect_station_modified_times(tdenv: TradeEnv, session: Session) -> dict[int, int]:
-    """Helper: build a list of the last modified time for all stations by id (epoch seconds)."""
-    tdenv.DEBUG0("Getting last-update times for stations...")
-    rows = (
-        session.query(
-            SA.StationItem.station_id,
-            func.min(SA.StationItem.modified),
-        )
-        .group_by(SA.StationItem.station_id)
-        .all()
-    )
-    return {
-        station_id: int(modified.timestamp()) if modified else 0
-        for station_id, modified in rows
-    }
-
-
 class ImportPlugin(plugins.ImportPluginBase):
     """
     Import plugin that uses data files from
@@ -107,17 +90,14 @@ class ImportPlugin(plugins.ImportPluginBase):
     """
     pluginOptions = {
         'item':         "Update Items using latest file from server. (Implies '-O system,station')",
-        'rare':         "Update RareItems using latest file from server. (Implies '-O system,station')",
         'ship':         "Update Ships using latest file from server.",
-        'upgrade':      "Update Upgrades using latest file from server.",
         'system':       "Update Systems using latest file from server.",
         'station':      "Update Stations using latest file from server. (Implies '-O system')",
         'shipvend':     "Update ShipVendors using latest file from server. (Implies '-O system,station,ship')",
-        'upvend':       "Update UpgradeVendors using latest file from server. (Implies '-O system,station,upgrade')",
         'listings':     "Update market data using latest listings.csv dump. (Implies '-O item,system,station')",
         'all':          "Update everything with latest dumpfiles. (Regenerates all tables)",
         'clean':        "Erase entire database and rebuild from empty. (Regenerates all tables.)",
-        'skipvend':     "Don't regenerate ShipVendors or UpgradeVendors. (Supercedes '-O all', '-O clean'.)",
+        'skipvend':     "Don't regenerate ShipVendors. (Supercedes '-O all', '-O clean'.)",
         'force':        "Force regeneration of selected items even if source file not updated since previous run. "
                         "(Useful for updating Vendor tables if they were skipped during a '-O clean' run.)",
         'purge':        "Remove any empty systems that previously had fleet carriers.",
@@ -136,17 +116,12 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.dataPath = os.environ.get('TD_EDDB') or self.tdenv.tmpDir
         self.categoriesPath = Path("Category.csv")
         self.commoditiesPath = Path("Item.csv")
-        self.rareItemPath = Path("RareItem.csv")
         self.shipPath = Path("Ship.csv")
         self.urlShipyard = "https://raw.githubusercontent.com/EDCD/FDevIDs/master/shipyard.csv"
-        self.FDevShipyardPath = self.tdb.dataPath / Path("FDevShipyard.csv")
+        self.FDevShipyardPath = self.tdb.data_dir / Path("FDevShipyard.csv")
         self.shipVendorPath = Path("ShipVendor.csv")
         self.stationsPath = Path("Station.csv")
         self.sysPath = Path("System.csv")
-        self.upgradesPath = Path("Upgrade.csv")
-        self.urlOutfitting = "https://raw.githubusercontent.com/EDCD/FDevIDs/master/outfitting.csv"
-        self.FDevOutfittingPath = self.tdb.dataPath / Path("FDevOutfitting.csv")
-        self.upgradeVendorPath = Path("UpgradeVendor.csv")
         self.listingsPath = Path("listings.csv")
         self.liveListingsPath = Path("listings-live.csv")
         self.pricesPath = Path("listings.prices")
@@ -189,10 +164,10 @@ class ImportPlugin(plugins.ImportPluginBase):
 
     def _eddblink_state_path(self) -> Path:
         """
-        Single sidecar state file stored in TD_DATA (tdb.dataPath).
+        Single sidecar state file stored in TD_DATA (tdb.data_dir).
         This is the authoritative record of "downloaded from server" identity.
         """
-        return (self.tdb.dataPath / "eddblink_state.json").resolve()
+        return (self.tdb.data_dir / "eddblink_state.json").resolve()
 
     def _load_eddblink_state(self) -> dict:
         state_path = self._eddblink_state_path()
@@ -238,7 +213,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         rebuild_cmd = "trade import -P eddblink -O clean,skipvend"
 
         try:
-            with self.tdb.Session() as session:
+            with self.tdb.session_maker() as session:
                 row = session.execute(
                     select(SA.Category.category_id, SA.Category.name)
                     .where(SA.Category.category_id == 1)
@@ -278,7 +253,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         (e.g. template-copied files) and will be downloaded.
         """
         if path not in (self.liveListingsPath, self.listingsPath):
-            localPath = Path(self.tdb.dataPath, path)
+            localPath = Path(self.tdb.data_dir, path)
         else:
             localPath = Path(self.dataPath, path)
 
@@ -366,7 +341,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             }
 
             # Hash only the small “truth-critical” files (cheap + detects template clobber cleanly).
-            if key in ("Category.csv", "RareItem.csv", "Item.csv"):
+            if key in ("Category.csv", "Item.csv"):
                 new_entry["sha256"] = self._file_sha256(localPath)
 
             files_state[key] = new_entry
@@ -384,7 +359,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         self.tdenv.NOTE("Purging Systems with no stations: Start time = {}", self.now())
         
-        with self.tdb.Session.begin() as session:
+        with self.tdb.session_maker.begin() as session:
             subq = select(SA.Station.system_id).where(SA.Station.system_id == SA.System.system_id)
             stmt = delete(SA.System).where(~exists(subq))
             session.execute(stmt)
@@ -394,11 +369,17 @@ class ImportPlugin(plugins.ImportPluginBase):
     def importListings(self, listings_file):
         """
         Updates the market data (StationItem) using `listings_file`.
-        
-        Rules:
-          - If a row doesn't exist in DB → insert (copy CSV exactly).
-          - If it exists → update only when CSV.modified > DB.modified.
-          - If CSV.modified <= DB.modified → do nothing (no field changes).
+
+        Station snapshot write rule (docs/station_snapshot_write_rule.md):
+        a station's market arrives as a whole snapshot, never piecemeal,
+        so per station:
+          - If the database already holds a newer row for the station →
+            skip the WHOLE station (write nothing, delete nothing).
+          - Otherwise → delete every existing row for the station and
+            insert the snapshot's rows, all at the snapshot timestamp.
+        Per-row merging is forbidden: it leaves older catalogue extras
+        underneath fresher data, which is exactly the mixed-timestamp
+        fault this rule removes.
         """
         listings_path = Path(self.dataPath, listings_file).absolute()
         from_live = listings_path != Path(self.dataPath, self.listingsPath).absolute()
@@ -415,7 +396,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         )
         
         # Prefetch item/station IDs for early filtering
-        with self.tdb.Session() as session:
+        with self.tdb.session_maker() as session:
             item_lookup = _make_item_id_lookup(self.tdenv, session)
             station_lookup = _make_station_id_lookup(self.tdenv, session)
         
@@ -423,31 +404,28 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         with pbar.Progress(total, 40, label="Processing", style=pbar.LongRunningCountBar) as prog, \
                listings_path.open("r", encoding="utf-8", errors="ignore") as fh, \
-               self.tdb.Session() as session:
+               self.tdb.session_maker() as session:
             
             token = begin_bulk_mode(session, profile="eddblink", phase="incremental")
             try:
                 commit_batch = get_import_batch_size(session, profile="eddblink")
                 execute_batch = commit_batch or 10000  # cap statement size even if single final commit
-                
-                # Upsert: keys + guarded fields (including from_live), guarded by 'modified'
+
                 table = SA.StationItem.__table__
-                key_cols = ("station_id", "item_id")
-                update_cols = (
-                    "demand_price", "demand_units", "demand_level",
-                    "supply_price", "supply_units", "supply_level",
-                    "from_live",
-                )
-                upsert = get_upsert_fn(
-                    session,
-                    table,
-                    key_cols=key_cols,
-                    update_cols=update_cols,
-                    modified_col="modified",
-                    always_update=(),   # IMPORTANT: no unconditional updates
-                )
-                
-                batch_rows = []
+
+                # The skip test needs each station's newest existing row.
+                # One GROUP BY scan up front beats ~100k per-station MAX()
+                # probes and is dialect-neutral. Updated in place as
+                # snapshots land so a station repeated later in the file
+                # compares against what was just written.
+                newest_existing = {
+                    int(sid): newest
+                    for sid, newest in session.execute(
+                        select(table.c.station_id, func.max(table.c.modified))
+                        .group_by(table.c.station_id)
+                    )
+                }
+
                 since_commit = 0
                 processed_rows = 0
                 
@@ -506,6 +484,76 @@ class ImportPlugin(plugins.ImportPluginBase):
                         f"expected {expect_headers}; got {headers}"
                     )
                 
+                # Snapshots are applied in batches: delete the batch's
+                # stations in one IN-list statement, insert their rows in
+                # one executemany. Group state accumulates the current
+                # station's rows until the file moves to the next station.
+                pending_station_ids = []
+                pending_station_set = set()
+                pending_rows = []
+
+                group_station_id = None
+                group_known = False
+                group_rows = {}   # item_id -> row dict; last occurrence wins
+                group_max_ts = 0
+
+                def flush_pending():
+                    nonlocal since_commit
+                    if not pending_station_ids:
+                        return
+                    session.execute(
+                        table.delete().where(
+                            table.c.station_id.in_(pending_station_ids)
+                        )
+                    )
+                    if pending_rows:
+                        session.execute(insert(table), pending_rows)
+                    since_commit += len(pending_rows)
+                    pending_station_ids.clear()
+                    pending_station_set.clear()
+                    pending_rows.clear()
+                    if commit_batch and since_commit >= commit_batch:
+                        session.commit()
+                        since_commit = 0
+
+                def close_group():
+                    nonlocal group_station_id, group_known, group_rows, group_max_ts
+                    station_id, known = group_station_id, group_known
+                    rows, max_ts = group_rows, group_max_ts
+                    group_station_id = None
+                    group_known = False
+                    group_rows = {}
+                    group_max_ts = 0
+                    if station_id is None or not known:
+                        return
+                    if not rows:
+                        # Every row in the snapshot was junk (zero-priced or
+                        # unknown items) — skip rather than wipe, mirroring
+                        # the spansh writer's caution about bad input.
+                        return
+                    if time_cutoff and max_ts < time_cutoff:
+                        return
+                    snapshot_ts = from_timestamp(max_ts, utc)
+                    newest = newest_existing.get(station_id)
+                    if newest is not None and newest > snapshot_ts:
+                        # Database already holds fresher data — the whole
+                        # station is skipped, per the write rule.
+                        return
+                    if station_id in pending_station_set:
+                        # Same station twice in one batch: flush so the
+                        # later snapshot's delete removes the earlier one's
+                        # rows instead of colliding with them.
+                        flush_pending()
+                    pending_station_ids.append(station_id)
+                    pending_station_set.add(station_id)
+                    for item_id in sorted(rows):
+                        row = rows[item_id]
+                        row["modified"] = snapshot_ts
+                        pending_rows.append(row)
+                    newest_existing[station_id] = snapshot_ts
+                    if len(pending_rows) >= execute_batch:
+                        flush_pending()
+
                 for listing in reader:
                     bump_progress()
                     try:
@@ -514,31 +562,33 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 listing[3] = listing[4] = listing[5] = "0"
                             if listing[7] == "0":
                                 listing[6] = listing[7] = listing[8] = "0"
-                        
-                        # Do the cheapest skip-check first
+
+                        station_id = int(listing[1])
+                        if station_id != group_station_id:
+                            close_group()
+                            group_station_id = station_id
+                            group_known = station_id in station_lookup
+                        if not group_known:
+                            continue
+
+                        # A zero-priced row is an untradeable listing — drop
+                        # it from the snapshot rather than store dead rows.
                         if listing[5] == "0" and listing[6] == "0":
                             continue
-                        
-                        # Cheap numeric condition
-                        listing_time = int(listing[9])
-                        if listing_time < time_cutoff:
-                            continue
-                        
-                        station_id = int(listing[1])
-                        if station_id not in station_lookup:
-                            continue
-                        
+
                         item_id = int(listing[2])
                         if item_id not in item_lookup:
-                            continue  # skip rare items (not in Item table)
-                        
-                        dt_listing_time = from_timestamp(listing_time, utc)
-                        
-                        row = {
+                            continue  # skip unknown item IDs
+
+                        listing_time = int(listing[9])
+                        if listing_time > group_max_ts:
+                            group_max_ts = listing_time
+
+                        group_rows[item_id] = {
                             "station_id":   station_id,
                             "item_id":      item_id,
-                            "modified":     dt_listing_time,   # guard column
-                            "from_live":    from_live_val,     # copied exactly when updating/inserting
+                            "modified":     None,   # stamped with the snapshot timestamp at close
+                            "from_live":    from_live_val,
                             "supply_units": int(listing[3]),
                             "supply_level": int(listing[4]),
                             "supply_price": int(listing[5]),
@@ -546,25 +596,13 @@ class ImportPlugin(plugins.ImportPluginBase):
                             "demand_units": int(listing[7]),
                             "demand_level": int(listing[8]),
                         }
-                        batch_rows += [row]
-                        since_commit += 1
-                        
-                        if len(batch_rows) >= execute_batch:
-                            upsert(batch_rows)
-                            batch_rows[:] = []  # in-place clear without lookup
-                        
-                        if commit_batch and since_commit >= commit_batch:
-                            session.commit()
-                            since_commit = 0
-                    
+
                     except Exception as e:  # pylint: disable=broad-exception-caught
                         self.tdenv.WARN("Bad listing row (skipped): {}  error: {}", listing, e)
                         continue
-                
-                if batch_rows:
-                    upsert(batch_rows)
-                    batch_rows[:] = []  # in-place clear
-                
+
+                close_group()
+                flush_pending()
                 session.commit()
             
             finally:
@@ -581,13 +619,13 @@ class ImportPlugin(plugins.ImportPluginBase):
             # years of old data, do it a piece at a time. It gives the progress bar
             # some movement.
             expirations = [360, 330, 300, 270, 240, 210, 180, 150, 120, 90, 60, 30, 21, 14, 7]
-            with pbar.Progress(len(expirations) + 1, 40, 1, label="Expiring", style=pbar.LongRunningCountBar) as prog, self.tdb.Session.begin() as session:
+            with pbar.Progress(len(expirations) + 1, 40, 1, label="Expiring", style=pbar.LongRunningCountBar) as prog, self.tdb.session_maker.begin() as session:
                 for expiration in expirations:
                     session.execute(text(f"DELETE FROM StationItem WHERE modified < datetime('now', '-{expiration} days')"))
                     prog.increment(1)
         
         if self.getOption("optimize"):
-            with pbar.Progress(0, 40, label="Optimizing", style=pbar.ElapsedBar) as prog, self.tdb.Session.begin() as session:
+            with pbar.Progress(0, 40, label="Optimizing", style=pbar.ElapsedBar) as prog, self.tdb.session_maker.begin() as session:
                 if self.tdb.engine.dialect.name == "sqlite":
                     session.execute(text("VACUUM"))
         
@@ -596,14 +634,11 @@ class ImportPlugin(plugins.ImportPluginBase):
     def _refresh_dump_tables(self, table_jobs: list[tuple[str, Path]]) -> None:
         """Upsert-refresh (table_name, csv_path) jobs into the live ORM database,
         with a proper row-count progress bar.
-
-        Note: RareItem is rebuilt (wiped then re-imported) whenever it is refreshed.
-        This avoids UNIQUE(name) collisions caused by historical PK drift / template-era imports.
         """
         if not table_jobs:
             return
 
-        with self.tdb.Session() as session:
+        with self.tdb.session_maker() as session:
             with pbar.Progress(
                 max_value=len(table_jobs) + 1,
                 prefix="Upserting",
@@ -669,11 +704,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                         prog.increment(value=1)
                         call_args = {"task": child, "advance": 1}
                         try:
-                            # RareItem: rebuild contents on refresh to avoid uq_rareitem_name collisions
-                            # when existing DB has same names under different rare_id values.
-                            if table_name == "RareItem":
-                                session.execute(delete(SA.RareItem))
-
                             td_cache.processImportFile(
                                 self.tdenv,
                                 session,
@@ -709,13 +739,13 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         Refactored DB flow:
           - No dialect-specific logic in the plugin.
-          - Preflight uses TradeDB.reloadCache() (which centralizes sanity via lifecycle.ensure_fresh_db).
-          - For '--clean' → do a single full rebuild with the RareItem dance.
+          - Preflight uses lifecycle.verify_db() (report-only sanity via lifecycle.ensure_fresh_db).
+          - For '--clean' → do a single full rebuild.
           - Otherwise, if static CSVs changed → upsert-refresh only those tables (no drop/recreate).
           - Listings import unchanged.
         """
         self.tdenv.ignoreUnknown = True
-        self.tdb.dataPath.mkdir(parents=True, exist_ok=True)
+        self.tdb.data_dir.mkdir(parents=True, exist_ok=True)
 
         # Enable 'listings' by default unless other explicit options are present
         default = True
@@ -732,13 +762,12 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("clean"):
             # Remove CSVs so downloads become the new source of truth
             for name in [
-                "Category", "Item", "RareItem",
+                "Category", "Item",
                 "Ship", "ShipVendor",
                 "Station", "System",
-                "Upgrade", "UpgradeVendor",
-                "FDevShipyard", "FDevOutfitting",
+                "FDevShipyard",
             ]:
-                f = self.tdb.dataPath / f"{name}.csv"
+                f = self.tdb.data_dir / f"{name}.csv"
                 try:
                     os.remove(str(f))
                 except FileNotFoundError:
@@ -752,7 +781,7 @@ class ImportPlugin(plugins.ImportPluginBase):
 
             # Remove .prices (DEPRECATED)
             try:
-                os.remove(str(self.tdb.dataPath / "TradeDangerous.prices"))
+                os.remove(str(self.tdb.data_dir / "TradeDangerous.prices"))
             except FileNotFoundError:
                 pass
 
@@ -772,14 +801,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.options["ship"] = True
             self.options["station"] = True
 
-        if self.getOption("upvend"):
-            self.options["upgrade"] = True
-            self.options["station"] = True
-
         if self.getOption("item"):
-            self.options["station"] = True
-
-        if self.getOption("rare"):
             self.options["station"] = True
 
         if self.getOption("station"):
@@ -787,13 +809,10 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         if self.getOption("all"):
             self.options["item"] = True
-            self.options["rare"] = True
             self.options["ship"] = True
             self.options["shipvend"] = True
             self.options["station"] = True
             self.options["system"] = True
-            self.options["upgrade"] = True
-            self.options["upvend"] = True
             self.options["listings"] = True
 
         if self.getOption("solo"):
@@ -802,16 +821,12 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         if self.getOption("skipvend"):
             self.options["shipvend"] = False
-            self.options["upvend"] = False
 
         # Download required files and decide which tables need upsert-refresh.
         force = self.getOption("force")
 
-        upgrade_changed = False
         ship_changed = False
-        rare_changed = False
         shipvend_changed = False
-        upvend_changed = False
         system_changed = False
         station_changed = False
         category_changed = False
@@ -819,13 +834,6 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         # FDev bridge CSVs are treated as "changed" when we re-download them.
         fdev_shipyard_changed = False
-        fdev_outfitting_changed = False
-
-        if self.getOption("upgrade"):
-            upgrade_changed = self.downloadFile(self.upgradesPath) or force
-            if upgrade_changed:
-                transfers.download(self.tdenv, self.urlOutfitting, self.FDevOutfittingPath)
-                fdev_outfitting_changed = True
 
         if self.getOption("ship"):
             ship_changed = self.downloadFile(self.shipPath) or force
@@ -833,14 +841,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                 transfers.download(self.tdenv, self.urlShipyard, self.FDevShipyardPath)
                 fdev_shipyard_changed = True
 
-        if self.getOption("rare"):
-            rare_changed = self.downloadFile(self.rareItemPath) or force
-
         if self.getOption("shipvend"):
             shipvend_changed = self.downloadFile(self.shipVendorPath) or force
-
-        if self.getOption("upvend"):
-            upvend_changed = self.downloadFile(self.upgradeVendorPath) or force
 
         if self.getOption("system"):
             system_changed = self.downloadFile(self.sysPath) or force
@@ -855,11 +857,11 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         # If any of the non-listings tables changed, ensure DB is fresh and then upsert-refresh.
         build_cache = any([
-            upgrade_changed, ship_changed, rare_changed,
-            shipvend_changed, upvend_changed,
+            ship_changed,
+            shipvend_changed,
             system_changed, station_changed,
             category_changed, item_changed,
-            fdev_shipyard_changed, fdev_outfitting_changed,
+            fdev_shipyard_changed,
         ])
 
         if build_cache:
@@ -871,49 +873,39 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self.tdb.close()
                 lifecycle.reset_db(
                     self.tdb.engine,
-                    db_path=self.tdb.dbPath,
-                    sql_path=self.tdb.sqlPath,
+                    db_path=self.tdb.db_path,
+                    sql_path=self.tdb.sql_path,
                 )
             else:
-                # Ensure schema exists and is sane (may rebuild on first run).
+                # Verify the database is present and structurally sane (report
+                # only; rebuilding is the buildcache command's job).
                 self.tdb.close()
-                self.tdb.reloadCache()
+                lifecycle.verify_db(self.tdb.engine, Path(self.tdenv.dataDir), self.tdenv)
 
             if self.tdb.engine.dialect.name == "sqlite":
                 # kfsone: see https://sqlite.org/pragma.html#pragma_optimize
-                self.tdb.Session().execute(text("PRAGMA optimize=0x10002"))
+                self.tdb.session_maker().execute(text("PRAGMA optimize=0x10002"))
 
             # Upsert-refresh tables in dependency order.
             jobs: list[tuple[str, Path]] = []
 
             if system_changed:
-                jobs.append(("System", (self.tdb.dataPath / self.sysPath).resolve()))
+                jobs.append(("System", (self.tdb.data_dir / self.sysPath).resolve()))
 
             if station_changed:
-                jobs.append(("Station", (self.tdb.dataPath / self.stationsPath).resolve()))
+                jobs.append(("Station", (self.tdb.data_dir / self.stationsPath).resolve()))
 
             if category_changed or item_changed:
-                jobs.append(("Category", (self.tdb.dataPath / self.categoriesPath).resolve()))
-                jobs.append(("Item", (self.tdb.dataPath / self.commoditiesPath).resolve()))
+                jobs.append(("Category", (self.tdb.data_dir / self.categoriesPath).resolve()))
+                jobs.append(("Item", (self.tdb.data_dir / self.commoditiesPath).resolve()))
 
             if ship_changed:
-                jobs.append(("Ship", (self.tdb.dataPath / self.shipPath).resolve()))
+                jobs.append(("Ship", (self.tdb.data_dir / self.shipPath).resolve()))
             if fdev_shipyard_changed:
                 jobs.append(("FDevShipyard", self.FDevShipyardPath.resolve()))
 
-            if upgrade_changed:
-                jobs.append(("Upgrade", (self.tdb.dataPath / self.upgradesPath).resolve()))
-            if fdev_outfitting_changed:
-                jobs.append(("FDevOutfitting", self.FDevOutfittingPath.resolve()))
-
             if shipvend_changed:
-                jobs.append(("ShipVendor", (self.tdb.dataPath / self.shipVendorPath).resolve()))
-
-            if upvend_changed:
-                jobs.append(("UpgradeVendor", (self.tdb.dataPath / self.upgradeVendorPath).resolve()))
-
-            if rare_changed:
-                jobs.append(("RareItem", (self.tdb.dataPath / self.rareItemPath).resolve()))
+                jobs.append(("ShipVendor", (self.tdb.data_dir / self.shipVendorPath).resolve()))
 
             self._refresh_dump_tables(jobs)
             self.tdb.close()
@@ -929,7 +921,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self.importListings(self.liveListingsPath)
 
         if self.tdb.engine.dialect.name == "sqlite":
-            with self.tdb.Session.begin() as session:
+            with self.tdb.session_maker.begin() as session:
                 if self.getOption("optimize"):
                     with bench("Vacuum and optimize", self.tdenv):
                         session.execute(text("VACUUM"))

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Callable
 
 from nicegui import ui
 
@@ -119,28 +119,6 @@ class NavWorkspace(DraftValueHelper):
                     on_click=avoid_dialog.open,
                 ).tooltip(
                     'Edit the list of systems to exclude from routing.'
-                )
-
-            with ui.row().classes('w-full items-center gap-3'):
-                ui.label(
-                    'Jumps between fuel stops (optional)'
-                ).classes('text-sm text-gray-600')
-                ui.number(
-                    value=self._number_value(
-                        self.draft.main_values,
-                        'refuelJumps',
-                    ),
-                    min=0,
-                    step=1,
-                    precision=0,
-                    on_change=lambda event: self._set_int(
-                        self.draft.main_values,
-                        'refuelJumps',
-                        event.value,
-                        'Refuel jumps',
-                    ),
-                ).classes('w-12').tooltip(
-                    'Require a station after this many jumps.'
                 )
 
     def _build_filter_section(self) -> None:

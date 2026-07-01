@@ -2,18 +2,30 @@
 
 from __future__ import annotations
 
+import html
+
 from typing import Any
 
 from nicegui import ui
 
-_RUN_COLUMNS = [
-    {'name': 'commodity', 'label': 'Commodity', 'field': 'commodity', 'align': 'left'},
-    {'name': 'qty', 'label': 'Qty', 'field': 'qty', 'align': 'right'},
-    {'name': 'buy', 'label': 'Buy', 'field': 'buy', 'align': 'right'},
-    {'name': 'sell', 'label': 'Sell', 'field': 'sell', 'align': 'right'},
-    {'name': 'gain', 'label': 'Gain / unit', 'field': 'gain', 'align': 'right'},
-    {'name': 'total', 'label': 'Total gain', 'field': 'total', 'align': 'right'},
-]
+# Run-route colours come straight from the CLI rich renderer so the GUI table
+# and the terminal output share one palette (the packet's design target). The
+# *_ALT pairs alternate a medium/light shade row to row, in sync, exactly as the
+# CLI does. render_rich._CAP is a rich style name ("yellow"); the GUI maps it to
+# a softer amber that reads against the gold load colour.
+from tradedangerous.planner.render_rich import (
+    _CHROME as _RUN_CHROME,
+    _ORIGIN as _RUN_ORIGIN,
+    _DEST as _RUN_DEST,
+    _PROFIT as _RUN_PROFIT,
+    _DEST_ALT as _RUN_STATION_ALT,
+    _LOAD_ALT as _RUN_LOAD_ALT,
+    _PROFIT_ALT as _RUN_PROFIT_ALT,
+)
+
+_RUN_CAP = '#f5c518'   # GUI amber for the bulk-cap flag (render_rich._CAP)
+_RUN_DIM = '#9aa0a6'   # muted grey for nav sublines and empty-trade dashes
+
 def _field(value: Any, key: str, default: Any = None) -> Any:
     if isinstance(value, dict):
         return value.get(key, default)
@@ -58,11 +70,14 @@ def render_command_results(
     
     # Prefer structured renderers when the executor captured them; raw text is
     # the fallback for unsupported payloads or legacy command paths.
-    if command == 'run' and structured_result:
-        if _is_run_route_payload(structured_result):
+    if command == 'run' and isinstance(structured_result, dict) \
+            and 'routes' in structured_result:
+        # Render whenever there is something route-shaped to show; an empty,
+        # warning-free result falls through to the raw/guidance text below.
+        if structured_result.get('routes') or structured_result.get('warnings'):
             _render_run_results(structured_result)
             return
-    
+
     if command in {'buy', 'sell'} and structured_result:
         _render_generic_structured_results(command, structured_result)
         return
@@ -87,137 +102,236 @@ def render_command_results(
         _render_market_results(structured_result)
         return
     
-    if command == 'rares' and structured_result:
-        _render_rares_results(structured_result)
-        return
-    
     if raw_output:
         ui.label(raw_output).classes('font-mono text-sm whitespace-pre-wrap')
         return
     
     ui.label('Nothing has been executed yet.')
 
-def _is_run_route_payload(structured_result: Any) -> bool:
-    if not isinstance(structured_result, (list, tuple)):
-        return False
+def _render_run_results(payload: dict[str, Any]) -> None:
+    """Render a post-L RunResult snapshot.
 
-    if not structured_result:
-        return False
-
-    return all(
-        _field(route, 'hops') is not None
-        and (
-            _field(route, 'first_station') is not None
-            or _field(route, 'route') is not None
-            or _field(route, 'firstStation') is not None
-        )
-        for route in structured_result
-    )
-
-def _render_run_results(routes: list[Any]) -> None:
-    ui.label(f'{len(routes)} route(s) returned').classes(
-        'text-sm text-gray-600'
-    )
-
-    for route_index, route in enumerate(routes, start=1):
-        hop_payloads = list(_field(route, 'hops', []) or [])
-        total_jumps = sum(
-            max(0, len(_field(hop, 'jump_path', []) or []) - 1)
-            for hop in hop_payloads
+    The payload is the plain-dict shape produced by td_exec._snapshot_run_routes:
+    ``{'routes': [...], 'warnings': [...]}``. Each route becomes a station-centric
+    table (Station / Sell / Buy / Profit / Balance) following the CLI rich
+    renderer; multiple routes are shown as tabs.
+    """
+    for warning in payload.get('warnings') or []:
+        ui.label(f'⚠ {warning}').classes('text-sm').style(
+            f'color: {_RUN_CAP}; white-space: pre-wrap'
         )
 
-        first_station = _field(route, 'first_station')
-        if first_station is None:
-            first_station = _named_result_value(_field(route, 'firstStation'))
-        last_station = _field(route, 'last_station')
-        if last_station is None:
-            last_station = _named_result_value(_field(route, 'lastStation'))
+    # The Summary-output checkbox picks the compact per-hop view; otherwise the
+    # full station-centric table. Both share the route header, totals and tabs.
+    summary = bool(payload.get('summary'))
 
-        gain_cr = _field(route, 'gainCr', 0) or 0
-        start_cr = _field(route, 'startCr', 0) or 0
-        gpt = _field(route, 'gpt', 0) or 0
-        score = _field(route, 'score', 0) or 0
+    routes = payload.get('routes') or []
+    if not routes:
+        ui.label('No profitable routes were found.').classes(
+            'text-sm text-gray-600'
+        )
+        return
 
-        with ui.card().classes('w-full gap-3'):
-            ui.label(
-                f'Route {route_index}: {first_station} -> {last_station}'
-            ).classes('text-lg')
+    if len(routes) == 1:
+        _render_run_route(routes[0], summary=summary)
+        return
 
-            with ui.row().classes('w-full gap-4 text-sm'):
-                ui.label(f'Gain: {int(gain_cr):n} cr')
-                ui.label(f'Gain / ton: {int(gpt):n} cr')
-                ui.label(f'Score: {float(score):.2f}')
-                ui.label(f'Hops: {len(hop_payloads)}')
-                ui.label(f'Jumps: {total_jumps}')
+    # Multiple routes: one tab each, the first shown by default.
+    ui.label(f'{len(routes)} routes found.').classes('text-sm text-gray-600')
+    with ui.tabs() as tabs:
+        tab_refs = [
+            ui.tab(f'route-{index}', label=f'Route {index}')
+            for index in range(1, len(routes) + 1)
+        ]
+    with ui.tab_panels(tabs, value=tab_refs[0]).classes('w-full'):
+        for index, route in enumerate(routes, start=1):
+            with ui.tab_panel(f'route-{index}'):
+                _render_run_route(route, summary=summary)
+
+def _render_run_route(route: dict[str, Any], *, summary: bool = False) -> None:
+    with ui.column().classes('w-full gap-2'):
+        _render_run_route_header(route)
+        if summary:
+            ui.html(_run_summary_table_html(route), sanitize=False)
+        else:
+            ui.html(_run_full_table_html(route), sanitize=False)
+            # The bulk-cap flag and its note belong to the priced full table;
+            # the lean summary stays clean, matching the CLI tiers.
+            if route.get('capped'):
                 ui.label(
-                    f'Est. final credits: {int(start_cr) + int(gain_cr):n} cr'
-                )
+                    '⚑ Metals/Minerals capped at 25% of demand to avoid the '
+                    'bulk-sale tax.'
+                ).classes('text-sm').style(f'color: {_RUN_CAP}')
+        arrival = route.get('arrival_hops')
+        if arrival is not None:
+            ui.label(
+                f'Arrived at the target system after {arrival} hop(s).'
+            ).classes('text-sm').style(f'color: {_RUN_DIM}')
+        # A single hop's profit already sits in its row, so it needs no totals.
+        if route.get('hop_count', 0) > 1:
+            _render_run_route_totals(route)
 
-            route_points = list(_field(route, 'route', []) or [])
-            for hop_index, hop in enumerate(hop_payloads, start=1):
-                src_station = _field(hop, 'src_station')
-                dst_station = _field(hop, 'dst_station')
-                if src_station is None and hop_index - 1 < len(route_points):
-                    src_station = _named_result_value(route_points[hop_index - 1])
-                if dst_station is None and hop_index < len(route_points):
-                    dst_station = _named_result_value(route_points[hop_index])
+def _render_run_route_header(route: dict[str, Any]) -> None:
+    hops = route.get('hop_count', 0)
+    jumps = route.get('total_jumps', 0)
+    ly = route.get('total_ly', 0.0) or 0.0
+    hop_word = 'hop' if hops == 1 else 'hops'
+    jump_word = 'jump' if jumps == 1 else 'jumps'
+    with ui.row().classes('items-baseline gap-2 flex-wrap'):
+        ui.label(str(route.get('origin', ''))).classes('text-lg').style(
+            f'color: {_RUN_ORIGIN}; font-weight: 600'
+        )
+        ui.label('→').style(f'color: {_RUN_DIM}')
+        ui.label(str(route.get('destination', ''))).classes('text-lg').style(
+            f'color: {_RUN_DEST}; font-weight: 600'
+        )
+        ui.label(
+            f'{hops} {hop_word} · {jumps} {jump_word} · {ly:.2f} ly'
+        ).style(f'color: {_RUN_CHROME}')
 
-                expansion = ui.expansion().classes('w-full')
-                with expansion.add_slot('header'):
-                    with ui.row().classes('w-full items-center no-wrap'):
-                        ui.label(
-                            f'Hop {hop_index}: {src_station} -> {dst_station}'
-                        )
-                        ui.space()
-                        ui.label('Expand for details').classes(
-                            'text-sm text-gray-500'
-                        )
-                with expansion:
-                    units = _field(hop, 'units', 0) or 0
-                    hop_gain = _field(hop, 'gainCr', 0) or 0
-                    hop_gpt = _field(hop, 'gpt', 0) or 0
-                    with ui.row().classes('w-full gap-4 text-sm'):
-                        ui.label(f'Units: {int(units):n}')
-                        ui.label(f'Hop gain: {int(hop_gain):n} cr')
-                        ui.label(f'Gain / ton: {int(hop_gpt):n} cr')
+def _run_table_html(headers: list[tuple[str, str]], rows: list[list[str]]) -> str:
+    """Wrap a header spec and pre-built <td> cells into one scrollable table.
 
-                    rows = []
-                    for item_index, item in enumerate(
-                        list(_field(hop, 'items', []) or []),
-                        start=1,
-                    ):
-                        qty = _field(item, 'qty', 0) or 0
-                        buy = _field(item, 'buy')
-                        sell = _field(item, 'sell')
-                        gain = _field(item, 'gain')
-                        total = _field(item, 'total')
-                        rows.append(
-                            {
-                                'row_id': f'{route_index}-{hop_index}-{item_index}',
-                                'commodity': _field(item, 'commodity', ''),
-                                'qty': qty,
-                                'buy': '' if buy is None else f'{int(buy):n} cr',
-                                'sell': '' if sell is None else f'{int(sell):n} cr',
-                                'gain': '' if gain is None else f'{int(gain):n} cr',
-                                'total': '' if total is None else f'{int(total):n} cr',
-                            }
-                        )
+    A real <table> makes thead and tbody share one column-width model, so a
+    column's header always sits over its values and the two scroll together --
+    a Profit/Balance value can never orphan from its header. width:100% fills
+    the results pane; the wrapper scrolls horizontally only when the content
+    genuinely cannot fit. All dynamic text is escaped by the cell builders, so
+    the trusted markup here is rendered without sanitisation.
+    """
+    head = ''.join(
+        f'<th style="text-align:{align};color:{_RUN_CHROME};font-weight:700;'
+        f'padding:0.2rem 0.9rem;border-bottom:2px solid {_RUN_CHROME};'
+        f'white-space:nowrap;">{html.escape(label)}</th>'
+        for label, align in headers
+    )
+    # A dim-orange rule between stops -- the CLI's _CHROME_DIM divider: clearly
+    # present but quieter than the solid orange header rule above.
+    body = ''.join(
+        '<tr style="border-bottom:1px solid rgba(240,123,5,0.35);">'
+        + ''.join(cells) + '</tr>'
+        for cells in rows
+    )
+    return (
+        '<div style="overflow-x:auto;width:100%;">'
+        '<table style="width:100%;border-collapse:collapse;'
+        'font-size:0.9rem;line-height:1.4;">'
+        f'<thead><tr>{head}</tr></thead><tbody>{body}</tbody>'
+        '</table></div>'
+    )
 
-                    ui.table(
-                        columns=_RUN_COLUMNS,
-                        rows=rows,
-                        row_key='row_id',
-                    ).classes('w-full')
+def _run_td(inner: str, *, align: str = 'left', nowrap: bool = False) -> str:
+    wrap = 'white-space:nowrap;' if nowrap else ''
+    return (
+        f'<td style="text-align:{align};vertical-align:top;'
+        f'padding:0.2rem 0.9rem;{wrap}">{inner}</td>'
+    )
 
-                    path = ' -> '.join(
-                        str(system)
-                        for system in list(_field(hop, 'jump_path', []) or [])
-                        if system
-                    )
-                    if path:
-                        ui.label(f'Jump path: {path}').classes(
-                            'text-sm text-gray-600'
-                        )
+def _run_cargo_html(lines: list[dict[str, Any]], shade: int) -> str:
+    if not lines:
+        return f'<span style="color:{_RUN_DIM};">—</span>'
+    colour = _RUN_LOAD_ALT[shade]
+    parts = []
+    for line in lines:
+        qty = int(line.get('qty', 0) or 0)
+        item = str(line.get('item', ''))
+        price = int(line.get('price', 0) or 0)
+        text = html.escape(f'{qty:,} t {item} @ {price:,} cr/t')
+        flag = (f' <span style="color:{_RUN_CAP};">⚑</span>'
+                if line.get('capped') else '')
+        parts.append(f'<div style="color:{colour};">{text}{flag}</div>')
+    return ''.join(parts)
+
+def _run_full_table_html(route: dict[str, Any]) -> str:
+    # Station-centric full table: a row per stop, Sell and Buy side by side,
+    # the leg-out as a dim subline under the station, profit and running
+    # balance per row. Mirrors planner/render_rich.py.
+    headers = [('Station', 'left'), ('Sell', 'left'), ('Buy', 'left'),
+               ('Profit', 'right'), ('Balance', 'right')]
+    rows: list[list[str]] = []
+    for index, stop in enumerate(route.get('stops') or []):
+        shade = index % 2
+        station_html = (
+            f'<div style="color:{_RUN_STATION_ALT[shade]};font-weight:600;">'
+            f'{html.escape(str(stop.get("station", "")))}</div>'
+        )
+        for nav_line in stop.get('nav') or []:
+            station_html += (
+                f'<div style="color:{_RUN_DIM};font-size:0.8rem;">'
+                f'↓ {html.escape(str(nav_line))}</div>'
+            )
+        profit = stop.get('profit')
+        if profit is None:
+            profit_html = f'<span style="color:{_RUN_DIM};">—</span>'
+        else:
+            profit_html = (
+                f'<span style="color:{_RUN_PROFIT_ALT[shade]};">'
+                f'+{int(profit):,} cr</span>'
+            )
+        balance_html = (
+            f'<span style="color:{_RUN_PROFIT_ALT[shade]};">'
+            f'{int(stop.get("balance", 0) or 0):,} cr</span>'
+        )
+        rows.append([
+            _run_td(station_html),
+            _run_td(_run_cargo_html(stop.get('sell') or [], shade)),
+            _run_td(_run_cargo_html(stop.get('buy') or [], shade)),
+            _run_td(profit_html, align='right', nowrap=True),
+            _run_td(balance_html, align='right', nowrap=True),
+        ])
+    return _run_table_html(headers, rows)
+
+def _run_load_summary_html(lines: list[dict[str, Any]], shade: int) -> str:
+    # Loads as a single comma list with no prices -- the CLI --summary form.
+    if not lines:
+        return f'<span style="color:{_RUN_DIM};">—</span>'
+    text = html.escape(', '.join(
+        f'{int(line.get("qty", 0) or 0):,} t {line.get("item", "")}'
+        for line in lines
+    ))
+    return f'<span style="color:{_RUN_LOAD_ALT[shade]};">{text}</span>'
+
+def _run_summary_table_html(route: dict[str, Any]) -> str:
+    # The CLI --summary tier: the same station-centric Station/Sell/Buy/Profit
+    # rows as the full table, but leaner -- loads as comma lists with no prices,
+    # no nav sublines, and no Balance column. Sell and Buy stay side by side.
+    headers = [('Station', 'left'), ('Sell', 'left'), ('Buy', 'left'),
+               ('Profit', 'right')]
+    rows: list[list[str]] = []
+    for index, stop in enumerate(route.get('stops') or []):
+        shade = index % 2
+        station_html = (
+            f'<div style="color:{_RUN_STATION_ALT[shade]};font-weight:600;">'
+            f'{html.escape(str(stop.get("station", "")))}</div>'
+        )
+        profit = stop.get('profit')
+        if profit is None:
+            profit_html = f'<span style="color:{_RUN_DIM};">—</span>'
+        else:
+            profit_html = (
+                f'<span style="color:{_RUN_PROFIT_ALT[shade]};">'
+                f'+{int(profit):,} cr</span>'
+            )
+        rows.append([
+            _run_td(station_html),
+            _run_td(_run_load_summary_html(stop.get('sell') or [], shade)),
+            _run_td(_run_load_summary_html(stop.get('buy') or [], shade)),
+            _run_td(profit_html, align='right', nowrap=True),
+        ])
+    return _run_table_html(headers, rows)
+
+def _render_run_route_totals(route: dict[str, Any]) -> None:
+    with ui.row().classes('items-baseline gap-2 flex-wrap'):
+        ui.label('Total Profit').style(
+            f'color: {_RUN_CHROME}; font-weight: 700'
+        )
+        ui.label(f'{int(route.get("total_profit", 0) or 0):,} cr').style(
+            f'color: {_RUN_PROFIT}; font-weight: 600'
+        )
+        ui.label(
+            f'· start {int(route.get("starting_credits", 0) or 0):,} cr '
+            f'→ final {int(route.get("ending_credits", 0) or 0):,} cr'
+        ).style(f'color: {_RUN_CHROME}')
 
 def _render_generic_structured_results(
     command: str,
@@ -266,6 +380,8 @@ def _render_trade_results(structured_result: Any) -> None:
     
     from_station = _field(summary, 'fromStation')
     to_station = _field(summary, 'toStation')
+    origin_multi = bool(_field(summary, 'originMulti'))
+    dest_multi = bool(_field(summary, 'destMulti'))
     
     def station_name(value: Any) -> str | None:
         dbname = _field(value, 'dbname')
@@ -300,7 +416,9 @@ def _render_trade_results(structured_result: Any) -> None:
         table_rows.append(
             {
                 'row_id': f'trade-{index}',
+                'from': _format_result_value(values.get('from_station')),
                 'item': _format_result_value(values.get('item')),
+                'to': _format_result_value(values.get('to_station')),
                 'profit': format_int(values.get('gain')),
                 'cost': format_int(values.get('sup_price')),
                 'buying': format_int(values.get('dem_price')),
@@ -309,15 +427,30 @@ def _render_trade_results(structured_result: Any) -> None:
             }
         )
     
+    # From/To mirror the CLI: shown only when that endpoint spans multiple
+    # stations (a system); redundant for a single concrete station.
+    columns = []
+    if origin_multi:
+        columns.append(
+            {'name': 'from', 'label': 'From', 'field': 'from', 'align': 'left'}
+        )
+    columns.append(
+        {'name': 'item', 'label': 'Item', 'field': 'item', 'align': 'left'}
+    )
+    if dest_multi:
+        columns.append(
+            {'name': 'to', 'label': 'To', 'field': 'to', 'align': 'left'}
+        )
+    columns.extend([
+        {'name': 'profit', 'label': 'Profit', 'field': 'profit', 'align': 'right'},
+        {'name': 'cost', 'label': 'Cost', 'field': 'cost', 'align': 'right'},
+        {'name': 'buying', 'label': 'Buying', 'field': 'buying', 'align': 'right'},
+        {'name': 'src_age', 'label': 'SrcAge', 'field': 'src_age', 'align': 'right'},
+        {'name': 'dst_age', 'label': 'DstAge', 'field': 'dst_age', 'align': 'right'},
+    ])
+    
     ui.table(
-        columns=[
-            {'name': 'item', 'label': 'Item', 'field': 'item', 'align': 'left'},
-            {'name': 'profit', 'label': 'Profit', 'field': 'profit', 'align': 'right'},
-            {'name': 'cost', 'label': 'Cost', 'field': 'cost', 'align': 'right'},
-            {'name': 'buying', 'label': 'Buying', 'field': 'buying', 'align': 'right'},
-            {'name': 'src_age', 'label': 'SrcAge', 'field': 'src_age', 'align': 'right'},
-            {'name': 'dst_age', 'label': 'DstAge', 'field': 'dst_age', 'align': 'right'},
-        ],
+        columns=columns,
         rows=table_rows,
         row_key='row_id',
     ).classes('w-full')
@@ -368,7 +501,7 @@ def _render_local_results(structured_result: Any) -> None:
         {'name': 'pad', 'label': 'Pad', 'field': 'pad', 'align': 'right'},
         {'name': 'planetary', 'label': 'Plt', 'field': 'planetary', 'align': 'right'},
         {'name': 'fleet', 'label': 'Flc', 'field': 'fleet', 'align': 'right'},
-        {'name': 'odyssey', 'label': 'Ody', 'field': 'odyssey', 'align': 'right'},
+        {'name': 'settlement', 'label': 'Stl', 'field': 'settlement', 'align': 'right'},
         {'name': 'items', 'label': 'Itms', 'field': 'items', 'align': 'right'},
     ]
     
@@ -412,8 +545,8 @@ def _render_local_results(structured_result: Any) -> None:
                         'pad': pad_text(_field(station, 'maxPadSize')),
                         'planetary': yes_no_unknown(_field(station, 'planetary')),
                         'fleet': yes_no_unknown(_field(station, 'fleet')),
-                        'odyssey': yes_no_unknown(_field(station, 'odyssey')),
-                        'items': _format_result_value(_field(station, 'itemCount')),
+                        'settlement': yes_no_unknown(_field(station, 'settlement')),
+                        'items': _format_result_value(station_values.get('item_count')),
                     }
                 )
             
@@ -473,7 +606,7 @@ def _render_nav_results(structured_result: Any) -> None:
         {'name': 'pad', 'label': 'Pad', 'field': 'pad', 'align': 'right'},
         {'name': 'planetary', 'label': 'Plt', 'field': 'planetary', 'align': 'right'},
         {'name': 'fleet', 'label': 'Flc', 'field': 'fleet', 'align': 'right'},
-        {'name': 'odyssey', 'label': 'Ody', 'field': 'odyssey', 'align': 'right'},
+        {'name': 'settlement', 'label': 'Stl', 'field': 'settlement', 'align': 'right'},
         {'name': 'items', 'label': 'Itms', 'field': 'items', 'align': 'right'},
     ]
     
@@ -525,8 +658,8 @@ def _render_nav_results(structured_result: Any) -> None:
                         'pad': pad_text(_field(station, 'maxPadSize')),
                         'planetary': yes_no_unknown(_field(station, 'planetary')),
                         'fleet': yes_no_unknown(_field(station, 'fleet')),
-                        'odyssey': yes_no_unknown(_field(station, 'odyssey')),
-                        'items': _format_result_value(_field(station, 'itemCount')),
+                        'settlement': yes_no_unknown(_field(station, 'settlement')),
+                        'items': _format_result_value(station_values.get('item_count')),
                     }
                 )
             
@@ -580,7 +713,7 @@ def _render_olddata_results(structured_result: Any) -> None:
             {'name': 'pad', 'label': 'Pad', 'field': 'pad', 'align': 'right'},
             {'name': 'planetary', 'label': 'Plt', 'field': 'planetary', 'align': 'right'},
             {'name': 'fleet', 'label': 'Flc', 'field': 'fleet', 'align': 'right'},
-            {'name': 'odyssey', 'label': 'Ody', 'field': 'odyssey', 'align': 'right'},
+            {'name': 'settlement', 'label': 'Stl', 'field': 'settlement', 'align': 'right'},
         ]
     )
     
@@ -597,7 +730,7 @@ def _render_olddata_results(structured_result: Any) -> None:
             'pad': pad_text(_field(station, 'maxPadSize')),
             'planetary': yes_no_unknown(_field(station, 'planetary')),
             'fleet': yes_no_unknown(_field(station, 'fleet')),
-            'odyssey': yes_no_unknown(_field(station, 'odyssey')),
+            'settlement': yes_no_unknown(_field(station, 'settlement')),
         }
         if near:
             dist = values.get('dist')
@@ -606,100 +739,6 @@ def _render_olddata_results(structured_result: Any) -> None:
     
     ui.table(
         columns=columns,
-        rows=table_rows,
-        row_key='row_id',
-    ).classes('w-full')
-
-def _render_rares_results(structured_result: Any) -> None:
-    payload = _structured_payload(structured_result)
-    summary = payload.get('summary')
-    rows = payload.get('rows', [])
-    near_name = _named_result_value(_field(summary, 'near'))
-    ly = _field(summary, 'ly')
-    
-    if near_name and ly is not None:
-        ui.label(
-            f'{len(rows)} rare row(s) within {float(ly):g} ly of {near_name}.'
-        ).classes('text-sm text-gray-600')
-    elif rows:
-        ui.label(f'{len(rows)} rare row(s) returned.').classes(
-            'text-sm text-gray-600'
-        )
-    
-    ui.label(
-        'Costs for rares fluctuate and these are our best current estimates only.'
-    ).classes('text-sm text-gray-600')
-    ui.label(
-        'A zero cost means we have insufficient current data even to make an '
-        'estimate.'
-    ).classes('text-sm text-gray-600')
-    
-    if not rows:
-        ui.label('No rare rows returned.').classes('text-sm text-gray-600')
-        return
-    
-    def yes_no_unknown(value: Any) -> str:
-        return {'Y': 'Yes', 'N': 'No', '?': '?'}.get(str(value or ''), '?')
-    
-    def pad_text(value: Any) -> str:
-        return {'S': 'Sml', 'M': 'Med', 'L': 'Lrg', '?': '?'}.get(
-            str(value or ''),
-            '?',
-        )
-    
-    def station_text(value: Any) -> str:
-        return _station_name(value)
-    
-    def rare_name(value: Any) -> str:
-        name = _field(value, 'name')
-        if callable(name):
-            return str(name())
-        if name in (None, ''):
-            return '?'
-        return str(name)
-    
-    def cost_text(value: Any) -> str:
-        cost = _field(value, 'cost')
-        if cost is None:
-            return '0'
-        return f'{int(cost):n}'
-    
-    def alloc_text(value: Any) -> str:
-        allocation = _field(value, 'max_allocation')
-        if allocation in (None, ''):
-            return '?'
-        return str(allocation)
-    
-    table_rows = []
-    for index, row in enumerate(rows, start=1):
-        values = _row_to_dict(row)
-        station = values.get('station')
-        rare = values.get('rare')
-        table_rows.append(
-            {
-                'row_id': f'rares-{index}',
-                'station': station_text(station),
-                'rare': rare_name(rare),
-                'cost': cost_text(rare),
-                'alloc': alloc_text(rare),
-                'dist': _format_result_value(values.get('dist')),
-                'ls': _station_ls_text(station),
-                'black_market': yes_no_unknown(_field(station, 'blackMarket')),
-                'pad': pad_text(_field(station, 'maxPadSize')),
-            }
-        )
-    
-    ui.table(
-        columns=[
-            {'name': 'station', 'label': 'Station', 'field': 'station', 'align': 'left'},
-            {'name': 'rare', 'label': 'Rare', 'field': 'rare', 'align': 'left'},
-            {'name': 'cost', 'label': 'Cost', 'field': 'cost', 'align': 'right'},
-            {'name': 'alloc', 'label': 'Alloc', 'field': 'alloc', 'align': 'right'},
-            {'name': 'dist', 'label': 'DistLy', 'field': 'dist', 'align': 'right'},
-            {'name': 'ls', 'label': 'StnLs', 'field': 'ls', 'align': 'right'},
-            {'name': 'black_market', 'label': 'B/mkt', 'field': 'black_market', 'align': 'right'},
-            {'name': 'pad', 'label': 'Pad', 'field': 'pad', 'align': 'right'},
-        ],
         rows=table_rows,
         row_key='row_id',
     ).classes('w-full')

@@ -33,6 +33,7 @@ test-data/
 # --- IDE / editor junk ---
 .vscode/
 .idea/
+.claude/
 *.sublime-project
 *.sublime-workspace
 .ipynb_checkpoints
@@ -49,5 +50,13 @@ tools/*
 /data/
 repo_files.txt
 tradedangerous/db/config.ini
+data/
+tests/fixtures/db_config.ini
 tmp/
 /*.ipynb
+TradeDangerous-listener/
+
+# --- Docs ---
+docs/_build/
+# Quarantined interim/refactor documentation: kept on disk, out of git.
+docs/_quarantine/

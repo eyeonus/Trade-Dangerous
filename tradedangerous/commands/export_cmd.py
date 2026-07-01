@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from .commandenv import Needs
 from .parsing import ParseArgument, MutuallyExclusiveGroup
 from .exceptions import CommandLineError
 
@@ -29,7 +30,7 @@ epilog=(
         "database, they will be lost.\n "
         "Use the 'buildcache' command first to rebuild the database."
 )
-wantsTradeDB=False           # because we don't want the DB to be rebuild
+needs = Needs.RESOLVER
 arguments = [
 ]
 switches = [
@@ -78,7 +79,7 @@ def run(results, cmdenv, tdb):
     summary = ensure_fresh_db(
         backend=getattr(tdb.engine, "dialect", None).name if getattr(tdb, "engine", None) else "unknown",
         engine=getattr(tdb, "engine", None),
-        data_dir=tdb.dataPath,
+        data_dir=tdb.data_dir,
         metadata=None,
         mode="auto",
         rebuild=False,   # IMPORTANT: never rebuild from here; just report health
@@ -91,7 +92,7 @@ def run(results, cmdenv, tdb):
         )
     
     # --- Determine export target directory (same behavior as before) ---
-    exportPath = Path(cmdenv.path) if cmdenv.path else Path(tdb.dataDir)
+    exportPath = Path(cmdenv.path) if cmdenv.path else Path(tdb.data_dir)
     if not exportPath.is_dir():
         raise CommandLineError("Save location '{}' not found.".format(str(exportPath)))
     
@@ -102,12 +103,12 @@ def run(results, cmdenv, tdb):
         if redacted:
             source_label = str(redacted)
         elif dialect == "sqlite":
-            source_label = f"SQLite file '{tdb.dbPath}'"
+            source_label = f"SQLite file '{tdb.db_path}'"
         else:
             # Hide password in DSN
             source_label = f"{dialect} @ {tdb.engine.url.render_as_string(hide_password=True)}"
     except Exception:
-        source_label = str(getattr(tdb, "dbPath", "Unknown DB"))
+        source_label = str(getattr(tdb, "db_path", "Unknown DB"))
     cmdenv.NOTE("Using database {}", source_label)
 
     

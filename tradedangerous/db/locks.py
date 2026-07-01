@@ -120,13 +120,6 @@ def _is_lock_supported(session: Session) -> bool:
     return name in ("mysql", "mariadb")
 
 
-def _dialect_name(session: Session) -> str:
-    try:
-        return (session.get_bind().dialect.name or "").lower()
-    except Exception:
-        return ""
-
-
 def _connection_id(session: Session) -> int | None:
     if not _is_lock_supported(session):
         return None

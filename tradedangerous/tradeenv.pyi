@@ -31,6 +31,11 @@ class BaseColorTheme:
     itm_units: str
     itm_name: str
     itm_price: str
+    text_seq_first: str
+    text_seq_last: str
+    text_route_unload: str
+    text_itm_units: str
+    text_itm_name: str
     def render(self, renderable: Any, style: str) -> str: ...
 
 
@@ -60,6 +65,11 @@ class RichColorTheme(BasicRichColorTheme):
     itm_units: str
     itm_name: str
     itm_price: str
+    text_seq_first: str
+    text_seq_last: str
+    text_route_unload: str
+    text_itm_units: str
+    text_itm_name: str
 
 
 class BaseConsoleIOMixin:

@@ -16,7 +16,7 @@ We:
 1. Import a **fresh full database**
 2. Select a **region of interest** (e.g. around Sol)
 3. **Crop the database** to only those systems
-4. Let FK cascades remove dependent data
+4. Remove dependent data manually in dependency order
 5. Export the reduced dataset
 6. Use that as the canonical fixture pack
 
@@ -78,9 +78,19 @@ Barnard's Star
 
 Keep only the system names (no distances/columns).
 
-In notepad++ use ^H then in regex mode. 
-Replace:^[ \t]*(.*?)[ \t]+[+-]?\d+(?:\.\d+)?[ \t]*$
-With: \1
+In Notepad++, open Find & Replace (`Ctrl+H`) and enable **Regular expression** mode.
+
+**Find:**
+
+```
+^[ \t]*(.*?)[ \t]+[+-]?\d+(?:\.\d+)?[ \t]*$
+```
+
+**Replace with:**
+
+```
+\1
+```
 
 ---
 
@@ -92,37 +102,50 @@ Open the database:
 sqlite3 data/TradeDangerous.db
 ```
 
-### 4.1 Enable foreign keys
+### 4.1 Import system list
 
-```sql
-PRAGMA foreign_keys = ON;
-```
-
-### 4.2 Import system list
-
-Create a temporary table:
+Create a temporary table and import the cleaned list:
 
 ```sql
 CREATE TABLE keep_systems(name TEXT);
 ```
 
-Import your system list:
-
-```sql
+```
 .mode csv
-.import sol25ly.csv keep_systems
+.import sol25ly.txt keep_systems
 ```
 
-### 4.3 Delete unwanted systems
+### 4.2 Delete unwanted systems
+
+FK cascade is not configured on all tables, so delete in dependency order
+with FK enforcement off:
 
 ```sql
+PRAGMA foreign_keys = OFF;
+
 DELETE FROM System
 WHERE name NOT IN (SELECT name FROM keep_systems);
-```
 
-Because FK constraints are enabled:
-- related rows in Station, StationItem, ShipVendor, etc.
-  will be removed automatically
+DELETE FROM Station
+WHERE system_id NOT IN (SELECT system_id FROM System);
+
+DELETE FROM StationItem
+WHERE station_id NOT IN (SELECT station_id FROM Station);
+
+DELETE FROM ShipVendor
+WHERE station_id NOT IN (SELECT station_id FROM Station);
+
+-- Note: the Upgrade, UpgradeVendor, and FDevOutfitting tables were dropped from
+-- the schema, so there is no outfitting-vendor table to crop here.
+
+-- Item.rare_station_id is a nullable FK to Station; NULL out orphaned links
+UPDATE Item
+SET rare_station_id = NULL
+WHERE rare_station_id IS NOT NULL
+  AND rare_station_id NOT IN (SELECT station_id FROM Station);
+
+PRAGMA foreign_keys = ON;
+```
 
 ---
 
@@ -164,18 +187,18 @@ Remove unnecessary files:
   - `StationDemand.csv`
   - `StationSupply.csv`
 
+If regenerating from old v12 fixtures, also delete these files which no longer exist in the schema:
+  - `RareItem.csv`
+  - `Added.csv`
+
 Verify required files exist:
 - System.csv
 - Station.csv
 - StationItem.csv
 - Item.csv
 - Category.csv
-- RareItem.csv
 - Ship.csv
 - ShipVendor.csv
-- Upgrade.csv
-- UpgradeVendor.csv
-- FDevOutfitting.csv
 - FDevShipyard.csv
 - TradeDangerous.db
 

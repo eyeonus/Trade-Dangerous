@@ -17,7 +17,6 @@ LAUNCHER_PORT_MIN = 8000
 LAUNCHER_PORT_MAX = 8999
 _IMPORT_TRANSIENT_FLAGS = frozenset({
     'all',
-    'skipvend',
     'clean',
     'optimize',
     'force',
@@ -128,6 +127,9 @@ class GuiStore:
     
     schema_version: int = SCHEMA_VERSION
     launcher_port: int | None = None
+    # Optional override for the Elite Dangerous journal directory. Blank/None
+    # means "auto", preserving the CLI's normal env-var/OS-default discovery.
+    journal_dir: str | None = None
     selected_profile_id: str | None = None
     selected_command: str = 'run'
     global_settings: GlobalSettings = field(default_factory=GlobalSettings)
@@ -156,6 +158,7 @@ class GuiStore:
         store = cls(
             schema_version=int(data.get('schema_version') or SCHEMA_VERSION),
             launcher_port=_coerce_launcher_port(data.get('launcher_port')),
+            journal_dir=(data.get('journal_dir') or None),
             selected_profile_id=data.get('selected_profile_id'),
             selected_command=data.get('selected_command') or 'run',
             global_settings=GlobalSettings.from_dict(data.get('global')),
@@ -176,6 +179,7 @@ class GuiStore:
         return {
             'schema_version': self.schema_version,
             'launcher_port': self.launcher_port,
+            'journal_dir': self.journal_dir,
             'selected_profile_id': self.selected_profile_id,
             'selected_command': self.selected_command,
             'global': self.global_settings.to_dict(),

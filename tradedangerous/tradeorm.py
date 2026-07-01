@@ -1,23 +1,31 @@
 """
-tradeorm provides the TradeORM class which uses the application database
-rather than trying to be its own database in its own right like TradeDB.
+tradeorm provides the TradeORM class: a lookup and query layer over the
+application database, rather than an in-memory model of the whole dataset.
 
 Suggested use:
-    
+
     # TradeEnv is optional, it's for controlling environment settings
     # builder-pattern style.
     from tradedangerous import TradeEnv, TradeORM
-    
+
     tde = TradeEnv()  # debug settings, color, etc...
     tdo = TradeORM(tde)  # if not supplied, it will make its own
 """
 from __future__ import annotations
 from pathlib import Path
 import os
+import re
 import typing
 
-from . import TradeEnv
-from .tradeexcept import AmbiguityError, TradeException, MissingDB, SystemNotStationError
+from . import TradeEnv, fs
+from .tradeexcept import (
+    AmbiguityError,
+    TradeException,
+    MissingDB,
+    SystemNotStationError,
+    format_system_candidates,
+)
+from .corrections import normalize_str, _normalize_trans, _trim_trans
 from .db import (
     orm_models as orm,          # type: ignore  # so we can access models easily
     make_engine_from_config,    # type: ignore
@@ -27,164 +35,753 @@ from .db import (
 if typing.TYPE_CHECKING:
     from .db.engine import sessionmaker, Engine, Session  # type: ignore
 
+# Normalisation now lives in the dependency-free corrections module so every
+# writer of lookup_name shares one rule. _normalize_trans, _trim_trans and
+# normalize_str are imported above; the module-level names are kept so the
+# internal .translate(...) calls below and the TradeORM class attributes still
+# resolve unchanged.
+
 
 class TradeORM:
     DEFAULT_PATH = "data"
     DEFAULT_DB = "TradeDangerous.db"
     DB_CONFIG_VAR = "TD_DB_CONFIG"
     DB_CONFIG_FILE = "db_config.ini"
-    
+
+    # Expose normalization tables as class attributes for test/external access.
+    _normalize_trans = _normalize_trans
+    _trim_trans = _trim_trans
+
     data_dir: Path
     db_path:  Path
-    
+
     engine: Engine
     session_maker: sessionmaker[Session]
     session: Session
-    
-    def __init__(self, *, tdenv: TradeEnv | None = None, debug: int | None = None):
+
+    def __init__(self, *, tdenv: TradeEnv | None = None, debug: int | None = None,
+                 require_db: bool = True):
+        # require_db: normal query commands fail fast on a missing SQLite file.
+        # Build/bootstrap commands (buildcache) create the file themselves, so
+        # they construct the handle with require_db=False to tolerate its absence.
         tdenv = tdenv or TradeEnv(debug=debug or 0)
         self.tdenv = tdenv
-        
+
         # Determine the legacy/default SQLite path.
         self.data_dir = Path(tdenv.dataDir)
         db_path = tdenv.dbFilename or (self.data_dir / TradeORM.DEFAULT_DB)
         self.db_path = Path(db_path)
-        
+        self.sql_path = self.data_dir / (tdenv.sqlFilename or "TradeDangerous.sql")
+
+        # Seed/template files: copy from templates/ into the data + csv dirs only
+        # when missing or newer (never overwrite on a pip upgrade), so a fresh
+        # install still gets its Category seed and the schema.
+        self.template_path = Path(tdenv.templateDir).resolve()
+        self.csv_path = fs.ensurefolder(tdenv.csvDir)
+        fs.copy_if_missing(self.template_path / "Category.csv", self.csv_path / "Category.csv")
+        fs.copy_if_newer(self.template_path / "TradeDangerous.sql", self.data_dir / "TradeDangerous.sql")
+
         default_config = self.data_dir / TradeORM.DB_CONFIG_FILE
         db_config = os.environ.get(TradeORM.DB_CONFIG_VAR, default_config)
         tdenv.DEBUG0("db_config = {}", db_config)
-        
+
         # Make the database available.
         self.engine = make_engine_from_config(db_config)
         backend = self.engine.dialect.name
         tdenv.DEBUG0("db_backend = {}", backend)
-        
+
         # Don't raise if we don't even need a db file.
         if backend == "sqlite":
             sqlite_path = self.engine.url.database
             if sqlite_path:
                 self.db_path = Path(sqlite_path)
             tdenv.DEBUG0("db_path = {}", self.db_path)
-            if not self.db_path.exists():
+            if require_db and not self.db_path.exists():
                 raise MissingDB(self.db_path)
         else:
             tdenv.DEBUG0("db_path check skipped for backend {}", backend)
-        
+
         # The user will expect objects (instances of models) that we return
         # to have the same lifetime as the TradeORM() instance, so we want
         # a main session for things to use and return from.
         #
         # However: we also want them to be able to create transactions, etc
         # so we also make the session-factory available.
-        self.session = get_session_factory(self.engine)()
-    
+        self.session_maker = get_session_factory(self.engine)
+        self.session = self.session_maker()
+
     def commit(self):
         """ Commit the current transaction state. """
         return self.session.commit()
+
+    def close(self, final: bool = False) -> None:
+        """ Close the ORM session. """
+        self.session.close()
     
-    def lookup_station(self, name: str) -> orm.Station | None:
-        """ Use the database to lookup a station, which accepts a name that
-            is either a unique station name (or partial of one), or in the
-            'system name/station name' component. If the station does not
-            match a unique station, raises an AmbiguityError
+    @property
+    def tradingStationCount(self) -> int:
+        """Return the number of stations with any market data."""
+        return (
+            self.session.query(orm.StationItem.station_id)
+            .distinct()
+            .count()
+        )
+
+    # ------------------------------------------------------------------
+    # Partial-matching helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def normalize_str(s: str) -> str:
+        """Apply the two-stage normalisation used by _list_search.
+
+        Compatibility shim: delegates to corrections.normalize_str (the shared
+        rule). The bare name below resolves to the imported module-level
+        function, not this method, so there is no recursion. Kept because
+        commandenv and external callers use TradeORM.normalize_str().
         """
+        return normalize_str(s)
+
+    @staticmethod
+    def _list_search(
+        list_type: str,
+        lookup: str,
+        candidates,
+        key,
+    ) -> object:
+        """Python partial matching over an in-memory candidate list.
+
+        *key* extracts the display/match string from each candidate.
+        Returns the single matched candidate or raises LookupError /
+        AmbiguityError.
+
+        Contract notes:
+        - An exact normalized-length match returns immediately, bypassing
+          ambiguity checking (PRESERVE FOR PARITY).
+        - The word-boundary regex escapes *lookup* so regex metacharacters in
+          user input match literally and a malformed fragment cannot raise
+          re.error. This intentionally departs from the legacy unescaped
+          behaviour, which was a bug.
+        """
+        needle = lookup.translate(_normalize_trans).translate(_trim_trans)
+        word_re = re.compile(rf"\b{re.escape(lookup)}\b", re.IGNORECASE)
+        partial_match: list = []
+        word_match: list = []
+
+        for entry in candidates:
+            entry_key = key(entry)
+            norm_val = (
+                entry_key.translate(_normalize_trans).translate(_trim_trans)
+            )
+            if norm_val.find(needle) == -1:
+                continue
+            # Exact normalized-length match — return immediately, no ambiguity.
+            if len(norm_val) == len(needle):
+                return entry
+            if word_re.match(entry_key):
+                word_match.append(entry)
+            else:
+                partial_match.append(entry)
+
+        if word_match:
+            if len(word_match) > 1:
+                raise AmbiguityError(list_type, lookup, word_match, key=key)
+            return word_match[0]
+        if partial_match:
+            if len(partial_match) > 1:
+                raise AmbiguityError(list_type, lookup, partial_match, key=key)
+            return partial_match[0]
+        raise LookupError(f"'{lookup}' does not match any {list_type}")
+
+    @staticmethod
+    def _place_lookup(
+        token: str,
+        candidates,
+    ) -> tuple[list, list, list, list]:
+        """Four-tier match against candidates (exact/close/word/any tiers).
+
+        *candidates* must expose a .name attribute (System or Station ORM objects).
+        Returns (exact_match, close_match, word_match, any_match).
+
+        Contract note (PRESERVE FOR PARITY): word boundaries are space
+        characters in the stage-1-normalized string, not regex \\b.  This
+        differs from _list_search which uses regex \\b.
+        """
+        token_norm = token.translate(_normalize_trans)
+        token_trim = token_norm.translate(_trim_trans)
+        token_len = len(token)
+        token_norm_len = len(token_norm)
+        token_trim_len = len(token_trim)
+
+        exact_match: list = []
+        close_match: list = []
+        word_match: list = []
+        any_match: list = []
+
+        for place in candidates:
+            place_name = place.name
+            place_norm = place_name.translate(_normalize_trans)
+            place_norm_len = len(place_norm)
+
+            # Guard: trimmed needle longer than normalized candidate — skip.
+            if token_trim_len > place_norm_len:
+                continue
+
+            # Tier 1: exact — same raw length and stage-1 normalized content.
+            if len(place_name) == token_len and place_norm == token_norm:
+                exact_match.append(place)
+                continue
+
+            # Tier 2: close — same stage-1 normalized length and content.
+            if place_norm_len == token_norm_len and place_norm == token_norm:
+                close_match.append(place)
+                continue
+
+            # Tier 3/4: substring with space-based word-boundary checks.
+            if token_norm_len < place_norm_len:
+                pos = place_norm.find(token_norm)
+                if pos == 0:
+                    if place_norm[token_norm_len:token_norm_len + 1] == " ":
+                        word_match.append(place)
+                    else:
+                        any_match.append(place)
+                    continue
+                if pos > 0:
+                    before = place_norm[pos - 1:pos]
+                    after = place_norm[pos + token_norm_len:pos + token_norm_len + 1]
+                    if before == " " and after == " ":
+                        word_match.append(place)
+                    else:
+                        any_match.append(place)
+                    continue
+
+            # Trim tier: compare after removing spaces/apostrophes.
+            place_trim = place_norm.translate(_trim_trans)
+            place_trim_len = len(place_trim)
+            if place_trim_len == place_norm_len:
+                # Stage 2 changed nothing; no new information.
+                continue
+            if place_trim_len == token_trim_len and place_trim == token_trim:
+                close_match.append(place)
+            elif token_trim and place_trim.find(token_trim) >= 0:
+                any_match.append(place)
+
+        return exact_match, close_match, word_match, any_match
+
+    @staticmethod
+    def _resolve_place_tiers(
+        name: str,
+        exact: list,
+        close: list,
+        word: list,
+        any_: list,
+    ) -> orm.System | orm.Station:
+        """Resolve four match tiers per the lookupPlace contract.
+
+        Any tier with exactly one entry wins.  All-empty → LookupError.
+        Multiple candidates across any tier → AmbiguityError.
+        """
+        for tier in (exact, close, word, any_):
+            if len(tier) == 1:
+                return tier[0]
+        all_candidates = exact + close + word + any_
+        if not all_candidates:
+            raise LookupError(f"unknown station: {name!r}")
+        raise AmbiguityError(
+            "Station", name, all_candidates,
+            # Candidates reaching here are stations; show the System/Station pair.
+            key=lambda p: p.dbname(),
+        )
+
+    # ------------------------------------------------------------------
+    # Public lookup API
+    # ------------------------------------------------------------------
+
+    def lookup_station(
+        self,
+        name: str | orm.Station | orm.System,
+        system: str | orm.System | None = None,
+    ) -> orm.Station:
+        """ Exact-then-partial station lookup.
+
+        Accepts a Station (pass-through), a System (returns its single station
+        or raises SystemNotStationError), or a str name.  When *system* is
+        supplied the search is scoped to that system; without it a dual-scan
+        is performed (exact station first, then exact system) and the results
+        are reconciled per the resolver contract.
+
+        Partial matching is attempted when the exact query returns nothing.
+        For scoped lookups all stations in the system are searched (bounded).
+        For unscoped lookups a prefix ILIKE query narrows candidates before
+        Python-side _list_search runs.
+        """
+        if isinstance(name, orm.Station):
+            return name
+        if isinstance(name, orm.System):
+            stns = name.stations
+            if len(stns) == 1:
+                return stns[0]
+            raise SystemNotStationError(
+                f"System {name.name!r} has {len(stns)} stations; specify a station name"
+            )
+        if not isinstance(name, str):
+            raise TypeError(f"lookup_station requires a str, got {type(name).__name__!r}")
         if "%" in name:
             raise TradeException("wildcards ('%') are not supported in station names")
-        if "/" not in name:
-            if (station := self._station_lookup(name, exact=True, partial=False)):
-                return station
-            if self._system_lookup(name, exact=True, partial=False):
-                raise SystemNotStationError(f'"{name}" is a system name, use "/{name}" if you meant it as a station')
-            name = "/" + name
-        station: orm.Station | None = self.lookup_place(name)
-        return station
-    
-    def lookup_system(self, name: str) -> orm.System | None:
-        """ Use the database to lookup a system, which accepts a name that
-            is either a unique system name (or partial of one), or in the
-            'system name/station name' component. If the system does not
-            match a unique system, raises an AmbiguityError
-        """
-        if "%" in name:
-            raise TradeException("wildcards ('%') are not supported in system names")
-        system_name, _, _ = name.partition("/")
-        if not system_name:
-            raise TradeException(f"system name required for system lookup, got {name}")
-        result: orm.Station | orm.System | None = self.lookup_place(system_name)
-        if isinstance(result, orm.Station):
-            return result.system
-        return result
-    
-    def lookup_place(self, name: str) -> orm.Station | orm.System | None:
-        """ Using a "[<system>]/[<station>]" style name, look up either a Station or a System."""
-        if "%" in name:
-            raise TradeException("wildcards ('%') are not supported in names")
-        sys_name, slashed, stn_name = name.partition("/")
-        if not slashed:
-            if stn_name:
-                station: orm.Station | None = self._station_lookup(stn_name, exact=True, partial=False)
-                if station:
-                    return station
-            if sys_name:
-                system: orm.System | None = self._system_lookup(sys_name, exact=True, partial=False)
-                if system:
-                    return system
-        
-        if sys_name:
-            system = self._system_lookup(sys_name)
-            if not system:
-                raise TradeException(f"unknown system: {sys_name}")
-            if not stn_name:
-                return system
-            
-            # Now we match the list of station names for this system.
-            stmt = self.session.query(orm.Station).filter(orm.Station.system_id == system.system_id).filter(orm.Station.name == stn_name)
-            results = stmt.all()
+
+        if "/" in name or "\\" in name:
+            place = self.lookup_place(name)
+            if isinstance(place, orm.Station):
+                return place
+            raise SystemNotStationError(
+                f"{name!r} resolved to a system, not a station; specify a station name"
+            )
+
+        if system is not None:
+            sys_obj = self.lookup_system(system)
+            results = (
+                self.session.query(orm.Station)
+                .filter(orm.Station.system_id == sys_obj.system_id)
+                .filter(orm.Station.name == name)
+                .all()
+            )
+            if not results:
+                # Partial matching: pull all stations in this system (bounded).
+                all_stns = (
+                    self.session.query(orm.Station)
+                    .filter(orm.Station.system_id == sys_obj.system_id)
+                    .all()
+                )
+                return self._list_search(
+                    "Station", name, all_stns, key=lambda s: s.name
+                )
             if len(results) == 1:
                 return results[0]
-
-            stmt = self.session.query(orm.Station).filter(orm.Station.system_id == system.system_id).filter(orm.Station.name.like(f"%{stn_name}%"))
-            results = stmt.all()
-            if not results:
-                raise TradeException(f"no station in {sys_name} matches '{stn_name}'")
-            if len(results) > 1:
-                raise AmbiguityError("Station", stn_name, [s.name for s in results])
-            return results[0]
-        
-        station = self._station_lookup(stn_name, exact=False)
-        return station
-    
-    def _system_lookup(self, name: str, *, exact: bool = True, partial: bool = True) -> orm.System | None:
-        """ Look up a model by exact name match. """
-        assert exact or partial, "at least one of exact or partial must be True"
-        results: list[orm.System] | None = None
-        if exact:
-            results = self.session.query(orm.System).filter(orm.System.name == name).all()
-            if len(results) == 1:
-                partial = False
-        if partial:
-            like_pattern = f"%{name}%"
-            results = self.session.query(orm.System).filter(orm.System.name.like(like_pattern)).all()
-        
-        if not results:
-            return None
-        if len(results) > 1:
-            raise AmbiguityError("System", name, results, key=lambda s: s.dbname())
-        return results[0]
-    
-    def _station_lookup(self, name: str, *, exact: bool = True, partial: bool = True) -> orm.Station | None:
-        """ Look up a model by exact name match. """
-        assert exact or partial, "at least one of exact or partial must be True"
-        results: list[orm.Station] | None = None
-        if exact:
-            results = self.session.query(orm.Station).filter(orm.Station.name == name).all()
-            if len(results) == 1:
-                partial = False
-        if partial:
-            like_pattern = f"%{name}%"
-            results = self.session.query(orm.Station).filter(orm.Station.name.like(like_pattern)).all()
-        if not results:
-            return None
-        if len(results) > 1:
             raise AmbiguityError("Station", name, results, key=lambda s: s.dbname())
-        return results[0]
+
+        # Dual scan: exact station + exact system queries.
+        stn_results = (
+            self.session.query(orm.Station)
+            .filter(orm.Station.name == name)
+            .all()
+        )
+        sys_results = (
+            self.session.query(orm.System)
+            .filter(orm.System.name == name)
+            .all()
+        )
+
+        if not stn_results and not sys_results:
+            # Neither exact scan found anything — gather candidates via the
+            # normalised lookup_name key, a true superset of what the Python
+            # matcher accepts (interior and cross-space fragments included).
+            needle = normalize_str(name)
+            stn_cands = (
+                self.session.query(orm.Station)
+                .filter(orm.Station.lookup_name.ilike(f"%{needle}%"))
+                .all()
+            )
+            sys_cands = (
+                self.session.query(orm.System)
+                .filter(orm.System.lookup_name.ilike(f"%{needle}%"))
+                .all()
+            )
+            if stn_cands:
+                try:
+                    stn_results = [
+                        self._list_search(
+                            "Station", name, stn_cands, key=lambda s: s.dbname()
+                        )
+                    ]
+                except LookupError:
+                    pass
+                # AmbiguityError from _list_search propagates to caller.
+            if sys_cands:
+                try:
+                    sys_results = [
+                        self._list_search(
+                            "System", name, sys_cands, key=lambda s: s.name
+                        )
+                    ]
+                except LookupError:
+                    pass
+
+        if not stn_results and not sys_results:
+            raise LookupError(f"'{name}' did not match any station or system.")
+
+        if len(stn_results) > 1:
+            raise AmbiguityError("Station", name, stn_results, key=lambda s: s.dbname())
+        if len(sys_results) > 1:
+            raise AmbiguityError("System", name, sys_results, key=lambda s: s.name)
+
+        station = stn_results[0] if stn_results else None
+        sys_obj = sys_results[0] if sys_results else None
+
+        # A station match wins outright. If a bare name also matches a system
+        # elsewhere, that system is irrelevant here: lookup_station only ever
+        # returns a station, so a coincidentally-named system is not an
+        # alternative the caller could pick. (Same-system matches are the
+        # Aulin-pattern case — the station is the more specific answer.)
+        if station:
+            return station
+
+        # Only system matched.
+        stn_list = (
+            self.session.query(orm.Station)
+            .filter(orm.Station.system_id == sys_obj.system_id)
+            .all()
+        )
+        if len(stn_list) == 1:
+            return stn_list[0]
+        raise SystemNotStationError(
+            f"System {sys_obj.name!r} has {len(stn_list)} stations; specify a station name"
+        )
+
+    def lookup_system(self, name: str | orm.System | orm.Station) -> orm.System:
+        """ Exact-then-partial system lookup with optional '@N' disambiguation.
+
+        Falls back to prefix ILIKE + _list_search when the exact query returns
+        nothing. @N disambiguation is only available in the exact tier (PRESERVE
+        FOR PARITY — the partial fallback receives the full name including @N
+        as a literal search string, per the DOCUMENTED LEGACY BUG).
+        """
+        if isinstance(name, orm.System):
+            return name
+        if isinstance(name, orm.Station):
+            return name.system
+        if not isinstance(name, str):
+            raise TypeError(f"lookup_system requires a str, got {type(name).__name__!r}")
+
+        if "%" in name:
+            raise TradeException("wildcards ('%') are not supported in system names")
+
+        base_name, index = self._split_system_index(name)
+
+        results = (
+            self.session.query(orm.System)
+            .filter(orm.System.name == base_name)
+            .order_by(orm.System.pos_x, orm.System.pos_y, orm.System.pos_z, orm.System.system_id)
+            .all()
+        )
+
+        if not results:
+            # Partial matching fallback — gather candidates via the normalised
+            # lookup_name key (a true superset of the Python matcher). The full
+            # name (including any @N) is passed to _list_search; @N is treated
+            # as a literal search string in the partial path (DOCUMENTED LEGACY
+            # BUG parity — it will simply not match lookup_name, as before).
+            needle = normalize_str(name)
+            candidates = (
+                self.session.query(orm.System)
+                .filter(orm.System.lookup_name.ilike(f"%{needle}%"))
+                .all()
+            )
+            if not candidates:
+                raise LookupError(f"unknown system: {base_name!r}")
+            return self._list_search(
+                "System", name, candidates, key=lambda s: s.name
+            )
+
+        if index is not None:
+            if 1 <= index <= len(results):
+                return results[index - 1]
+            candidates = "\n".join(format_system_candidates(results))
+            raise TradeException(
+                f'System "{base_name}" has {len(results)} matching entries '
+                f"(@1..@{len(results)}).\n"
+                f'"{base_name}@{index}" is not a valid index.\n\n'
+                "Use one of the available forms:\n\n"
+                f"{candidates}"
+            )
+
+        if len(results) == 1:
+            return results[0]
+
+        # Genuine duplicate-system collision: hand the ordered (index, System)
+        # pairs to AmbiguityError, whose System branch renders the @N list via
+        # the shared formatter.
+        pairs = list(enumerate(results, start=1))
+        raise AmbiguityError("System", base_name, pairs)
+
+    def lookup_place(
+        self,
+        name: str | orm.System | orm.Station,
+    ) -> orm.System | orm.Station:
+        """ Resolve a place name to a System or Station.
+
+        The syntax picks the namespace — there is no cross-namespace
+        fall-through:
+          bare name / @name  -> always a SYSTEM
+          /station           -> always a STATION (searched globally)
+          system/station     -> a station within the named system(s)
+          system/            -> the named system
+
+        Accepts System/Station instances (pass-through) or a str in any of
+        the forms above.  Backslash is treated as forward slash.
+
+        Bare path (no slash):
+          Delegates to lookup_system() — inherits full @N semantics and
+          partial system matching.  A miss raises LookupError ("unknown
+          system"); it never falls through to a station search.  A leading @
+          is an accepted, redundant "this is a system" marker.
+
+        Slash path:
+          System part: exact query first; if nothing, lookup_name ILIKE +
+          _place_lookup.  Station part: if system candidates exist, all their
+          stations are searched via _place_lookup (handles interior substrings
+          such as "braham" -> "Abraham Lincoln"); with no system context the
+          station is searched globally.  @N is suppressed in compound syntax
+          (PRESERVE FOR PARITY).
+        """
+        if isinstance(name, (orm.System, orm.Station)):
+            return name
+        if not isinstance(name, str):
+            raise TypeError(f"lookup_place requires a str, got {type(name).__name__!r}")
+        if "%" in name:
+            raise TradeException("wildcards ('%') are not supported in names")
+
+        # Normalise backslash to forward slash.
+        norm = name.replace("\\", "/")
+        at_prefix = norm.startswith("@")
+        slash_pos = norm.find("/")
+
+        if slash_pos == -1:
+            # Bare name: try SYSTEM first, then fall back to a STATION search.
+            # An unambiguous system match wins before the station fallback is
+            # tried; an AmbiguityError from a duplicate system name propagates
+            # so the user disambiguates rather than getting a silent pick. @N
+            # disambiguation and partial system matching flow through
+            # lookup_system.
+            #
+            # A leading @ is the explicit "this is a system" annotation — the
+            # symmetric counterpart of the "/station" form — so @name is system
+            # only, with no station fallback.
+            bare = norm[1:] if at_prefix else norm
+            if at_prefix:
+                return self.lookup_system(bare)
+            try:
+                return self.lookup_system(bare)
+            except LookupError:
+                pass
+            return self._global_station_lookup(
+                bare, f"unknown system or station: {bare!r}"
+            )
+
+        # Slow path: compound form with slash.
+        # Strip leading @ annotation (not @N — that is suppressed here).
+        name_off = 1 if at_prefix else 0
+        sys_part = norm[name_off:slash_pos]   # empty string for leading /
+        stn_part = norm[slash_pos + 1:]
+
+        # Raw exact system query — do NOT use lookup_system() here.
+        # This keeps @N disambiguation out of compound syntax (parity).
+        if sys_part:
+            sys_results = (
+                self.session.query(orm.System)
+                .filter(orm.System.name == sys_part)
+                .all()
+            )
+            if not sys_results:
+                # Partial system matching — gather candidates via the
+                # normalised lookup_name superset, then _place_lookup to tier
+                # them.
+                needle = normalize_str(sys_part)
+                sys_cands = (
+                    self.session.query(orm.System)
+                    .filter(orm.System.lookup_name.ilike(f"%{needle}%"))
+                    .all()
+                )
+                if sys_cands:
+                    exact_m, close_m, word_m, any_m = self._place_lookup(
+                        sys_part, sys_cands
+                    )
+                    sys_results = exact_m + close_m + word_m + any_m
+                # If still empty, sys_results = [] → station search is global.
+        else:
+            sys_results = []
+
+        if not stn_part:
+            # "system/" with no station — return system if unambiguous.
+            if not sys_results:
+                raise LookupError(f"unknown system: {name!r}")
+            if len(sys_results) == 1:
+                return sys_results[0]
+            raise AmbiguityError(
+                "System", sys_part, sys_results, key=lambda s: s.name
+            )
+
+        # Station candidates: scoped to matched systems, or global if none.
+        if sys_results:
+            system_ids = [s.system_id for s in sys_results]
+            stn_base = (
+                self.session.query(orm.Station)
+                .filter(orm.Station.system_id.in_(system_ids))
+            )
+            # Try exact first.
+            stn_exact = stn_base.filter(orm.Station.name == stn_part).all()
+            if stn_exact:
+                results = stn_exact
+            else:
+                # Pull all stations in matched systems for partial matching.
+                # This bounded set handles interior substrings (e.g. "braham").
+                all_stns = stn_base.all()
+                exact_m, close_m, word_m, any_m = self._place_lookup(
+                    stn_part, all_stns
+                )
+                return self._resolve_place_tiers(name, exact_m, close_m, word_m, any_m)
+        else:
+            # Global station search (no system context).
+            return self._global_station_lookup(
+                stn_part, f"unknown station: {name!r}"
+            )
+
+        if not results:
+            raise LookupError(f"unknown station: {name!r}")
+        if len(results) == 1:
+            return results[0]
+        raise AmbiguityError("Station", stn_part, results, key=lambda s: s.dbname())
+
+    def _global_station_lookup(self, term, miss_msg):
+        """Resolve a station by name without a system scope.
+
+        Exact name match first; on a miss, gather a normalised-name superset
+        via Station.lookup_name and tier it with _place_lookup. Returns the
+        unique match, raises AmbiguityError when several match, or
+        LookupError(miss_msg) when nothing does. Shared by the bare-name
+        station fallback and the "/station" global form.
+        """
+        exact = (
+            self.session.query(orm.Station)
+            .filter(orm.Station.name == term)
+            .all()
+        )
+        if exact:
+            if len(exact) == 1:
+                return exact[0]
+            raise AmbiguityError("Station", term, exact, key=lambda s: s.dbname())
+        needle = normalize_str(term)
+        cands = (
+            self.session.query(orm.Station)
+            .filter(orm.Station.lookup_name.ilike(f"%{needle}%"))
+            .all()
+        )
+        if not cands:
+            raise LookupError(miss_msg)
+        exact_m, close_m, word_m, any_m = self._place_lookup(term, cands)
+        return self._resolve_place_tiers(term, exact_m, close_m, word_m, any_m)
+
+    def lookup_item(self, name: str | orm.Item) -> orm.Item:
+        """Exact-then-normalised item lookup by name.
+
+        Exact CI match is tried first (fast path). Partial/normalised fallback
+        scans the full item catalogue in Python via _list_search, which applies
+        the two-stage name normalisation. A full scan is used rather than ILIKE
+        narrowing because raw SQL cannot replicate stage-1 punctuation deletion,
+        so ILIKE is not a superset of normalised matches (e.g. "HESuits" must
+        reach "H.E. Suits"). The item catalogue is small enough (~300 rows) that
+        a full scan is acceptable.
+        """
+        if isinstance(name, orm.Item):
+            return name
+        if not isinstance(name, str):
+            raise TypeError(f"lookup_item requires a str, got {type(name).__name__!r}")
+        if "%" in name:
+            raise TradeException("wildcards ('%') are not supported in item names")
+
+        # Exact CI match — fast path.
+        results = (
+            self.session.query(orm.Item)
+            .filter(orm.Item.name == name)
+            .all()
+        )
+        if results:
+            if len(results) == 1:
+                return results[0]
+            raise AmbiguityError("Item", name, results, key=lambda i: i.name)
+
+        # Full catalogue scan with Python-side normalised matching.
+        all_items = self.session.query(orm.Item).all()
+        if not all_items:
+            raise LookupError(f"unknown item: {name!r}")
+        return self._list_search("Item", name, all_items, key=lambda i: i.name)
+
+    def lookup_category(self, name: str | orm.Category) -> orm.Category:
+        """Exact-then-normalised category lookup by name.
+
+        Exact CI match is tried first (fast path, uses idx_category_by_name).
+        Normalised fallback scans all categories in Python via _list_search. The
+        category catalogue is tiny (~16 rows) so a full scan is acceptable.
+        """
+        if isinstance(name, orm.Category):
+            return name
+        if not isinstance(name, str):
+            raise TypeError(f"lookup_category requires a str, got {type(name).__name__!r}")
+
+        # Exact CI match — fast path.
+        results = (
+            self.session.query(orm.Category)
+            .filter(orm.Category.name == name)
+            .all()
+        )
+        if results:
+            if len(results) == 1:
+                return results[0]
+            raise AmbiguityError("Category", name, results, key=lambda c: c.name)
+
+        # Full catalogue scan with Python-side normalised matching.
+        all_cats = self.session.query(orm.Category).all()
+        if not all_cats:
+            raise LookupError(f"unknown category: {name!r}")
+        return self._list_search("Category", name, all_cats, key=lambda c: c.name)
+
+    def lookup_ship(self, name: str | orm.Ship) -> orm.Ship:
+        """Exact-then-normalised ship lookup by name.
+
+        Exact CI match is tried first (fast path). Normalised fallback scans the
+        full ship catalogue via _list_search. The ship catalogue is small
+        (~40 rows) so a full scan is acceptable.
+        """
+        if isinstance(name, orm.Ship):
+            return name
+        if not isinstance(name, str):
+            raise TypeError(f"lookup_ship requires a str, got {type(name).__name__!r}")
+
+        # Exact CI match — fast path.
+        results = (
+            self.session.query(orm.Ship)
+            .filter(orm.Ship.name == name)
+            .all()
+        )
+        if results:
+            if len(results) == 1:
+                return results[0]
+            raise AmbiguityError("Ship", name, results, key=lambda s: s.name)
+
+        # Full catalogue scan with Python-side normalised matching.
+        all_ships = self.session.query(orm.Ship).all()
+        if not all_ships:
+            raise LookupError(f"unknown ship: {name!r}")
+        return self._list_search("Ship", name, all_ships, key=lambda s: s.name)
+
+    def item_by_id(self, item_id: int) -> orm.Item:
+        """Look up an Item by its primary key.
+
+        Uses the SQLAlchemy identity map when the item is already loaded in the
+        session; otherwise issues a PK query. Raises LookupError if the item_id
+        does not exist.
+        """
+        item = self.session.get(orm.Item, item_id)
+        if item is None:
+            raise LookupError(f"unknown item id: {item_id!r}")
+        return item
+
+    @staticmethod
+    def _split_system_index(name: str) -> tuple[str, int | None]:
+        """ Split 'Name@N' into ('Name', N); returns (name, None) if no valid suffix. """
+        at = name.rfind('@')
+        if at <= 0:
+            return name, None
+        tail = name[at + 1:]
+        if not tail.isdigit():
+            return name, None
+        return name[:at], int(tail)

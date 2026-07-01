@@ -50,20 +50,20 @@ def build_run_argv(
     append_option(argv, '--jumps-per', resolved.get('maxJumpsPer'))
     append_option(argv, '--start-jumps', resolved.get('startJumps'))
     append_option(argv, '--end-jumps', resolved.get('endJumps'))
-    append_flag(argv, '--show-jumps', resolved.get('showJumps'))
     
     append_option(argv, '--limit', resolved.get('limit'))
     append_option(argv, '--pad-size', resolved.get('padSize'))
-    append_flag(argv, '--no-planet', resolved.get('noPlanet'))
     append_option(argv, '--planetary', resolved.get('planetary'))
     append_option(argv, '--fleet-carrier', resolved.get('fleet'))
-    append_option(argv, '--odyssey', resolved.get('odyssey'))
-    append_flag(argv, '--black-market', resolved.get('blackMarket'))
+    append_option(argv, '--settlement', resolved.get('settlement'))
+    append_option(argv, '--black-market', 'Y' if resolved.get('blackMarket') else None)
     
     append_option(argv, '--ls-penalty', resolved.get('lsPenalty'))
     append_option(argv, '--ls-max', resolved.get('maxLs'))
+    append_flag(argv, '--sco', resolved.get('sco'))
     append_option(argv, '--gain-per-ton', resolved.get('minGainPerTon'))
     append_option(argv, '--max-gain-per-ton', resolved.get('maxGainPerTon'))
+    append_option(argv, '--max-price', resolved.get('maxPrice'))
     
     append_flag(argv, '--unique', resolved.get('unique'))
     append_option(argv, '--loop-interval', resolved.get('loopInt'))
@@ -71,17 +71,16 @@ def build_run_argv(
     append_option(argv, '--insurance', resolved.get('insurance'))
     
     append_option(argv, '--routes', resolved.get('routes'))
-    append_option(argv, '--max-routes', resolved.get('maxRoutes'))
-    append_flag(argv, '--checklist', resolved.get('checklist'))
-    append_flag(argv, '--x52-pro', resolved.get('x52pro'))
-    append_option(argv, '--prune-score', resolved.get('pruneScores'))
-    append_option(argv, '--prune-hops', resolved.get('pruneHops'))
-    
+    # The GUI follows routes through its own checklist stepper (run_checklist),
+    # so it never drives the CLI's stdin-based --checklist. Any stale checklist
+    # key in an old draft is intentionally left unread. CLI --checklist is
+    # unchanged.
+
     append_flag(argv, '--progress', resolved.get('progress'))
     append_option(argv, '--supply', resolved.get('supply'))
     append_option(argv, '--demand', resolved.get('demand'))
+    append_flag(argv, '--no-bulk-cap', resolved.get('noBulkCap'))
     append_flag(argv, '--summary', resolved.get('summary'))
-    append_flag(argv, '--shorten', resolved.get('shorten'))
     return argv
 
 def build_buy_argv(
@@ -99,6 +98,7 @@ def build_buy_argv(
         argv.append(term)
     
     append_option(argv, '--supply', resolved.get('supply'))
+    append_flag(argv, '--rare', resolved.get('rare'))
     append_flag(argv, '--one-stop', resolved.get('oneStop'))
     append_flag(argv, '--price-sort', resolved.get('sortByPrice'))
     append_flag(argv, '--units-sort', resolved.get('sortByUnits'))
@@ -121,9 +121,11 @@ def validate_buy_request(
     split_search_terms: Callable[[Any], list[str]],
 ) -> None:
     search_terms = split_search_terms(resolved.get('search'))
-    if not search_terms:
+    if not search_terms and not resolved.get('rare'):
         errors.append('Buy requires Search.')
-    
+    if resolved.get('oneStop') and resolved.get('rare') and not search_terms:
+        errors.append('Buy --one-stop with Rares requires at least one search term.')
+
     validate_optional_int(resolved, 'supply', minimum=0, errors=errors)
     validate_optional_int(resolved, 'limit', minimum=0, errors=errors)
     validate_optional_int(resolved, 'gt', minimum=0, errors=errors)
@@ -166,7 +168,7 @@ def build_sell_argv(
     _append_buysell_search_options(
         argv,
         resolved=resolved,
-        ly_option='--ly-per',
+        ly_option='--ly',
         include_ls_max=False,
         append_option=append_option,
         append_flag=append_flag,
@@ -222,11 +224,10 @@ def _append_buysell_search_options(
     append_option(argv, '--limit', resolved.get('limit'))
     append_option(argv, '--age', resolved.get('max_data_age_days'))
     append_option(argv, '--pad-size', resolved.get('padSize'))
-    append_flag(argv, '--no-planet', resolved.get('noPlanet'))
     append_option(argv, '--planetary', resolved.get('planetary'))
     append_option(argv, '--fleet-carrier', resolved.get('fleet'))
-    append_option(argv, '--odyssey', resolved.get('odyssey'))
-    append_flag(argv, '--black-market', resolved.get('blackMarket'))
+    append_option(argv, '--settlement', resolved.get('settlement'))
+    append_option(argv, '--black-market', 'Y' if resolved.get('blackMarket') else None)
     append_option(argv, '--gt', resolved.get('gt'))
     append_option(argv, '--lt', resolved.get('lt'))
     if include_ls_max:
@@ -238,10 +239,19 @@ def build_trade_argv(
     append_option: Callable[[list[str], str, Any], None],
     append_flag: Callable[[list[str], str, Any], None],
 ) -> list[str]:
+    local = bool(resolved.get('local'))
     origin = str(resolved.get('origin') or '').strip()
-    dest = str(resolved.get('dest') or '').strip()
     
-    argv = ['tradegui.py', 'trade', origin, dest]
+    if local:
+        # --local trades within one system. Pass the origin as a bare system
+        # (drop any preserved station qualifier), emit no destination, and
+        # never send --reverse -- the CLI rejects it alongside --local.
+        origin_system = origin.split('/', 1)[0].strip()
+        argv = ['tradegui.py', 'direct', origin_system]
+        append_flag(argv, '--local', True)
+    else:
+        dest = str(resolved.get('dest') or '').strip()
+        argv = ['tradegui.py', 'direct', origin, dest]
     
     # The trade renderer expects the detailed row payload rather than the
     # compact CLI summary, so the GUI forces detail mode here.
@@ -250,7 +260,11 @@ def build_trade_argv(
     append_option(argv, '--limit', resolved.get('limit'))
     append_option(argv, '--supply', resolved.get('supply'))
     append_option(argv, '--demand', resolved.get('demand'))
-    append_flag(argv, '--reverse', resolved.get('reverse'))
+    append_option(argv, '--best', resolved.get('best'))
+    # Direct inherits the commander-wide maximum data age from the global pane.
+    append_option(argv, '--age', resolved.get('max_data_age_days'))
+    if not local:
+        append_flag(argv, '--reverse', resolved.get('reverse'))
     
     cargo_mode = str(resolved.get('cargoMode') or '').strip()
     if cargo_mode == 'fill':
@@ -268,10 +282,13 @@ def validate_trade_request(
     errors: list[str],
     validate_optional_int: Callable[..., None],
 ) -> None:
+    local = bool(resolved.get('local'))
     if not str(resolved.get('origin') or '').strip():
-        errors.append('Trade requires Origin.')
-    if not str(resolved.get('dest') or '').strip():
-        errors.append('Trade requires Destination.')
+        errors.append('Direct requires an origin system or station.')
+    if not local and not str(resolved.get('dest') or '').strip():
+        # --local needs only the origin system; a destination is required for
+        # an ordinary point-to-point Direct query.
+        errors.append('Direct requires a destination system or station.')
     
     validate_optional_int(resolved, 'minGainPerTon', minimum=0, errors=errors)
     validate_optional_int(resolved, 'limit', minimum=0, errors=errors)
@@ -280,7 +297,11 @@ def validate_trade_request(
     
     cargo_mode = resolved.get('cargoMode')
     if cargo_mode not in (None, '', 'fill', 'load', 'full'):
-        errors.append('Trade cargo mode is invalid.')
+        errors.append('Direct cargo mode is invalid.')
+    
+    best = resolved.get('best')
+    if best not in (None, '', 'per-station', 'per-item', 'station'):
+        errors.append('Direct best mode is invalid.')
 
 def build_market_argv(
     *,
@@ -322,13 +343,12 @@ def build_local_argv(
     append_option(argv, '--ly', resolved.get('ly'))
     append_option(argv, '--age', resolved.get('max_data_age_days'))
     append_option(argv, '--pad-size', resolved.get('padSize'))
-    append_flag(argv, '--no-planet', resolved.get('noPlanet'))
     append_option(argv, '--planetary', resolved.get('planetary'))
     append_option(argv, '--fleet-carrier', resolved.get('fleet'))
-    append_option(argv, '--odyssey', resolved.get('odyssey'))
+    append_option(argv, '--settlement', resolved.get('settlement'))
     
     append_flag(argv, '--trading', resolved.get('trading'))
-    append_flag(argv, '--black-market', resolved.get('blackMarket'))
+    append_option(argv, '--black-market', 'Y' if resolved.get('blackMarket') else None)
     append_flag(argv, '--shipyard', resolved.get('shipyard'))
     append_flag(argv, '--outfitting', resolved.get('outfitting'))
     append_flag(argv, '--rearm', resolved.get('rearm'))
@@ -363,12 +383,10 @@ def build_nav_argv(
     argv = ['tradegui.py', 'nav', starting, ending]
     
     append_option(argv, '--ly-per', resolved.get('lyPer'))
-    append_option(argv, '--refuel-jumps', resolved.get('refuelJumps'))
     append_option(argv, '--pad-size', resolved.get('padSize'))
-    append_flag(argv, '--no-planet', resolved.get('noPlanet'))
     append_option(argv, '--planetary', resolved.get('planetary'))
     append_option(argv, '--fleet-carrier', resolved.get('fleet'))
-    append_option(argv, '--odyssey', resolved.get('odyssey'))
+    append_option(argv, '--settlement', resolved.get('settlement'))
     
     # TD accepts repeated `--via`/`--avoid` flags, so split the GUI text areas
     # into discrete argv entries instead of forwarding a raw comma block.
@@ -398,7 +416,6 @@ def validate_nav_request(
         errors.append('Nav requires End.')
     
     validate_optional_float(resolved, 'lyPer', minimum=0.0, errors=errors)
-    validate_optional_int(resolved, 'refuelJumps', minimum=0, errors=errors)
 
 def build_olddata_argv(
     *,
@@ -417,7 +434,7 @@ def build_olddata_argv(
     append_option(argv, '--pad-size', resolved.get('padSize'))
     append_option(argv, '--planetary', resolved.get('planetary'))
     append_option(argv, '--fleet-carrier', resolved.get('fleet'))
-    append_option(argv, '--odyssey', resolved.get('odyssey'))
+    append_option(argv, '--settlement', resolved.get('settlement'))
     
     return argv
 
@@ -439,59 +456,3 @@ def validate_olddata_request(
     if resolved.get('route') and not near:
         errors.append('Old Data route sorting requires Near.')
 
-def build_rares_argv(
-    *,
-    resolved: dict[str, Any],
-    append_option: Callable[[list[str], str, Any], None],
-    append_flag: Callable[[list[str], str, Any], None],
-    split_search_terms: Callable[[Any], list[str]],
-) -> list[str]:
-    near = str(resolved.get('near') or '').strip()
-    argv = ['tradegui.py', 'rares', near]
-    
-    append_option(argv, '--ly', resolved.get('ly'))
-    append_option(argv, '--limit', resolved.get('limit'))
-    append_option(argv, '--pad-size', resolved.get('padSize'))
-    append_flag(argv, '--no-planet', resolved.get('noPlanet'))
-    append_option(argv, '--planetary', resolved.get('planetary'))
-    append_option(argv, '--fleet-carrier', resolved.get('fleet'))
-    append_option(argv, '--odyssey', resolved.get('odyssey'))
-    append_flag(argv, '--price-sort', resolved.get('sortByPrice'))
-    append_flag(argv, '--reverse', resolved.get('reverse'))
-    
-    # Legality filtering is intentionally omitted from the GUI rares flow
-    # because the current data is not trusted as a user-facing filter.
-    
-    away = resolved.get('away')
-    away_from = split_search_terms(resolved.get('awayFrom'))
-    # `--away` is only meaningful when paired with one or more repeated
-    # `--from` anchors; validation enforces that both halves are supplied.
-    append_option(argv, '--away', away)
-    for system_name in away_from:
-        argv.extend(['--from', system_name])
-    
-    # Rares also renders best from the richer table payload.
-    argv.extend(['--detail', '--detail'])
-    return argv
-
-def validate_rares_request(
-    *,
-    resolved: dict[str, Any],
-    errors: list[str],
-    validate_optional_int: Callable[..., None],
-    validate_optional_float: Callable[..., None],
-    split_search_terms: Callable[[Any], list[str]],
-) -> None:
-    if not str(resolved.get('near') or '').strip():
-        errors.append('Rares requires Near.')
-    
-    validate_optional_float(resolved, 'ly', minimum=0.0, errors=errors)
-    validate_optional_int(resolved, 'limit', minimum=0, errors=errors)
-    validate_optional_float(resolved, 'away', minimum=0.0, errors=errors)
-    
-    has_away = resolved.get('away') is not None
-    has_away_from = bool(split_search_terms(resolved.get('awayFrom')))
-    if has_away != has_away_from:
-        errors.append(
-            'Rares away filtering requires both Away distance and Away from.'
-        )

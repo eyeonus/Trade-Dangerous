@@ -5,7 +5,6 @@ from tradedangerous.guiapp.td_exec_commands import (
     build_market_argv,
     build_nav_argv,
     build_olddata_argv,
-    build_rares_argv,
     build_run_argv,
     build_sell_argv,
     build_trade_argv,
@@ -13,7 +12,6 @@ from tradedangerous.guiapp.td_exec_commands import (
     validate_market_request,
     validate_nav_request,
     validate_olddata_request,
-    validate_rares_request,
     validate_trade_request,
 )
 
@@ -38,10 +36,9 @@ def test_build_run_argv_maps_expected_fields():
             'hops': 4,
             'maxJumpsPer': 3,
             'startJumps': 1,
-            'showJumps': True,
             'padSize': 'L',
             'fleet': 'Y',
-            'odyssey': 'N',
+            'settlement': 'N',
             'routes': 2,
             'summary': True,
         },
@@ -58,7 +55,6 @@ def test_build_run_argv_maps_expected_fields():
     assert '--from' in argv and 'Sol/Abraham Lincoln' in argv
     assert '--to' in argv and 'LHS 380/Fisher Point' in argv
     assert '--loop' in argv
-    assert '--show-jumps' in argv
     assert '--summary' in argv
 
 def test_build_trade_argv_and_validate_trade_request():
@@ -82,7 +78,7 @@ def test_build_trade_argv_and_validate_trade_request():
     )
     
     assert argv == [
-        'tradegui.py', 'trade', 'Sol/Abraham Lincoln', 'Sol/Burnell Station',
+        'tradegui.py', 'direct', 'Sol/Abraham Lincoln', 'Sol/Burnell Station',
         '--detail', '--gain-per-ton', '10', '--fill',
     ]
     assert errors == []
@@ -180,38 +176,6 @@ def test_build_olddata_argv_and_validate_olddata_request():
     ]
     assert errors == []
 
-def test_build_rares_argv_and_validate_rares_request():
-    resolved = {
-        'near': 'Leesti',
-        'ly': 25.0,
-        'limit': 5,
-        'legalMode': 'legal',
-        'away': 100.0,
-        'awayFrom': 'Sol, Lave',
-    }
-    errors = []
-    
-    argv = build_rares_argv(
-        resolved=resolved,
-        append_option=_APPEND_OPTION,
-        append_flag=_APPEND_FLAG,
-        split_search_terms=_SPLIT,
-    )
-    validate_rares_request(
-        resolved=resolved,
-        errors=errors,
-        validate_optional_int=_VALIDATE_INT,
-        validate_optional_float=_VALIDATE_FLOAT,
-        split_search_terms=_SPLIT,
-    )
-    
-    assert argv[:3] == ['tradegui.py', 'rares', 'Leesti']
-    assert '--legal' not in argv
-    assert '--illegal' not in argv
-    assert '--away' in argv and '100.0' in argv
-    assert argv.count('--from') == 2
-    assert argv[-2:] == ['--detail', '--detail']
-    assert errors == []
 
 def test_build_buy_sell_market_argv_and_validators():
     from tradedangerous.guiapp.td_exec_commands import (

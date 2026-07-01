@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +16,6 @@ from .command_views import (
     LocalWorkspace,
     MarketWorkspace,
     OldDataWorkspace,
-    RaresWorkspace,
     TradeWorkspace,
 )
 from .nav_view import NavWorkspace
@@ -30,19 +30,23 @@ from .import_runtime import (
     run_import_execution,
 )
 from .import_view import ImportWorkspace
+from .journal_import import read_journal_facts
+from .run_checklist import RunChecklist
+from .checklist_store import store_checklist
+from . import native_bridge
 from .results_view import render_command_results
 from .session import ExecutionStatus, SessionState
 from .td_exec import GuiCommandRequest, TdCommandProcess, TdExecutor
 from .gui_search import get_gui_search_service
+from tradedangerous import TradeException
 
 COMMAND_OPTIONS: dict[str, str] = {
     'run': 'Run',
     'buy': 'Buy',
     'sell': 'Sell',
-    'trade': 'Trade',
+    'trade': 'Direct',
     'local': 'Local',
     'market': 'Market',
-    'rares': 'Rares',
     'nav': 'Nav',
     'olddata': 'Old Data',
     'import': 'Import',
@@ -88,6 +92,9 @@ class AppShell:
         self.body_query = None
         self.command_switch_dialog = None
         self.command_switch_message = None
+        # GUI-native Run checklist stepper; its persistent dialog is built once
+        # in build() so a results-pane refresh never destroys it.
+        self.run_checklist = RunChecklist()
     
     def build(self) -> None:
         # Themes are pure CSS overrides loaded once into the page head; runtime
@@ -104,6 +111,7 @@ class AppShell:
         )
         
         self._build_command_switch_dialog()
+        self.run_checklist.build()
         self.body_query = ui.query('body')
         self.root_container = ui.column().classes(
             'w-full h-screen min-h-0 gap-2 p-2 box-border overflow-hidden '
@@ -223,6 +231,15 @@ class AppShell:
         with ui.column().classes('w-full gap-3 pr-2 box-border').style(
             'min-width: 23rem;'
         ):
+            with ui.row().classes('w-full'):
+                ui.button(
+                    'Import from Journal',
+                    on_click=self._on_import_from_journal,
+                ).classes('w-full').tooltip(
+                    'Read your commander and current ship from the Elite '
+                    'Dangerous journal and fill the fields below. If the '
+                    'journal cannot be found, set its folder in Settings.'
+                )
             ui.label('Commander Details')
             self.commander_name_input = ui.input(
                 'Commander Name',
@@ -301,6 +318,7 @@ class AppShell:
                 ui.button('New', on_click=self._on_new_profile)
                 ui.button('Save', on_click=self._on_save_profile)
                 ui.button('Revert', on_click=self._on_revert_profile)    
+    
     def _build_right_pane(self) -> None:
         self.right_pane_host = ui.column().classes('w-full gap-3 pl-2')
     
@@ -470,6 +488,119 @@ class AppShell:
         self.session.revert_ship_profile(self.store)
         self._refresh_ui()
         ui.notify('Ship profile reverted.')
+
+    def _on_import_from_journal(self) -> None:
+        # Read current commander/ship facts from the configured (or
+        # auto-discovered) journal and pre-fill the left-pane fields.
+        try:
+            facts = read_journal_facts(self.store.journal_dir)
+        except TradeException as exc:
+            self._show_journal_dialog(
+                'Journal not found',
+                str(exc),
+                show_fix_hint=True,
+            )
+            return
+        except Exception as exc:  # noqa: BLE001 - surface anything unexpected
+            self._show_journal_dialog(
+                'Could not read the journal',
+                f'{type(exc).__name__}: {exc}',
+                show_fix_hint=True,
+            )
+            return
+
+        imported, unchanged = self._apply_journal_facts(facts)
+        save_gui_store(self.store)
+        self._refresh_ui()
+        self._show_import_summary(imported, unchanged)
+
+    def _apply_journal_facts(self, facts) -> tuple[list[str], list[str]]:
+        # Fill only the fields the journal actually provided; everything else
+        # keeps its current value. Commander/credits persist immediately;
+        # ship fields land in the working profile (marked dirty) for Save.
+        imported: list[str] = []
+        unchanged: list[str] = []
+        state = self.session.global_state
+        commander = (facts.commander_name if facts.commander_name is not None
+                     else state.commander_name)
+        credits = facts.credits if facts.credits is not None else state.credits
+        self.session.set_global_state(
+            self.store,
+            commander_name=commander,
+            credits=credits,
+            max_data_age_days=state.max_data_age_days,
+        )
+        (imported if facts.commander_name is not None else unchanged).append(
+            'Commander Name'
+        )
+        (imported if facts.credits is not None else unchanged).append('Credits')
+
+        ship = self.session.ship_state
+        if facts.ship_name is not None:
+            ship.ship_name = facts.ship_name
+            imported.append('Ship Name')
+        else:
+            unchanged.append('Ship Name')
+        if facts.cargo_capacity is not None:
+            ship.capacity = facts.cargo_capacity
+            imported.append('Capacity')
+        else:
+            unchanged.append('Capacity')
+        if facts.insurance is not None:
+            ship.insurance = facts.insurance
+            imported.append('Insurance')
+        else:
+            unchanged.append('Insurance')
+        self.session.mark_ship_dirty()
+        return imported, unchanged
+
+    def _show_import_summary(
+        self,
+        imported: list[str],
+        unchanged: list[str],
+    ) -> None:
+        lines: list[str] = []
+        if imported:
+            lines.append('Imported: ' + ', '.join(imported) + '.')
+        else:
+            lines.append('Nothing was imported.')
+        if unchanged:
+            lines.append(
+                'Left unchanged (not found in journal): '
+                + ', '.join(unchanged) + '.'
+            )
+        lines.append(
+            'Ship fields are filled in the form. Click Save to keep them in '
+            'the profile.'
+        )
+        self._show_journal_dialog('Imported from journal', '\n'.join(lines))
+
+    def _show_journal_dialog(
+        self,
+        title: str,
+        body: str,
+        *,
+        show_fix_hint: bool = False,
+    ) -> None:
+        # The profile area has no result pane, so report import outcomes and
+        # errors in a dialog. Text is selectable so the message can be copied.
+        dialog = ui.dialog()
+        with dialog, ui.card().style('min-width: 28rem; max-width: 90vw;'):
+            ui.label(title).classes('text-lg')
+            ui.label(body).classes('whitespace-pre-wrap').style(
+                'user-select: text; -webkit-user-select: text;'
+            )
+            if show_fix_hint:
+                ui.label(
+                    'Fix: open Settings and set "Journal directory" to your '
+                    'Elite Dangerous saved-games folder, then try again. You '
+                    'can also set the ELITE_JOURNAL_PATH environment variable.'
+                ).classes('text-sm whitespace-pre-wrap').style(
+                    'user-select: text; -webkit-user-select: text;'
+                )
+            with ui.row().classes('w-full justify-end'):
+                ui.button('OK', on_click=dialog.close)
+        dialog.open()
     
     def _on_global_changed(self, _event: Any) -> None:
         if getattr(self, '_refreshing_ui', False):
@@ -500,6 +631,9 @@ class AppShell:
     
     def _selected_launcher_port(self) -> int | None:
         return self.store.launcher_port
+
+    def _selected_journal_dir(self) -> str | None:
+        return self.store.journal_dir
     
     def _on_theme_changed(self, theme_name: str) -> None:
         theme = str(theme_name)
@@ -514,7 +648,37 @@ class AppShell:
     def _on_launcher_port_changed(self, port: int | None) -> None:
         self.store.launcher_port = port
         save_gui_store(self.store)
-    
+
+    def _on_journal_dir_changed(self, journal_dir: str | None) -> None:
+        self.store.journal_dir = self._clean_text(journal_dir)
+        save_gui_store(self.store)
+
+    def _run_is_unanchored(self) -> bool:
+        # No From and no To means run will search the whole galaxy. Read the
+        # same draft keys build_run_argv maps onto --from/--to.
+        main = self.session.draft.main_values
+        has_from = bool(str(main.get('starting') or '').strip())
+        has_to = bool(str(main.get('ending') or '').strip())
+        return not has_from and not has_to
+
+    async def _confirm_unanchored_run(self) -> bool:
+        # Native GUI stand-in for run's terminal 'Continue?' prompt. The GUI
+        # never reads stdin; on confirmation the worker answers run's prompt.
+        dialog = ui.dialog()
+        with dialog, ui.card().style('min-width: 28rem; max-width: 90vw;'):
+            ui.label('Search the whole galaxy?').classes('text-lg')
+            ui.label(
+                'No From or To system is set. Trade Dangerous will search the '
+                'whole galaxy for the best trades, which can take several '
+                'minutes. You can stop it from the command controls.'
+            ).classes('whitespace-pre-wrap')
+            with ui.row().classes('w-full justify-end gap-2'):
+                ui.button(
+                    'Cancel', on_click=lambda: dialog.submit(False)
+                ).props('outline')
+                ui.button('Search', on_click=lambda: dialog.submit(True))
+        return bool(await dialog)
+
     def _on_begin_import_stop_confirmation(self) -> None:
         if begin_import_stop_confirmation(session=self.session):
             self._refresh_ui()
@@ -591,7 +755,20 @@ class AppShell:
             return
         if not self._capture_ship_inputs():
             return
-        
+
+        # An unanchored run (no From and no To) is a whole-galaxy search that TD
+        # gates behind a confirmation. Confirm it here in the GUI; the worker
+        # then answers run's prompt so it proceeds. Declining stops cleanly.
+        confirm_unanchored = False
+        if (
+            self.session.selected_command == 'run'
+            and self._run_is_unanchored()
+        ):
+            confirm_unanchored = await self._confirm_unanchored_run()
+            if not confirm_unanchored:
+                ui.notify('Galaxy-wide search cancelled.')
+                return
+
         # Drafts only store per-command fields. Snapshot the current left-pane
         # commander and ship context so execution is self-contained.
         request = GuiCommandRequest(
@@ -612,6 +789,8 @@ class AppShell:
                 'jump_range_full_ly': self.session.ship_state.jump_range_full_ly,
                 'jump_range_empty_ly': self.session.ship_state.jump_range_empty_ly,
             },
+            journal_dir=self.store.journal_dir,
+            confirm_unanchored=confirm_unanchored,
         )
         
         self.session.set_execution(
@@ -888,17 +1067,6 @@ class AppShell:
                     ),
                 )
                 workspace.build()
-            elif self.session.selected_command == 'rares':
-                workspace = RaresWorkspace(
-                    self.session.draft,
-                    on_changed=self._on_run_draft_changed,
-                    on_execute=self._on_execute_command,
-                    suggest_systems=lambda text: self.search_service.suggest_systems(
-                        text,
-                        limit=10,
-                    ),
-                )
-                workspace.build()
             elif self.session.selected_command == 'nav':
                 workspace = NavWorkspace(
                     self.session.draft,
@@ -925,8 +1093,10 @@ class AppShell:
                 workspace = SettingsWorkspace(
                     selected_theme=self._selected_theme(),
                     selected_launcher_port=self._selected_launcher_port(),
+                    selected_journal_dir=self._selected_journal_dir(),
                     on_theme_changed=self._on_theme_changed,
                     on_launcher_port_changed=self._on_launcher_port_changed,
+                    on_journal_dir_changed=self._on_journal_dir_changed,
                 )
                 workspace.build()
             else:
@@ -934,6 +1104,7 @@ class AppShell:
                     f'{self.session.selected_command} workspace '
                     'is not wired yet.'
                 ) 
+    
     def _render_right_pane(self) -> None:
         is_import = self.session.selected_command == 'import'
         is_input_only = self.session.selected_command in {
@@ -992,13 +1163,60 @@ class AppShell:
                         f'No {command_label} results yet.'
                     ).classes('text-sm text-gray-600')
                 elif self.session.execution.error_message:
+                    error_text = self.session.execution.error_message
+                    with ui.row().classes('w-full items-center gap-2'):
+                        ui.button(
+                            'Copy Error',
+                            on_click=lambda: self._copy_text_to_clipboard(
+                                error_text, 'Error'
+                            ),
+                        ).props('dense').tooltip(
+                            'Copy the error message to the clipboard'
+                        )
                     ui.label(
-                        self.session.execution.error_message
-                    ).classes('text-negative whitespace-pre-wrap')
+                        error_text
+                    ).classes('text-negative whitespace-pre-wrap').style(
+                        'user-select: text; -webkit-user-select: text'
+                    )
                 else:
+                    structured = self.session.execution.structured_result
+                    # Copy the command's own plain-text output (ANSI stripped):
+                    # the route table for run, the result table for structured
+                    # commands -- the same text the CLI emits. Reuses the
+                    # confirmed clipboard path. Absent when there is no text.
+                    result_text = self.session.execution.raw_output
+                    show_copy = bool(result_text and result_text.strip())
+                    # Offer the checklist stepper only for a successful run that
+                    # actually carries at least one route.
+                    run_routes = (
+                        self.session.selected_command == 'run'
+                        and isinstance(structured, dict)
+                        and bool(structured.get('routes'))
+                    )
+                    if show_copy or run_routes:
+                        with ui.row().classes('w-full items-center gap-2'):
+                            if show_copy:
+                                ui.button(
+                                    'Copy Results',
+                                    on_click=lambda: self._copy_text_to_clipboard(
+                                        result_text, 'Results'
+                                    ),
+                                ).props('dense').tooltip(
+                                    'Copy the results as plain text to the '
+                                    'clipboard'
+                                )
+                            if run_routes:
+                                ui.button(
+                                    'Open Checklist',
+                                    on_click=lambda routes=structured.get(
+                                        'routes'
+                                    ): self._on_open_checklist(routes),
+                                ).props('dense').tooltip(
+                                    'Step through this route hop by hop.'
+                                )
                     render_command_results(
                         self.session.selected_command,
-                        self.session.execution.structured_result,
+                        structured,
                         self.session.execution.raw_output,
                     )
                 return
@@ -1011,9 +1229,77 @@ class AppShell:
                     f'No {command_label} diagnostics yet.'
                 ).classes('text-sm text-gray-600')
                 return
+            diagnostics_text = self.session.execution.diagnostics_output
+            if diagnostics_text:
+                with ui.row().classes('w-full items-center gap-2'):
+                    ui.button(
+                        'Copy Diagnostics',
+                        on_click=lambda: self._copy_text_to_clipboard(
+                            diagnostics_text, 'Diagnostics'
+                        ),
+                    ).props('dense').tooltip(
+                        'Copy the diagnostics output to the clipboard'
+                    )
             ui.label(
-                self.session.execution.diagnostics_output
-            ).classes('whitespace-pre-wrap')
+                diagnostics_text
+            ).classes('whitespace-pre-wrap').style(
+                'user-select: text; -webkit-user-select: text'
+            )
+    
+    def _on_open_checklist(self, routes: list[dict[str, Any]] | None) -> None:
+        # Prefer a detached native window; fall back to the in-window dialog
+        # when not in native mode or the native request channel is unavailable.
+        if not routes:
+            return
+        token = store_checklist(routes)
+        if native_bridge.request_checklist_window(f'/run-checklist/{token}'):
+            return
+        self.run_checklist.open_for(routes)
+
+    async def _copy_text_to_clipboard(self, text: str, label: str) -> None:
+        # Copy on the client so it works in the native (pywebview) window. Try
+        # the modern async clipboard API first, then fall back to a hidden
+        # textarea + execCommand('copy') where it is unavailable. The script
+        # returns whether the copy actually happened, so success is only
+        # reported when the client confirms it. json.dumps safely escapes the
+        # arbitrary text into a JS string literal. The displayed panes are never
+        # touched, so a failure leaves the text on screen to copy by hand.
+        script = (
+            'const text = ' + json.dumps(text) + ';\n'
+            'try {\n'
+            '  if (navigator.clipboard && window.isSecureContext) {\n'
+            '    await navigator.clipboard.writeText(text);\n'
+            '    return true;\n'
+            '  }\n'
+            '} catch (e) {}\n'
+            'try {\n'
+            '  const ta = document.createElement("textarea");\n'
+            '  ta.value = text;\n'
+            '  ta.style.position = "fixed";\n'
+            '  ta.style.top = "-1000px";\n'
+            '  ta.style.opacity = "0";\n'
+            '  document.body.appendChild(ta);\n'
+            '  ta.focus();\n'
+            '  ta.select();\n'
+            '  const ok = document.execCommand("copy");\n'
+            '  document.body.removeChild(ta);\n'
+            '  return ok;\n'
+            '} catch (e) {\n'
+            '  return false;\n'
+            '}'
+        )
+        try:
+            copied = await ui.run_javascript(script)
+        except Exception:
+            copied = False
+        if copied:
+            ui.notify(f'{label} copied to clipboard.')
+        else:
+            ui.notify(
+                f'Could not copy {label.lower()}. '
+                'Select the text and copy it manually.',
+                color='negative',
+            )
     
     # Native close can delete the NiceGUI client while background polling is
     # still unwinding. Treat that specific case as shutdown noise, not a fresh

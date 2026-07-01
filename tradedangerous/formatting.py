@@ -12,6 +12,23 @@ if typing.TYPE_CHECKING:
     from typing import Any
 
 
+# Display-label lookup tables: small code -> human-label maps used purely to
+# render and sort station attributes (market / planetary / fleet / settlement
+# state, and landing-pad size) in command output. They live alongside the
+# formatting machinery so a command need not import a database class just to
+# format a column.
+
+# Y/N/? attributes share the same label set; kept as separate names so call
+# sites read clearly and the maps can diverge later without touching callers.
+marketStates     = {'?': '?', 'Y': 'Yes', 'N': 'No'}
+planetStates     = {'?': '?', 'Y': 'Yes', 'N': 'No'}
+fleetStates      = {'?': '?', 'Y': 'Yes', 'N': 'No'}
+settlementStates = {'?': '?', 'Y': 'Yes', 'N': 'No'}
+
+# Landing-pad size code -> short label.
+padSizes         = {'?': '?', 'S': 'Sml', 'M': 'Med', 'L': 'Lrg'}
+
+
 class ColumnFormat:
     """
         Describes formatting of a column to be populated with data.

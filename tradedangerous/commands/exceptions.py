@@ -50,6 +50,26 @@ For more help, see the TradeDangerous Wiki:
     https://github.com/eyeonus/Trade-Dangerous/wiki
 """
 
+class PlannerResultError(TradeException):
+    """
+        Raised when the new planner finished but produced no actionable
+        result, and supplied a complete user-facing message itself.
+
+        Distinct from NoDataError so the planner's specific wording is shown
+        as-is, without the generic 'possible causes' footer that suits the
+        legacy data-failure cases. The dispatcher prints str(exc), which is
+        the planner's chosen message preceded by 'Error: '.
+
+        Attributes:
+            errorStr        The full user-facing message from the planner.
+    """
+    def __init__(self, errorStr):
+        self.errorStr = errorStr
+
+    def __str__(self):
+        return f"Error: {self.errorStr}"
+
+
 class GameDataError(TradeException):
     """
         Raised when imported or journal data is internally inconsistent
@@ -102,18 +122,16 @@ class FleetCarrierError(CommandLineError):
     """ Raised when an invalid fleet-carrier option is given. """
     def __init__(self, value):
         super().__init__(
-            f"Invalid --fleet-carrier '{value}': Use a combination of one or more "
-            "from 'Y' for Yes, 'N' for No or '?' for unknown, "
-            "e.g. 'YN?' matches any station while 'Y?' matches "
-            "yes or unknown, or 'N' matches only non-fleet-carrier stations."
+            f"Invalid --fleet-carrier '{value}': "
+            "expected Y (known fleet carriers), N (known non-fleet-carriers), "
+            "? (unknown station type), or a combination."
         )
 
-class OdysseyError(CommandLineError):
-    """ Raised when an invalid odyssey option is given. """
+class SettlementError(CommandLineError):
+    """ Raised when an invalid settlement option is given. """
     def __init__(self, value):
         super().__init__(
-            f"Invalid --odyssey '{value}': Use a combination of one or more "
-            "from 'Y' for Yes, 'N' for No or '?' for unknown, "
-            "e.g. 'YN?' matches any station while 'Y?' matches "
-            "yes or unknown, or 'N' matches only non-odyssey stations."
+            f"Invalid --settlement '{value}': "
+            "expected Y (settlements), N (non-settlements), "
+            "? (unknown station type), or a combination."
         )

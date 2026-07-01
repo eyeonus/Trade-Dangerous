@@ -4,13 +4,11 @@ from pathlib import Path
 from typing import Any, Dict, Mapping
 import configparser
 import os
-import time
 
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine, URL
 from sqlalchemy.orm import sessionmaker, Session  # type: ignore
 from sqlalchemy.pool import NullPool
-from sqlalchemy.exc import OperationalError
 
 from .config import DEFAULTS, load_config
 from .paths import resolve_data_dir, resolve_tmp_dir, resolve_db_config_path
@@ -252,41 +250,3 @@ def make_engine_from_config(cfg_or_path: configparser.ConfigParser | Mapping[str
 
 def get_session_factory(engine: Engine) -> sessionmaker[Session]:
     return sessionmaker(bind=engine, expire_on_commit=False, autoflush=True)
-
-
-# ---------- Health helpers ----------
-
-def healthcheck(engine: Engine, retries: int = 0) -> bool:
-    attempt = 0
-    delay = 0.25
-    while True:
-        try:
-            with engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
-            return True
-        except OperationalError:
-            attempt += 1
-            if attempt > retries:
-                return False
-            time.sleep(delay)
-            delay *= 2
-
-
-def read_sqlite_pragmas(engine: Engine) -> Dict[str, Any]:
-    """
-    Return active PRAGMA values (SQLite only). Safe no-op for non-sqlite engines.
-    """
-    out: Dict[str, Any] = {}
-    with engine.connect() as conn:
-        if conn.dialect.name != "sqlite":
-            return out
-        
-        def one(q: str) -> Any:
-            return conn.execute(text(q)).scalar()
-        
-        out["foreign_keys"] = one("PRAGMA foreign_keys")
-        out["synchronous"]  = one("PRAGMA synchronous")
-        out["temp_store"]   = one("PRAGMA temp_store")
-        out["auto_vacuum"]  = one("PRAGMA auto_vacuum")
-    
-    return out

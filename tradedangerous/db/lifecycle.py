@@ -316,17 +316,36 @@ def ensure_fresh_db(
         summary["action"] = "kept"
         return summary
     
-    # Caller explicitly requested no rebuild: report and exit.
-    if not rebuild:
-        summary["action"] = "needs_rebuild"
-        return summary
-    
-    # From here on, behavior matches the original: rebuild via buildCache.
-    if tdb is None or tdenv is None:
-        raise ValueError("ensure_fresh_db needs `tdb` and `tdenv` to rebuild via buildCache")
-    
-    from tradedangerous.cache import buildCache
-    
-    buildCache(tdb, tdenv)
-    summary["action"] = "rebuilt"
+    # A rebuild is due, but loading the standard tables is the `buildcache`
+    # command's job now -- the sanity path verifies structure and reports, it no
+    # longer reloads data itself (it must not import a command module). Callers
+    # that can rebuild (e.g. spansh) act on this; others surface it to the user.
+    summary["action"] = "needs_rebuild"
     return summary
+
+
+def verify_db(engine: Engine, data_dir: Path, tdenv) -> Dict[str, str]:
+    """
+    Pre-flight check that the database is present and structurally sane.
+
+    A report-only wrapper over ensure_fresh_db(rebuild=False): it runs the
+    seconds-only probes (core tables, primary keys, seed rows, connectivity) and
+    logs the verdict. It never rebuilds -- loading the standard tables is the
+    `buildcache` command's job. It only reports; callers that need data act on
+    the returned verdict.
+    """
+    try:
+        summary = ensure_fresh_db(
+            backend=engine.dialect.name,
+            engine=engine,
+            data_dir=data_dir,
+            metadata=None,
+            mode="auto",
+            tdenv=tdenv,
+            rebuild=False,
+        )
+        tdenv.DEBUG0("verify_db: {}", summary.get("action", "kept"))
+        return summary
+    except Exception as e:
+        tdenv.WARN("verify_db: sanity check failed: {}", e)
+        return {"action": "error", "reason": str(e)}

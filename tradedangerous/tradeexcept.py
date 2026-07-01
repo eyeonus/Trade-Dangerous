@@ -50,6 +50,23 @@ class MissingDB(TradeException):
             "managing data by hand, use the buildcache subcommand."
         )
 
+
+def format_system_candidates(systems) -> list[str]:
+    """Render duplicate-system candidates as indented '@N' lines.
+
+    Each line is ``    Name@N - (x, y, z)`` (em dash in the live output),
+    1-based, in the order supplied — the lookup orders by ascending Galactic X,
+    then Y, Z, id. Takes ORM System rows (name, pos_x/pos_y/pos_z). This is the
+    single place that owns the format, shared by the bare duplicate-name error
+    and the invalid-@N error so the two can never drift apart.
+    """
+    return [
+        f"    {system.name}@{index} — "
+        f"({system.pos_x:.1f}, {system.pos_y:.1f}, {system.pos_z:.1f})"
+        for index, system in enumerate(systems, start=1)
+    ]
+
+
 class AmbiguityError(TradeException):
     """
         Raised when a search key could match multiple entities.
@@ -70,13 +87,24 @@ class AmbiguityError(TradeException):
         self.searchKey = searchKey
         self.anyMatch = anyMatch
         self.key = key
-    
+        # Render candidate labels now, while we are still inside the live DB
+        # session that produced these ORM objects. Deferring key() to __str__
+        # is unsafe: the CLI stringifies the error after the session has closed,
+        # and a key such as Station.dbname() crosses the Station->System
+        # relationship, which cannot lazy-load on a detached instance
+        # (DetachedInstanceError). The (index, System) tuple form used for
+        # duplicate-system collisions is rendered separately in __str__ from
+        # columns only, so it is skipped here.
+        self.rendered = None
+        if anyMatch and not isinstance(anyMatch[0], tuple):
+            self.rendered = [key(c) for c in anyMatch[:AMBIGUITY_LIMIT]]
+
     def __str__(self) -> str:
         anyMatch, key = self.anyMatch, self.key
         
         # ------------------------------------------------------------------
         # Special-case: system name collisions where we passed in
-        # (index, System) pairs from TradeDB.lookupSystem.
+        # (index, System) pairs from the system lookup.
         # ------------------------------------------------------------------
         if (
             self.lookupType == "System"
@@ -84,23 +112,14 @@ class AmbiguityError(TradeException):
             and isinstance(anyMatch[0], tuple)
             and len(anyMatch[0]) >= 2
         ):
+            systems = [system for _index, system in anyMatch]
             lines = [
                 f'System name "{self.searchKey}" refers to more than one distinct system.',
                 "",
                 'Select the one you intended using "@N":',
                 "",
             ]
-            for index, system in anyMatch:
-                # Be tolerant in case the contents are not exactly (int, System)
-                try:
-                    name = system.dbname
-                    x, y, z = system.posX, system.posY, system.posZ
-                    lines.append(
-                        f"    {name}@{index} 45 ({x:.1f}, {y:.1f}, {z:.1f})"
-                    )
-                except Exception:
-                    # Fallback to the provided key() formatter
-                    lines.append(f"    {key((index, system))}")
+            lines.extend(format_system_candidates(systems))
             lines.append("")
             lines.append("(Index numbers are ordered by Galactic X coordinate.)")
             return "\n".join(lines)
@@ -112,8 +131,14 @@ class AmbiguityError(TradeException):
             # Not matching anything is not "ambiguous".
             raise RuntimeError('called AmbiguityError with no matches')
         
-        # Truncate the list of candidates so we don't show more than 10
-        candidates = [key(c) for c in anyMatch[:AMBIGUITY_LIMIT]]
+        # Truncate the list of candidates so we don't show more than 10.
+        # Prefer the labels rendered eagerly at construction time, while the DB
+        # session was still live; fall back to applying key() now only if they
+        # were not captured.
+        if self.rendered is not None:
+            candidates = list(self.rendered)
+        else:
+            candidates = [key(c) for c in anyMatch[:AMBIGUITY_LIMIT]]
         if len(anyMatch) < 3:
             opportunities = " or ".join(candidates)
         else:
@@ -129,3 +154,117 @@ class AmbiguityError(TradeException):
 class SystemNotStationError(TradeException):
     """ Raised when a station lookup matched a System but
         could not be automatically reduced to a Station.  """
+
+# ---------------------------------------------------------------------
+# Data-file import / parse errors (moved here from the former cache.py).
+# Used by both the CSV importer (db/import_csv.py) and the .prices
+# importer (import_prices.py).
+# ---------------------------------------------------------------------
+
+
+class BuildCacheBaseException(TradeException):
+    """
+    Baseclass for BuildCache exceptions
+    Attributes:
+        fileName    Name of file being processedStations
+        lineNo      Line the error occurred on
+        error       Description of the error
+    """
+    
+    def __init__(self, fromFile: Path, lineNo: int, error: str | None = None) -> None:
+        self.fileName = fromFile.name
+        self.lineNo = lineNo
+        self.category = "ERROR"
+        self.error = error or "UNKNOWN ERROR"
+    
+    def __str__(self) -> str:
+        return f'{self.fileName}:{self.lineNo} {self.category} {self.error}'
+
+
+class DuplicateKeyError(BuildCacheBaseException):
+    """
+        Raised when an item is being redefined.
+    """
+    
+    def __init__(self, fromFile: Path, lineNo: int, keyType: str, keyValue: str, prevLineNo: int) -> None:
+        super().__init__(fromFile, lineNo,
+                         f'Second occurrance of {keyType} "{keyValue}", previous entry at line {prevLineNo}.')
+
+
+class DeletedKeyError(BuildCacheBaseException):
+    """
+    Raised when a key value in a .csv file is marked as DELETED in the
+    corrections file.
+    """
+    
+    def __init__(self, fromFile: Path, lineNo: int, keyType: str, keyValue: str) -> None:
+        super().__init__(
+            fromFile, lineNo,
+            f'{keyType} "{keyValue}" is marked as DELETED and should not be used.'
+        )
+
+
+class MultipleStationEntriesError(DuplicateKeyError):
+    """ Raised when a station appears multiple times in the same file. """
+    
+    def __init__(self, fromFile: Path, lineNo: int, facility: str, prevLineNo: int) -> None:
+        super().__init__(fromFile, lineNo, 'station', facility, prevLineNo)
+
+
+class InvalidLineError(BuildCacheBaseException):
+    """
+    Raised when an invalid line is read.
+    Attributes:
+        problem     The problem that occurred
+        text        Offending text
+    """
+    
+    def __init__(self, fromFile: Path, lineNo: int, problem: str, text: str) -> None:
+        super().__init__(fromFile, lineNo, f'{problem},\ngot: "{text.strip()}".')
+
+
+class SupplyError(BuildCacheBaseException):
+    """
+    Raised when a supply field is incorrectly formatted.
+    """
+
+    def __init__(self, fromFile: Path, lineNo: int, category: str, problem: str, value: Any) -> None:
+        super().__init__(fromFile, lineNo, f'Invalid {category} supply value: {problem}. Got: {value}')
+
+
+class UnknownSystemError(BuildCacheBaseException):
+    """
+    Raised when the file contains an unknown star name.
+    """
+
+    def __init__(self, fromFile: Path, lineNo: int, key: str) -> None:
+        super().__init__(fromFile, lineNo, f'Unrecognized SYSTEM: "{key}"')
+
+
+class UnknownStationError(BuildCacheBaseException):
+    """
+    Raised when the file contains an unknown star/station name.
+    """
+
+    def __init__(self, fromFile: Path, lineNo: int, key: str) -> None:
+        super().__init__(fromFile, lineNo, f'Unrecognized STAR/Station: "{key}"')
+
+
+class UnknownItemError(BuildCacheBaseException):
+    """
+    Raised in the case of an item name that we don't know.
+    Attributes:
+        itemName   Key we tried to look up.
+    """
+
+    def __init__(self, fromFile: Path, lineNo: int, itemName: str) -> None:
+        super().__init__(fromFile, lineNo, f'Unrecognized item name: "{itemName}"')
+
+
+class MultipleItemEntriesError(DuplicateKeyError):
+    """ Raised when one item appears multiple times in the same station. """
+
+    def __init__(self, fromFile: Path, lineNo: int, item: str, prevLineNo: int) -> None:
+        super().__init__(fromFile, lineNo, 'item', item, prevLineNo)
+
+

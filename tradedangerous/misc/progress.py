@@ -192,3 +192,20 @@ class Progress:
     def update_task(self, task: TaskID, advance: float | int, description: Optional[str] = None):
         if self.show:
             self.progress.update(task, advance=advance, description=description)
+
+    def open_subtask(self, description: str, max_value: Optional[int] = None) -> Optional[TaskID]:
+        """Add a sub-task row beneath the main bar and return its id.
+
+        The non-context-manager companion to sub_task(), for a sub-task that
+        brackets a loop the surrounding code cannot easily indent. Returns None
+        when the bar is disabled, so the paired update_task / close_subtask
+        calls stay safe no-ops.
+        """
+        if not self.show:
+            return None
+        return self.progress.add_task(description, total=max_value, start=True)
+
+    def close_subtask(self, task: Optional[TaskID]) -> None:
+        """Remove a sub-task row opened with open_subtask."""
+        if self.show and task is not None:
+            self.progress.remove_task(task)

@@ -45,69 +45,6 @@ _DATETIME_PATTERN = re.compile(
 # eddblink helpers
 # --------------------------------------------------------
 
-def begin_bulk_mode(
-    session: Session,
-    *,
-    profile: str = "default",
-    phase: Literal["rebuild", "incremental"] = "incremental",
-) -> dict[str, Any]:
-    """
-    Apply connection-local settings to speed up bulk operations.
-    Returns an opaque token for symmetry with end_bulk_mode (currently a no-op).
-    
-    - SQLite: ensure WAL, temp_store, cache; set synchronous=OFF for raw speed.
-    - MySQL/MariaDB: apply per-session import tunings (reduced fsync, lower waits).
-    
-    Notes:
-      * Settings are connection-scoped and reset when the connection is returned
-        to the pool or closed.
-      * This is generic and safe for any plugin invoking long-running bulk writes.
-    """
-    token: dict[str, Any] = {"dialect": None, "profile": profile, "phase": phase}
-    
-    try:
-        dialect = session.get_bind().dialect.name.lower()
-    except Exception:
-        return token  # best-effort, no-op if we can't detect
-    
-    token["dialect"] = dialect
-    
-    if dialect == "sqlite":
-        try:
-            conn = session.connection()
-            # Speed-first defaults (align with schema PRAGMAs).
-            conn.execute(text("PRAGMA journal_mode=WAL"))
-            conn.execute(text("PRAGMA synchronous=OFF"))
-            conn.execute(text("PRAGMA temp_store=MEMORY"))
-            # Negative cache_size is KiB; -65536 ≈ 64 MiB
-            conn.execute(text("PRAGMA cache_size=-65536"))
-            # File-level; harmless to set each time.
-            conn.execute(text("PRAGMA auto_vacuum=INCREMENTAL"))
-        except Exception:
-            # Best-effort; keep going if PRAGMA adjustment fails.
-            pass
-        return token
-    
-    if dialect in ("mysql", "mariadb"):
-        try:
-            mysql_set_bulk_session(session)
-        except Exception:
-            pass
-        return token
-    
-    # Other dialects: nothing applied
-    return token
-
-
-def end_bulk_mode(session: Session, token: dict[str, Any] | None = None) -> None:
-    """
-    Placeholder symmetry for begin_bulk_mode. Currently a no-op because we only
-    *set* per-session tunings that naturally revert when the connection returns
-    to the pool. Kept for future extensibility.
-    """
-    return
-
-
 def get_upsert_fn(
     session: Session,
     table: Table,
@@ -222,7 +159,7 @@ def get_upsert_fn(
 # spansh helpers (db specific upserts)
 # -----------------------------------------------------------------------------
 
-# --- Dialect checks (unchanged) ---
+# --- Dialect checks ---
 def is_sqlite(session: Session) -> bool:
     try:
         return session.get_bind().dialect.name.lower() == "sqlite"
@@ -236,21 +173,6 @@ def is_mysql(session: Session) -> bool:
         return name in ("mysql", "mariadb")
     except Exception:
         return False
-
-
-def sqlite_set_bulk_pragmas(session: Session) -> None:
-    """
-    Apply connection-local PRAGMAs to speed up bulk imports.
-    Safe defaults for an import session; durability is still acceptable with WAL.
-    """
-    conn = session.connection()
-    # WAL gives better concurrency; synchronous=NORMAL keeps some safety at high speed.
-    conn.execute(text("PRAGMA journal_mode=WAL"))
-    conn.execute(text("PRAGMA synchronous=NORMAL"))
-    # Keep temp structures in memory; increase page cache.
-    conn.execute(text("PRAGMA temp_store=MEMORY"))
-    # Negative cache_size is KiB; -65536 ≈ 64 MiB page cache
-    conn.execute(text("PRAGMA cache_size=-65536"))
 
 
 def sqlite_upsert_modified(
@@ -320,31 +242,6 @@ def sqlite_upsert_simple(
     session.execute(stmt, rows)
 
 
-def mysql_set_bulk_session(session: Session) -> None:
-    """
-    Per-session tuning for bulk imports (MariaDB/MySQL).
-    Session-scoped, resets when the connection closes/recycles.
-    Conservative defaults for import workloads.
-    """
-    conn = session.connection()
-    # Reduce fsyncs; lose up to ~1s of transactions on power loss (import-safe).
-    conn.execute(text("SET SESSION innodb_flush_log_at_trx_commit=2"))
-    # Amortize binlog fsync if binlog is enabled.
-    conn.execute(text("SET SESSION sync_binlog=0"))
-    # Reader-friendly concurrency and shorter lock waits.
-    conn.execute(text("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED"))
-    conn.execute(text("SET SESSION innodb_lock_wait_timeout=10"))
-    # Optional micro-wins on constraint checking (safe for our import order).
-    conn.execute(text("SET SESSION foreign_key_checks=0"))
-    conn.execute(text("SET SESSION unique_checks=0"))
-    # If permitted, skipping binlog on this session can be a big win (DEV ONLY).
-    try:
-        conn.execute(text("SET SESSION sql_log_bin=0"))
-    except Exception:
-        # Not always allowed; silently ignore.
-        pass
-
-
 def mysql_upsert_modified(
     session: Session,
     table: Table,
@@ -403,6 +300,166 @@ def mysql_upsert_simple(
     
     stmt = ins.on_duplicate_key_update(**set_map)
     session.execute(stmt, rows)
+
+
+# -----------------------------------------------------------------------------
+# Bulk session tuning
+# -----------------------------------------------------------------------------
+
+def begin_bulk_mode(
+    session: Session,
+    *,
+    profile: str = "default",
+    phase: Literal["rebuild", "incremental"] = "incremental",
+) -> dict[str, Any]:
+    """
+    Apply connection-local settings to speed up bulk operations.
+    Returns an opaque token for symmetry with end_bulk_mode (currently a no-op).
+
+    - SQLite: delegates to sqlite_set_bulk_pragmas.
+    - MySQL/MariaDB: delegates to mysql_set_bulk_session.
+
+    Notes:
+      * Settings are connection-scoped and reset when the connection is returned
+        to the pool or closed.
+      * This is generic and safe for any plugin invoking long-running bulk writes.
+    """
+    token: dict[str, Any] = {"dialect": None, "profile": profile, "phase": phase}
+
+    try:
+        dialect = session.get_bind().dialect.name.lower()
+    except Exception:
+        return token  # best-effort, no-op if we can't detect
+
+    token["dialect"] = dialect
+
+    if dialect == "sqlite":
+        try:
+            sqlite_set_bulk_pragmas(session)
+        except Exception:
+            # Best-effort; keep going if PRAGMA adjustment fails.
+            pass
+        return token
+
+    if dialect in ("mysql", "mariadb"):
+        try:
+            mysql_set_bulk_session(session)
+        except Exception:
+            pass
+        return token
+
+    # Other dialects: nothing applied
+    return token
+
+
+def end_bulk_mode(session: Session, token: dict[str, Any] | None = None) -> None:
+    """
+    Placeholder symmetry for begin_bulk_mode. Currently a no-op because we only
+    *set* per-session tunings that naturally revert when the connection returns
+    to the pool. Kept for future extensibility.
+    """
+    return
+
+
+def sqlite_set_bulk_pragmas(session: Session) -> None:
+    """
+    Apply connection-local PRAGMAs to speed up bulk work — large imports
+    or sessions that build heavy in-memory scratch during a query. Tuned
+    for sessions whose writes are transient or recoverable: temp scratch
+    discarded with the session, or bulk inserts re-runnable from source.
+    """
+    conn = session.connection()
+    # WAL gives better concurrency; synchronous=OFF skips all fsync for raw speed.
+    conn.execute(text("PRAGMA journal_mode=WAL"))
+    conn.execute(text("PRAGMA synchronous=OFF"))
+    # Keep temp structures in memory; increase page cache.
+    conn.execute(text("PRAGMA temp_store=MEMORY"))
+    # Negative cache_size is KiB; -65536 ≈ 64 MiB page cache
+    conn.execute(text("PRAGMA cache_size=-65536"))
+    # File-level setting (persisted in db header); harmless to set each time.
+    conn.execute(text("PRAGMA auto_vacuum=INCREMENTAL"))
+
+
+def mysql_set_bulk_session(session: Session) -> None:
+    """
+    Per-session tuning for bulk work on MariaDB/MySQL — large imports or
+    sessions that need throughput-oriented commit and lock behaviour.
+    Session-scoped, resets when the connection closes/recycles.
+    """
+    conn = session.connection()
+    # Reduce fsyncs; lose up to ~1s of transactions on power loss (bulk-safe).
+    conn.execute(text("SET SESSION innodb_flush_log_at_trx_commit=2"))
+    # Amortize binlog fsync if binlog is enabled.
+    conn.execute(text("SET SESSION sync_binlog=0"))
+    # Reader-friendly concurrency and shorter lock waits.
+    conn.execute(text("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED"))
+    conn.execute(text("SET SESSION innodb_lock_wait_timeout=10"))
+    # Optional micro-wins on constraint checking (safe for our access order).
+    conn.execute(text("SET SESSION foreign_key_checks=0"))
+    conn.execute(text("SET SESSION unique_checks=0"))
+    # If permitted, skipping binlog on this session can be a big win (DEV ONLY).
+    try:
+        conn.execute(text("SET SESSION sql_log_bin=0"))
+    except Exception:
+        # Not always allowed; silently ignore.
+        pass
+
+
+# -----------------------------------------------------------------------------
+# Query planner helpers
+# -----------------------------------------------------------------------------
+
+def analyze_temp_table(session: Session, table: Table) -> None:
+    """Refresh planner statistics on a transient/scratch temp table.
+
+    SQLite has no automatic statistics refresh. The unanchored
+    multi-jump match in tradedangerous/planner/data_gateway.py
+    relies on this — without current cardinality on the
+    run-scoped temp tables, SQLite's cost model anchors on
+    System (~80K rows, stats from database build) and inverts
+    the join order against the much smaller temp tables.
+    Running ANALYZE here flips the plan to drive from the temp
+    tables.
+
+    MariaDB/MySQL: InnoDB has innodb_stats_auto_recalc on by
+    default and refreshes statistics in the background when
+    row count changes meaningfully. Treated as a no-op here.
+
+    If a MariaDB-specific pathology turns up later, the
+    equivalent statement is ANALYZE TABLE <name> — the TABLE
+    keyword is mandatory on MariaDB/MySQL, so the bare SQLite
+    syntax is not portable. Don't paste the SQLite literal into
+    a shared branch.
+    """
+
+    if is_sqlite(session):
+        session.execute(text(f"ANALYZE {table.name}"))
+
+
+def force_order_join(session: Session) -> str:
+    """Return the join keyword that pins left-to-right join order for this backend.
+
+    A cost-based optimiser is normally free to choose which side of a join it
+    drives from, and usually that is what we want. Occasionally it is provably
+    wrong: a query that should scan a small, already-filtered table and probe a
+    large one by primary key, where the optimiser instead scans the large table
+    and seeks the small one once per row. The two backends spell "do not reorder
+    this join" differently:
+
+      SQLite         CROSS JOIN    -- documented to suppress the join-reordering
+                                      optimisation; the left table stays outer.
+      MySQL/MariaDB  STRAIGHT_JOIN -- forces left-to-right. Their CROSS JOIN is a
+                                      plain inner join and is still reordered.
+
+    Interpolate the result between the two table names in a text() FROM clause;
+    the value is a fixed keyword, never user input. See
+    tradedangerous/planner/data_gateway.py::_unanchored_item_bounds for the
+    galaxy-wide aggregate that needs it.
+    """
+
+    if is_mysql(session):
+        return "STRAIGHT_JOIN"
+    return "CROSS JOIN"
 
 
 # -----------------------------------------------------------------------------

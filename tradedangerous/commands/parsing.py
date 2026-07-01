@@ -1,5 +1,5 @@
 from .exceptions import (
-    FleetCarrierError, OdysseyError, PadSizeError, PlanetaryError,
+    FleetCarrierError, SettlementError, PadSizeError, PlanetaryError,
 )
 
 ######################################################################
@@ -47,7 +47,7 @@ class PadSizeArgument(int):
             for v in val:
                 if "SML?".find(v.upper()) < 0:
                     raise PadSizeError(val.upper())
-            return super().__new__(cls, val, **kwargs)
+            return super().__new__(cls, val.upper(), **kwargs)
     
     def __init__(self):
         self.args = ('--pad-size', '-p',)
@@ -86,10 +86,29 @@ class SwitchArgument(ParseArgument):
         self.kwargs = {'action': 'store_true', 'dest': self.dest, 'help': help}
 
 
-class BlackMarketSwitch(SwitchArgument):
-    switches = ['--black-market', '--bm']
-    dest = 'blackMarket'
-    help = 'Require stations known to have a black market.'
+class BlackMarketSwitch(ParseArgument):
+    """argparse helper for --black-market"""
+
+    class BlackMarketParser(str):  # noqa: SLOT000  # str is immutable
+        def __new__(cls, val, **kwargs):
+            if not isinstance(val, str):
+                raise ValueError(val)
+            for v in val:
+                if "YN?".find(v.upper()) < 0:
+                    raise ValueError(val.upper())
+            return super().__new__(cls, val.upper(), **kwargs)
+    
+    def __init__(self):
+        self.args = ['--black-market', '--bm']
+        self.kwargs = {
+            'help': (
+                'Limit by black-market status: Y = known black market, '
+                'N = known no black market, ? = unknown black-market state.'
+            ),
+            'dest': 'blackMarket',
+            'metavar': 'BLACKMARKET',
+            'type': BlackMarketSwitch.BlackMarketParser,
+        }
 
 
 class ShipyardSwitch(SwitchArgument):
@@ -122,12 +141,6 @@ class RepairSwitch(SwitchArgument):
     help = 'Require stations known to offer repairs.'
 
 
-class NoPlanetSwitch(SwitchArgument):
-    switches = ['--no-planet']
-    dest = 'noPlanet'
-    help = 'Require stations to be in space.'
-
-
 class PlanetaryArgument(int):
     """
     argparse helper for --planetary
@@ -139,7 +152,7 @@ class PlanetaryArgument(int):
             for v in val:
                 if "YN?".find(v.upper()) < 0:
                     raise PlanetaryError(val.upper())
-            return super().__new__(cls, val, **kwargs)
+            return super().__new__(cls, val.upper(), **kwargs)
     
     def __init__(self):
         self.args = ['--planetary']
@@ -166,45 +179,47 @@ class FleetCarrierArgument(int):
             for v in val:
                 if "YN?".find(v.upper()) < 0:
                     raise FleetCarrierError(val.upper())
-            return super().__new__(cls, val, **kwargs)
+            return super().__new__(cls, val.upper(), **kwargs)
     
     def __init__(self):
         self.args = ['--fleet-carrier', '--fc']
         self.kwargs = {
             'help': (
-                'Limit to stations with one of the specified fleet-carrier, '
-                'e.g. --fc YN? matches any station, --fc Y matches only '
-                'fleet-carrier stations.'
+                'Limit by fleet-carrier status: Y = known fleet carriers, '
+                'N = known non-fleet-carriers, ? = unknown station type. '
+                'e.g. --fc Y matches only fleet carriers, --fc N excludes them.'
             ),
             'dest': 'fleet',
             'metavar': 'FLEET',
             'type': 'fleet',
         }
 
-class OdysseyArgument(int):
+class SettlementArgument(int):
     """
-    argparse helper for --odyssey
+    argparse helper for --settlement
     """
-    class OdysseyParser(str):  # noqa: SLOT000  # str is immutable
+    class SettlementParser(str):  # noqa: SLOT000  # str is immutable
         def __new__(cls, val, **kwargs):
             if not isinstance(val, str):
-                raise OdysseyError(val)
+                raise SettlementError(val)
             for v in val:
                 if "YN?".find(v.upper()) < 0:
-                    raise OdysseyError(val.upper())
-            return super().__new__(cls, val, **kwargs)
-    
+                    raise SettlementError(val.upper())
+            return super().__new__(cls, val.upper(), **kwargs)
+
     def __init__(self):
-        self.args = ['--odyssey', '--od']
+        self.args = ['--settlement', '--stl']
         self.kwargs = {
             'help': (
-                'Limit to stations with one of the specified odyssey, '
-                'e.g. --od YN? matches any station, --od Y matches only '
-                'odyssey stations.'
+                'Limit by settlement status: Y = settlements, '
+                'N = non-settlements, ? = unknown station type. '
+                'Settlements are planetary locations, but not all planetary '
+                'stations are settlements. e.g. --settlement Y matches only '
+                'settlements, --settlement N excludes them.'
             ),
-            'dest': 'odyssey',
-            'metavar': 'ODYSSEY',
-            'type': 'odyssey',
+            'dest': 'settlement',
+            'metavar': 'SETTLEMENT',
+            'type': 'settlement',
         }
 
 
@@ -213,7 +228,7 @@ __tdParserHelpers = {
     'padsize': PadSizeArgument.PadSizeParser,
     'planetary': PlanetaryArgument.PlanetaryParser,
     'fleet': FleetCarrierArgument.FleetCarrierParser,
-    'odyssey': OdysseyArgument.OdysseyParser,
+    'settlement': SettlementArgument.SettlementParser,
 }
 
 def registerParserHelpers(into):

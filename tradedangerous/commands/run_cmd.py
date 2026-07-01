@@ -1,24 +1,35 @@
 from __future__ import annotations
-from itertools import chain
-import math
+import dataclasses
 import sys
-import time
-import typing
 
-from tradedangerous.tradedb import describeAge, TradeDB, Station, System
-from tradedangerous.tradecalc import NoHopsError, Route, TradeCalc, UserAbortedRun
-
-from .commandenv import ResultRow
-from .exceptions import CommandLineError, NoDataError
+from .commandenv import Needs
+from .exceptions import CommandLineError, PlannerResultError
 from .parsing import (
     BlackMarketSwitch, FleetCarrierArgument, MutuallyExclusiveGroup,
-    NoPlanetSwitch, OdysseyArgument, PadSizeArgument, ParseArgument,
+    SettlementArgument, ParseArgument,
     PlanetaryArgument,
 )
 
-if typing.TYPE_CHECKING:
-    from tradedangerous import TradeEnv
-
+from tradedangerous.planner.failures import (
+    AmbiguousPlace,
+    InvalidRunRequest,
+    NoLoopRoute,
+    NoProfitableTrades,
+    NoReachableRoute,
+    NoTowardsProgress,
+    NoViaRoute,
+    PlannerFailure,
+    StationHasNoUsablePriceData,
+    UnknownPlace,
+    UnsupportedRunShape,
+)
+from tradedangerous.planner import resolver
+from tradedangerous.planner.render_checklist import render_checklist
+from tradedangerous.planner.render_text import render_run_result
+from tradedangerous.planner.run_route import plan_route
+from tradedangerous.planner.run_request import run_request_from_cmdenv
+from tradedangerous.planner.run_result import RunResult
+from tradedangerous.planner.validation import validate_run_request
 
 ######################################################################
 # Parser config
@@ -27,6 +38,11 @@ help = 'Calculate best trade run.'
 name = 'run'
 epilog = None
 usesTradeData = True
+skipResolverPrechecks = True
+
+# trade run is planner-only: it always needs the resolver database handle,
+# never the legacy full-galaxy preload.
+needs = Needs.RESOLVER
 
 arguments = [
     ParseArgument('--capacity',
@@ -40,6 +56,28 @@ arguments = [
             type = "credits",
         ),
 ]
+
+
+def _run_pad_size_threshold(value):
+    """Parse trade run's --pad-size as a single ship-fit threshold.
+
+    Unlike the shared multi-size pad filter, run takes one threshold letter —
+    S, M or L — the smallest pad the ship can use; a station qualifies when its
+    largest pad is at least that size. '?', empty input, or a combination like
+    'SML' is rejected here at parse time so the planner only ever sees a valid
+    threshold. (S and M still admit stations whose pad size is unrecorded; L
+    does not — that inclusion is the filter's job, not the parser's.)
+    """
+    text = str(value).strip().upper()
+    if text not in ("S", "M", "L"):
+        raise CommandLineError(
+            f"Invalid --pad-size '{value}': trade run takes a single "
+            "pad-size threshold, one of 'S' (small), 'M' (medium) or 'L' "
+            "(large). A station qualifies when its largest pad is at least "
+            "that size."
+        )
+    return text
+
 
 switches = [
     ParseArgument('--from', '-f',
@@ -94,8 +132,13 @@ switches = [
         ),
     ),
     ParseArgument('--jumps-per',
+        # Default deliberately None: the new planner keys the default off
+        # --ly-per (see run_request._resolve_jumps_per_hop); the legacy --old
+        # path restores its historical default of 1 at the top of its branch.
+        # Leaving the parser default as None is what lets either path tell
+        # "user omitted the flag" from "user explicitly passed --jumps-per 1".
         help = 'Maximum number of jumps (system-to-system) per hop.',
-        default = 2,
+        default = None,
         dest = 'maxJumpsPer',
         metavar = 'N',
         type = int,
@@ -127,11 +170,6 @@ switches = [
         default = 0,
         type = int,
     ),
-    ParseArgument('--show-jumps', '-J',
-        help = 'Show detail of jumps between hops.',
-        dest = 'showJumps',
-        action = 'store_true',
-    ),
     ParseArgument('--limit',
         help = 'Maximum units of any one cargo item to buy (0: unlimited).',
         metavar = 'N',
@@ -143,19 +181,31 @@ switches = [
         type = float,
         dest = 'maxAge',
     ),
-    PadSizeArgument(),
-    MutuallyExclusiveGroup(
-        NoPlanetSwitch(),
-        PlanetaryArgument(),
+    ParseArgument('--pad-size', '-p',
+        help = (
+            'Restrict to stations whose largest landing pad is at least '
+            'this size: S, M or L. Omit for no pad restriction.'
+        ),
+        metavar = 'S|M|L',
+        dest = 'padSize',
+        type = _run_pad_size_threshold,
     ),
+    PlanetaryArgument(),
     FleetCarrierArgument(),
-    OdysseyArgument(),
+    SettlementArgument(),
     BlackMarketSwitch(),
     ParseArgument('--ls-penalty', '--lsp',
         help = "Penalty per 1kls stations are from their stars.",
         default = 12.5,
         type = float,
         dest = 'lsPenalty'
+    ),
+    ParseArgument('--sco',
+        help = 'Declare an SCO (Supercruise Overcharge) drive; ignore the '
+                'ls-penalty so distant stations are not penalised.',
+        action = 'store_true',
+        default = False,
+        dest = 'sco',
     ),
     ParseArgument('--ls-max',
         help = 'Only consider stations upto this many ls from their star.',
@@ -175,6 +225,19 @@ switches = [
         dest = 'maxGainPerTon',
         type = "credits",
         default = 0
+    ),
+    ParseArgument('--max-price', '--mp',
+        # Parser default is None so the new planner can distinguish
+        # "omitted" (apply the configured default) from "explicit 0"
+        # (disable the cap). The legacy --old branch maps None to 0
+        # to keep its historical no-cap behaviour.
+        help = (
+            'Maximum commodity market price to use (cr/t). '
+            'Default: 1,500,000. Use 0 to disable.'
+        ),
+        dest = 'maxPrice',
+        type = "credits",
+        default = None,
     ),
     ParseArgument('--unique',
         help = 'Only visit each station once.',
@@ -211,38 +274,6 @@ switches = [
         metavar = 'N',
         type = int,
     ),
-    ParseArgument('--max-routes',
-        help = 'At the end of each hop, limit the number of routes '
-                'that continue to the next round to the top N '
-                'highest scoring',
-        default = 0,
-        metavar = 'N',
-        type = int,
-        dest = 'maxRoutes',
-    ),
-    ParseArgument('--checklist',
-        help = 'Provide a checklist flow for the route.',
-        action = 'store_true',
-        default = False,
-    ),
-    ParseArgument('--x52-pro',
-        help = 'Enable experimental X52 Pro MFD output.',
-        action = 'store_true',
-        default = False,
-        dest = 'x52pro',
-    ),
-    ParseArgument('--prune-score',
-        help = "From the 3rd hop on, only consider routes which have at least this percentage of the current best route's score.",
-        dest = 'pruneScores',
-        type = float,
-        default = 0,
-    ),
-    ParseArgument('--prune-hops',
-        help = 'Changes which hop --prune-score takes effect from.',
-        default = 3,
-        type = int,
-        dest = 'pruneHops',
-    ),
     ParseArgument('--progress', '-P',
         help = 'Show hop progress',
         default = False,
@@ -258,1294 +289,609 @@ switches = [
         default = None,
         type = int
     ),
+    ParseArgument('--no-bulk-cap',
+        help = 'Fill the full Metals/Minerals demand, ignoring the safe '
+                'bulk-sale-tax quantity cap.',
+        action = 'store_true',
+        default = False,
+        dest = 'noBulkCap',
+    ),
     ParseArgument('--summary',
         help = 'Summary layout of route instructions.',
         action = 'store_true',
     ),
-    ParseArgument('--shorten',
-        help = '(Requires --to) Find the shortest route with the best gpt.',
+    MutuallyExclusiveGroup(
+        ParseArgument('--checklist',
+            help = 'Step through the route one hop at a time, with full '
+                    'buy/fly/sell instructions.',
+            action = 'store_true',
+            default = False,
+        ),
+        ParseArgument('--raw',
+            help = 'Plain-text route output (no colour or tables), for '
+                    'grepping, piping to scripts, and diagnostics.',
+            action = 'store_true',
+            default = False,
+            dest = 'raw',
+        ),
+    ),
+    ParseArgument('--80col',
+        # Flag reads --80col (clearer intent than --narrow); the internal dest
+        # stays a valid identifier, so the renderer keeps reading cmdenv.narrow.
+        help = 'Constrain rich output to a portable 80 columns. Without it, '
+                'the tables use the full terminal width.',
         action = 'store_true',
+        default = False,
+        dest = 'narrow',
     ),
 ]
 
 
 ######################################################################
-# Helpers
-
-# Do some basic syntax validation before we waste time loading data.
-def validateRunArgumentsFast(cmdenv):
-    """
-    Fast-fail argument checks that should run BEFORE any database
-    access or TradeCalc construction.
-    """
-    if cmdenv.capacity is None:
-        raise CommandLineError("Missing '--capacity'")
-    
-    if cmdenv.credits is None:
-        raise CommandLineError("Missing '--credits'")
-    
-    if cmdenv.maxLyPer is None and not cmdenv.direct:
-        raise CommandLineError("Missing '--ly-per'")
-    
-    # --towards requires --from
-    if cmdenv.goalSystem and not getattr(cmdenv, "starting", None):
-        raise CommandLineError("--towards requires --from")
-    
-    # --start-jumps requires --from
-    if cmdenv.startJumps and not getattr(cmdenv, "starting", None):
-        raise CommandLineError("--start-jumps requires --from")
-    
-    # --end-jumps requires --to
-    if cmdenv.endJumps and not getattr(cmdenv, "ending", None):
-        raise CommandLineError("--end-jumps requires --to")
-    
-    # --shorten only valid with --to
-    if cmdenv.shorten and not getattr(cmdenv, "ending", None):
-        raise CommandLineError("--shorten only works with --to.")
-    
-    if cmdenv.loop and cmdenv.unique:
-        raise CommandLineError("Cannot use --unique and --loop together")
-    
-    if cmdenv.loop and cmdenv.direct:
-        raise CommandLineError("Cannot use --direct and --loop together")
-    
-    if (
-        cmdenv.limit is not None
-        and cmdenv.capacity is not None
-        and cmdenv.limit > cmdenv.capacity
-    ):
-        raise CommandLineError("'limit' must be <= capacity")
-    
-    if cmdenv.insurance:
-        arbitraryInsuranceBuffer = 42
-        if cmdenv.insurance >= (cmdenv.credits + arbitraryInsuranceBuffer):
-            raise CommandLineError("Insurance leaves no margin for trade")
-    
-    if cmdenv.loopInt is not None and cmdenv.loopInt < 2:
-        raise CommandLineError(
-            "--loop-int must be 2 or higher to have any effect. "
-        )
-
-class Checklist:
-    """
-        Class for encapsulating display of a route as a series of
-        steps to be 'checked off' as the user passes through them.
-    """
-    
-    def __init__(self, tdb, cmdenv):
-        self.tdb = tdb
-        self.cmdenv = cmdenv
-        self.mfd = cmdenv.mfd
-    
-    def doStep(self, action, detail = None, extra = None):
-        self.stepNo += 1
-        try:
-            self.mfd.display(
-                "#{} {}".format(self.stepNo, action),
-                detail or "",
-                extra or ""
-            )
-        except AttributeError:
-            pass
-        input(
-            "   {:<3}: {}: "
-            .format(
-                self.stepNo,
-                " ".join(item for item in (action, detail, extra) if item)
-            )
-        )
-    
-    def note(self, str, addBreak = True):
-        print("(i) {} (i){}".format(str, "\n" if addBreak else ""))
-    
-    def run(self, route, cr):
-        mfd = self.mfd
-        stations, hops, jumps = route.route, route.hops, route.jumps
-        lastHopIdx = len(stations) - 1
-        gainCr = 0
-        self.stepNo = 0
-        
-        heading = "(i) BEGINNING CHECKLIST FOR {} (i)".format(route.text(lambda x, y: y))
-        print(heading, "\n", '-' * len(heading), "\n\n", sep = '')
-        
-        cmdenv = self.cmdenv
-        if cmdenv.detail:
-            print(route.summary())
-            print()
-        
-        for idx in range(lastHopIdx):
-            hopNo = idx + 1
-            cur, nxt, hop = stations[idx], stations[idx + 1], hops[idx]
-            sortedTradeOptions = sorted(
-                hop[0],
-                key=lambda tradeOption: tradeOption[1] * tradeOption[0].gainCr,
-                reverse=True
-            )
-            
-            # Tell them what they need to buy.
-            if cmdenv.detail:
-                self.note("HOP {} of {}".format(hopNo, lastHopIdx))
-            
-            self.note("Buy at {}".format(cur.name()))
-            for (trade, qty) in sortedTradeOptions:
-                self.doStep(
-                        'Buy {:n} x'.format(qty),
-                        trade.name(),
-                        '@ {}cr / {} old'.format(
-                            trade.costCr,
-                            describeAge(trade.srcAge),
-                ))
-            if cmdenv.detail:
-                self.doStep('Refuel')
-            print()
-            
-            # If there is a next hop, describe how to get there.
-            self.note(
-                "Fly {}"
-                .format(
-                    " -> ".join(jump.name() for jump in jumps[idx])
-                )
-            )
-            if idx < len(hops) and jumps[idx]:
-                for jump in jumps[idx][1:]:
-                    self.doStep('Jump to', jump.name())
-            if cmdenv.detail:
-                self.doStep('Dock at', nxt.text())
-            print()
-            
-            self.note("Sell at {}".format(nxt.name()))
-            for (trade, qty) in sortedTradeOptions:
-                self.doStep(
-                        'Sell {:n} x'.format(qty),
-                        trade.name(),
-                        '@ {:n}cr / {} old'.format(
-                            trade.costCr + trade.gainCr,
-                            describeAge(trade.dstAge),
-                ))
-            print()
-            
-            gainCr += hop[1]
-            if cmdenv.detail and gainCr > 0:
-                self.note("GAINED: {:n}cr, CREDITS: {:n}cr".format(
-                            gainCr, cr + gainCr))
-            
-            if hopNo < lastHopIdx:
-                print("\n--------------------------------------\n")
-        
-        if mfd:
-            mfd.display('FINISHED',
-                        "+{:n}cr".format(gainCr),
-                        "={:n}cr".format(cr + gainCr))
-            mfd.attention(3)
-            from time import sleep
-            sleep(1.5)
-
-
-def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName, purpose):
-    """
-    Find all the stations you could reach if you made a given
-    number of jumps away from the origin list.
-    """
-    
-    assert jumps
-    
-    maxLyPer = cmdenv.emptyLyPer or cmdenv.maxLyPer
-    avoidPlaces = cmdenv.avoidPlaces
-    cmdenv.DEBUG0(
-        "expanding {} reach from {} by {} jumps at {}ly per jump",
-        srcName,
-        origin.name(),
-        jumps,
-        maxLyPer,
-    )
-    
-    # Correct behaviour: destinations (--to) require buying data; origins (--from) require selling data.
-    if srcName == "--to":
-        tradingList = calc.stationsBuying
-    elif srcName == "--from":
-        tradingList = calc.stationsSelling
-    else:
-        raise Exception("Unknown src")
-    
-    # Ensure O(1) membership checks regardless of the underlying container type.
-    trading_ids = tradingList if isinstance(tradingList, set) else set(tradingList)
-    
-    stations: set[Station] = set()
-    origins:  set[System | Station] = {origin}
-    avoid:    set[System | Station] = set(avoidPlaces)
-    
-    for jump in range(jumps):
-        if not origins:
-            break
-        if getattr(cmdenv, "debug", False):
-            cmdenv.DEBUG1(
-                "Ring {}: {}",
-                jump,
-                [sys.dbname for sys in origins]
-            )
-        thisJump, origins = origins, set()
-        for system in thisJump:
-            avoid.add(system)
-            for stn in system.stations or ():
-                if stn.ID not in trading_ids:
-                    if getattr(cmdenv, "debug", False):
-                        cmdenv.DEBUG2(
-                            "X {}/{} not in trading list",
-                            stn.system.dbname, stn.dbname,
-                        )
-                    continue
-                if not checkStationSuitability(cmdenv, calc, stn):
-                    if getattr(cmdenv, "debug", False):
-                        cmdenv.DEBUG2(
-                            "X {}/{} was not suitable",
-                            stn.system.dbname, stn.dbname,
-                        )
-                    continue
-                if getattr(cmdenv, "debug", False):
-                    cmdenv.DEBUG2(
-                        "- {}/{} meets requirements",
-                        stn.system.dbname, stn.dbname,
-                    )
-                stations.add(stn)
-            for dest, dist in tdb.genSystemsInRange(system, maxLyPer):
-                if dest not in avoid:
-                    origins.add(dest)
-    
-    if getattr(cmdenv, "debug", False):
-        cmdenv.DEBUG0(
-            "Expanded {} stations: {}",
-            srcName,
-            [stn.name() for stn in stations]
-        )
-    
-    if not stations:
-        if not cmdenv.emptyLyPer:
-            extra = (
-                "\nIf you are willing to make unladen jumps for the sake "
-                "of a better route, consider using --empty."
-            )
-        else:
-            extra = ""
-        raise CommandLineError(
-            "No {} stations with suitable trade data could be found "
-            "within {} {}ly jump{} of {} that meet all of your critera.{}"
-            .format(
-                purpose, maxLyPer,
-                jumps, "s" if jumps > 1 else "",
-                origin.name(),
-                extra,
-            )
-        )
-    
-    stations = list(stations)
-    stations.sort(key=lambda stn: stn.ID)
-    
-    return stations
-
-
-def checkForEmptyStationList(category, focusPlace, stationList, jumps):
-    if stationList:
-        return
-    if jumps:
-        raise NoDataError(
-                "Local database has no price data for any "
-                "stations within {} jumps of {} ({})".format(
-                    jumps,
-                    focusPlace.name(),
-                    category,
-        ))
-    if isinstance(focusPlace, System):
-        raise NoDataError(
-                "Local database either has no price data for "
-                "stations in {} ({}) or could not find any that "
-                "met your requirements (e.g. pad-size). "
-                "Check \"trade.py local -vv --ly 0 {}\"".format(
-                    focusPlace.name(),
-                    category,
-                    focusPlace.name(),
-        ))
-    raise NoDataError(
-            "Local database has no price data for {} ({})".format(
-                focusPlace.name(),
-                category,
-    ))
-
-
-def checkAnchorNotInVia(hops, anchorName, place, viaSet):
-    """
-    Ensure that '--to' or '--from' is not in the via set.
-    """
-    
-    if hops != 2:
-        return
-    if isinstance(place, Station) and place in viaSet:
-        raise CommandLineError(
-            "{} used in {} and --via with only 2 hops".format(
-                place.name(),
-                anchorName,
-        ))
-
-
-def checkStationSuitability(cmdenv, calc, station, src = None):
-    cmdenv.DEBUG2(
-        "checking {} (ls={}, bm={}, pad={}, plt={}, flc={}, ody={}, mkt={}, shp={}) "
-        "for {} suitability",
-        station.name(),
-        station.lsFromStar,
-        station.blackMarket,
-        station.maxPadSize,
-        station.planetary,
-        station.fleet,
-        station.odyssey,
-        station.market,
-        station.shipyard,
-        src or "any",
-    )
-    
-    if station in cmdenv.avoidPlaces and src != "--from":
-        if src:
-            raise CommandLineError(
-                "{} station {} is marked to avoid"
-                .format(src, station.name())
-            )
-        return False
-    if station.system in cmdenv.avoidPlaces and src != "--from":
-        if src:
-            raise CommandLineError(
-                "{} station {} is in system listed in --avoid"
-                .format(src, station.name())
-            )
-        return False
-    if station.market == 'N':
-        if src:
-            raise CommandLineError(
-                "{} station {} is flagged as having no market".format(
-                    src, station.name()
-                )
-            )
-        return False
-    if not station.itemCount:
-        if src:
-            raise NoDataError(
-                "No price data in local database "
-                "for {} station: {}".format(
-                    src, station.name(),
-            ))
-        return False
-    if src != "--to" and station.ID not in calc.stationsSelling:
-        if src:
-            raise NoDataError(
-                "No buying prices at {}."
-                .format(station.name())
-            )
-        return False
-    if src != "--from" and station.ID not in calc.stationsBuying:
-        if src:
-            raise NoDataError(
-                "No selling prices at {}."
-                .format(station.name())
-            )
-        return False
-    mps = cmdenv.padSize
-    if mps and not station.checkPadSize(mps):
-        if src:
-            raise CommandLineError(
-                "{} station {} does not meet pad-size requirement.\n"
-                "You specified: {}, Current data for station: {} ({})\n"
-                "You can use \"trade.py station\" to correct this.".format(
-                    src, station.name(),
-                    mps, station.maxPadSize,
-                    TradeDB.padSizesExt[station.maxPadSize],
-            ))
-        return False
-    pla = cmdenv.planetary
-    if pla and not station.checkPlanetary(pla):
-        if src:
-            raise CommandLineError(
-                "{} station {} does not meet planetary requirement.\n"
-                "You specified: {}, Current data for station: {} ({})\n"
-                "You can use \"trade.py station\" to correct this.".format(
-                    src, station.name(),
-                    pla, station.planetary,
-                    TradeDB.planetStatesExt[station.planetary],
-            ))
-        return False
-    flc = cmdenv.fleet
-    if flc and not station.checkFleet(flc):
-        if src:
-            raise CommandLineError(
-                "{} station {} does not meet fleet carrier requirement.\n"
-                "You specified: {}, Current data for station: {} ({})\n"
-                "You can use \"trade.py station\" to correct this.".format(
-                    src, station.name(),
-                    flc, station.fleet,
-                    TradeDB.fleetStatesExt[station.fleet],
-            ))
-        return False
-    ody = cmdenv.odyssey
-    if ody and not station.checkOdyssey(ody):
-        if src:
-            raise CommandLineError(
-                "{} station {} does not meet odyssey requirement.\n"
-                "You specified: {}, Current data for station: {} ({})\n"
-                "You can use \"trade.py station\" to correct this.".format(
-                    src, station.name(),
-                    ody, station.odyssey,
-                    TradeDB.odysseyStatesExt[station.odyssey],
-            ))
-        return False
-    np = cmdenv.noPlanet
-    if np and station.planetary != 'N':
-        if src and src != "--from":
-            raise CommandLineError(
-                "{} station {} does not meet no-planet "
-                "requirement.".format(
-                    src, station.name(),
-            ))
-        return False
-    bm = cmdenv.blackMarket
-    if bm and station.blackMarket != 'Y':
-        if src and src != "--from":
-            raise CommandLineError(
-                "{} station {} does not meet black-market "
-                "requirement.".format(
-                    src, station.name(),
-            ))
-        return False
-    mls = cmdenv.maxLs
-    if mls and (station.lsFromStar <= 0 or station.lsFromStar > mls):
-        if src and src != "--from":
-            raise CommandLineError(
-                "{} station {} does not meet max-ls "
-                "requirement.".format(
-                    src, station.name(),
-            ))
-        return False
-    maxAge, stnAge = cmdenv.maxAge, station.dataAge or float("inf")
-    if maxAge and stnAge > maxAge:
-        if src and src != "--from":
-            raise CommandLineError(
-                "{} station {} does not meet --age "
-                "requirement.".format(
-                    src, station.name(),
-            ))
-        return False
-    return True
-
-
-def filterStationSet(src, cmdenv, calc, stnList):
-    if not stnList:
-        return stnList
-    if getattr(cmdenv, "debug", False):
-        cmdenv.DEBUG0(
-            "filtering {} station list: {}",
-            src,
-            ",".join(station.name() for station in stnList),
-        )
-    stnList = tuple(
-        place for place in stnList
-        if isinstance(place, System) or checkStationSuitability(cmdenv, calc, place, src)
-    )
-    if not stnList:
-        # Preserve original message formatting (no behavior change)
-        raise CommandLineError("No {src} station met your criteria.")
-    return stnList
-
-def checkOrigins(tdb, cmdenv, calc):
-    # Compute eligibility once: stations must both sell and buy (same as suitability with src=None).
-    eligible_ids = set(calc.stationsSelling) & set(calc.stationsBuying)
-    
-    setattr(cmdenv, "_origin", cmdenv.origPlace)  # store the original so we can overwrite it
-    if cmdenv.origPlace:
-        if cmdenv.startJumps and cmdenv.startJumps > 0:
-            cmdenv.origins = expandForJumps(
-                tdb, cmdenv, calc,
-                cmdenv.origPlace.system,
-                cmdenv.startJumps,
-                "--from", "starting",
-            )
-            cmdenv.origPlace = None
-        elif isinstance(cmdenv.origPlace, System):
-            cmdenv.DEBUG0("origPlace: System: {}", cmdenv.origPlace.name())
-            if not cmdenv.origPlace.stations:
-                raise CommandLineError(
-                    "No stations at --from system, {}"
-                    .format(cmdenv.origPlace.name())
-                )
-            cmdenv.origins = tuple(
-                station
-                for station in cmdenv.origPlace.stations
-                if station.ID in eligible_ids and checkStationSuitability(cmdenv, calc, station)
-            )
-        else:
-            cmdenv.DEBUG0("origPlace: Station: {}", cmdenv.origPlace.name())
-            checkStationSuitability(cmdenv, calc, cmdenv.origPlace, '--from')
-            cmdenv.origins = (cmdenv.origPlace,)
-            cmdenv.startStation = cmdenv.origPlace
-        checkForEmptyStationList(
-            "--from", cmdenv.origPlace,
-            cmdenv.origins, cmdenv.startJumps
-        )
-    else:
-        if cmdenv.startJumps:
-            raise CommandLineError("--start-jumps (-s) only works with --from")
-        cmdenv.DEBUG0("using all suitable origins")
-        cmdenv.origins = tuple(
-            station
-            for station in tdb.stationByID.values()
-            if station.ID in eligible_ids and checkStationSuitability(cmdenv, calc, station)
-        )
-    
-    if not cmdenv.startJumps and isinstance(cmdenv.origPlace, System):
-        cmdenv.origins = filterStationSet(
-            '--from', cmdenv, calc, cmdenv.origins
-        )
-    
-    cmdenv.origSystems = tuple({stn.system for stn in cmdenv.origins})
-
-def checkDestinations(tdb, cmdenv, calc):
-    cmdenv.destinations = None
-    showProgress = bool(getattr(cmdenv, "progress", False))
-    hb_interval = 0.5
-    last_hb = 0.0
-    spinner = ("|", "/", "-", "\\")
-    spin_i = 0
-    
-    def heartbeat(seen, kept):
-        nonlocal last_hb, spin_i
-        if not showProgress:
-            return
-        now = time.time()
-        if (now - last_hb) < hb_interval:
-            return
-        last_hb = now
-        s = spinner[spin_i]
-        spin_i = (spin_i + 1) % len(spinner)
-        sys.stdout.write(
-            f"\r{s} Scanning stations…  examined {seen:n}  kept {kept:n}"
-        )
-        sys.stdout.flush()
-    
-    if cmdenv.destPlace:
-        if cmdenv.endJumps and cmdenv.endJumps > 0:
-            cmdenv.destinations = expandForJumps(
-                    tdb, cmdenv, calc,
-                    cmdenv.destPlace.system,
-                    cmdenv.endJumps,
-                    "--to", "destination",
-            )
-            cmdenv.destPlace = None
-        elif isinstance(cmdenv.destPlace, Station):
-            cmdenv.DEBUG0("destPlace: Station: {}", cmdenv.destPlace.name())
-            # Single-station --to: hard fail if unsuitable.
-            checkStationSuitability(cmdenv, calc, cmdenv.destPlace, '--to')
-            cmdenv.destinations = (cmdenv.destPlace,)
-        else:
-            cmdenv.DEBUG0("destPlace: System: {}", cmdenv.destPlace.name())
-            # System --to: examine all stations, keeping only those that pass --to suitability.
-            dests, seen, kept = [], 0, 0
-            for station in cmdenv.destPlace.stations:
-                seen += 1
-                try:
-                    ok = checkStationSuitability(cmdenv, calc, station, '--to')
-                except (CommandLineError, NoDataError):
-                    ok = False
-                if ok:
-                    dests.append(station)
-                    kept += 1
-                heartbeat(seen, kept)
-            cmdenv.destinations = tuple(dests)
-            if showProgress:
-                sys.stdout.write("\n")
-                sys.stdout.flush()
-        checkForEmptyStationList(
-                "--to", cmdenv.destPlace,
-                cmdenv.destinations, cmdenv.endJumps
-        )
-    else:
-        if cmdenv.endJumps:
-            raise CommandLineError("--end-jumps (-e) only works with --to")
-        cmdenv.DEBUG0("Using all available destinations")
-        if cmdenv.goalSystem:
-            dest = tdb.lookupPlace(cmdenv.goalSystem)
-            cmdenv.goalSystem = dest.system
-        
-        if cmdenv.origPlace and cmdenv.maxJumpsPer == 0:
-            stationSrc = chain.from_iterable(
-                system.stations for system in cmdenv.origSystems
-            )
-        else:
-            stationSrc = tdb.stationByID.values()
-        
-        eligible_ids = set(calc.stationsSelling) & set(calc.stationsBuying)
-        
-        dests, seen, kept = [], 0, 0
-        for station in stationSrc:
-            seen += 1
-            if station.ID in eligible_ids and checkStationSuitability(cmdenv, calc, station):
-                dests.append(station)
-                kept += 1
-            heartbeat(seen, kept)
-        cmdenv.destinations = tuple(dests)
-        if showProgress:
-            sys.stdout.write("\n")
-            sys.stdout.flush()
-    
-    if not cmdenv.endJumps and isinstance(cmdenv.destPlace, System):
-        cmdenv.destinations = filterStationSet(
-            '--to', cmdenv, calc, cmdenv.destinations
-        )
-    
-    cmdenv.destSystems = tuple({stn.system for stn in cmdenv.destinations})
-
-
-def validateRunArguments(tdb, cmdenv, calc):
-    """
-        Process arguments to the 'run' option.
-    """
-    
-    if cmdenv.credits < 0:
-        raise CommandLineError("Invalid (negative) value for initial credits")
-    # I'm going to allow 0 credits as a future way of saying "just fly"
-    
-    if cmdenv.routes < 1:
-        raise CommandLineError(
-            "Maximum routes has to be 1 or higher."
-        )
-    if cmdenv.routes > 1 and cmdenv.checklist:
-        raise CommandLineError(
-            "Checklist can only be applied to a single route."
-        )
-    
-    if cmdenv.hops < 1:
-        raise CommandLineError("Minimum of 1 hop required")
-    if cmdenv.hops > 32:
-        raise CommandLineError("Too many hops without more optimization")
-    
-    if cmdenv.maxJumpsPer < 0:
-        raise CommandLineError("Negative jumps: you're already there?")
-    if cmdenv.direct:
-        cmdenv.hops = 1
-        cmdenv.maxJumpsPer = cmdenv.maxLyPer = 10000
-    
-    if cmdenv.capacity is None:
-        raise CommandLineError("Missing '--capacity'")
-    if cmdenv.maxLyPer is None and not cmdenv.direct:
-        raise CommandLineError("Missing '--ly-per'")
-    if cmdenv.capacity < 0:
-        raise CommandLineError("Invalid (negative) cargo capacity")
-    if cmdenv.capacity > 1500:
-        cmdenv.WARN("Capacity > 1500 not supported (you specified {})", cmdenv.capacity)
-        cmdenv.WARN("Forcing jumps per hop to 1.")
-        cmdenv.maxJumpsPer = 1
-        if cmdenv.hops > 2:
-            cmdenv.WARN("{} hops? Press [CTRL][C] to quit.", cmdenv.hops)
-        if not cmdenv.supply:
-            cmdenv.WARN("Please provide a '--supply' value.")
-            cmdenv.supply = cmdenv.capacity * 10
-            cmdenv.DEBUG0("'supply' minimum set to {}.", cmdenv.supply)
-        if not cmdenv.demand:
-            cmdenv.WARN("Please provide a '--demand' value.")
-            cmdenv.demand = cmdenv.capacity * 10
-            cmdenv.DEBUG0("'demand' minimum set to {}.", cmdenv.demand)
-    #    raise CommandLineError(
-    #        "Capacity > 1500 not supported (you specified {})"
-    #        .format(cmdenv.capacity)
-    #    )
-    
-    if cmdenv.limit and cmdenv.limit > cmdenv.capacity:
-        raise CommandLineError("'limit' must be <= capacity")
-    if cmdenv.limit and cmdenv.limit < 0:
-        raise CommandLineError("'limit' can't be negative, silly")
-    cmdenv.maxUnits = cmdenv.limit if cmdenv.limit else cmdenv.capacity
-    
-    if cmdenv.insurance:
-        arbitraryInsuranceBuffer = 42
-        if cmdenv.insurance >= (cmdenv.credits + arbitraryInsuranceBuffer):
-            raise CommandLineError("Insurance leaves no margin for trade")
-    
-    if cmdenv.loop:
-        if cmdenv.unique:
-            raise CommandLineError("Cannot use --unique and --loop together")
-        if cmdenv.direct:
-            raise CommandLineError("Cannot use --direct and --loop together")
-    
-    if cmdenv.loopInt:
-        if cmdenv.loopInt < 2:
-            raise CommandLineError(
-                "--loop-int must be 2 or higher to have any effect. "
-            )
-        if cmdenv.loopInt > cmdenv.hops and not cmdenv.unique:
-            cmdenv.NOTE("--loop-int > hops implies --unique")
-            cmdenv.unique = True
-    
-    if cmdenv.shorten:
-        if cmdenv.loop:
-            raise CommandLineError(
-                "Cannot use --shorten and --loop together"
-            )
-        if not cmdenv.ending:
-            raise CommandLineError(
-                "--shorten only works with --to."
-            )
-    
-    if cmdenv.goalSystem and not cmdenv.origPlace:
-        raise CommandLineError("--towards requires --from")
-    
-    checkOrigins(tdb, cmdenv, calc)
-    checkDestinations(tdb, cmdenv, calc)
-    
-    # If they're going --from and --to single systems, and they have
-    # specified zero jumps then it's futile to try anything.
-    if cmdenv.maxJumpsPer == 0 and not cmdenv.direct:
-        if len(cmdenv.origSystems) == 1 and len(cmdenv.destSystems) == 1:
-            if cmdenv.origSystems[0] != cmdenv.destSystems[0]:
-                raise CommandLineError(
-                    "Could not find any connections that didn't require at "
-                    "least one jump and --jumps 0 specified."
-                )
-    
-    origins, destns = cmdenv.origins or (), cmdenv.destinations or ()
-    
-    if cmdenv.hops == 1 and len(origins) == 1 and len(destns) == 1:
-        if origins == destns:
-            raise CommandLineError("Same to/from; more than one hop required.")
-    
-    avoidSet = set(cmdenv.avoidPlaces or ())
-    viaSet = cmdenv.viaSet = set(cmdenv.viaPlaces)
-    cmdenv.DEBUG0("Via: {}", viaSet)
-    viaSet = cmdenv.viaSet = set(
-        filterStationSet('--via', cmdenv, calc, cmdenv.viaSet)
-    )
-    checkAnchorNotInVia(cmdenv.hops, "--from", cmdenv.origPlace, viaSet)
-    checkAnchorNotInVia(cmdenv.hops, "--to", cmdenv.destPlace, viaSet)
-    
-    viaSystems = set()
-    for place in viaSet:
-        if place in avoidSet or place.system in avoidSet:
-            raise CommandLineError(
-                '"--via {}" conflicts with --avoid'
-                .format(place.name())
-            )
-        if isinstance(place, Station):
-            viaSystems.add(place.system)
-        else:
-            viaSystems.add(place)
-    
-    if cmdenv.maxJumpsPer == 0 and viaSet and not cmdenv.direct:
-        for via in viaSet:
-            if via.system not in cmdenv.origSystems:
-                raise CommandLineError(
-                    "--via {} unreachable with --jumps 0"
-                    .format(via.name())
-                )
-        cmdenv.origins = tuple(
-            origin for origin in cmdenv.origins
-            if origin.system in viaSystems
-        )
-        cmdenv.origSystems = tuple(
-            origin.system for origin in cmdenv.origins
-        )
-        cmdenv.destinations = tuple(
-            dest for dest in cmdenv.destinations
-            if dest.system in viaSystems
-        )
-        cmdenv.destSystems = tuple(
-            dest.system for dest in cmdenv.destinations
-        )
-    
-    # How many of the hops do not have pre-determined stations. For example,
-    # when the user uses "--from", they pre-determine the starting station.
-    fixedRoutePoints = 0
-    if cmdenv.origPlace:
-        fixedRoutePoints += 1
-    if cmdenv.destPlace:
-        fixedRoutePoints += 1
-    totalRoutePoints = cmdenv.hops + 1
-    adhocRoutePoints = totalRoutePoints - fixedRoutePoints
-    if len(viaSystems) > adhocRoutePoints:
-        raise CommandLineError(
-                "Route is not long enough for the list of '--via' "
-                "destinations you gave. Reduce the vias or try again "
-                "with '--hops {}' or greater.\n".format(
-                    len(viaSet) + fixedRoutePoints - 1
-                ))
-    cmdenv.adhocHops = adhocRoutePoints - 1
-    
-    if cmdenv.unique and cmdenv.hops >= len(tdb.stationByID):
-        raise CommandLineError(
-            "Requested unique trip with more hops than there are stations..."
-        )
-    if cmdenv.unique:
-        # if there's only one start and stop...
-        if len(origins) == 1 and len(destns) == 1:
-            if origins[0] is destns[0]:
-                raise CommandLineError("Can't have same from/to with --unique")
-        if viaSet:
-            if len(origins) == 1 and origins[0] in viaSet:
-                raise CommandLineError("Can't have --from station in --via list with --unique")
-            if len(destns) == 1 and destns[0] in viaSet:
-                raise CommandLineError("Can't have --to station in --via list with --unique")
-    
-    if cmdenv.mfd:
-        cmdenv.mfd.display("Loading Trades")
-    
-    if cmdenv.pruneScores and cmdenv.pruneHops:
-        if cmdenv.pruneScores > 99:
-            raise CommandLineError("--prune-score value percentile exceed 99.")
-        if cmdenv.pruneHops < 2:
-            raise CommandLineError("--prune-hops must 2 or more.")
-    else:
-        cmdenv.pruneScores = cmdenv.pruneHops = 0
-
-######################################################################
-
-
-def filterByVia(routes, viaSet, viaStartPos):
-    if not routes:
-        return ()
-    
-    matchedRoutes = []
-    partialRoutes = {}
-    maxMet = 0
-    for route in routes:
-        met = 0
-        for hop in route.route[viaStartPos:]:
-            if hop in viaSet or hop.system in viaSet:
-                met += 1
-        if met > 0:
-            if met >= len(viaSet):
-                matchedRoutes.append(route)
-            else:
-                if met > maxMet:
-                    partialRoutes[met] = []
-                if met >= maxMet:
-                    maxMet = met
-                    partialRoutes[met].append(route)
-    
-    if matchedRoutes:
-        return matchedRoutes, None
-    
-    if not maxMet:
-        raise NoDataError(
-                "No routes were found which matched your 'via' selections."
-        )
-    
-    return partialRoutes[maxMet], (
-            "SORRY: No runs visited all of your via destinations. "
-            "Listing runs that matched at least {}.".format(
-                    maxMet
-            )
-    )
-
-
-def checkReachability(tdb, cmdenv):
-    if cmdenv.direct:
-        return
-    srcSys, dstSys = cmdenv.origSystems, cmdenv.destSystems
-    if len(srcSys) == 1 and len(dstSys) == 1:
-        srcSys, dstSys = srcSys[0], dstSys[0]
-        if srcSys != dstSys:
-            maxLyPer = cmdenv.maxLyPer
-            avoiding = tuple(
-                avoid for avoid in cmdenv.avoidPlaces
-                if isinstance(avoid, System)
-            )
-            route = tdb.getRoute(
-                srcSys, dstSys, maxLyPer, avoiding,
-            )
-            if not route:
-                raise CommandLineError(
-                    "No route between {} and {} with a {}ly/jump limit."
-                    .format(
-                        srcSys.name(), dstSys.name(),
-                        maxLyPer,
-                    )
-                )
-            
-            # Were there just not enough hops?
-            jumpLimit = cmdenv.maxJumpsPer * cmdenv.hops
-            routeJumps = len(route) - 1
-            if jumpLimit < routeJumps:
-                hopsRequired = math.ceil(routeJumps / cmdenv.maxJumpsPer)
-                jumpsRequired = math.ceil(routeJumps / cmdenv.hops)
-                raise CommandLineError(
-                    "Shortest route between {src} and {dst} at {jumply} "
-                    "ly per jump requires at least {minjumps} jumps. "
-                    "Your current settings (--hops {hops} --jumps {jumps}) "
-                    "allows a maximum of {jumplimit}.\n"
-                    "\n"
-                    "You may need --hops={althops} or --jumps={altjumps}.\n"
-                    "\n"
-                    "See also:\n"
-                    " --towards (aka -T),"
-                    " --start-jumps (-s),"
-                    " --end-jumps (-e),"
-                    " --direct.\n"
-                    .format(
-                        src = srcSys.name(),
-                        dst = dstSys.name(),
-                        jumply = cmdenv.maxLyPer,
-                        minjumps = routeJumps,
-                        hops = cmdenv.hops,
-                        jumps = cmdenv.maxJumpsPer,
-                        jumplimit = jumpLimit,
-                        althops = hopsRequired,
-                        altjumps = jumpsRequired,
-                    )
-                )
-
-
-def routeFailedRestrictions(
-        tdb, cmdenv, restrictTo, maxLs, hopNo
-        ):
-    """
-    Generate exception text indicating we couldn't complete a
-    route given the restrictions supplied. If the user has
-    specified detail, check if there is a route at all.
-    """
-    
-    places = list(
-        set(
-            chain.from_iterable(
-                (place,) if isinstance(place, Station) else place.stations
-                for place in restrictTo
-            )
-        )
-    )
-    places.sort(key = lambda stn: stn.dbname)
-    
-    dests = ", ".join(place.name() for place in places)
-    
-    return (
-        "SORRY: Could not find any routes that delivered a profit to "
-        "{} at hop #{}\n"
-        "You may need to add more hops to your route or adjust your "
-        "filters/restrictions.\n"
-        .format(
-            dests, hopNo + 1
-        )
-    )
-
-
-def extraRouteProgress(routes):
-    bestGain = max(routes, key = lambda route: route.gainCr).gainCr
-    worstGain = min(routes, key = lambda route: route.gainCr).gainCr
-    if bestGain != worstGain:
-        gainText = "{:n}-{:n}cr gain".format(worstGain, bestGain)
-    else:
-        gainText = "{:n}cr gain".format(bestGain)
-    
-    bestGPT = int(max(routes, key = lambda route: route.gpt).gpt)
-    worstGPT = int(min(routes, key = lambda route: route.gpt).gpt)
-    if bestGPT != worstGPT:
-        gptText = "{:n}-{:n}cr/ton".format(worstGPT, bestGPT)
-    else:
-        gptText = "{:n}cr/ton".format(bestGPT)
-    
-    return ".. {}, {}".format(gainText, gptText)
-
-######################################################################
 # Perform query and populate result set
 
 
-def run(results, cmdenv, tdb):
-    cmdenv.DEBUG1("loading trades")
-    
-    if tdb.tradingCount == 0:
-        raise NoDataError("Database does not contain any profitable trades.")
-    
-    # Always show a friendly heads-up before heavy work begins.
-    print("Searching for quality trades. This may take a few minutes. Please be patient.", flush=True)
-    
-    # Instantiate the calculator object
-    calc = TradeCalc(tdb, cmdenv)
-    
-    validateRunArguments(tdb, cmdenv, calc)
-    
-    origPlace, viaSet = cmdenv.origPlace, cmdenv.viaSet
-    stopStations = cmdenv.destinations
-    goalSystem = cmdenv.goalSystem
-    maxLs = cmdenv.maxLs
-    
-    # seed the route table with starting places
-    startCr = cmdenv.credits - cmdenv.insurance
-    routes = [
-        Route(
-            stations = (src,),
-            hops = (),
-            jumps = (),
-            startCr = startCr,
-            gainCr = 0,
-            score = 0,
+def _is_unanchored_request(request) -> bool:
+    """Return whether neither endpoint was named — the unanchored search."""
+
+    return not request.from_text and not request.to_text
+
+
+def _endpoint_display(endpoint, fallback_text):
+    """Friendly name for a resolved endpoint in failure messages.
+
+    Prefers the resolved canonical name — System/Station for a station, System
+    for a system — so the error reads in full even when the commander typed a
+    partial. Falls back to the raw input text if resolution is somehow absent.
+    """
+
+    if endpoint is None:
+        return fallback_text
+    if endpoint.station is not None:
+        return endpoint.station.dbname
+    if endpoint.system is not None:
+        return endpoint.system.name
+    return fallback_text
+
+
+def _planner_result_message(exc, request) -> str:
+    """Build the user-facing message for a planner failure that has no result.
+
+    The new planner knows enough about the search shape to say what actually
+    happened, so the legacy 'possible causes' footer (which advises checking
+    for missing systems or stale prices) is misleading here. The wording
+    follows the failure spec: it names the resolved endpoints in full (a
+    partial name reads back as the real station/system), talks about 'jump
+    settings' rather than internal terms, and only recommends --jumps-per
+    where increasing it is genuinely the likely fix.
+
+    StationHasNoUsablePriceData (and its subclasses) carry their own
+    specific message from the planner — they describe a different kind of
+    failure (a named station has no usable data) — and are surfaced as-is.
+    """
+
+    if isinstance(exc, StationHasNoUsablePriceData):
+        return exc.message
+
+    if isinstance(exc, NoTowardsProgress):
+        # --towards: the search found no profitable trade that moved the route
+        # closer to the target. The failure already names the target; add the
+        # levers that let a progressing trade through. Checked before the
+        # NoReachableRoute branch below because that one only fires with --to,
+        # which --towards forbids.
+        return (
+            f"{exc.message}\n"
+            f"\n"
+            f"Try increasing --hops or --jumps-per, widening --ly-per, or "
+            f"relaxing filters so a trade toward the target can be found."
         )
-        for src in cmdenv.origins
-    ]
-    
-    numHops = cmdenv.hops
-    lastHop = numHops - 1
-    viaStartPos = 1 if origPlace else 0
-    
-    cmdenv.DEBUG1("numHops {}, vias {}, adhocHops {}",
-                numHops, len(viaSet), cmdenv.adhocHops)
-    
-    results.summary = ResultRow()
+
+    if isinstance(exc, NoLoopRoute):
+        # --loop: no route closed back to the start. The failure already names
+        # the origin and the hop count; add the levers that let a loop close.
+        # Checked before the shape-based branches below, which would otherwise
+        # claim a generic open-ended failure (--loop names --from but no --to).
+        return (
+            f"{exc.message}\n"
+            f"\n"
+            f"Try increasing --hops or --jumps-per, widening --ly-per, or "
+            f"relaxing filters so a round trip back to the start can be found."
+        )
+
+    if isinstance(exc, NoViaRoute):
+        # --via: the search completed no route through every requested
+        # waypoint. The failure already names --via and the binding
+        # constraints; add the levers that let a via-passing route through.
+        # Checked before the shape-based branches below, which would otherwise
+        # report a generic endpoint failure that never mentions the waypoint.
+        return (
+            f"{exc.message}\n"
+            f"\n"
+            f"Try increasing --hops or --jumps-per, widening --ly-per, or "
+            f"relaxing filters so a route through the waypoint can be found."
+        )
+
+    from_named = bool(request.from_text)
+    to_named = bool(request.to_text)
+    from_label = _endpoint_display(request.from_endpoint, request.from_text)
+    to_label = _endpoint_display(request.to_endpoint, request.to_text)
+
+    if (
+        isinstance(exc, NoReachableRoute)
+        and from_named
+        and to_named
+    ):
+        # Fixed endpoints, but the jump settings cannot connect them.
+        return (
+            f"No route was found from {from_label} to "
+            f"{to_label} with the current jump settings.\n"
+            f"\n"
+            f"Try increasing --jumps-per or choosing a closer start or "
+            f"destination."
+        )
+
+    if from_named and to_named:
+        # Fixed endpoints are connectable, but no profitable trade exists.
+        return (
+            f"No profitable trade was found from {from_label} to "
+            f"{to_label} with the current jump settings.\n"
+            f"\n"
+            f"Try relaxing filters or choosing a different start or "
+            f"destination."
+        )
+
+    if from_named:
+        return (
+            f"No profitable trade was found from {from_label} with "
+            f"the current jump settings.\n"
+            f"\n"
+            f"Try increasing --jumps-per, choosing a different starting "
+            f"point, or relaxing filters."
+        )
+
+    if to_named:
+        return (
+            f"No profitable trade was found to {to_label} with the "
+            f"current jump settings.\n"
+            f"\n"
+            f"Try increasing --jumps-per, choosing a different destination, "
+            f"or relaxing filters."
+        )
+
+    # Unanchored: neither endpoint named.
+    return (
+        "No profitable trade was found with the current jump settings.\n"
+        "\n"
+        "Try increasing --jumps-per or relaxing filters."
+    )
+
+
+def _abort_unanchored_run(results, message):
+    """Print a message and return an empty result set: a clean no-op exit.
+
+    A declined confirmation prompt and a non-interactive invocation both end
+    the command here, before the planner is ever called — a plain message and
+    no traceback, with nothing for the renderer to show.
+    """
+
+    print(message, flush=True)
     results.summary.exception = ""
-    
-    if cmdenv.loop:
-        routePickPred = lambda route: \
-            route.lastStation is route.firstStation
-    elif cmdenv.shorten:
-        if not cmdenv.destPlace:
-            routePickPred = lambda route: \
-                route.lastStation is route.firstStation
-        elif isinstance(cmdenv.destPlace, System):
-            routePickPred = lambda route: \
-                route.lastSystem is cmdenv.destPlace
-        else:
-            routePickPred = lambda route: \
-                route.lastStation is cmdenv.destPlace
-    else:
-        routePickPred = None
-    
-    pickedRoutes = []
-    
-    pruneMod = cmdenv.pruneScores / 100
-    
-    if cmdenv.loop:
-        distancePruning = lambda rt, distLeft: \
-            rt.lastSystem.distanceTo(rt.firstSystem) <= distLeft
-    elif cmdenv.destPlace and not cmdenv.direct:
-        distancePruning = lambda rt, distLeft: \
-            any(
-                stop for stop in stopSystems
-                if rt.lastSystem.distanceTo(stop) <= distLeft
-            )
-    else:
-        distancePruning = False
-    
-    if distancePruning:
-        maxHopDistLy = cmdenv.maxJumpsPer * cmdenv.maxLyPer
-        if not cmdenv.loop:
-            stopSystems = {stop.system for stop in stopStations}
-    
-    for hopNo in range(numHops):
-        restrictTo = None
-        if hopNo == lastHop and stopStations:
-            restrictTo = set(stopStations)
-            manualRestriction = bool(cmdenv.destPlace)
-        elif len(viaSet) > cmdenv.adhocHops:
-            restrictTo = viaSet
-            manualRestriction = True
-        
-        if distancePruning:
-            preCrop = len(routes)
-            distLeft = maxHopDistLy * (numHops - hopNo)
-            routes[:] = [rt for rt in routes if distancePruning(rt, distLeft)]
-            if not routes:
-                if pickedRoutes:
-                    break
-                raise NoDataError(
-                    "No routes are in-range of any end stations at the end of hop {}"
-                    .format(hopNo)
-                )
-            if (pruned := preCrop - len(routes)):
-                cmdenv.NOTE("Pruned {} origins too far from any end stations", pruned)
-        
-        if hopNo >= 1 and (cmdenv.maxRoutes or pruneMod):
-            routes.sort()
-            if pruneMod and hopNo + 1 >= cmdenv.pruneHops and len(routes) > 10:
-                crop = int(len(routes) * pruneMod)
-                routes[:] = routes[:-crop]
-                cmdenv.NOTE("Pruned {} origins", crop)
-            
-            if cmdenv.maxRoutes and len(routes) > cmdenv.maxRoutes:
-                routes[:] = routes[:cmdenv.maxRoutes]
-        
-        if cmdenv.progress:
-            extra = ""
-            if hopNo > 0 and cmdenv.detail > 1:
-                extra = extraRouteProgress(routes)
-            print(
-                "* Hop {:3n}: {:.>10n} origins {}"
-                .format(hopNo + 1, len(routes), extra)
-            )
-        elif cmdenv.debug:
-            cmdenv.DEBUG0("Hop {}...", hopNo + 1)
-        
-        try:
-            newRoutes = calc.getBestHops(routes, restrictTo = restrictTo)
-        
-        except KeyboardInterrupt:
-            cmdenv.DEBUG0("** Keyboard Interrupt")
-            if hopNo == 0 or not routes:
-                raise UserAbortedRun("before any routes calculated")
-            # Until python 3.14 it's discouraged to break from an exception, so
-            # lets make sure we don't mistake there being anything to process.
-            calc.aborted = True
-            newRoutes = []
-        
-        except NoHopsError:
-            if hopNo == 0 and len(cmdenv.origSystems) == 1:
-                raise NoDataError(
-                    "Couldn't find any trading links within {} x {}ly jumps of {}."
-                    .format(
-                        cmdenv.maxJumpsPer,
-                        cmdenv.maxLyPer,
-                        cmdenv.origSystems[0].name(),
-                    )
-                )
-            raise NoDataError(
-                "No routes had reachable trading links at hop #{}".format(hopNo + 1)
-            )
-        
-        if calc.aborted:
-            cmdenv.DEBUG0("** User Aborted")
-            break
-        
-        if not newRoutes:
-            assert not calc.aborted, "internal error"
-            # First attempt to find a route is a special case because the current
-            # route list is the source.
-            if hopNo == 0:
-                no_routes_on_first_hop(cmdenv, calc)
-                # no return
-            
-            # If we've already got some winners (e.g. on --shorten)
-            if pickedRoutes:
-                break
-            
-            checkReachability(tdb, cmdenv)
-            
-            if restrictTo and manualRestriction:
-                results.summary.exception += routeFailedRestrictions(
-                    tdb, cmdenv, restrictTo, maxLs, hopNo
-                )
-                break
-            
-            results.summary.exception += f"SORRY: Could not find profitable destinations beyond hop #{hopNo+1:n}\n"
-            break
-        
-        routes[:] = newRoutes
-        if goalSystem:
-            # Promote the winning route to the top of the list
-            # while leaving the remainder of the list intact
-            routes.sort(
-                key = lambda route:
-                    0 if route.lastSystem is goalSystem else 1
-            )
-            if routes[0].lastSystem is goalSystem:
-                cmdenv.NOTE("Goal system reached!")
-                routes = routes[:1]
-                break
-        
-        if calc.aborted:
-            break
-        
-        if routePickPred:
-            pickedRoutes.extend(
-                route for route in routes if routePickPred(route)
-            )
-    
-    if cmdenv.loop or cmdenv.shorten:
-        cmdenv.DEBUG0("Using {} picked routes", len(pickedRoutes))
-        routes = pickedRoutes
-        # normalise the scores for fairness...
-        for route in routes:
-            cmdenv.DEBUG0(
-                "{} hops, {} score, {} gpt",
-                len(route.hops), route.score, route.gpt
-            )
-            route.score /= len(route.hops)
-    
-    if not routes:
-        if calc.aborted:
-            raise UserAbortedRun("before any routes found")
-        raise NoDataError(
-            "No profitable trades matched your critera, or price data along the route is missing."
-        )
-    
-    if viaSet:
-        routes, caution = filterByVia(routes, viaSet, viaStartPos)
-        if caution:
-            results.summary.exception += caution + "\n"
-    
-    routes.sort()
-    results.data = routes
-    
-    if calc.aborted:
-        results.summary.exception += str(UserAbortedRun("results may be incomplete or inaccurate")) + "\n"
-    
+    results.data = ()
     return results
 
 
-def no_routes_on_first_hop(cmdenv: TradeEnv, calc: TradeCalc) -> None:
-    """ handle the special case where run found no routes on the first hop. """
-    # Is it because you ctrl-c'd?
-    if calc.aborted:
-        raise UserAbortedRun("during first hop before any routes found")
-    
-    # The raw name they provide with --from is stored as cmdenv.starting, and resolved
-    # to a System or Station in cmdenv.origPlace, however checkOrigins may set that to
-    # None if we're doing --start-jumps to indicate there's no "single" origin. So we
-    # saved a copy of it to cmdenv._origin.
-    start_place = getattr(cmdenv, "_origin")
-    if not start_place:
-        # Ok, we were doing some kind of open-ended galaxy wide query
-        raise NoDataError("Could not find any trade links in the galaxy with those criteria.")
-    
-    # Find the system name - all "locations" have a system property including Systems.
-    start_system = start_place.system.name()
-    
-    # How far did you say you were willing to go?
-    max_ly = cmdenv.maxJumpsPer * cmdenv.maxLyPer
-    
-    errText = (
-        f"No suitable and profitable buyers found at/relative to {start_place}.\n"
-        "\n"
-        "You may want to try:\n"
-        f"  {sys.argv[0]} local \"{start_system}\" --ly {max_ly} -vv --stations --trading"
-    )
-    
-    # If they had specified a station, give them a little extra help.
-    if isinstance(start_place, Station):
-        errText += (
-            "\n"
-            "or:\n"
-            f"  {sys.argv[0]} market \"{start_place}\" --sell -vv"
+def _resolve_named_endpoint(tdb, text, option_name):
+    """Resolve one endpoint name if supplied, echoing an approximate match.
+
+    Returns the ResolvedEndpoint, or None when no name was given for this
+    option. An unknown name is reported as a clean CommandLineError; an
+    ambiguous name or a bad @N index propagates as the lookup's own message
+    (the @N candidate list), which the CLI prints verbatim.
+    """
+
+    if not text:
+        return None
+    try:
+        endpoint = resolver.resolve_endpoint(tdb, text, option_name=option_name)
+    except UnknownPlace as exc:
+        raise CommandLineError(exc.message) from exc
+    if endpoint.approximate:
+        canonical = (
+            endpoint.station.dbname if endpoint.station is not None
+            else endpoint.system.name
         )
-    
-    raise NoDataError(errText)
+        print(f"{option_name} {text} resolved as {canonical}", flush=True)
+    return endpoint
+
+
+# Cap on the number of distinct via places. The satisfaction mask carries one
+# bit per place (see planner._via_full_set), so k places give a 2**k mask space
+# and up to k owed-via search lanes per mask; capping k keeps both bounded. Six
+# is the starting limit, tunable on evidence like the beam width. A station and
+# its own system count as two places (two bits) even though one visit covers
+# both.
+_MAX_CANONICAL_VIAS = 6
+
+
+def _endpoint_via_requirements(endpoint, resolved_via, effective_systems):
+    """The via requirements a fixed endpoint position could satisfy.
+
+    Returns the set of requirement keys — ('system', id) or ('station', id) —
+    this pinned origin or terminal can stand in for, so the hop-count check can
+    credit a waypoint the route already visits at an endpoint. A station
+    endpoint is one fixed place: it covers its own station via, or its own system
+    via, and nothing else. A *system* endpoint floats over that system's
+    stations, so it covers the system via, or — when the system holds via
+    stations — any one of those stations the search might land it on. The caller
+    matches these across both endpoints so two endpoints on the same place are
+    not both credited for it.
+    """
+
+    if endpoint is None:
+        return set()
+    system = resolver.system_for_endpoint(endpoint)
+    system_id = system.system_id if system is not None else None
+    station_id = (
+        endpoint.station.station_id
+        if endpoint.station is not None else None
+    )
+    if station_id is not None:
+        # Pinned to one specific station: its own station via, else its system
+        # via — a single place stands in for at most one requirement.
+        if station_id in resolved_via.station_ids:
+            return {("station", station_id)}
+        if system_id is not None and system_id in effective_systems:
+            return {("system", system_id)}
+        return set()
+    if system_id is None:
+        return set()
+    # System endpoint: the search picks a station in this system, so it covers
+    # the system via, or any one of the via stations sitting in this system.
+    if system_id in effective_systems:
+        return {("system", system_id)}
+    return {
+        ("station", st)
+        for (st, parent) in resolved_via.station_systems
+        if parent == system_id
+    }
+
+
+def _credited_via_positions(origin_requirements, terminal_requirements):
+    """Distinct via requirements the pinned endpoints can jointly stand in for.
+
+    At most two pinned positions (origin and terminal), each able to cover one
+    requirement, so this is a two-node maximum matching: both count only when
+    they can cover two *different* requirements. Two endpoints whose only
+    reachable requirement is one and the same are credited once — the fix for an
+    origin and terminal that name the same waypoint.
+    """
+
+    if not origin_requirements and not terminal_requirements:
+        return 0
+    if not origin_requirements or not terminal_requirements:
+        return 1
+    if len(origin_requirements | terminal_requirements) >= 2:
+        return 2
+    return 1
+
+
+def _validate_resolved_via(
+    resolved_via,
+    avoid_system_ids,
+    avoid_station_ids,
+    from_endpoint,
+    to_endpoint,
+    *,
+    loop,
+    start_jumps,
+    end_jumps,
+    hops,
+):
+    """Reject a --via that is unsupported, clashes with --avoid, or cannot fit.
+
+    Runs at the dispatch resolve site because every check needs resolved ids.
+    The route search is the authoritative feasibility check, so the hop-count
+    test here is deliberately *sound toward acceptance*: it rejects only the
+    clear-cut impossible cases and never a request the search could satisfy.
+    """
+
+    # Too many waypoints. Search cost scales with the place count (one mask bit
+    # each), so cap it up front rather than let a huge --via list explode the
+    # frontier.
+    total_vias = len(resolved_via.system_ids) + len(resolved_via.station_ids)
+    if total_vias > _MAX_CANONICAL_VIAS:
+        raise UnsupportedRunShape(
+            f"--via accepts at most {_MAX_CANONICAL_VIAS} waypoints; "
+            f"{total_vias} were given.",
+            option_name="--via",
+        )
+
+    # Conflict: a via place — or, for a via station, its system — is also
+    # avoided. An avoided system bars the whole system from transit, so a via
+    # station inside it could never be reached.
+    if (
+        resolved_via.system_ids & avoid_system_ids
+        or resolved_via.station_ids & avoid_station_ids
+        or resolved_via.station_system_ids & avoid_system_ids
+    ):
+        raise CommandLineError(
+            "--via and --avoid name the same place (or its system); a route "
+            "cannot both visit and avoid it."
+        )
+
+    # Hop-count feasibility, by counting route positions. An N-hop route visits
+    # N+1 stations (positions 0..N). A position is *pinned* when forced to a
+    # specific place and so cannot be freely chosen to hit a waypoint; the rest
+    # are *free*, and each still-owed via needs one free position.
+    #
+    #   - A fixed, non-positioning --from pins position 0; --to pins position N;
+    #     a loop pins both ends to its own root. A pinned endpoint can itself be
+    #     a waypoint, which credits that via.
+    #   - An omitted endpoint, or a positioning anchor (--start-jumps /
+    #     --end-jumps, where the real endpoint is some other station in the
+    #     bubble), leaves its position free and credits nothing: we never assume
+    #     the route actually visits the named anchor.
+    #
+    # Crediting counts *distinct* requirements: two endpoints on the same place
+    # (or the loop's repeated root) are one satisfaction chance, not two. A
+    # position counts as pinned only when it provably is. So the check rejects a
+    # provably impossible request, yet never a satisfiable one.
+    effective_systems = resolved_via.system_ids - resolved_via.station_system_ids
+    required = len(effective_systems) + len(resolved_via.station_ids)
+
+    if loop:
+        # A loop opens and closes on its own root: both ends pin to one place, so
+        # two positions are consumed and the root is one satisfaction chance.
+        pinned = 2
+        root_requirements = _endpoint_via_requirements(
+            from_endpoint, resolved_via, effective_systems,
+        )
+        credited = 1 if root_requirements else 0
+    else:
+        origin_fixed = from_endpoint is not None and not start_jumps
+        terminal_fixed = to_endpoint is not None and not end_jumps
+        pinned = (1 if origin_fixed else 0) + (1 if terminal_fixed else 0)
+        origin_requirements = (
+            _endpoint_via_requirements(
+                from_endpoint, resolved_via, effective_systems,
+            ) if origin_fixed else set()
+        )
+        terminal_requirements = (
+            _endpoint_via_requirements(
+                to_endpoint, resolved_via, effective_systems,
+            ) if terminal_fixed else set()
+        )
+        credited = _credited_via_positions(
+            origin_requirements, terminal_requirements,
+        )
+
+    free_positions = (hops + 1) - pinned
+    if required - credited > free_positions:
+        raise CommandLineError(
+            "--via needs more hops: the requested vias cannot all be visited "
+            f"within --hops {hops}."
+        )
+
+
+def _resolve_request_endpoints(request, tdb):
+    """Resolve --from / --to / --towards once and carry the results on the request.
+
+    Resolution happens here at dispatch so the planner shapes work from
+    canonical resolved endpoints and never see the TradeORM handle. --towards
+    collapses to its system, matching the progress metric's system-to-system
+    distance.
+    """
+
+    updates = {}
+
+    from_endpoint = _resolve_named_endpoint(tdb, request.from_text, "--from")
+    if from_endpoint is not None:
+        updates["from_endpoint"] = from_endpoint
+
+    to_endpoint = _resolve_named_endpoint(tdb, request.to_text, "--to")
+    if to_endpoint is not None:
+        updates["to_endpoint"] = to_endpoint
+
+    if request.towards_text:
+        towards_endpoint = _resolve_named_endpoint(
+            tdb, request.towards_text, "--towards",
+        )
+        target = resolver.system_for_endpoint(towards_endpoint)
+        if target is None:
+            raise CommandLineError(
+                "--towards could not resolve to a system: "
+                f"{request.towards_text}"
+            )
+        updates["towards_target"] = target
+
+    if request.avoid:
+        # Resolve every --avoid token once here, into the three id sets the
+        # planner consumes. An unresolvable token is a clean CommandLineError;
+        # an ambiguous name or bad @N propagates as the lookup's own message
+        # (its candidate / @N list), which the CLI prints verbatim.
+        try:
+            resolved_avoid = resolver.resolve_avoid_tokens(tdb, request.avoid)
+        except UnknownPlace as exc:
+            raise CommandLineError(exc.message) from exc
+        updates["avoid_system_ids"] = resolved_avoid.system_ids
+        updates["avoid_station_ids"] = resolved_avoid.station_ids
+        updates["avoid_item_ids"] = resolved_avoid.item_ids
+        for token, canonical in resolved_avoid.echoes:
+            print(f"--avoid {token} resolved as {canonical}", flush=True)
+
+    if request.via:
+        # Resolve every --via token once here, into the system / station id sets
+        # the planner steers through. Systems and stations only (a via never
+        # names a commodity), fuzzy-matched, repeated / comma-separated — the
+        # same resolution courtesy as --avoid and the endpoints.
+        try:
+            resolved_via = resolver.resolve_via_tokens(tdb, request.via)
+        except UnknownPlace as exc:
+            raise CommandLineError(exc.message) from exc
+        updates["via_system_ids"] = resolved_via.system_ids
+        updates["via_station_ids"] = resolved_via.station_ids
+        updates["via_targets"] = resolved_via.targets
+        for token, canonical in resolved_via.echoes:
+            print(f"--via {token} resolved as {canonical}", flush=True)
+        # Conflict and hop-count checks read whatever --avoid, --from and --to
+        # resolved to (their request defaults when those options are absent),
+        # plus the loop / positioning flags that decide which route positions
+        # are pinned.
+        _validate_resolved_via(
+            resolved_via,
+            updates.get("avoid_system_ids", request.avoid_system_ids),
+            updates.get("avoid_station_ids", request.avoid_station_ids),
+            updates.get("from_endpoint", request.from_endpoint),
+            updates.get("to_endpoint", request.to_endpoint),
+            loop=request.loop,
+            start_jumps=request.start_jumps,
+            end_jumps=request.end_jumps,
+            hops=request.hops,
+        )
+
+    if not updates:
+        return request
+    return dataclasses.replace(request, **updates)
+
+
+def run(results, cmdenv, tdb):
+    # --progress paints a rich, transient search bar; --raw is the plain-text
+    # path for scripts and diagnostics. The two don't mix, so refuse the pair
+    # outright rather than quietly dropping one.
+    if cmdenv.progress and cmdenv.raw:
+        raise CommandLineError("--progress cannot be combined with --raw.")
+
+    request = run_request_from_cmdenv(cmdenv)
+    session = getattr(tdb, "session", None)
+    if session is None:
+        raise CommandLineError("Resolver database session is not available.")
+
+    try:
+        # Validate before the unanchored confirmation prompt. A request
+        # that cannot run must fail immediately with its error, not after
+        # a confirmation the planner would only then refuse — far likelier
+        # the user simply mistyped the command. plan_route re-validates
+        # as its own input contract; the repeat is cheap.
+        validate_run_request(request)
+
+        # Resolve the named endpoints once here, at dispatch, via the shared
+        # TradeORM lookup. The planner then consumes the resolved DTOs and never
+        # touches the database handle for name resolution.
+        request = _resolve_request_endpoints(request, tdb)
+
+        # Both endpoints omitted: the galaxy-wide search. It is markedly
+        # slower than a search that names either endpoint, so it runs
+        # only behind an interactive confirmation; with no TTY it cannot
+        # prompt and aborts cleanly with guidance. The planner stays
+        # non-interactive.
+        if _is_unanchored_request(request):
+            if not sys.stdin.isatty():
+                return _abort_unanchored_run(
+                    results,
+                    "Without --from or --to, Trade Dangerous searches the "
+                    "whole galaxy\n"
+                    "for the best trades, which could take several "
+                    "minutes.\n"
+                    "It needs you to confirm first, but there's no "
+                    "interactive terminal here.\n"
+                    "Re-run in a terminal, or name a starting system with "
+                    "--from and/or a\n"
+                    "destination with --to.",
+                )
+            print(
+                "Without --from or --to, Trade Dangerous will search the "
+                "whole galaxy\n"
+                "for the best trades. This can be much slower than "
+                "naming either endpoint,\n"
+                "and could take several minutes.\n"
+                "\n"
+                "To speed up the search:\n"
+                "  - Name a starting system with --from, a destination "
+                "with --to, or both.\n"
+                "  - Use filters such as --age <days>, --pad-size, "
+                "--planetary, --fc N.",
+                flush=True,
+            )
+            if input("Continue? [y/N] ").strip().lower() not in ("y", "yes"):
+                return _abort_unanchored_run(results, "Search cancelled.")
+
+        results.data = plan_route(session, request)
+        results.summary.exception = ""
+    except (
+        NoProfitableTrades,
+        NoReachableRoute,
+        StationHasNoUsablePriceData,
+    ) as exc:
+        # The new planner has the context to say what actually
+        # happened; do not wrap in NoDataError's generic 'possible
+        # causes' footer, which is wrong for these failures.
+        raise PlannerResultError(
+            _planner_result_message(exc, request)
+        ) from exc
+    except (AmbiguousPlace, InvalidRunRequest, UnknownPlace) as exc:
+        raise CommandLineError(exc.message) from exc
+    except PlannerFailure as exc:
+        raise CommandLineError(exc.message) from exc
+
+    return results
 
 
 ######################################################################
 # Transform result set into output
 
 
+def _drive_checklist(steps, console):
+    """Reveal the checklist one step at a time, pausing for the commander between
+    panels. A non-interactive stdin (a pipe or redirect) hits EOF on the prompt,
+    which we treat as 'advance', so the whole checklist streams out rather than
+    stalling on a dead prompt."""
+
+    total = len(steps)
+    for index, step in enumerate(steps, start=1):
+        console.print(step, highlight=False)
+        if index < total:
+            try:
+                input(f"\n  [Enter] next step  ·  {index + 1} of {total} ")
+            except EOFError:
+                pass
+
+
 def render(results, cmdenv, tdb):
-    if (exception := results.summary.exception.strip()):
-        style = ""
-        lines = exception.split("\n")
-        max_line_len = max(len(line) for line in lines)
-        if cmdenv.color:
-            style = "yellow on grey15"  # yellow on a darkish background, so we're sure it's not on a light background
-            # Pad all the lines to the same length
-            exception = "\n".join(f"{line:{max_line_len}s}" for line in lines)
-        
-        # TODO: should use a rich panel when --color is set
-        cmdenv.console.print('#' * max_line_len, style=style)
-        cmdenv.console.print(exception, style=style)
-        cmdenv.console.print('#' * max_line_len, style=style)
-        # Ring the console bell and add a blank line
-        cmdenv.console.print("\a")
-    
-    routes = results.data
-    
-    for i in range(min(len(routes), cmdenv.routes)):
-        print(routes[i].detail(cmdenv))
-    
-    # User wants to be guided through the route.
-    if cmdenv.checklist:
-        assert cmdenv.routes == 1
-        cl = Checklist(tdb, cmdenv)
-        cl.run(routes[0], cmdenv.credits)
+    # The planner always returns a RunResult, and the new renderer owns the
+    # whole route presentation. A cancelled or non-interactive unanchored
+    # run leaves results.data empty — its guidance was already printed — so
+    # there is nothing further to show.
+    if isinstance(results.data, RunResult):
+        # --checklist takes over presentation entirely: an interactive,
+        # hop-by-hop walkthrough instead of the route table. It is excluded
+        # from --raw at the parser, so the two never collide here.
+        if cmdenv.checklist:
+            steps = render_checklist(
+                results.data, verbose=bool(cmdenv.detail)
+            )
+            if steps:
+                _drive_checklist(steps, cmdenv.console)
+                return
+            # No steps means nothing was planned; fall through to the normal
+            # renderer so any partial-route warning still reaches the commander.
+        # Effective render width: 80 under --80col, otherwise the console's
+        # detected width (itself 80 when output is piped). The renderer takes it
+        # so the adaptive layout sheds or combines columns to match what it
+        # prints.
+        render_width = 80 if cmdenv.narrow else cmdenv.console.width
+        rendered = render_run_result(
+            results.data, debug=cmdenv.debug, raw=cmdenv.raw,
+            summary=cmdenv.summary, verbose=bool(cmdenv.detail),
+            width=render_width,
+        )
+        if cmdenv.raw:
+            # Plain text: literal lines, already wrapped to 80, for grep / pipe.
+            cmdenv.console.print(rendered, highlight=False)
+        elif cmdenv.narrow:
+            # --80col: the safe, portable 80-column layout.
+            cmdenv.console.print(rendered, width=80, highlight=False)
+        else:
+            # Default: let the rich tables breathe to the terminal's real width.
+            # The shared Console falls back to 80 when output is not a tty, so
+            # pipes and redirects still get the portable width without --narrow.
+            cmdenv.console.print(rendered, highlight=False)

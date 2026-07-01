@@ -70,8 +70,10 @@ def test_settings_workspace_builds_application_port_input(monkeypatch, selected_
     workspace = SettingsWorkspace(
         selected_theme='default',
         selected_launcher_port=selected_port,
+        selected_journal_dir=None,
         on_theme_changed=lambda value: None,
         on_launcher_port_changed=lambda value: None,
+        on_journal_dir_changed=lambda value: None,
     )
     
     workspace.build()
@@ -221,8 +223,10 @@ def test_settings_workspace_change_handler_clears_port_for_blank_text():
     workspace = SettingsWorkspace(
         selected_theme='default',
         selected_launcher_port=8765,
+        selected_journal_dir=None,
         on_theme_changed=lambda value: None,
         on_launcher_port_changed=changed.append,
+        on_journal_dir_changed=lambda value: None,
     )
     
     workspace._on_launcher_port_changed(SimpleNamespace(value='   '))

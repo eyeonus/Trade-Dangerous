@@ -1,7 +1,6 @@
 # tradedangerous/db/orm_models.py
 from __future__ import annotations
 
-from typing import Optional
 import datetime
 
 from sqlalchemy import (
@@ -10,10 +9,8 @@ from sqlalchemy import (
     Integer,
     BigInteger,
     String,
-    CHAR,
     Enum,
     Index,
-    UniqueConstraint,
     CheckConstraint,
     text,
     Column,
@@ -121,21 +118,7 @@ PadSize = Enum(
     validate_strings=True,
 )
 
-
 # ---------- Core Domain ----------
-class Added(Base):
-    """ Added table was originally introduced to help identify whether things like
-        Systems represented data that was present in specific releases of the game,
-        such as pre-alpha, beta, etc. """
-    __tablename__ = "Added"
-    
-    added_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(CIString(128), nullable=False, unique=True)
-    
-    # Relationships
-    systems: Mapped[list["System"]] = relationship(back_populates="added")
-
-
 class System(Base):
     """ System represents the game's concept of a Star System or a group of bodies
         orbiting a barycenter - or in game terms, things you can FSD jump between. """
@@ -143,16 +126,18 @@ class System(Base):
     
     system_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str] = mapped_column(CIString(128), nullable=False)
+    # Derived normalised search key for partial-name lookup; populated via
+    # corrections.normalize_str. Nullable with no default: an unpopulated
+    # row is simply invisible to fuzzy candidate gathering until the next write
+    # or rebuild fills it. No index -- it is only ever queried with a leading
+    # wildcard, which a B-tree cannot accelerate.
+    lookup_name: Mapped[str | None] = mapped_column(CIString(128), nullable=True)
     pos_x: Mapped[float] = mapped_column(nullable=False)
     pos_y: Mapped[float] = mapped_column(nullable=False)
     pos_z: Mapped[float] = mapped_column(nullable=False)
-    added_id: Mapped[int | None] = mapped_column(
-        ForeignKey("Added.added_id", onupdate="CASCADE", ondelete="CASCADE")
-    )
     modified: Mapped[str] = mapped_column(
         DateTime6(),
         server_default=now6(),
-        onupdate=now6(),
         nullable=False,
     )
     
@@ -160,7 +145,6 @@ class System(Base):
         return f"{self.name.upper()}/"
     
     # Relationships
-    added: Mapped[Optional["Added"]] = relationship(back_populates="systems")
     stations: Mapped[list["Station"]] = relationship(back_populates="system", cascade="all, delete-orphan")
     
     __table_args__ = (
@@ -175,7 +159,9 @@ class Station(Base):
     
     station_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str] = mapped_column(CIString(128), nullable=False)
-    
+    # Derived normalised search key; see System.lookup_name.
+    lookup_name: Mapped[str | None] = mapped_column(CIString(128), nullable=True)
+
     def dbname(self) -> str:
         return f"{self.system.name}/{self.name}"
     
@@ -199,18 +185,19 @@ class Station(Base):
     planetary: Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
     
     type_id: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
-    modified: Mapped[str] = mapped_column(DateTime6(), server_default=now6(), onupdate=now6(), nullable=False)
+    modified: Mapped[str] = mapped_column(DateTime6(), server_default=now6(), nullable=False)
     
     # Relationships
     system: Mapped["System"] = relationship(back_populates="stations")
     items: Mapped[list["StationItem"]] = relationship(back_populates="station", cascade="all, delete-orphan")
     ship_vendors: Mapped[list["ShipVendor"]] = relationship(back_populates="station", cascade="all, delete-orphan")
-    upgrade_vendors: Mapped[list["UpgradeVendor"]] = relationship(back_populates="station", cascade="all, delete-orphan")
     
     __table_args__ = (
+        CheckConstraint("ls_from_star >= 0", name="ck_station_ls_from_star_nonnegative"),
         Index("idx_station_by_system", "system_id"),
         Index("idx_station_by_name", "name"),
         Index("idx_station_by_system_name", "system_id", "name"),
+        {"sqlite_with_rowid": False},
     )
 
 
@@ -240,6 +227,10 @@ class Item(Base):
     ui_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     avg_price: Mapped[int | None] = mapped_column(Integer)
     fdev_id: Mapped[int | None] = mapped_column(Integer)
+    rare_station_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("Station.station_id", onupdate="CASCADE", ondelete="RESTRICT"),
+    )
     
     # Relationships
     category: Mapped["Category"] = relationship(back_populates="items")
@@ -251,8 +242,12 @@ class Item(Base):
             return f"{self.category.name}/{self.name}"
         return self.name
     
+    @property
+    def is_rare(self) -> bool:
+        return self.rare_station_id is not None
+    
     __table_args__ = (
-        Index("idx_item_by_fdevid", "fdev_id"),
+        Index("idx_item_by_fdev_id", "fdev_id"),
         Index("idx_item_by_category", "category_id"),
     )
 
@@ -289,7 +284,7 @@ class StationItem(Base):
     supply_price: Mapped[int] = mapped_column(Integer, nullable=False)
     supply_units: Mapped[int] = mapped_column(Integer, nullable=False)
     supply_level: Mapped[int] = mapped_column(Integer, nullable=False)
-    modified: Mapped[str] = mapped_column(DateTime6(), server_default=now6(), onupdate=now6(), nullable=False)
+    modified: Mapped[str] = mapped_column(DateTime6(), server_default=now6(), nullable=False)
     from_live: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     
     # Relationships
@@ -329,161 +324,30 @@ class ShipVendor(Base):
         ForeignKey("Station.station_id", ondelete="CASCADE", onupdate="CASCADE"),
         primary_key=True,
     )
-    modified: Mapped[str] = mapped_column(DateTime6(), server_default=now6(), onupdate=now6(), nullable=False)
+    modified: Mapped[str] = mapped_column(DateTime6(), server_default=now6(), nullable=False)
     
     # Relationships
     ship: Mapped["Ship"] = relationship(back_populates="vendors")
     station: Mapped["Station"] = relationship(back_populates="ship_vendors")
     
-    __table_args__ = (Index("idx_shipvendor_by_station", "station_id"),)
-
-
-class Upgrade(Base):
-    """ Upgrade represents what Frontier call 'Outfitting', components that can
-        be acquired to upgrade your instance of a ship. """
-    __tablename__ = "Upgrade"
-    
-    upgrade_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(CIString(128), nullable=False)
-    class_: Mapped[int] = mapped_column("class", Integer, nullable=False)
-    rating: Mapped[str] = mapped_column(CHAR(1), nullable=False)
-    ship: Mapped[str | None] = mapped_column(CIString(128))
-    
-    # Relationships
-    vendors: Mapped[list["UpgradeVendor"]] = relationship(back_populates="upgrade")
-
-
-class UpgradeVendor(Base):
-    """ UpgradeVendor tracks all the locations where Outfitting upgrades can be
-        acquired in the game universe. """
-    __tablename__ = "UpgradeVendor"
-    
-    upgrade_id: Mapped[int] = mapped_column(
-        ForeignKey("Upgrade.upgrade_id", ondelete="CASCADE", onupdate="CASCADE"),
-        primary_key=True,
-    )
-    station_id: Mapped[int] = mapped_column(
-        BigInteger,
-        ForeignKey("Station.station_id", ondelete="CASCADE", onupdate="CASCADE"),
-        primary_key=True,
-    )
-    modified: Mapped[str] = mapped_column(DateTime6(), nullable=False, server_default=now6(), onupdate=now6())
-    
-    # Relationships
-    upgrade: Mapped["Upgrade"] = relationship(back_populates="vendors")
-    station: Mapped["Station"] = relationship(back_populates="upgrade_vendors")
-    
-    __table_args__ = (Index("idx_vendor_by_station_id", "station_id"),)
-
-
-class RareItem(Base):  # [[deprecated]]
-    """ RareItem is used to track specialized commodities that Frontier introduced during the
-        early days of the game.
-        @deprecated These are now just included in the standard Item catalog. """
-    __tablename__ = "RareItem"
-    
-    rare_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    station_id: Mapped[int] = mapped_column(
-        BigInteger,
-        ForeignKey("Station.station_id", ondelete="CASCADE", onupdate="CASCADE"),
-        nullable=False,
-    )
-    category_id: Mapped[int] = mapped_column(
-        ForeignKey("Category.category_id", onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=False,
-    )
-    name: Mapped[str] = mapped_column(CIString(128), nullable=False)
-    cost: Mapped[int | None] = mapped_column(Integer)
-    max_allocation: Mapped[int | None] = mapped_column(Integer)
-    illegal: Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
-    suppressed: Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
-    
-    __table_args__ = (UniqueConstraint("name", name="uq_rareitem_name"),)
+    __table_args__ = (Index("idx_shipvendor_by_station", "station_id"),{"sqlite_with_rowid": False},)
 
 
 class FDevShipyard(Base):
     """ FDevShipyard is a vestigial bridge between originally crowd-sourced ship information,
         and the data that is now available thanks to frontier's journal logs. """
     __tablename__ = "FDevShipyard"
-    
+
     id = Column(Integer, primary_key=True, unique=True, nullable=False)
     symbol = Column(CIString(128))
     name = Column(CIString(128))
     entitlement = Column(String(50))
-
-
-class FDevOutfitting(Base):
-    """ FDevOutfitting is a vestigial bridge between originally crowd-sourced outfitting (upgrade)
-        information and the data that has been auto-scraped from frontier's journal logs. """
-    __tablename__ = "FDevOutfitting"
-    
-    id = Column(Integer, primary_key=True, unique=True, nullable=False)
-    symbol = Column(CIString(128))
-    category = Column(String(10))
-    name = Column(CIString(128))
-    mount = Column(String(20))
-    guidance = Column(String(20))
-    ship = Column(CIString(128))
-    class_ = Column("class", String(1), nullable=False)
-    rating = Column(String(1), nullable=False)
-    entitlement = Column(String(50))
-    
-    __table_args__ = (
-        CheckConstraint(
-            "category IN ('hardpoint','internal','standard','utility')",
-            name="ck_fdo_category",
-        ),
-        CheckConstraint(
-            "(mount IN ('Fixed','Gimballed','Turreted')) OR (mount IS NULL)",
-            name="ck_fdo_mount",
-        ),
-        CheckConstraint(
-            "(guidance IN ('Dumbfire','Seeker','Swarm')) OR (guidance IS NULL)",
-            name="ck_fdo_guidance",
-        ),
-    )
-
-
-# ---------- Control & Staging ----------
-class ExportControl(Base):
-    """
-    Singleton control row for hybrid export/watermarking.
-    - id: always 1
-    - last_full_dump_time: watermark
-    - last_reset_key: optional cursor for chunked from_live resets
-    """
-    __tablename__ = "ExportControl"
-    
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, server_default=text("1"))
-    last_full_dump_time: Mapped[str] = mapped_column(DateTime6(), nullable=False)
-    last_reset_key: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-
-
-class StationItemStaging(Base):
-    """
-    Staging table for bulk loads (no FKs). Same columns as StationItem.
-    """
-    __tablename__ = "StationItem_staging"
-    
-    station_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    item_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    demand_price: Mapped[int] = mapped_column(Integer, nullable=False)
-    demand_units: Mapped[int] = mapped_column(Integer, nullable=False)
-    demand_level: Mapped[int] = mapped_column(Integer, nullable=False)
-    supply_price: Mapped[int] = mapped_column(Integer, nullable=False)
-    supply_units: Mapped[int] = mapped_column(Integer, nullable=False)
-    supply_level: Mapped[int] = mapped_column(Integer, nullable=False)
-    modified: Mapped[str] = mapped_column(DateTime6(), server_default=now6(), onupdate=now6(), nullable=False)
-    from_live: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
-    
-    __table_args__ = (Index("idx_sistaging_stn_itm", "station_id", "item_id"),)
 
 
 __all__ = [
     # Base
     "Base",
     # Core
-    "Added",
     "System",
     "Station",
     "Category",
@@ -491,12 +355,5 @@ __all__ = [
     "StationItem",
     "Ship",
     "ShipVendor",
-    "Upgrade",
-    "UpgradeVendor",
-    "RareItem",
     "FDevShipyard",
-    "FDevOutfitting",
-    # Control & staging
-    "ExportControl",
-    "StationItemStaging",
 ]

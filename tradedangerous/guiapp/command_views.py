@@ -28,7 +28,11 @@ class TradeWorkspace(DraftValueHelper):
         self.resolve_system = resolve_system
         self.selected_origin_system_id: int | None = None
         self.selected_dest_system_id: int | None = None
-    
+        # Controls that --local makes meaningless (origin station, destination
+        # system, destination station). Populated as the route section builds;
+        # toggled by _apply_local_disable without touching the draft.
+        self._local_disable_targets: list = []
+
     def build(self) -> None:
         self._normalize_trade_state()
         with ui.column().classes('w-full gap-3'):
@@ -36,7 +40,27 @@ class TradeWorkspace(DraftValueHelper):
             self._build_constraint_section()
             
             with ui.row().classes('gap-2'):
-                ui.button('Execute Trade', on_click=self.on_execute)
+                ui.button('Execute Direct', on_click=self.on_execute)
+        
+        # Reflect a persisted Local choice on first render: disable the
+        # endpoints --local ignores while leaving their draft values intact.
+        self._apply_local_disable(
+            self._bool_value(self.draft.main_values, 'local')
+        )
+
+    def _on_local_changed(self, value: object) -> None:
+        enabled = bool(value)
+        self.draft.main_values['local'] = enabled
+        self._apply_local_disable(enabled)
+        self.on_changed()
+
+    def _apply_local_disable(self, local_enabled: bool) -> None:
+        # --local trades within the origin system, so the origin station and
+        # both destination controls have no meaning. Disable them (without
+        # clearing the draft) so unchecking Local restores the prior endpoints.
+        for element in self._local_disable_targets:
+            if element is not None:
+                element.set_enabled(not local_enabled)
     
     def _normalize_trade_state(self) -> None:
         origin_system, _origin_station = self._normalize_station_pair_value(
@@ -44,12 +68,14 @@ class TradeWorkspace(DraftValueHelper):
             system_key='originSystem',
             station_key='originStation',
             combined_key='origin',
+            allow_bare_system=True,
         )
         dest_system, _dest_station = self._normalize_station_pair_value(
             self.draft.main_values,
             system_key='destSystem',
             station_key='destStation',
             combined_key='dest',
+            allow_bare_system=True,
         )
         self.selected_origin_system_id = self._resolve_trade_system_id(
             origin_system,
@@ -133,6 +159,7 @@ class TradeWorkspace(DraftValueHelper):
             system_key=system_key,
             station_key=station_key,
             combined_key=combined_key,
+            allow_bare_system=True,
         )
         self.on_changed()
     
@@ -162,6 +189,7 @@ class TradeWorkspace(DraftValueHelper):
             system_key=system_key,
             station_key=station_key,
             combined_key=combined_key,
+            allow_bare_system=True,
         )
         self.on_changed()
     
@@ -201,11 +229,13 @@ class TradeWorkspace(DraftValueHelper):
         return relabeled
     
     def _build_route_section(self) -> None:
+        self._local_disable_targets = []
         with ui.card().classes('w-full'):
-            ui.label('Trade Route')
+            ui.label('Direct Route')
             ui.label(
-                'Select the origin system and station you buy from, then the '
-                'destination system and station you sell to.'
+                'Enter an origin and a destination. Each side may be a whole '
+                'system (every qualifying station) or a single system/station '
+                '— the station is optional on either side.'
             ).classes('text-sm text-gray-600')
             
             with ui.row().classes('w-full gap-3'):
@@ -254,8 +284,8 @@ class TradeWorkspace(DraftValueHelper):
                     ).build()
                 
                 if self.suggest_stations is None:
-                    ui.input(
-                        'Origin Station',
+                    origin_station_input = ui.input(
+                        'Origin Station (optional)',
                         value=self._trade_station_value(
                             system_key='originSystem',
                             station_key='originStation',
@@ -270,9 +300,10 @@ class TradeWorkspace(DraftValueHelper):
                     ).classes('min-w-80 flex-1').tooltip(
                         'Station you are purchasing from.'
                     )
+                    self._local_disable_targets.append(origin_station_input)
                 else:
                     self.origin_station_autocomplete = AutocompleteInput(
-                        label='Origin Station',
+                        label='Origin Station (optional)',
                         value=self._trade_station_value(
                             system_key='originSystem',
                             station_key='originStation',
@@ -295,10 +326,13 @@ class TradeWorkspace(DraftValueHelper):
                         input_classes='min-w-80 flex-1',
                     )
                     self.origin_station_autocomplete.build()
+                    self._local_disable_targets.append(
+                        self.origin_station_autocomplete.input
+                    )
             
             with ui.row().classes('w-full gap-3'):
                 if self.suggest_systems is None:
-                    ui.input(
+                    dest_system_input = ui.input(
                         'Destination System',
                         value=self._trade_system_value(
                             system_key='destSystem',
@@ -316,8 +350,9 @@ class TradeWorkspace(DraftValueHelper):
                     ).classes('min-w-80 flex-1').tooltip(
                         'System containing the station you are selling to.'
                     )
+                    self._local_disable_targets.append(dest_system_input)
                 else:
-                    AutocompleteInput(
+                    dest_system_autocomplete = AutocompleteInput(
                         label='Destination System',
                         value=self._trade_system_value(
                             system_key='destSystem',
@@ -339,11 +374,15 @@ class TradeWorkspace(DraftValueHelper):
                         ),
                         tooltip='System containing the station you are selling to.',
                         input_classes='min-w-80 flex-1',
-                    ).build()
+                    )
+                    dest_system_autocomplete.build()
+                    self._local_disable_targets.append(
+                        dest_system_autocomplete.input
+                    )
                 
                 if self.suggest_stations is None:
-                    ui.input(
-                        'Destination Station',
+                    dest_station_input = ui.input(
+                        'Destination Station (optional)',
                         value=self._trade_station_value(
                             system_key='destSystem',
                             station_key='destStation',
@@ -358,9 +397,10 @@ class TradeWorkspace(DraftValueHelper):
                     ).classes('min-w-80 flex-1').tooltip(
                         'Station you are selling to.'
                     )
+                    self._local_disable_targets.append(dest_station_input)
                 else:
                     self.dest_station_autocomplete = AutocompleteInput(
-                        label='Destination Station',
+                        label='Destination Station (optional)',
                         value=self._trade_station_value(
                             system_key='destSystem',
                             station_key='destStation',
@@ -383,10 +423,24 @@ class TradeWorkspace(DraftValueHelper):
                         input_classes='min-w-80 flex-1',
                     )
                     self.dest_station_autocomplete.build()
-    
+                    self._local_disable_targets.append(
+                        self.dest_station_autocomplete.input
+                    )
+            
+            with ui.row().classes('w-full items-center'):
+                ui.checkbox(
+                    'Within origin system',
+                    value=self._bool_value(self.draft.main_values, 'local'),
+                    on_change=lambda event: self._on_local_changed(event.value),
+                ).tooltip(
+                    'List the best trades between stations inside the origin '
+                    'system. The destination and origin-station fields are '
+                    'ignored.'
+                )
+
     def _build_constraint_section(self) -> None:
         with ui.card().classes('w-full'):
-            ui.label('Trade Constraints')
+            ui.label('Direct Constraints')
             
             with ui.row().classes('w-full items-end gap-3'):
                 ui.number(
@@ -483,6 +537,25 @@ class TradeWorkspace(DraftValueHelper):
                     'Show the reverse trade by swapping origin and '
                     'destination.'
                 )
+                ui.select(
+                    {
+                        '': 'All trades',
+                        'per-station': 'Best per origin station',
+                        'per-item': 'Best station pair per item',
+                        'station': 'All trades from best origin station',
+                    },
+                    value=self._text_value(self.draft.main_values, 'best'),
+                    label='Best',
+                    on_change=lambda event: self._set_text(
+                        self.draft.main_values,
+                        'best',
+                        event.value,
+                    ),
+                ).classes('w-80').tooltip(
+                    'Collapse multi-station output: the best trade at each '
+                    'origin station, the best station pair per item, or every '
+                    'trade at the single best origin station.'
+                )
 
 class LocalWorkspace(DraftValueHelper):
     """Edit a `local` draft using command-local fields only."""
@@ -558,12 +631,36 @@ class LocalWorkspace(DraftValueHelper):
         # Local adds the simpler service-availability booleans underneath.
         def build_service_filters() -> None:
             with ui.row().classes('w-full gap-4'):
-                ui.checkbox('Black market', value=self._bool_value(self.draft.main_values, 'blackMarket'), on_change=lambda event: self._set_bool(self.draft.main_values, 'blackMarket', event.value)).tooltip('Require stations known to have a black market.')
-                ui.checkbox('Shipyard', value=self._bool_value(self.draft.main_values, 'shipyard'), on_change=lambda event: self._set_bool(self.draft.main_values, 'shipyard', event.value)).tooltip('Require stations known to have a Shipyard.')
-                ui.checkbox('Outfitting', value=self._bool_value(self.draft.main_values, 'outfitting'), on_change=lambda event: self._set_bool(self.draft.main_values, 'outfitting', event.value)).tooltip('Require stations known to have Outfitting.')
-                ui.checkbox('Rearm', value=self._bool_value(self.draft.main_values, 'rearm'), on_change=lambda event: self._set_bool(self.draft.main_values, 'rearm', event.value)).tooltip('Require stations known to sell munitions.')
-                ui.checkbox('Refuel', value=self._bool_value(self.draft.main_values, 'refuel'), on_change=lambda event: self._set_bool(self.draft.main_values, 'refuel', event.value)).tooltip('Require stations known to sell fuel.')
-                ui.checkbox('Repair', value=self._bool_value(self.draft.main_values, 'repair'), on_change=lambda event: self._set_bool(self.draft.main_values, 'repair', event.value)).tooltip('Require stations known to offer repairs.')
+                ui.checkbox(
+                    'Black market',
+                    value=self._bool_value(self.draft.main_values, 'blackMarket'),
+                    on_change=lambda event: self._set_bool(self.draft.main_values, 'blackMarket', event.value),
+                ).tooltip('Require stations known to have a black market.')
+                ui.checkbox(
+                    'Shipyard',
+                    value=self._bool_value(self.draft.main_values, 'shipyard'),
+                    on_change=lambda event: self._set_bool(self.draft.main_values, 'shipyard', event.value),
+                ).tooltip('Require stations known to have a Shipyard.')
+                ui.checkbox(
+                    'Outfitting',
+                    value=self._bool_value(self.draft.main_values, 'outfitting'),
+                    on_change=lambda event: self._set_bool(self.draft.main_values, 'outfitting', event.value),
+                ).tooltip('Require stations known to have Outfitting.')
+                ui.checkbox(
+                    'Rearm',
+                    value=self._bool_value(self.draft.main_values, 'rearm'),
+                    on_change=lambda event: self._set_bool(self.draft.main_values, 'rearm', event.value),
+                ).tooltip('Require stations known to sell munitions.')
+                ui.checkbox(
+                    'Refuel',
+                    value=self._bool_value(self.draft.main_values, 'refuel'),
+                    on_change=lambda event: self._set_bool(self.draft.main_values, 'refuel', event.value),
+                ).tooltip('Require stations known to sell fuel.')
+                ui.checkbox(
+                    'Repair',
+                    value=self._bool_value(self.draft.main_values, 'repair'),
+                    on_change=lambda event: self._set_bool(self.draft.main_values, 'repair', event.value),
+                ).tooltip('Require stations known to offer repairs.')
         
         build_shared_filter_section(
             get_bool=lambda key: self._bool_value(self.draft.main_values, key),
@@ -848,9 +945,27 @@ class OldDataWorkspace(DraftValueHelper):
                 input_classes='w-full',
             )
             with ui.row().classes('w-full items-end gap-3'):
-                ui.number('Distance (ly)', value=self._number_value(values, 'ly'), min=0, step=0.1, precision=2, on_change=lambda event: self._set_float(values, 'ly', event.value)).classes('w-40').tooltip('When Near is set, only include systems within this range.')
-                ui.number('Minimum age (days)', value=self._number_value(values, 'minAge'), min=0, step=0.1, precision=2, on_change=lambda event: self._set_float(values, 'minAge', event.value)).classes('w-48').tooltip('List data older than this number of days.')
-                ui.checkbox('Sort to shortest path', value=self._bool_value(values, 'route'), on_change=lambda event: self._set_bool(values, 'route', event.value)).tooltip('Requires Near. Sort results to the shortest path.')
+                ui.number(
+                    'Distance (ly)',
+                    value=self._number_value(values, 'ly'),
+                    min=0,
+                    step=0.1,
+                    precision=2,
+                    on_change=lambda event: self._set_float(values, 'ly', event.value),
+                ).classes('w-40').tooltip('When Near is set, only include systems within this range.')
+                ui.number(
+                    'Minimum age (days)',
+                    value=self._number_value(values, 'minAge'),
+                    min=0,
+                    step=0.1,
+                    precision=2,
+                    on_change=lambda event: self._set_float(values, 'minAge', event.value),
+                ).classes('w-48').tooltip('List data older than this number of days.')
+                ui.checkbox(
+                    'Sort to shortest path',
+                    value=self._bool_value(values, 'route'),
+                    on_change=lambda event: self._set_bool(values, 'route', event.value),
+                ).tooltip('Requires Near. Sort results to the shortest path.')
     
     def _build_filter_section(self) -> None:
         values = self.draft.main_values
@@ -871,81 +986,24 @@ class OldDataWorkspace(DraftValueHelper):
         with dialog, ui.card().style('min-width: 48rem; max-width: 95vw;'):
             ui.label('Extended Options')
             with ui.row().classes('w-full items-center gap-3'):
-                ui.number('Limit', value=self._number_value(values, 'limit'), min=0, step=1, precision=0, on_change=lambda event: self._set_int(values, 'limit', event.value, 'Limit')).classes('w-32').tooltip('Maximum number of results to show.')
+                ui.number(
+                    'Limit',
+                    value=self._number_value(values, 'limit'),
+                    min=0,
+                    step=1,
+                    precision=0,
+                    on_change=lambda event: self._set_int(values, 'limit', event.value, 'Limit'),
+                ).classes('w-32').tooltip('Maximum number of results to show.')
                 ui.label('Maximum number of stations to return.').classes('text-sm text-gray-600')
             with ui.row().classes('w-full items-center gap-3'):
-                ui.number('LS max', value=self._number_value(values, 'lsMax'), min=0, step=1, precision=0, on_change=lambda event: self._set_int(values, 'lsMax', event.value, 'LS max')).classes('w-40').tooltip('Only consider stations up to this many ls from their star.')
+                ui.number(
+                    'LS max',
+                    value=self._number_value(values, 'lsMax'),
+                    min=0,
+                    step=1,
+                    precision=0,
+                    on_change=lambda event: self._set_int(values, 'lsMax', event.value, 'LS max'),
+                ).classes('w-40').tooltip('Only consider stations up to this many ls from their star.')
                 ui.label('Only include stations within this many ls of arrival.').classes('text-sm text-gray-600')
         return dialog
 
-class RaresWorkspace(DraftValueHelper):
-    """Edit a `rares` draft using command-local fields only."""
-    
-    def __init__(
-        self,
-        draft: CommandDraft,
-        *,
-        on_changed: Callable[[], None],
-        on_execute: Callable[[], None],
-        suggest_systems: Callable[[str], list[object]] | None = None,
-    ) -> None:
-        self.draft = draft
-        self.on_changed = on_changed
-        self.on_execute = on_execute
-        self.suggest_systems = suggest_systems
-    
-    def build(self) -> None:
-        dialog = self._build_extended_dialog()
-        with ui.column().classes('w-full gap-3'):
-            self._build_search_section()
-            self._build_filter_section()
-            with ui.row().classes('gap-2'):
-                ui.button('Execute Rares', on_click=self.on_execute)
-                ui.button('Extended Options', on_click=dialog.open)
-    
-    def _build_search_section(self) -> None:
-        with ui.card().classes('w-full'):
-            ui.label('Rare Search')
-            ui.label('Find rare goods near a system. Full detail is always shown.').classes('text-sm text-gray-600')
-            with ui.row().classes('w-full items-end gap-3'):
-                build_system_autocomplete_input(
-                    label='Near',
-                    value=self._text_value(self.draft.main_values, 'near'),
-                    on_text_changed=lambda value: self._set_text(
-                        self.draft.main_values,
-                        'near',
-                        value,
-                    ),
-                    tooltip='Your current system.',
-                    suggest_systems=self.suggest_systems,
-                )
-                ui.number('Distance (ly)', value=self._number_value(self.draft.main_values, 'ly'), min=0, step=0.1, precision=2, on_change=lambda event: self._set_float(self.draft.main_values, 'ly', event.value)).classes('w-40').tooltip('Maximum distance to search.')
-    
-    def _build_filter_section(self) -> None:
-        build_shared_filter_section(
-            get_bool=lambda key: self._bool_value(self.draft.main_values, key),
-            get_tri_state=lambda key: self._tri_state_value(self.draft.main_values, key),
-            set_bool=lambda key, value: self._set_bool(self.draft.main_values, key, value),
-            set_tri_state=lambda key, value: self._set_tri_state(self.draft.main_values, key, value),
-            pad_size_enabled=self._pad_size_enabled,
-            set_pad_size_flag=self._set_pad_size_flag,
-        )
-    
-    def _build_extended_dialog(self) -> ui.dialog:
-        # Away-from expands into repeated CLI flags and is easy to mistype, so
-        # keep it out of the compact main pane and explain it in the dialog.
-        dialog = ui.dialog()
-        with dialog, ui.card().style('min-width: 56rem; max-width: 95vw;'):
-            ui.label('Extended Options')
-            ui.label('Leave fields blank to omit them. Away-from systems may be comma-separated or one per line.').classes('text-sm text-gray-600')
-            with ui.row().classes('w-full gap-3'):
-                ui.number('Limit', value=self._number_value(self.draft.advanced_values, 'limit'), min=0, step=1, precision=0, on_change=lambda event: self._set_int(self.draft.advanced_values, 'limit', event.value, 'Limit')).classes('w-32').tooltip('Maximum number of results to list.')
-                
-                ui.checkbox('Sort by price', value=self._bool_value(self.draft.advanced_values, 'sortByPrice'), on_change=lambda event: self._set_bool(self.draft.advanced_values, 'sortByPrice', event.value)).tooltip('Sort by price not distance.')
-                ui.checkbox('Reverse order', value=self._bool_value(self.draft.advanced_values, 'reverse'), on_change=lambda event: self._set_bool(self.draft.advanced_values, 'reverse', event.value)).tooltip('Reverse the list.')
-            with ui.row().classes('w-full gap-3'):
-                ui.number('Away distance (ly)', value=self._number_value(self.draft.advanced_values, 'away'), min=0, step=0.1, precision=2, on_change=lambda event: self._set_float(self.draft.advanced_values, 'away', event.value)).classes('w-48').tooltip('Only show rare vendors at least this many LY from the Away from systems.')
-                ui.textarea('Away from systems', value=self._text_value(self.draft.advanced_values, 'awayFrom'), on_change=lambda event: self._set_text(self.draft.advanced_values, 'awayFrom', event.value)).classes('min-w-96 flex-1').tooltip('Systems used as the distance reference for Away distance. Comma-separated.')
-            with ui.row().classes('justify-end'):
-                ui.button('Close', on_click=dialog.close)
-        return dialog

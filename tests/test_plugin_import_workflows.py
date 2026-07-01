@@ -72,9 +72,10 @@ def test_plugin_loader_resolves_expected_module_name(monkeypatch):
 def _fake_tdb(tmp_path):
     return SimpleNamespace(
         dataPath=tmp_path,
-        dbPath=tmp_path / 'TradeDangerous.db',
+        data_dir=tmp_path,
+        db_path=tmp_path / 'TradeDangerous.db',
         dbFilename='TradeDangerous.db',
-        sqlPath=tmp_path / 'TradeDangerous.sql',
+        sql_path=tmp_path / 'TradeDangerous.sql',
         sqlFilename='TradeDangerous.sql',
         engine=SimpleNamespace(dialect=SimpleNamespace(name='sqlite')),
         reloadCache=lambda: None,
@@ -108,8 +109,9 @@ def test_import_cmd_plugin_path_skips_legacy_banner_when_plugin_handles_work(mon
 def test_import_cmd_http_filename_is_treated_as_url(monkeypatch, tmp_path):
     calls = []
     monkeypatch.setattr(import_cmd.transfers, 'download', lambda tdenv, url, filename: calls.append((url, filename)))
-    monkeypatch.setattr(import_cmd.cache, 'importDataFromFile', lambda *args, **kwargs: pytest.fail('legacy import should not run'))
-    
+    monkeypatch.setattr(import_cmd.import_prices, 'importDataFromFile', lambda *args, **kwargs: pytest.fail('legacy import should not run'))
+    monkeypatch.setattr(import_cmd, 'verify_db', lambda *args, **kwargs: None)
+
     cmdenv = SimpleNamespace(
         plug=None,
         pluginOptions=[],
@@ -117,6 +119,7 @@ def test_import_cmd_http_filename_is_treated_as_url(monkeypatch, tmp_path):
         url=None,
         download=True,
         reset=False,
+        dataDir=str(tmp_path),
     )
     
     result = import_cmd.run(None, cmdenv, _fake_tdb(tmp_path))
@@ -129,8 +132,9 @@ def test_import_cmd_http_filename_is_treated_as_url(monkeypatch, tmp_path):
 def test_import_cmd_download_only_short_circuits_after_transfer(monkeypatch, tmp_path):
     calls = []
     monkeypatch.setattr(import_cmd.transfers, 'download', lambda tdenv, url, filename: calls.append((url, filename)))
-    monkeypatch.setattr(import_cmd.cache, 'importDataFromFile', lambda *args, **kwargs: pytest.fail('legacy import should not run'))
-    
+    monkeypatch.setattr(import_cmd.import_prices, 'importDataFromFile', lambda *args, **kwargs: pytest.fail('legacy import should not run'))
+    monkeypatch.setattr(import_cmd, 'verify_db', lambda *args, **kwargs: None)
+
     cmdenv = SimpleNamespace(
         plug=None,
         pluginOptions=[],
@@ -138,6 +142,7 @@ def test_import_cmd_download_only_short_circuits_after_transfer(monkeypatch, tmp
         url='https://example.invalid/batch.prices',
         download=True,
         reset=False,
+        dataDir=str(tmp_path),
     )
     
     result = import_cmd.run(None, cmdenv, _fake_tdb(tmp_path))
@@ -147,9 +152,10 @@ def test_import_cmd_download_only_short_circuits_after_transfer(monkeypatch, tmp
 
 def test_import_cmd_stdin_path_is_accepted(monkeypatch, tmp_path):
     calls = []
-    monkeypatch.setattr(import_cmd.cache, 'importDataFromFile', lambda *args, **kwargs: calls.append((args, kwargs)))
+    monkeypatch.setattr(import_cmd.import_prices, 'importDataFromFile', lambda *args, **kwargs: calls.append((args, kwargs)))
+    monkeypatch.setattr(import_cmd, 'verify_db', lambda *args, **kwargs: None)
     monkeypatch.setattr(sys, 'stdin', io.StringIO('Station data'))
-    
+
     cmdenv = SimpleNamespace(
         plug=None,
         pluginOptions=[],
@@ -157,6 +163,7 @@ def test_import_cmd_stdin_path_is_accepted(monkeypatch, tmp_path):
         url=None,
         download=False,
         reset=False,
+        dataDir=str(tmp_path),
     )
     
     result = import_cmd.run(None, cmdenv, _fake_tdb(tmp_path))
@@ -168,8 +175,8 @@ def test_import_cmd_stdin_path_is_accepted(monkeypatch, tmp_path):
 
 def test_buildcache_cmd_requires_force_if_db_exists(tmp_path):
     tdb = _fake_tdb(tmp_path)
-    tdb.dbPath.touch()
-    tdb.sqlPath.write_text('-- sql', encoding='utf-8')
+    tdb.db_path.touch()
+    tdb.sql_path.write_text('-- sql', encoding='utf-8')
     cmdenv = SimpleNamespace(force=False)
     
     with pytest.raises(CommandLineError, match='already exists'):
@@ -182,20 +189,19 @@ def test_buildcache_cmd_requires_sql_file(tmp_path):
     with pytest.raises(CommandLineError, match='SQL File does not exist'):
         buildcache_cmd.run(None, cmdenv, tdb)
 
-def test_buildcache_cmd_delegates_to_lifecycle(monkeypatch, tmp_path):
+def test_buildcache_cmd_delegates_rebuild(monkeypatch, tmp_path):
     calls = []
     tdb = _fake_tdb(tmp_path)
     cmdenv = SimpleNamespace(force=True)
-    tdb.sqlPath.write_text('-- sql', encoding='utf-8')
-    monkeypatch.setattr(buildcache_cmd, 'ensure_fresh_db', lambda **kwargs: calls.append(kwargs))
-    
+    tdb.sql_path.write_text('-- sql', encoding='utf-8')
+    monkeypatch.setattr(
+        buildcache_cmd, '_rebuild_database',
+        lambda engine, data_dir, tdenv: calls.append((engine, data_dir, tdenv)),
+    )
+
     result = buildcache_cmd.run(None, cmdenv, tdb)
-    
+
     assert result is False
-    assert calls[0]['backend'] == 'sqlite'
-    assert calls[0]['engine'] is tdb.engine
-    assert calls[0]['data_dir'] == tdb.dataPath
-    assert calls[0]['mode'] == 'force'
-    assert calls[0]['tdb'] is tdb
-    assert calls[0]['tdenv'] is cmdenv
-    assert calls[0]['rebuild'] is True
+    # buildcache delegates the destructive rebuild to _rebuild_database, which
+    # drives the central db.lifecycle reset + CSV import.
+    assert calls == [(tdb.engine, tdb.data_dir, cmdenv)]

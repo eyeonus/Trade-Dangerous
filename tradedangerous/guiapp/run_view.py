@@ -87,12 +87,14 @@ class RunWorkspace(DraftValueHelper):
             system_key='startSystem',
             station_key='startStation',
             combined_key='starting',
+            allow_bare_system=True,
         )
         end_system, _end_station = self._normalize_station_pair_value(
             self.draft.main_values,
             system_key='endSystem',
             station_key='endStation',
             combined_key='ending',
+            allow_bare_system=True,
         )
         self.selected_start_system_id = self._resolve_run_system_id(start_system)
         self.selected_end_system_id = self._resolve_run_system_id(end_system)
@@ -172,6 +174,7 @@ class RunWorkspace(DraftValueHelper):
             system_key=system_key,
             station_key=station_key,
             combined_key=combined_key,
+            allow_bare_system=True,
         )
         self.on_changed()
 
@@ -201,6 +204,7 @@ class RunWorkspace(DraftValueHelper):
             system_key=system_key,
             station_key=station_key,
             combined_key=combined_key,
+            allow_bare_system=True,
         )
         self.on_changed()
 
@@ -546,6 +550,18 @@ class RunWorkspace(DraftValueHelper):
                             event.value,
                         ),
                     ).tooltip('Only visit each station once in route.')
+                    ui.checkbox(
+                        'SCO',
+                        value=self._bool_value(self.draft.main_values, 'sco'),
+                        on_change=lambda event: self._set_bool(
+                            self.draft.main_values,
+                            'sco',
+                            event.value,
+                        ),
+                    ).tooltip(
+                        'Declare an SCO (Supercruise Overcharge) drive: ignore '
+                        'the LS penalty so distant stations are not penalised.'
+                    )
 
     def _build_via_editor_dialog(self) -> ui.dialog:
         dialog = ui.dialog()
@@ -1146,8 +1162,6 @@ class RunWorkspace(DraftValueHelper):
                     self._build_extended_routing_section()
                     self._build_extended_market_section()
                     self._build_extended_trade_section()
-                    self._build_extended_search_section()
-                    self._build_extended_output_section()
 
                 with ui.row().classes('justify-end'):
                     ui.button('Close', on_click=dialog.close)
@@ -1240,51 +1254,12 @@ class RunWorkspace(DraftValueHelper):
                     'Require this many hops between visits to the same '
                     'station. 2 is the minimum useful value.'
                 )
-                ui.checkbox(
-                    'Show jumps',
-                    value=self._bool_value(
-                        self.draft.advanced_values,
-                        'showJumps',
-                    ),
-                    on_change=lambda event: self._set_bool(
-                        self.draft.advanced_values,
-                        'showJumps',
-                        event.value,
-                    ),
-                ).tooltip('Show detail of jumps between hops.')
-                ui.checkbox(
-                    'Shorten',
-                    value=self._bool_value(
-                        self.draft.advanced_values,
-                        'shorten',
-                    ),
-                    on_change=lambda event: self._set_bool(
-                        self.draft.advanced_values,
-                        'shorten',
-                        event.value,
-                    ),
-                ).tooltip(
-                    'Requires To. Find the shortest route with the best gain '
-                    'per ton.'
-                )
 
     def _build_extended_market_section(self) -> None:
         with ui.column().classes('w-full gap-3'):
             ui.label('Market and station constraints')
 
             with ui.row().classes('w-full gap-4'):
-                ui.checkbox(
-                    'Space stations only',
-                    value=self._bool_value(
-                        self.draft.advanced_values,
-                        'noPlanet',
-                    ),
-                    on_change=lambda event: self._set_bool(
-                        self.draft.advanced_values,
-                        'noPlanet',
-                        event.value,
-                    ),
-                ).tooltip('Require stations to be in space.')
                 ui.checkbox(
                     'Black market only',
                     value=self._bool_value(
@@ -1474,106 +1449,39 @@ class RunWorkspace(DraftValueHelper):
                     'star.'
                 )
 
-    def _build_extended_search_section(self) -> None:
-        with ui.column().classes('w-full gap-3'):
-            ui.label('Search breadth and pruning')
-
-            with ui.row().classes('w-full gap-3'):
+            with ui.row().classes('w-full items-end gap-4'):
                 ui.number(
-                    'Max routes',
+                    'Max price',
                     value=self._number_value(
                         self.draft.advanced_values,
-                        'maxRoutes',
+                        'maxPrice',
                     ),
                     min=0,
                     step=1,
                     precision=0,
                     on_change=lambda event: self._set_int(
                         self.draft.advanced_values,
-                        'maxRoutes',
+                        'maxPrice',
                         event.value,
-                        'Max routes',
+                        'Max price',
                     ),
-                ).classes('w-40').tooltip(
-                    'After each hop, continue only the top N highest-scoring '
-                    'routes.'
+                ).classes('w-48').tooltip(
+                    'Maximum commodity market price to buy at (cr/t). Leave '
+                    'blank for the default (1,500,000); set 0 to disable the '
+                    'cap.'
                 )
-                ui.number(
-                    'Prune score',
-                    value=self._number_value(
-                        self.draft.advanced_values,
-                        'pruneScores',
-                    ),
-                    min=0,
-                    step=0.1,
-                    precision=2,
-                    on_change=lambda event: self._set_float(
-                        self.draft.advanced_values,
-                        'pruneScores',
-                        event.value,
-                    ),
-                ).classes('w-40').tooltip(
-                    'From the third hop onward, keep only routes at or above '
-                    'this percentage of the current best score.'
-                )
-                ui.number(
-                    'Prune hops',
-                    value=self._number_value(
-                        self.draft.advanced_values,
-                        'pruneHops',
-                    ),
-                    min=0,
-                    step=1,
-                    precision=0,
-                    on_change=lambda event: self._set_int(
-                        self.draft.advanced_values,
-                        'pruneHops',
-                        event.value,
-                        'Prune hops',
-                    ),
-                ).classes('w-40').tooltip(
-                    'Changes which hop Prune score takes effect from.'
-                )
-
-    def _build_extended_output_section(self) -> None:
-        with ui.column().classes('w-full gap-3'):
-            ui.label('Output and devices')
-
-            with ui.row().classes('w-full gap-4'):
                 ui.checkbox(
-                    'Progress',
+                    'No bulk cap',
                     value=self._bool_value(
                         self.draft.advanced_values,
-                        'progress',
+                        'noBulkCap',
                     ),
                     on_change=lambda event: self._set_bool(
                         self.draft.advanced_values,
-                        'progress',
+                        'noBulkCap',
                         event.value,
                     ),
-                ).tooltip('Show hop progress.')
-
-                ui.checkbox(
-                    'Checklist',
-                    value=self._bool_value(
-                        self.draft.advanced_values,
-                        'checklist',
-                    ),
-                    on_change=lambda event: self._set_bool(
-                        self.draft.advanced_values,
-                        'checklist',
-                        event.value,
-                    ),
-                ).tooltip('Provide a checklist flow for the route.')
-                ui.checkbox(
-                    'X52 Pro',
-                    value=self._bool_value(
-                        self.draft.advanced_values,
-                        'x52pro',
-                    ),
-                    on_change=lambda event: self._set_bool(
-                        self.draft.advanced_values,
-                        'x52pro',
-                        event.value,
-                    ),
-                ).tooltip('Enable experimental X52 Pro MFD output.')
+                ).tooltip(
+                    'Fill the full Metals/Minerals demand, ignoring the safe '
+                    'bulk-sale-tax quantity cap.'
+                )

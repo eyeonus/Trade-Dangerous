@@ -6,7 +6,6 @@ from typing import Callable
 
 from nicegui import ui
 
-from .autocomplete import build_system_autocomplete_input
 from .autocomplete import AutocompleteInput, build_system_autocomplete_input
 from .profiles import CommandDraft
 from .shared_draft_helpers import DraftValueHelper
@@ -483,20 +482,6 @@ class BuySellWorkspace(DraftValueHelper):
             
             with ui.row().classes('w-full gap-4'):
                 ui.checkbox(
-                    'Space stations only',
-                    value=self._bool_value(
-                        self.draft.advanced_values,
-                        'noPlanet',
-                    ),
-                    on_change=lambda event: self._set_bool(
-                        self.draft.advanced_values,
-                        'noPlanet',
-                        event.value,
-                    ),
-                ).tooltip(
-                    'Require stations to be in space.'
-                )
-                ui.checkbox(
                     'Black market only',
                     value=self._bool_value(
                         self.draft.advanced_values,
@@ -532,6 +517,20 @@ class BuySellWorkspace(DraftValueHelper):
                 )
                 
                 if self.command == 'buy':
+                    ui.checkbox(
+                        'Rares only',
+                        value=self._bool_value(
+                            self.draft.advanced_values,
+                            'rare',
+                        ),
+                        on_change=lambda event: self._set_bool(
+                            self.draft.advanced_values,
+                            'rare',
+                            event.value,
+                        ),
+                    ).tooltip(
+                        'Only show rare commodities with stock available.'
+                    )
                     ui.checkbox(
                         'One stop',
                         value=self._bool_value(

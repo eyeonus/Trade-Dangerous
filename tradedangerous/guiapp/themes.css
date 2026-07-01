@@ -102,6 +102,16 @@ body.td-theme-elite,
     background: #f07b05;
 }
 
+/* Tabs and tab panels (multi-route Run view). Quasar's panels default to a
+   white surface, which shows through behind the route table on the dark
+   theme, so pin them to the cockpit black/white like the cards. */
+.td-theme-elite .q-tabs,
+.td-theme-elite .q-tab-panels,
+.td-theme-elite .q-tab-panel {
+    background: #000000;
+    color: #ffffff;
+}
+
 /* Expansions and tables */
 .td-theme-elite .q-expansion-item,
 .td-theme-elite .q-expansion-item .q-item,

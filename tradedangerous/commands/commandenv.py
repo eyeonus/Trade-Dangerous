@@ -1,60 +1,76 @@
 from __future__ import annotations
 
+from enum import Flag, auto
 from pathlib import Path
-import os
 import sys
 import typing
 
 import ijson
 
 from .exceptions import (
-    CommandLineError, FleetCarrierError, OdysseyError,
+    CommandLineError, FleetCarrierError, SettlementError,
     PadSizeError, PlanetaryError,
 )
 
 from tradedangerous import TradeEnv
-from tradedangerous.tradedb import AmbiguityError, Station
+from tradedangerous.db import orm_models as orm
 
 
 if typing.TYPE_CHECKING:
     from argparse import Namespace
     from typing import Any, ModuleType
     
-    from tradedangerous import TradeDB, TradeORM
+    from tradedangerous import TradeORM
 
 
-# See: https://espterm.github.io/docs/VT100%20escape%20codes.html
-# or : https://learn.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences
-#
-# ANSI-compliant "terminal" streams support changing the color (including boldness) of text
-# with 'Color Sequence' codes, consisting of an initializer (CS), one or more semicolon-separated (;)
-# parameters, and a command code.
-#
-# The CSI is ESC '[' where esc is 1b in hex or 033 in octal.
-# For color-changes, the command is 'm'.
-# To clear all color-code/effect changes, the sequence is : [escape, '[', '0', 'm'].
-#
-ANSI_CSI = "\033["
-ANSI_COLOR_CMD = "m" 
-ANSI_COLOR = {
-    "CLEAR": "0",
-    "red": "31",
-    "green": "32",
-    "yellow": "33",
-    "blue": "34",
-    "magenta": "35",
-    "cyan": "36",
-    "lightGray": "37",
-    "darkGray": "90",
-    "lightRed": "91",
-    "lightGreen": "92",
-    "lightYellow": "93",
-    "lightBlue": "94",
-    "lightMagenta": "95",
-    "lightCyan": "96",
-    "white": "97",
-}
-ANSI_CLEAR = f"{ANSI_CSI}{ANSI_COLOR['CLEAR']}{ANSI_COLOR_CMD}"
+def _canonical_place_name(place):
+    """Display name a resolved place echoes as: 'Sol' for a system,
+    'Sol/Abraham Lincoln' for a station."""
+    if isinstance(place, orm.Station):
+        return place.dbname()
+    return place.name
+
+
+def _resolution_is_exact(raw, place):
+    """True when the user's token already names ``place`` exactly (ignoring
+    case), so no resolved-as echo is warranted. Strips the namespace decoration
+    the syntax uses — a leading @, a leading/trailing slash, and an @N index —
+    before comparing, so 'Sol', 'Sol/' and '@Sol' are all exact for system Sol,
+    and 'Sol/Abraham Lincoln' / '/Abraham Lincoln' are exact for that station."""
+    token = (raw or "").strip().replace("\\", "/")
+    if token.startswith("@"):
+        token = token[1:]
+    at = token.rfind("@")
+    if at > 0 and token[at + 1:].isdigit():
+        token = token[:at]
+    token = token.strip("/").strip().casefold()
+    if isinstance(place, orm.Station):
+        return token in (place.dbname().casefold(), place.name.casefold())
+    return token == place.name.casefold()
+
+
+def echo_resolution(label, raw, place):
+    """Print a 'resolved as' line when a fuzzy or abbreviated token expanded to
+    a different canonical name. Exact input — including a pure case difference
+    or an @N selection — stays quiet. This gives every resolver-tier command the
+    same expansion feedback ``trade run`` already prints for its endpoints."""
+    if place is None or _resolution_is_exact(raw, place):
+        return
+    print(
+        "{} {} resolved as {}".format(label, raw, _canonical_place_name(place)),
+        flush=True,
+    )
+
+
+class Needs(Flag):
+    """Backend capability requirements for a command.
+
+    Commands declare their backend needs via a module-level ``needs``
+    attribute. Every command must declare one; a module with no declaration
+    is treated as incomplete and fails during command setup.
+    """
+    NOTHING  = 0        # no backend required (a command that touches no database)
+    RESOLVER = auto()   # TradeORM resolver only
 
 
 class ResultRow:
@@ -75,7 +91,7 @@ class CommandResults:
         self.summary = ResultRow()
         self.rows = []
     
-    def render(self, cmdenv: 'CommandEnv' = None, tdb: TradeDB | TradeORM | None = None) -> None:
+    def render(self, cmdenv: 'CommandEnv' = None, tdb: TradeORM | None = None) -> None:
         cmdenv = cmdenv or self.cmdenv
         tdb = tdb or cmdenv.tdb
         cmdenv._cmd.render(self, cmdenv, tdb)  # type: ignore
@@ -90,7 +106,6 @@ class CommandEnv(TradeEnv):
         super().__init__(properties = properties)
         
         self.tdb = None
-        self.mfd = None
         self.argv = argv or sys.argv
         self._preflight_done = False
         
@@ -98,13 +113,28 @@ class CommandEnv(TradeEnv):
             raise CommandLineError("'--detail' (-v) and '--quiet' (-q) are mutually exclusive.")
         
         self._cmd = cmdModule
-        self.wantsTradeDB = getattr(cmdModule, 'wantsTradeDB', True)
+        needs_selector = getattr(cmdModule, 'selectNeeds', None)
+        if needs_selector and callable(needs_selector):
+            self.commandNeeds = needs_selector(self)
+        else:
+            _module_needs = getattr(cmdModule, 'needs', None)
+            if _module_needs is None:
+                # Every command must declare its backend needs explicitly. A
+                # module with no declaration is an incomplete command, not a
+                # legacy one, so fail loudly rather than hand it a backend.
+                cmd_name = getattr(cmdModule, 'name', cmdModule)
+                raise CommandLineError(
+                    f"Command '{cmd_name}' does not declare its backend "
+                    "needs (set needs = Needs.RESOLVER or Needs.NOTHING)."
+                )
+            self.commandNeeds = _module_needs
+        self.needs_resolver = bool(self.commandNeeds & Needs.RESOLVER)
         self.usesTradeData = getattr(cmdModule, 'usesTradeData', False)
     
     def preflight(self) -> None:
         """
-        Phase A: quick validation that must be able to short-circuit before any
-        heavy TradeDB(load=True) path is invoked.
+        Phase A: quick validation that must be able to short-circuit before the
+        TradeORM database handle is built.
         
         Commands may optionally implement validateRunArgumentsFast(cmdenv).
         """
@@ -117,7 +147,7 @@ class CommandEnv(TradeEnv):
         if fast_validator:
             fast_validator(self)
     
-    def run(self, tdb: TradeDB | TradeORM) -> CommandResults | bool | None:
+    def run(self, tdb: TradeORM) -> CommandResults | bool | None:
         """ Try and execute the business logic of the command. Query commands
             will return a result set for us to render, whereas operational
             commands will likely do their own rendering as they work. """
@@ -128,158 +158,107 @@ class CommandEnv(TradeEnv):
         # the properties we have are valid.
         self.tdb = tdb
         update_database_schema(self.tdb)
-        
-        if self.wantsTradeDB:
-            self.checkFromToNear()
-            self.checkAvoids()
-            self.checkVias()
+
+        skip_resolver_prechecks = getattr(
+            self._cmd,
+            'skipResolverPrechecks',
+            False,
+        )
+        if self.needs_resolver and not skip_resolver_prechecks:
+            self.checkFromToNearORM()
+            self.checkAvoidsORM()
+            self.checkViasORM()
         
         self.checkPlanetary()
         self.checkFleet()
-        self.checkOdyssey()
+        self.checkSettlement()
         self.checkPadSize()
-        self.checkMFD()
         
         results = CommandResults(self)
         return self._cmd.run(results, self, tdb)
-    
-    def render(self, results: CommandResults) -> None:
-        self._cmd.render(self, results, self, self.tdb)
-    
-    def checkMFD(self) -> None:
-        self.mfd = None
-        try:
-            if not self.x52pro:
-                return
-        except AttributeError:
-            return
-        
-        # The x52 module throws some hard errors, so we really only want to
-        # import it as a last resort when the user has asked. We can't do a
-        # soft "try and import and tell the user later".
-        from tradedangerous.mfd import X52ProMFD  # noqa
-        self.mfd = X52ProMFD()
-    
-    def checkFromToNear(self) -> None:
-        if not self.wantsTradeDB:
-            return
-        
-        def check(label, fieldName, wantStation):
+
+    def checkFromToNearORM(self) -> None:
+        def _resolve_place(label, fieldName):
             key = getattr(self, fieldName, None)
             if not key:
                 return None
-            
             try:
-                place = self.tdb.lookupPlace(key)
+                place = self.tdb.lookup_place(key)
             except LookupError:
                 raise CommandLineError(
-                        "Unrecognized {}: {}"
-                            .format(label, key))
-            if not wantStation:
-                if isinstance(place, Station):
-                    return place.system
-                return place
-            
-            if isinstance(place, Station):
-                return place
-            
-            # it's a system, we want a station
-            if not place.stations:
-                raise CommandLineError(
-                        "Station name required for {}: "
-                        "{} is a SYSTEM but has no stations.".format(
-                            label, key
-                        ))
-            if len(place.stations) > 1:
-                raise AmbiguityError(
-                    label,
-                    key,
-                    place.stations,
-                    key=lambda st: (
-                        f"{st.text()} — "
-                        f"({st.system.posX:.1f}, {st.system.posY:.1f}, {st.system.posZ:.1f})"
-                    ),
+                    "Unrecognized {}: {}".format(label, key)
                 )
-            
-            return place.stations[0]
-        
-        def lookupPlace(label, fieldName):
-            key = getattr(self, fieldName, None)
-            if not key:
+            echo_resolution(label, key, place)
+            return place
+
+        def _resolve_system(label, fieldName):
+            place = _resolve_place(label, fieldName)
+            if place is None:
                 return None
-            
-            try:
-                return self.tdb.lookupPlace(key)
-            except LookupError:
-                raise CommandLineError(
-                        "Unrecognized {}: {}"
-                            .format(label, key))
-        
-        self.startStation = check('origin station', 'origin', True)
-        self.stopStation = check('destination station', 'dest', True)
-        self.origPlace = lookupPlace('origin', 'starting')
-        self.destPlace = lookupPlace('destination', 'ending')
-        self.nearSystem = check('system', 'near', False)
-    
-    def checkAvoids(self) -> None:
+            if isinstance(place, orm.Station):
+                return place.system
+            return place
+
+        self.origPlace  = _resolve_place('origin', 'starting')
+        self.destPlace  = _resolve_place('destination', 'ending')
+        self.nearSystem = _resolve_system('system', 'near')
+
+    def checkAvoidsORM(self) -> None:
+        """Resolver-tier equivalent of checkAvoids().
+
+        Mirrors the legacy try-item-then-place logic: each token is first
+        resolved as an item, then as a place.  An exact CI item match skips
+        the place lookup; a partial item match falls through so both can be
+        appended independently.  AmbiguityError from either lookup propagates.
         """
-            Process a list of avoidances.
-        """
-        
         avoidItems = self.avoidItems = []
         avoidPlaces = self.avoidPlaces = []
-        avoidances = self.avoid
-        if not self.avoid:
+        avoidances = getattr(self, 'avoid', None)
+        if not avoidances:
             return
-        avoidances = self.avoid
-        
-        tdb = self.tdb
-        
-        # You can use --avoid to specify an item, system or station.
-        # and you can group them together with commas or list them
-        # individually.
         for avoid in ','.join(avoidances).split(','):
-            # Is it an item?
-            item, place = None, None
+            avoid = avoid.strip()
+            if not avoid:
+                continue
+            item = None
             try:
-                item = tdb.lookupItem(avoid)
+                item = self.tdb.lookup_item(avoid)
                 avoidItems.append(item)
-                if tdb.normalizedStr(item.name()) == tdb.normalizedStr(avoid):
+                if self.tdb.normalize_str(item.name) == self.tdb.normalize_str(avoid):
                     continue
             except LookupError:
                 pass
-            # Or is it a place?
             try:
-                place = tdb.lookupPlace(avoid)
+                place = self.tdb.lookup_place(avoid)
                 avoidPlaces.append(place)
-                if tdb.normalizedStr(place.name()) == tdb.normalizedStr(avoid):
-                    continue
+                echo_resolution('avoid', avoid, place)
                 continue
             except LookupError:
                 pass
-            
-            # If it was none of the above, whine about it
-            if not (item or place):
-                raise CommandLineError("Unknown item/system/station: {}".format(avoid))
-            
-            # But if it matched more than once, whine about ambiguity
-            if item and place:
-                raise AmbiguityError('Avoidance', avoid, [ item, place.text() ])
-        
-        self.DEBUG0("Avoiding items {}, places {}",
-                    [ item.name() for item in avoidItems ],
-                    [ place.name() for place in avoidPlaces ],
-        )
-    
-    def checkVias(self) -> None:
-        """ Process a list of station names and build them into a list of waypoints. """
-        viaPlaceNames = getattr(self, 'via', None)
+            if not item:
+                raise CommandLineError(
+                    "Unknown item/system/station: {}".format(avoid)
+                )
+
+    def checkViasORM(self) -> None:
+        """Resolver-tier equivalent of checkVias()."""
         viaPlaces = self.viaPlaces = []
-        # accept [ "a", "b,c", "d" ] by joining everything and then splitting it.
-        if viaPlaceNames:
-            for via in ",".join(viaPlaceNames).split(","):
-                viaPlaces.append(self.tdb.lookupPlace(via))
-    
+        viaPlaceNames = getattr(self, 'via', None)
+        if not viaPlaceNames:
+            return
+        for via in ','.join(viaPlaceNames).split(','):
+            via = via.strip()
+            if not via:
+                continue
+            try:
+                place = self.tdb.lookup_place(via)
+                viaPlaces.append(place)
+                echo_resolution('via', via, place)
+            except LookupError:
+                raise CommandLineError(
+                    "Unknown system/station: {}".format(via)
+                )
+
     def checkPadSize(self) -> None:
         padSize = getattr(self, 'padSize', None)
         if not padSize:
@@ -321,32 +300,27 @@ class CommandEnv(TradeEnv):
             return
         self.fleet = fleet = fleet.upper()
     
-    def checkOdyssey(self) -> None:
-        odyssey = getattr(self, 'odyssey', None)
-        if not odyssey:
+    def checkSettlement(self) -> None:
+        settlement = getattr(self, 'settlement', None)
+        if not settlement:
             return
-        odyssey = ''.join(sorted(set(odyssey))).upper()
-        for value in odyssey:
+        settlement = ''.join(sorted(set(settlement))).upper()
+        for value in settlement:
             if value not in 'YN?':
-                raise OdysseyError(odyssey)
-        if odyssey == '?NY':
-            self.odyssey = None
+                raise SettlementError(settlement)
+        if settlement == '?NY':
+            self.settlement = None
             return
-        self.odyssey = odyssey.upper()
+        self.settlement = settlement.upper()
+        if 'Y' in self.settlement:
+            planetary = getattr(self, 'planetary', None)
+            if planetary and 'Y' not in planetary:
+                raise CommandLineError(
+                    "--settlement Y requires planetary Y because all "
+                    "settlements are planetary stations."
+                )
     
-    def colorize(self, color: str, raw_text: str) -> str:
-        """
-        Set up some coloring for readability.
-        TODO: Rich already does this, use it instead?
-        """
-        if (code := ANSI_COLOR.get(color)):
-            # Only do anything if there's a code for that.
-            return f"{ANSI_CSI}{code}{ANSI_COLOR_CMD}{raw_text}{ANSI_CLEAR}"
-        # Otherwise, keep it raw.
-        return raw_text
-
-
-def update_database_schema(tdb: TradeDB | TradeORM) -> None:
+def update_database_schema(tdb: TradeORM) -> None:
     """ Check if there are database changes to be made, and if so, execute them. """
     # TODO: This should really be a function of the DB itself and not something
     # the caller has to ask the database to do for it.

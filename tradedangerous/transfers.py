@@ -7,7 +7,6 @@ from .tradeexcept import TradeException
 from .misc import progress as pbar
 from . import fs
 
-import json
 import time
 import typing
 
@@ -172,31 +171,3 @@ def download(
     
     req.close()
     return req.headers
-
-def get_json_data(url, *, timeout: int = 90):
-    """
-    Fetch JSON data from a URL and return the resulting dictionary.
-    
-    Displays a progress bar as it downloads.
-    """
-    
-    req = requests.get(url, stream=True, timeout=timeout)
-    
-    totalLength = req.headers.get('content-length')
-    if totalLength is None:
-        compression = req.headers.get('content-encoding')
-        compression = (compression + "'ed") if compression else "uncompressed"
-        print("Downloading {}: {}...".format(compression, url))
-        jsData = req.content
-    else:
-        totalLength = int(totalLength)
-        filename = get_filename_from_url(url)
-        progBar = pbar.Progress(totalLength, 25, prefix=filename)
-        
-        jsData = bytes()
-        for data in req.iter_content():
-            jsData += data
-            progBar.increment(len(data))
-        progBar.clear()
-    
-    return json.loads(jsData.decode())
