@@ -43,7 +43,7 @@ def main(argv = None):
     bootstrap_runtime()
     from tradedangerous import cli
 
-    cli.main(argv or sys.argv)
+    return cli.main(argv or sys.argv)
 
 
 if __name__ == "__main__":

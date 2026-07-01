@@ -76,6 +76,10 @@ def main(argv: list[str] | None = None) -> int:
             if 'EXCEPTIONS' in os.environ:
                 raise e
             return 1
+    except BrokenPipeError:
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        return 1
     except (UnicodeEncodeError, UnicodeDecodeError):
         print("-----------------------------------------------------------")
         print("ERROR: Unexpected unicode error in the wild!")
