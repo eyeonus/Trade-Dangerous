@@ -66,6 +66,8 @@ class AppShell:
         self.store = store
         self.window_close_state = window_close_state
         self.session = SessionState.from_store(store)
+        if self.store.data_mode is None:
+            self.session.set_command(self.store, 'import')
         self.executor = TdExecutor()
         self.search_service = get_gui_search_service()
         self.active_command_process: TdCommandProcess | None = None
@@ -429,6 +431,9 @@ class AppShell:
         new_command = str(value)
         if new_command == self.session.selected_command:
             return
+        if self.store.data_mode is None and new_command != 'import':
+            self._restore_command_selection()
+            return
         
         if is_import_running(session=self.session):
             confirmed = await self._confirm_stop_before_switch(
@@ -791,6 +796,12 @@ class AppShell:
                 window_close_state=self.window_close_state,
             )
             self._persist_initial_import_data_mode(request)
+            command_select = getattr(self, 'command_select', None)
+            if command_select is not None:
+                if self.store.data_mode is None:
+                    command_select.disable()
+                else:
+                    command_select.enable()
             return
         
         if self._has_pending_command_process():
@@ -1194,6 +1205,7 @@ class AppShell:
                     workspace = ImportWorkspace(
                         self.session.draft,
                         self.session.execution,
+                        initial_setup=self.store.data_mode is None,
                         on_changed=self._on_run_draft_changed,
                         on_execute=self._on_execute_command,
                         on_arm_stop=self._on_begin_import_stop_confirmation,
@@ -1387,6 +1399,10 @@ class AppShell:
         self._refreshing_ui = True
         try:
             self.command_select.value = self.session.selected_command
+            if self.store.data_mode is None:
+                self.command_select.disable()
+            else:
+                self.command_select.enable()
             self.profile_select.set_options(self._profile_options())
             self.profile_select.value = self.session.selected_profile_id
             

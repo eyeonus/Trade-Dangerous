@@ -5,6 +5,8 @@ from nicegui import ui
 from .profiles import CommandDraft
 from .session import ExecutionState, ExecutionStatus
 
+UPDATE_TD_URL = 'https://github.com/bgol/UpdateTD'
+
 IMPORT_HELP_ROWS: tuple[tuple[str, str], ...] = (
     ('All', 'Update everything with the latest dump files.'),
     ('Clean', 'Erase all data and rebuild it from scratch.'),
@@ -15,7 +17,9 @@ IMPORT_HELP_ROWS: tuple[tuple[str, str], ...] = (
     ),
     (
         'Solo',
-        "Don't download crowd-sourced market data. Skips vendor regeneration and overrides All and Clean.",
+        'Do not download crowdsourced market listings or ship-vendor data. '
+        'On first setup, this still creates the database schema and base data. '
+        'Solo overrides All and Clean.',
     ),
     ('Purge', 'Remove empty systems that previously had fleet carriers.'),
     (
@@ -36,6 +40,7 @@ class ImportWorkspace:
         draft: CommandDraft,
         execution: ExecutionState,
         *,
+        initial_setup: bool,
         on_changed: Callable[[], None],
         on_execute: Callable[[], None],
         on_arm_stop: Callable[[], None],
@@ -44,6 +49,7 @@ class ImportWorkspace:
     ) -> None:
         self.draft = draft
         self.execution = execution
+        self.initial_setup = initial_setup
         self.on_changed = on_changed
         self.on_execute = on_execute
         self.on_arm_stop = on_arm_stop
@@ -74,6 +80,43 @@ class ImportWorkspace:
         with ui.column().classes('w-full gap-2').style(
             'padding: 0.25rem 0.5rem 0.5rem 0.25rem;'
         ):
+            if self.initial_setup:
+                with ui.card().classes('w-full gap-2'):
+                    ui.label('Choose your data workflow').classes('text-lg')
+                    ui.label(
+                        'Trade Dangerous needs an initial Import before its '
+                        'database-backed commands are available. Use the '
+                        'existing Solo option below to choose a workflow, '
+                        'then select Start Import.'
+                    ).classes('text-sm text-gray-700 whitespace-pre-wrap')
+                    ui.label('Crowdsourced').classes('text-weight-medium')
+                    ui.label(
+                        'Leave Solo unticked. The normal Trade Dangerous '
+                        'Import initialises and populates the database with '
+                        'the standard crowdsourced data.'
+                    ).classes('text-sm text-gray-700 whitespace-pre-wrap')
+                    ui.label('Solo').classes('text-weight-medium')
+                    ui.label(
+                        'Tick Solo if you maintain your own observed market '
+                        'data. Import creates the schema and base data without '
+                        'downloading crowdsourced market listings or '
+                        'ship-vendor data.'
+                    ).classes('text-sm text-gray-700 whitespace-pre-wrap')
+                    ui.label(
+                        'I maintain my own solo data with EDMC + UpdateTD '
+                        '(or another data source).'
+                    ).classes('text-sm text-gray-700 whitespace-pre-wrap')
+                    ui.link(
+                        'EDMC + UpdateTD',
+                        UPDATE_TD_URL,
+                        new_tab=True,
+                    ).classes('text-sm')
+                    ui.label(
+                        'EDMC + UpdateTD is the recommended and supported '
+                        'workflow for ongoing solo data collection. Another '
+                        'data source may be used, but is not specifically '
+                        'supported by Trade Dangerous.'
+                    ).classes('text-sm text-gray-700 whitespace-pre-wrap')
             with ui.row().classes('w-full gap-2 items-center'):
                 self.start_button = ui.button(
                     'Start Import',
