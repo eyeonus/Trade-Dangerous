@@ -1,14 +1,31 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
 from sqlalchemy import func
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from tradedangerous.db import get_session_factory, make_engine_from_config
 from tradedangerous.db.orm_models import Category, Item, Ship, Station, System
 from tradedangerous.db.paths import resolve_db_config_path
+
+class GuiSearchDatabaseError(RuntimeError):
+    """Raised when a database-backed GUI lookup cannot be performed."""
+
+@contextmanager
+def _database_session(session_factory) -> Iterator[Session]:
+    try:
+        with session_factory() as session:
+            yield session
+    except SQLAlchemyError as exc:
+        raise GuiSearchDatabaseError(
+            'Database-backed GUI search failed.'
+        ) from exc
 
 @dataclass(frozen=True, slots=True)
 class Suggestion:
@@ -45,7 +62,7 @@ class GuiSearchService:
         if not query_text or bounded_limit <= 0:
             return []
         
-        with self._session_factory() as session:
+        with _database_session(self._session_factory) as session:
             suggestions: list[Suggestion] = []
             seen_system_ids: set[int] = set()
             
@@ -104,7 +121,7 @@ class GuiSearchService:
         if not query_text:
             return None
         
-        with self._session_factory() as session:
+        with _database_session(self._session_factory) as session:
             row = (
                 session.query(
                     System.system_id,
@@ -144,7 +161,7 @@ class GuiSearchService:
         if not query_text or bounded_limit <= 0:
             return []
         
-        with self._session_factory() as session:
+        with _database_session(self._session_factory) as session:
             suggestions: list[Suggestion] = []
             seen_item_ids: set[int] = set()
             base_query = (
@@ -209,7 +226,7 @@ class GuiSearchService:
         if not query_text or bounded_limit <= 0:
             return []
         
-        with self._session_factory() as session:
+        with _database_session(self._session_factory) as session:
             suggestions: list[Suggestion] = []
             seen_category_ids: set[int] = set()
             seen_item_ids: set[int] = set()
@@ -381,7 +398,7 @@ class GuiSearchService:
         if not query_text or bounded_limit <= 0:
             return []
         
-        with self._session_factory() as session:
+        with _database_session(self._session_factory) as session:
             suggestions: list[Suggestion] = []
             seen_system_ids: set[int] = set()
             seen_item_ids: set[int] = set()
@@ -497,7 +514,7 @@ class GuiSearchService:
         if not query_text or bounded_limit <= 0:
             return []
         
-        with self._session_factory() as session:
+        with _database_session(self._session_factory) as session:
             suggestions: list[Suggestion] = []
             seen_station_ids: set[int] = set()
             base_query = (
