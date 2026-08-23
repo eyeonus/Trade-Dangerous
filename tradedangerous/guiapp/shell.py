@@ -73,6 +73,12 @@ _SEARCH_DATABASE_ERROR_MESSAGES: dict[str | None, str] = {
     ),
 }
 
+
+def _notify_search_database_state_changed(shell: 'AppShell') -> None:
+    listener = getattr(shell, 'search_database_state_listener', None)
+    if listener is not None:
+        listener()
+
 def _safe_gui_search(
     shell: 'AppShell',
     search: Callable[..., Any],
@@ -92,12 +98,14 @@ def _safe_gui_search(
                     _SEARCH_DATABASE_ERROR_MESSAGES[None],
                 )
                 label.set_visibility(True)
+            _notify_search_database_state_changed(shell)
         return fallback
     if shell.search_database_error is not None:
         shell.search_database_error = None
         label = getattr(shell, 'search_database_error_label', None)
         if label is not None:
             label.set_visibility(False)
+        _notify_search_database_state_changed(shell)
     return result
 
 def _safe_suggest_systems(
@@ -193,6 +201,7 @@ class AppShell:
         self.executor = TdExecutor()
         self.search_service = get_gui_search_service()
         self.search_database_error: GuiSearchDatabaseError | None = None
+        self.search_database_state_listener: Callable[[], None] | None = None
         self.active_command_process: TdCommandProcess | None = None
         self.active_command_task: asyncio.Task | None = None
         
@@ -1182,6 +1191,7 @@ class AppShell:
     def _render_workspace(self) -> None:
         # Import keeps long-lived progress widgets and is rendered separately in
         # `_render_right_pane`; every other workspace can be rebuilt cheaply.
+        self.search_database_state_listener = None
         self.workspace_host.clear()
         with self.workspace_host:
             if self.session.selected_command == 'run':
@@ -1198,6 +1208,9 @@ class AppShell:
                     database_search_failed=lambda: (
                         self.search_database_error is not None
                     ),
+                )
+                self.search_database_state_listener = (
+                    workspace._refresh_missing_system_warnings
                 )
                 workspace.build()
             elif self.session.selected_command in {'buy', 'sell'}:

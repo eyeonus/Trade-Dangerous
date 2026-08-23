@@ -146,9 +146,21 @@ class RunWorkspace(DraftValueHelper):
         warning_label_attr: str,
     ) -> None:
         setattr(self, missing_attr, system_name)
+        self._refresh_missing_system_warning(
+            missing_attr=missing_attr,
+            warning_label_attr=warning_label_attr,
+        )
+
+    def _refresh_missing_system_warning(
+        self,
+        *,
+        missing_attr: str,
+        warning_label_attr: str,
+    ) -> None:
         label = getattr(self, warning_label_attr, None)
         if label is None:
             return
+        system_name = getattr(self, missing_attr)
         if system_name is None or self._database_search_is_unavailable():
             label.text = ''
             label.set_visibility(False)
@@ -160,14 +172,12 @@ class RunWorkspace(DraftValueHelper):
         label.text = message.format(system_name=system_name)
         label.set_visibility(True)
 
-    def _clear_missing_system_warnings(self) -> None:
-        self._update_missing_system_warning(
-            None,
+    def _refresh_missing_system_warnings(self) -> None:
+        self._refresh_missing_system_warning(
             missing_attr='missing_start_system_name',
             warning_label_attr='start_system_warning_label',
         )
-        self._update_missing_system_warning(
-            None,
+        self._refresh_missing_system_warning(
             missing_attr='missing_end_system_name',
             warning_label_attr='end_system_warning_label',
         )
@@ -181,8 +191,7 @@ class RunWorkspace(DraftValueHelper):
         warning_label = ui.label('')
         warning_label.classes('text-sm text-warning whitespace-pre-wrap')
         setattr(self, warning_label_attr, warning_label)
-        self._update_missing_system_warning(
-            getattr(self, missing_attr),
+        self._refresh_missing_system_warning(
             missing_attr=missing_attr,
             warning_label_attr=warning_label_attr,
         )
@@ -209,10 +218,17 @@ class RunWorkspace(DraftValueHelper):
                 warning_label_attr=warning_label_attr,
             )
             return None
+        known_missing_name = getattr(self, missing_attr)
+        if known_missing_name is not None and known_missing_name != cleaned:
+            self._update_missing_system_warning(
+                None,
+                missing_attr=missing_attr,
+                warning_label_attr=warning_label_attr,
+            )
         system_id = self._resolve_run_system_id(cleaned)
         if system_id is None:
             if self._database_search_is_unavailable():
-                self._clear_missing_system_warnings()
+                self._refresh_missing_system_warnings()
             else:
                 self._update_missing_system_warning(
                     cleaned,

@@ -27,6 +27,16 @@ START_FIELD = {
     'warning_label_attr': 'start_system_warning_label',
 }
 
+END_FIELD = {
+    'system_key': 'endSystem',
+    'station_key': 'endStation',
+    'combined_key': 'ending',
+    'selected_attr': 'selected_end_system_id',
+    'station_autocomplete_attr': 'end_station_autocomplete',
+    'missing_attr': 'missing_end_system_name',
+    'warning_label_attr': 'end_system_warning_label',
+}
+
 
 def _workspace(*, data_mode, draft, resolve_system, database_search_failed=None):
     return RunWorkspace(
@@ -162,6 +172,47 @@ def test_database_failure_preempts_missing_system_warning():
     shell.search_database_error_label.set_visibility.assert_called_once_with(True)
 
 
+def test_database_failure_suppresses_without_forgetting_other_missing_system():
+    error = GuiSearchDatabaseError('search failed')
+    service = SimpleNamespace(resolve_system=MagicMock(side_effect=[
+        None,
+        error,
+        SimpleNamespace(system_id=42),
+    ]))
+    shell = AppShell.__new__(AppShell)
+    shell.store = GuiStore.default()
+    shell.store.data_mode = 'crowdsourced'
+    shell.search_service = service
+    shell.search_database_error = None
+    shell.search_database_error_label = MagicMock()
+    shell.search_database_error_label.text = ''
+    draft = CommandDraft(main_values={
+        'startSystem': 'Missing Start',
+        'endSystem': 'Uncheckable End',
+    })
+    workspace = _workspace(
+        data_mode='crowdsourced',
+        draft=draft,
+        resolve_system=partial(_safe_resolve_system, shell),
+        database_search_failed=lambda: shell.search_database_error is not None,
+    )
+    _attach_warning_labels(workspace)
+    shell.search_database_state_listener = (
+        workspace._refresh_missing_system_warnings
+    )
+    workspace._normalize_run_state()
+    assert shell.search_database_error is error
+    assert workspace.missing_start_system_name == 'Missing Start'
+    assert workspace.start_system_warning_label.text == ''
+    workspace.start_system_warning_label.set_visibility.assert_called_with(False)
+    workspace._set_run_system_text('Lave', **END_FIELD)
+    assert shell.search_database_error is None
+    assert workspace.selected_end_system_id == 42
+    assert workspace.missing_start_system_name == 'Missing Start'
+    assert 'Missing Start' in workspace.start_system_warning_label.text
+    workspace.start_system_warning_label.set_visibility.assert_called_with(True)
+
+
 def test_persisted_missing_run_system_renders_guidance_on_startup(
     monkeypatch,
     tmp_path,
@@ -184,8 +235,10 @@ def test_persisted_missing_run_system_renders_guidance_on_startup(
     shell.workspace_host = MagicMock()
     shell.workspace_host.__enter__.return_value = shell.workspace_host
     rendered_labels = []
+    rendered_workspaces = []
 
     def build_missing_workspace(workspace):
+        rendered_workspaces.append(workspace)
         workspace._normalize_run_state()
         workspace._build_missing_system_warning(
             missing_attr='missing_start_system_name',
@@ -206,6 +259,9 @@ def test_persisted_missing_run_system_renders_guidance_on_startup(
     )
     assert shell.search_database_error is None
     assert len(rendered_labels) == 1
+    assert shell.search_database_state_listener == (
+        rendered_workspaces[0]._refresh_missing_system_warnings
+    )
     service.resolve_system.assert_called_once_with('Unrecorded System')
     assert 'Unrecorded System' in rendered_labels[0].text
     assert 'solo database' in rendered_labels[0].text
