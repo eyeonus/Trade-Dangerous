@@ -1194,6 +1194,10 @@ class AppShell:
                     suggest_stations=partial(_safe_suggest_stations, self),
                     suggest_run_avoid=partial(_safe_suggest_run_avoid, self),
                     resolve_system=partial(_safe_resolve_system, self),
+                    data_mode=self.store.data_mode,
+                    database_search_failed=lambda: (
+                        self.search_database_error is not None
+                    ),
                 )
                 workspace.build()
             elif self.session.selected_command in {'buy', 'sell'}:

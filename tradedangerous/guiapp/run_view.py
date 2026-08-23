@@ -7,9 +7,26 @@ from typing import Any, Callable
 from nicegui import ui
 
 from .autocomplete import AutocompleteInput, build_system_autocomplete_input
-from .profiles import CommandDraft
+from .profiles import CommandDraft, DataMode
 from .shared_draft_helpers import DraftValueHelper
 from .shared_filter_view import build_shared_filter_section
+
+_MISSING_SYSTEM_MESSAGES: dict[DataMode | None, str] = {
+    'crowdsourced': (
+        'System "{system_name}" is not present in your Trade Dangerous '
+        'database. Run Import to update the crowdsourced data if the system '
+        'should be available.'
+    ),
+    'solo': (
+        'System "{system_name}" is not present in your solo database. Check '
+        'that your solo data source collected the system when you visited it. '
+        'EDMC + UpdateTD is the recommended and supported solo workflow.'
+    ),
+    None: (
+        'System "{system_name}" cannot be checked until the initial Import '
+        'setup is complete.'
+    ),
+}
 
 
 class RunWorkspace(DraftValueHelper):
@@ -26,6 +43,8 @@ class RunWorkspace(DraftValueHelper):
         suggest_stations: Callable[..., list[object]] | None = None,
         suggest_run_avoid: Callable[[str], list[object]] | None = None,
         resolve_system: Callable[[str], object | None] | None = None,
+        data_mode: DataMode | None = None,
+        database_search_failed: Callable[[], bool] | None = None,
     ) -> None:
         self.draft = draft
         self.on_changed = on_changed
@@ -35,8 +54,14 @@ class RunWorkspace(DraftValueHelper):
         self.suggest_stations = suggest_stations
         self.suggest_run_avoid = suggest_run_avoid
         self.resolve_system = resolve_system
+        self.data_mode = data_mode
+        self.database_search_failed = database_search_failed
         self.selected_start_system_id: int | None = None
         self.selected_end_system_id: int | None = None
+        self.missing_start_system_name: str | None = None
+        self.missing_end_system_name: str | None = None
+        self.start_system_warning_label = None
+        self.end_system_warning_label = None
         self.start_station_autocomplete = None
         self.end_station_autocomplete = None
         self.run_via_dialog = None
@@ -96,8 +121,71 @@ class RunWorkspace(DraftValueHelper):
             combined_key='ending',
             allow_bare_system=True,
         )
-        self.selected_start_system_id = self._resolve_run_system_id(start_system)
-        self.selected_end_system_id = self._resolve_run_system_id(end_system)
+        self.selected_start_system_id = self._resolve_route_system_id(
+            start_system,
+            missing_attr='missing_start_system_name',
+            warning_label_attr='start_system_warning_label',
+        )
+        self.selected_end_system_id = self._resolve_route_system_id(
+            end_system,
+            missing_attr='missing_end_system_name',
+            warning_label_attr='end_system_warning_label',
+        )
+
+    def _database_search_is_unavailable(self) -> bool:
+        return (
+            self.database_search_failed is not None
+            and self.database_search_failed()
+        )
+
+    def _update_missing_system_warning(
+        self,
+        system_name: str | None,
+        *,
+        missing_attr: str,
+        warning_label_attr: str,
+    ) -> None:
+        setattr(self, missing_attr, system_name)
+        label = getattr(self, warning_label_attr, None)
+        if label is None:
+            return
+        if system_name is None or self._database_search_is_unavailable():
+            label.text = ''
+            label.set_visibility(False)
+            return
+        message = _MISSING_SYSTEM_MESSAGES.get(
+            self.data_mode,
+            _MISSING_SYSTEM_MESSAGES[None],
+        )
+        label.text = message.format(system_name=system_name)
+        label.set_visibility(True)
+
+    def _clear_missing_system_warnings(self) -> None:
+        self._update_missing_system_warning(
+            None,
+            missing_attr='missing_start_system_name',
+            warning_label_attr='start_system_warning_label',
+        )
+        self._update_missing_system_warning(
+            None,
+            missing_attr='missing_end_system_name',
+            warning_label_attr='end_system_warning_label',
+        )
+
+    def _build_missing_system_warning(
+        self,
+        *,
+        missing_attr: str,
+        warning_label_attr: str,
+    ) -> None:
+        warning_label = ui.label('')
+        warning_label.classes('text-sm text-warning whitespace-pre-wrap')
+        setattr(self, warning_label_attr, warning_label)
+        self._update_missing_system_warning(
+            getattr(self, missing_attr),
+            missing_attr=missing_attr,
+            warning_label_attr=warning_label_attr,
+        )
 
     def _resolve_run_system_id(self, system_name: str | None) -> int | None:
         return self._resolve_suggestion_id(
@@ -105,6 +193,39 @@ class RunWorkspace(DraftValueHelper):
             resolver=self.resolve_system,
             id_attr='system_id',
         )
+
+    def _resolve_route_system_id(
+        self,
+        system_name: str | None,
+        *,
+        missing_attr: str,
+        warning_label_attr: str,
+    ) -> int | None:
+        cleaned = str(system_name or '').strip()
+        if cleaned == '' or self.resolve_system is None:
+            self._update_missing_system_warning(
+                None,
+                missing_attr=missing_attr,
+                warning_label_attr=warning_label_attr,
+            )
+            return None
+        system_id = self._resolve_run_system_id(cleaned)
+        if system_id is None:
+            if self._database_search_is_unavailable():
+                self._clear_missing_system_warnings()
+            else:
+                self._update_missing_system_warning(
+                    cleaned,
+                    missing_attr=missing_attr,
+                    warning_label_attr=warning_label_attr,
+                )
+            return None
+        self._update_missing_system_warning(
+            None,
+            missing_attr=missing_attr,
+            warning_label_attr=warning_label_attr,
+        )
+        return system_id
 
     def _run_system_value(
         self,
@@ -145,6 +266,8 @@ class RunWorkspace(DraftValueHelper):
         combined_key: str,
         selected_attr: str,
         station_autocomplete_attr: str,
+        missing_attr: str,
+        warning_label_attr: str,
     ) -> None:
         cleaned = str(value or '').strip()
         current = self._run_system_value(
@@ -157,6 +280,11 @@ class RunWorkspace(DraftValueHelper):
             self.draft.main_values.pop(station_key, None)
             self.draft.main_values.pop(combined_key, None)
             setattr(self, selected_attr, None)
+            self._update_missing_system_warning(
+                None,
+                missing_attr=missing_attr,
+                warning_label_attr=warning_label_attr,
+            )
             station_autocomplete = getattr(self, station_autocomplete_attr, None)
             if station_autocomplete is not None:
                 station_autocomplete.clear()
@@ -168,7 +296,15 @@ class RunWorkspace(DraftValueHelper):
             station_autocomplete = getattr(self, station_autocomplete_attr, None)
             if station_autocomplete is not None:
                 station_autocomplete.clear()
-        setattr(self, selected_attr, self._resolve_run_system_id(cleaned))
+        setattr(
+            self,
+            selected_attr,
+            self._resolve_route_system_id(
+                cleaned,
+                missing_attr=missing_attr,
+                warning_label_attr=warning_label_attr,
+            ),
+        )
         self._sync_station_pair_value(
             self.draft.main_values,
             system_key=system_key,
@@ -185,6 +321,24 @@ class RunWorkspace(DraftValueHelper):
         selected_attr: str,
     ) -> None:
         setattr(self, selected_attr, getattr(suggestion, 'system_id', None))
+
+    def _set_run_route_system_selected(
+        self,
+        suggestion: object,
+        *,
+        selected_attr: str,
+        missing_attr: str,
+        warning_label_attr: str,
+    ) -> None:
+        self._set_run_system_selected(
+            suggestion,
+            selected_attr=selected_attr,
+        )
+        self._update_missing_system_warning(
+            None,
+            missing_attr=missing_attr,
+            warning_label_attr=warning_label_attr,
+        )
 
     def _set_run_station_text(
         self,
@@ -351,6 +505,8 @@ class RunWorkspace(DraftValueHelper):
         combined_key: str,
         selected_attr: str,
         station_autocomplete_attr: str,
+        missing_attr: str,
+        warning_label_attr: str,
         system_tooltip: str,
         station_tooltip: str,
     ) -> None:
@@ -365,39 +521,52 @@ class RunWorkspace(DraftValueHelper):
             combined_key=combined_key,
         )
 
-        if self.suggest_systems is None:
-            ui.input(
-                system_label,
-                value=system_value,
-                on_change=lambda event: self._set_run_system_text(
-                    event.value,
-                    system_key=system_key,
-                    station_key=station_key,
-                    combined_key=combined_key,
-                    selected_attr=selected_attr,
-                    station_autocomplete_attr=station_autocomplete_attr,
-                ),
-            ).classes('min-w-0 w-full').tooltip(system_tooltip)
-        else:
-            AutocompleteInput(
-                label=system_label,
-                value=system_value,
-                fetch_suggestions=self.suggest_systems,
-                on_text_changed=lambda value: self._set_run_system_text(
-                    value,
-                    system_key=system_key,
-                    station_key=station_key,
-                    combined_key=combined_key,
-                    selected_attr=selected_attr,
-                    station_autocomplete_attr=station_autocomplete_attr,
-                ),
-                on_selected=lambda suggestion: self._set_run_system_selected(
-                    suggestion,
-                    selected_attr=selected_attr,
-                ),
-                tooltip=system_tooltip,
-                input_classes='min-w-0 w-full',
-            ).build()
+        with ui.column().classes('min-w-0 w-full gap-1'):
+            if self.suggest_systems is None:
+                ui.input(
+                    system_label,
+                    value=system_value,
+                    on_change=lambda event: self._set_run_system_text(
+                        event.value,
+                        system_key=system_key,
+                        station_key=station_key,
+                        combined_key=combined_key,
+                        selected_attr=selected_attr,
+                        station_autocomplete_attr=station_autocomplete_attr,
+                        missing_attr=missing_attr,
+                        warning_label_attr=warning_label_attr,
+                    ),
+                ).classes('w-full').tooltip(system_tooltip)
+            else:
+                AutocompleteInput(
+                    label=system_label,
+                    value=system_value,
+                    fetch_suggestions=self.suggest_systems,
+                    on_text_changed=lambda value: self._set_run_system_text(
+                        value,
+                        system_key=system_key,
+                        station_key=station_key,
+                        combined_key=combined_key,
+                        selected_attr=selected_attr,
+                        station_autocomplete_attr=station_autocomplete_attr,
+                        missing_attr=missing_attr,
+                        warning_label_attr=warning_label_attr,
+                    ),
+                    on_selected=lambda suggestion: (
+                        self._set_run_route_system_selected(
+                            suggestion,
+                            selected_attr=selected_attr,
+                            missing_attr=missing_attr,
+                            warning_label_attr=warning_label_attr,
+                        )
+                    ),
+                    tooltip=system_tooltip,
+                    input_classes='w-full',
+                ).build()
+            self._build_missing_system_warning(
+                missing_attr=missing_attr,
+                warning_label_attr=warning_label_attr,
+            )
 
         if self.suggest_stations is None:
             ui.input(
@@ -451,6 +620,8 @@ class RunWorkspace(DraftValueHelper):
                     combined_key='starting',
                     selected_attr='selected_start_system_id',
                     station_autocomplete_attr='start_station_autocomplete',
+                    missing_attr='missing_start_system_name',
+                    warning_label_attr='start_system_warning_label',
                     system_tooltip='System containing your starting station.',
                     station_tooltip='Station you are starting from.',
                 )
@@ -465,6 +636,8 @@ class RunWorkspace(DraftValueHelper):
                     combined_key='ending',
                     selected_attr='selected_end_system_id',
                     station_autocomplete_attr='end_station_autocomplete',
+                    missing_attr='missing_end_system_name',
+                    warning_label_attr='end_system_warning_label',
                     system_tooltip='System containing your destination station.',
                     station_tooltip='Station you are heading to.',
                 )
