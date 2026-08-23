@@ -63,6 +63,6 @@ If you want to give Trade Dangerous a try, look no further than the [Setup Guide
 
 Curious about programming with Trade Dangerous/Python? Take the [Python Quick Peek](https://github.com/eyeonus/Trade-Dangerous/wiki/Python-Quick-Peek "Python Quick Peek").
 
-# AI-assisted development disclosure
+### AI-assisted development disclosure
 
 Trade Dangerous has been developed partly by humans working without AI assistance and partly with AI assistance under human direction and review. We disclose this so users and contributors can make an informed choice about AI-assisted software.
