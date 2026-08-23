@@ -1,4 +1,39 @@
-from tradedangerous.guiapp.profiles import CommandDraft, GuiStore, load_gui_store, make_profile_id, save_gui_store
+import json
+
+from tradedangerous.guiapp.profiles import (
+    CommandDraft,
+    GuiStore,
+    load_gui_store,
+    make_profile_id,
+    save_gui_store,
+)
+
+
+def test_guistore_default_data_mode_is_unset():
+    assert GuiStore.default().data_mode is None
+
+
+def test_existing_state_without_data_mode_loads_as_crowdsourced(tmp_path):
+    payload = GuiStore.default().to_dict()
+    payload.pop('data_mode')
+    path = tmp_path / 'gui-state.json'
+    path.write_text(json.dumps(payload), encoding='utf-8')
+
+    loaded = load_gui_store(path)
+
+    assert loaded.data_mode == 'crowdsourced'
+
+
+def test_explicit_data_modes_round_trip(tmp_path):
+    for data_mode in ('crowdsourced', 'solo'):
+        store = GuiStore.default()
+        store.data_mode = data_mode
+        path = tmp_path / f'{data_mode}-gui-state.json'
+
+        save_gui_store(store, path)
+        loaded = load_gui_store(path)
+
+        assert loaded.data_mode == data_mode
 
 def test_make_profile_id_slugifies_and_deduplicates():
     existing = {'cobra-mk-iii', 'cobra-mk-iii-2'}
