@@ -37,6 +37,7 @@ test-data/
 *.sublime-project
 *.sublime-workspace
 .ipynb_checkpoints
+/AGENTS.md
 
 # --- OS junk ---
 .DS_Store
