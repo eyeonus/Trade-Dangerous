@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Callable
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -37,7 +39,7 @@ from . import native_bridge
 from .results_view import render_command_results
 from .session import ExecutionStatus, SessionState
 from .td_exec import GuiCommandRequest, TdCommandProcess, TdExecutor
-from .gui_search import get_gui_search_service
+from .gui_search import GuiSearchDatabaseError, get_gui_search_service
 from tradedangerous import TradeException
 
 COMMAND_OPTIONS: dict[str, str] = {
@@ -52,6 +54,126 @@ COMMAND_OPTIONS: dict[str, str] = {
     'import': 'Import',
     'settings': 'Settings',
 }
+
+_SEARCH_DATABASE_ERROR_MESSAGES: dict[str | None, str] = {
+    'crowdsourced': (
+        'Trade Dangerous cannot currently use its database. Open Import to '
+        'initialise or rebuild the crowdsourced data before using '
+        'database-backed commands.'
+    ),
+    'solo': (
+        'Trade Dangerous cannot currently use the solo database. Open Import '
+        'and use Solo to initialise or rebuild the required database '
+        'structure, then check your solo data source if necessary. EDMC + '
+        'UpdateTD is the recommended and supported solo workflow.'
+    ),
+    None: (
+        'Trade Dangerous cannot currently use its database. Complete the '
+        'initial Import setup before using database-backed commands.'
+    ),
+}
+
+def _safe_gui_search(
+    shell: 'AppShell',
+    search: Callable[..., Any],
+    fallback: Any,
+    *args: Any,
+    **kwargs: Any,
+) -> Any:
+    try:
+        result = search(*args, **kwargs)
+    except GuiSearchDatabaseError as exc:
+        if shell.search_database_error is None:
+            shell.search_database_error = exc
+            label = getattr(shell, 'search_database_error_label', None)
+            if label is not None:
+                label.text = _SEARCH_DATABASE_ERROR_MESSAGES.get(
+                    shell.store.data_mode,
+                    _SEARCH_DATABASE_ERROR_MESSAGES[None],
+                )
+                label.set_visibility(True)
+        return fallback
+    if shell.search_database_error is not None:
+        shell.search_database_error = None
+        label = getattr(shell, 'search_database_error_label', None)
+        if label is not None:
+            label.set_visibility(False)
+    return result
+
+def _safe_suggest_systems(
+    shell: 'AppShell',
+    text: str,
+    limit: int = 10,
+) -> list[Any]:
+    return _safe_gui_search(
+        shell,
+        shell.search_service.suggest_systems,
+        [],
+        text,
+        limit=limit,
+    )
+
+def _safe_resolve_system(shell: 'AppShell', text: str) -> Any | None:
+    return _safe_gui_search(
+        shell,
+        shell.search_service.resolve_system,
+        None,
+        text,
+    )
+
+def _safe_suggest_items(
+    shell: 'AppShell',
+    text: str,
+    limit: int = 10,
+) -> list[Any]:
+    return _safe_gui_search(
+        shell,
+        shell.search_service.suggest_items,
+        [],
+        text,
+        limit=limit,
+    )
+
+def _safe_suggest_buy_search(
+    shell: 'AppShell',
+    text: str,
+    limit: int = 10,
+) -> list[Any]:
+    return _safe_gui_search(
+        shell,
+        shell.search_service.suggest_buy_search,
+        [],
+        text,
+        limit=limit,
+    )
+
+def _safe_suggest_run_avoid(
+    shell: 'AppShell',
+    text: str,
+    limit: int = 10,
+) -> list[Any]:
+    return _safe_gui_search(
+        shell,
+        shell.search_service.suggest_run_avoid,
+        [],
+        text,
+        limit=limit,
+    )
+
+def _safe_suggest_stations(
+    shell: 'AppShell',
+    text: str,
+    system_id: int | None = None,
+    limit: int = 10,
+) -> list[Any]:
+    return _safe_gui_search(
+        shell,
+        shell.search_service.suggest_stations,
+        [],
+        text,
+        limit=limit,
+        system_id=system_id,
+    )
 
 class AppShell:
     """Own the long-lived widgets and coordinate session/store updates."""
@@ -70,6 +192,7 @@ class AppShell:
             self.session.set_command(self.store, 'import')
         self.executor = TdExecutor()
         self.search_service = get_gui_search_service()
+        self.search_database_error: GuiSearchDatabaseError | None = None
         self.active_command_process: TdCommandProcess | None = None
         self.active_command_task: asyncio.Task | None = None
         
@@ -94,6 +217,7 @@ class AppShell:
         self.body_query = None
         self.command_switch_dialog = None
         self.command_switch_message = None
+        self.search_database_error_label = None
         # GUI-native Run checklist stepper; its persistent dialog is built once
         # in build() so a results-pane refresh never destroys it.
         self.run_checklist = RunChecklist()
@@ -121,6 +245,12 @@ class AppShell:
         )
         with self.root_container:
             self._build_top_bar()
+            self.search_database_error_label = ui.label('').classes(
+                'w-full p-3 text-sm text-warning whitespace-pre-wrap'
+            ).style(
+                'border: 1px solid #f07b05; border-radius: 0.5rem;'
+            )
+            self.search_database_error_label.set_visibility(False)
             with ui.splitter(value=27).classes(
                 'w-full min-h-0 flex-1 overflow-hidden'
             ) as splitter:
@@ -1060,20 +1190,10 @@ class AppShell:
                     on_changed=self._on_run_draft_changed,
                     on_execute=self._on_execute_command,
                     on_copy_from_profile=self._on_copy_from_profile,
-                    suggest_systems=lambda text: self.search_service.suggest_systems(
-                        text,
-                        limit=10,
-                    ),
-                    suggest_stations=lambda text, system_id=None: self.search_service.suggest_stations(
-                        text,
-                        limit=10,
-                        system_id=system_id,
-                    ),
-                    suggest_run_avoid=lambda text: self.search_service.suggest_run_avoid(
-                        text,
-                        limit=10,
-                    ),
-                    resolve_system=self.search_service.resolve_system,
+                    suggest_systems=partial(_safe_suggest_systems, self),
+                    suggest_stations=partial(_safe_suggest_stations, self),
+                    suggest_run_avoid=partial(_safe_suggest_run_avoid, self),
+                    resolve_system=partial(_safe_resolve_system, self),
                 )
                 workspace.build()
             elif self.session.selected_command in {'buy', 'sell'}:
@@ -1082,17 +1202,11 @@ class AppShell:
                     self.session.draft,
                     on_changed=self._on_run_draft_changed,
                     on_execute=self._on_execute_command,
-                    suggest_systems=lambda text: self.search_service.suggest_systems(
-                        text,
-                        limit=10,
-                    ),
-                    suggest_items=lambda text: self.search_service.suggest_items(
-                        text,
-                        limit=10,
-                    ),
-                    suggest_buy_search=lambda text: self.search_service.suggest_buy_search(
-                        text,
-                        limit=10,
+                    suggest_systems=partial(_safe_suggest_systems, self),
+                    suggest_items=partial(_safe_suggest_items, self),
+                    suggest_buy_search=partial(
+                        _safe_suggest_buy_search,
+                        self,
                     ),
                 )
                 workspace.build()
@@ -1101,16 +1215,9 @@ class AppShell:
                     self.session.draft,
                     on_changed=self._on_run_draft_changed,
                     on_execute=self._on_execute_command,
-                    suggest_systems=lambda text: self.search_service.suggest_systems(
-                        text,
-                        limit=10,
-                    ),
-                    suggest_stations=lambda text, system_id=None: self.search_service.suggest_stations(
-                        text,
-                        limit=10,
-                        system_id=system_id,
-                    ),
-                    resolve_system=self.search_service.resolve_system,
+                    suggest_systems=partial(_safe_suggest_systems, self),
+                    suggest_stations=partial(_safe_suggest_stations, self),
+                    resolve_system=partial(_safe_resolve_system, self),
                 )
                 workspace.build()
             elif self.session.selected_command == 'local':
@@ -1118,10 +1225,7 @@ class AppShell:
                     self.session.draft,
                     on_changed=self._on_run_draft_changed,
                     on_execute=self._on_execute_command,
-                    suggest_systems=lambda text: self.search_service.suggest_systems(
-                        text,
-                        limit=10,
-                    ),
+                    suggest_systems=partial(_safe_suggest_systems, self),
                 )
                 workspace.build()
             elif self.session.selected_command == 'market':
@@ -1129,22 +1233,17 @@ class AppShell:
                     self.session.draft,
                     on_changed=self._on_run_draft_changed,
                     on_execute=self._on_execute_command,
-                    suggest_systems=lambda text: self.search_service.suggest_systems(
-                        text,
-                        limit=10,
-                    ),
+                    suggest_systems=partial(_safe_suggest_systems, self),
                     suggest_stations=lambda text, system_id=None: (
                         []
                         if system_id is None
-                        else self.search_service.suggest_stations(
+                        else _safe_suggest_stations(
+                            self,
                             text,
-                            limit=10,
                             system_id=system_id,
                         )
                     ),
-                    resolve_system=lambda text: self.search_service.resolve_system(
-                        text,
-                    ),
+                    resolve_system=partial(_safe_resolve_system, self),
                 )
                 workspace.build()
             elif self.session.selected_command == 'nav':
@@ -1152,10 +1251,7 @@ class AppShell:
                     self.session.draft,
                     on_changed=self._on_run_draft_changed,
                     on_execute=self._on_execute_command,
-                    suggest_systems=lambda text: self.search_service.suggest_systems(
-                        text,
-                        limit=10,
-                    ),
+                    suggest_systems=partial(_safe_suggest_systems, self),
                 )
                 workspace.build()
             elif self.session.selected_command == 'olddata':
@@ -1163,10 +1259,7 @@ class AppShell:
                     self.session.draft,
                     on_changed=self._on_run_draft_changed,
                     on_execute=self._on_execute_command,
-                    suggest_systems=lambda text: self.search_service.suggest_systems(
-                        text,
-                        limit=10,
-                    ),
+                    suggest_systems=partial(_safe_suggest_systems, self),
                 )
                 workspace.build()
             elif self.session.selected_command == 'settings':
