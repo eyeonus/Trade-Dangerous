@@ -790,6 +790,7 @@ class AppShell:
                 refresh_ui=self._refresh_ui_if_alive,
                 window_close_state=self.window_close_state,
             )
+            self._persist_initial_import_data_mode(request)
             return
         
         if self._has_pending_command_process():
@@ -883,6 +884,20 @@ class AppShell:
         self.active_command_task = asyncio.create_task(
             self._monitor_command_process(request=request, runner=runner)
         )
+
+    def _persist_initial_import_data_mode(
+        self,
+        request: GuiCommandRequest,
+    ) -> None:
+        if self.store.data_mode is not None:
+            return
+        if self.session.execution.status is not ExecutionStatus.SUCCEEDED:
+            return
+
+        self.store.data_mode = (
+            'solo' if request.main_values.get('solo') else 'crowdsourced'
+        )
+        save_gui_store(self.store)
     
     # The shell polls one child process from asyncio rather than awaiting a
     # thread-pool future. That keeps the UI responsive while still letting us
