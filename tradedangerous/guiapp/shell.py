@@ -928,19 +928,25 @@ class AppShell:
             if consume_one_shot_import_flags(draft=self.session.draft):
                 save_gui_store(self.store)
                 self._refresh_ui()
-            await run_import_execution(
-                session=self.session,
-                request=request,
-                refresh_ui=self._refresh_ui_if_alive,
-                window_close_state=self.window_close_state,
-            )
-            self._persist_initial_import_data_mode(request)
-            command_select = getattr(self, 'command_select', None)
-            if command_select is not None:
-                if self.store.data_mode is None:
-                    command_select.disable()
-                else:
-                    command_select.enable()
+            self._refresh_import_onboarding(running=True)
+            try:
+                await run_import_execution(
+                    session=self.session,
+                    request=request,
+                    refresh_ui=self._refresh_ui_if_alive,
+                    window_close_state=self.window_close_state,
+                )
+                self._persist_initial_import_data_mode(request)
+                command_select = getattr(self, 'command_select', None)
+                if command_select is not None:
+                    if self.store.data_mode is None:
+                        command_select.disable()
+                    else:
+                        command_select.enable()
+            finally:
+                self._refresh_import_onboarding(
+                    running=is_import_running(session=self.session),
+                )
             return
         
         if self._has_pending_command_process():
@@ -1048,6 +1054,15 @@ class AppShell:
             'solo' if request.main_values.get('solo') else 'crowdsourced'
         )
         save_gui_store(self.store)
+
+    def _refresh_import_onboarding(self, *, running: bool) -> None:
+        workspace = getattr(self, 'import_workspace', None)
+        if workspace is None:
+            return
+        workspace.refresh_onboarding(
+            initial_setup=self.store.data_mode is None,
+            running=running,
+        )
     
     # The shell polls one child process from asyncio rather than awaiting a
     # thread-pool future. That keeps the UI responsive while still letting us

@@ -80,43 +80,43 @@ class ImportWorkspace:
         with ui.column().classes('w-full gap-2').style(
             'padding: 0.25rem 0.5rem 0.5rem 0.25rem;'
         ):
-            if self.initial_setup:
-                with ui.card().classes('w-full gap-2'):
-                    ui.label('Choose your data workflow').classes('text-lg')
-                    ui.label(
-                        'Trade Dangerous needs an initial Import before its '
-                        'database-backed commands are available. Use the '
-                        'existing Solo option below to choose a workflow, '
-                        'then select Start Import.'
-                    ).classes('text-sm text-gray-700 whitespace-pre-wrap')
-                    ui.label('Crowdsourced').classes('text-weight-medium')
-                    ui.label(
-                        'Leave Solo unticked. The normal Trade Dangerous '
-                        'Import initialises and populates the database with '
-                        'the standard crowdsourced data.'
-                    ).classes('text-sm text-gray-700 whitespace-pre-wrap')
-                    ui.label('Solo').classes('text-weight-medium')
-                    ui.label(
-                        'Tick Solo if you maintain your own observed market '
-                        'data. Import creates the schema and base data without '
-                        'downloading crowdsourced market listings or '
-                        'ship-vendor data.'
-                    ).classes('text-sm text-gray-700 whitespace-pre-wrap')
-                    ui.label(
-                        'I maintain my own solo data with EDMC + UpdateTD '
-                        '(or another data source).'
-                    ).classes('text-sm text-gray-700 whitespace-pre-wrap')
-                    ui.link(
-                        'EDMC + UpdateTD',
-                        UPDATE_TD_URL,
-                        new_tab=True,
-                    ).classes('text-sm')
-                    ui.label(
-                        'EDMC + UpdateTD is the recommended and supported '
-                        'workflow for ongoing solo data collection. Another '
-                        'data source may be used, but is not specifically '
-                        'supported by Trade Dangerous.'
-                    ).classes('text-sm text-gray-700 whitespace-pre-wrap')
+            self.onboarding_card = ui.card().classes('w-full gap-2')
+            with self.onboarding_card:
+                ui.label('Choose your data workflow').classes('text-lg')
+                ui.label(
+                    'Trade Dangerous needs an initial Import before its '
+                    'database-backed commands are available. Use the '
+                    'existing Solo option below to choose a workflow, '
+                    'then select Start Import.'
+                ).classes('text-sm text-gray-700 whitespace-pre-wrap')
+                ui.label('Crowdsourced').classes('text-weight-medium')
+                ui.label(
+                    'Leave Solo unticked. The normal Trade Dangerous '
+                    'Import initialises and populates the database with '
+                    'the standard crowdsourced data.'
+                ).classes('text-sm text-gray-700 whitespace-pre-wrap')
+                ui.label('Solo').classes('text-weight-medium')
+                ui.label(
+                    'Tick Solo if you maintain your own observed market '
+                    'data. Import creates the schema and base data without '
+                    'downloading crowdsourced market listings or '
+                    'ship-vendor data.'
+                ).classes('text-sm text-gray-700 whitespace-pre-wrap')
+                ui.label(
+                    'I maintain my own solo data with EDMC + UpdateTD '
+                    '(or another data source).'
+                ).classes('text-sm text-gray-700 whitespace-pre-wrap')
+                ui.link(
+                    'EDMC + UpdateTD',
+                    UPDATE_TD_URL,
+                    new_tab=True,
+                ).classes('text-sm')
+                ui.label(
+                    'EDMC + UpdateTD is the recommended and supported '
+                    'workflow for ongoing solo data collection. Another '
+                    'data source may be used, but is not specifically '
+                    'supported by Trade Dangerous.'
+                ).classes('text-sm text-gray-700 whitespace-pre-wrap')
             with ui.row().classes('w-full gap-2 items-center'):
                 self.start_button = ui.button(
                     'Start Import',
@@ -176,6 +176,10 @@ class ImportWorkspace:
                     )
         
         self.refresh(self.execution)
+        self.refresh_onboarding(
+            initial_setup=self.initial_setup,
+            running=self.execution.status == ExecutionStatus.RUNNING,
+        )
     
     def _build_option_group(
         self,
@@ -291,6 +295,15 @@ class ImportWorkspace:
             execution.error_message or '',
         )
         self.log_label.text = self._log_text(execution)
+
+    def refresh_onboarding(
+        self,
+        *,
+        initial_setup: bool,
+        running: bool,
+    ) -> None:
+        self.initial_setup = initial_setup
+        self.onboarding_card.set_visibility(initial_setup and not running)
     
     @staticmethod
     def _set_optional_label(label: Any, text: str) -> None:
