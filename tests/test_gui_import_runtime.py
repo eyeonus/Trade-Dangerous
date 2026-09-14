@@ -3,6 +3,7 @@ from queue import Empty
 from types import SimpleNamespace
 
 import tradedangerous.guiapp.import_runtime as import_runtime
+import tradedangerous.guiapp.shell as shell_module
 from tradedangerous.guiapp.import_runtime import (
     ImportCommandProcess,
     ImportMonitor,
@@ -16,6 +17,7 @@ from tradedangerous.guiapp.import_runtime import (
 )
 from tradedangerous.guiapp.profiles import CommandDraft, GuiStore
 from tradedangerous.guiapp.session import ExecutionStatus, SessionState
+from tradedangerous.guiapp.shell import AppShell
 from tradedangerous.guiapp.td_exec import GuiCommandResult
 
 class _Runner:
@@ -78,6 +80,60 @@ class _ImportRunner:
     
     def close(self):
         return None
+
+def _run_import_mode_case(
+    monkeypatch,
+    *,
+    data_mode,
+    request_solo,
+    final_status,
+    draft_solo_after_start=None,
+):
+    store = GuiStore.default()
+    store.data_mode = data_mode
+    store.selected_command = 'import'
+    store.drafts['import'] = CommandDraft(
+        main_values={'solo': True} if request_solo else {},
+    )
+    session = SessionState.from_store(store)
+    shell = AppShell.__new__(AppShell)
+    shell.store = store
+    shell.session = session
+    shell.window_close_state = None
+    executed_requests = []
+    saved_modes = []
+
+    async def _fake_run_import_execution(
+        *,
+        session,
+        request,
+        refresh_ui,
+        window_close_state,
+    ):
+        executed_requests.append(request)
+        if draft_solo_after_start is True:
+            session.draft.main_values['solo'] = True
+        elif draft_solo_after_start is False:
+            session.draft.main_values.pop('solo', None)
+        session.set_execution(
+            status=final_status,
+            active_command='import',
+        )
+
+    monkeypatch.setattr(
+        shell_module,
+        'run_import_execution',
+        _fake_run_import_execution,
+    )
+    monkeypatch.setattr(
+        shell_module,
+        'save_gui_store',
+        lambda current_store: saved_modes.append(current_store.data_mode),
+    )
+
+    asyncio.run(shell._on_execute_command())
+
+    return store, executed_requests[0], saved_modes
 
 def test_build_import_request_copies_draft_fields():
     draft = CommandDraft(
@@ -184,3 +240,74 @@ def test_run_import_execution_clears_native_close_state_on_finished_before_resul
         ('mark_running', 'import', 'import', 4321),
         ('clear',),
     ]
+
+def test_initial_successful_normal_import_establishes_crowdsourced(monkeypatch):
+    store, request, saved_modes = _run_import_mode_case(
+        monkeypatch,
+        data_mode=None,
+        request_solo=False,
+        final_status=ExecutionStatus.SUCCEEDED,
+    )
+
+    assert request.main_values.get('solo') is None
+    assert store.data_mode == 'crowdsourced'
+    assert saved_modes == ['crowdsourced']
+
+def test_initial_successful_solo_import_establishes_solo(monkeypatch):
+    store, request, saved_modes = _run_import_mode_case(
+        monkeypatch,
+        data_mode=None,
+        request_solo=True,
+        final_status=ExecutionStatus.SUCCEEDED,
+    )
+
+    assert request.main_values['solo'] is True
+    assert store.data_mode == 'solo'
+    assert saved_modes == ['solo']
+
+def test_initial_failed_import_leaves_data_mode_unset(monkeypatch):
+    store, _request, saved_modes = _run_import_mode_case(
+        monkeypatch,
+        data_mode=None,
+        request_solo=False,
+        final_status=ExecutionStatus.FAILED,
+    )
+
+    assert store.data_mode is None
+    assert saved_modes == []
+
+def test_later_solo_import_does_not_change_crowdsourced_mode(monkeypatch):
+    store, _request, saved_modes = _run_import_mode_case(
+        monkeypatch,
+        data_mode='crowdsourced',
+        request_solo=True,
+        final_status=ExecutionStatus.SUCCEEDED,
+    )
+
+    assert store.data_mode == 'crowdsourced'
+    assert saved_modes == []
+
+def test_later_normal_import_does_not_change_solo_mode(monkeypatch):
+    store, _request, saved_modes = _run_import_mode_case(
+        monkeypatch,
+        data_mode='solo',
+        request_solo=False,
+        final_status=ExecutionStatus.SUCCEEDED,
+    )
+
+    assert store.data_mode == 'solo'
+    assert saved_modes == []
+
+def test_initial_import_mode_uses_request_snapshot(monkeypatch):
+    store, request, saved_modes = _run_import_mode_case(
+        monkeypatch,
+        data_mode=None,
+        request_solo=False,
+        final_status=ExecutionStatus.SUCCEEDED,
+        draft_solo_after_start=True,
+    )
+
+    assert request.main_values.get('solo') is None
+    assert store.drafts['import'].main_values['solo'] is True
+    assert store.data_mode == 'crowdsourced'
+    assert saved_modes == ['crowdsourced']

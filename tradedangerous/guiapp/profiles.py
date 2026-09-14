@@ -7,7 +7,7 @@ import json
 import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from tradedangerous.db.paths import resolve_data_dir, resolve_db_config_path
 
@@ -21,6 +21,7 @@ _IMPORT_TRANSIENT_FLAGS = frozenset({
     'optimize',
     'force',
 })
+DataMode = Literal['crowdsourced', 'solo']
 
 
 def _serialize_command_draft(command: str, draft: 'CommandDraft') -> dict[str, Any]:
@@ -44,6 +45,15 @@ def _coerce_launcher_port(value: Any) -> int | None:
     if port < LAUNCHER_PORT_MIN or port > LAUNCHER_PORT_MAX:
         return None
     return port
+
+
+def _load_data_mode(data: dict[str, Any]) -> DataMode | None:
+    if 'data_mode' not in data:
+        return 'crowdsourced'
+    value = data.get('data_mode')
+    if value is None or value in ('crowdsourced', 'solo'):
+        return value
+    return 'crowdsourced'
 
 @dataclass(slots=True)
 class GlobalSettings:
@@ -126,6 +136,7 @@ class GuiStore:
     """Persisted GUI state loaded from and saved to the JSON sidecar file."""
     
     schema_version: int = SCHEMA_VERSION
+    data_mode: DataMode | None = None
     launcher_port: int | None = None
     # Optional override for the Elite Dangerous journal directory. Blank/None
     # means "auto", preserving the CLI's normal env-var/OS-default discovery.
@@ -146,6 +157,7 @@ class GuiStore:
             ship_name='Ship 1',
         )
         return cls(
+            data_mode=None,
             selected_profile_id=default_profile.profile_id,
             selected_command='run',
             profiles=[default_profile],
@@ -157,6 +169,7 @@ class GuiStore:
     def from_dict(cls, data: dict[str, Any]) -> 'GuiStore':
         store = cls(
             schema_version=int(data.get('schema_version') or SCHEMA_VERSION),
+            data_mode=_load_data_mode(data),
             launcher_port=_coerce_launcher_port(data.get('launcher_port')),
             journal_dir=(data.get('journal_dir') or None),
             selected_profile_id=data.get('selected_profile_id'),
@@ -178,6 +191,7 @@ class GuiStore:
     def to_dict(self) -> dict[str, Any]:
         return {
             'schema_version': self.schema_version,
+            'data_mode': self.data_mode,
             'launcher_port': self.launcher_port,
             'journal_dir': self.journal_dir,
             'selected_profile_id': self.selected_profile_id,
