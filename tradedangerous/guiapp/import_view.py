@@ -17,9 +17,9 @@ IMPORT_HELP_ROWS: tuple[tuple[str, str], ...] = (
     ),
     (
         'Solo',
-        'Do not download crowdsourced market listings or ship-vendor data. '
-        'On first setup, this still creates the database schema and base data. '
-        'Solo overrides All and Clean.',
+        'Create the database schema and import core system, station and '
+        'reference data, but do not download crowdsourced market listings '
+        'or ship-vendor data. Solo overrides All and Clean.',
     ),
     ('Purge', 'Remove empty systems that previously had fleet carriers.'),
     (
@@ -98,8 +98,9 @@ class ImportWorkspace:
                 ui.label('Solo').classes('text-weight-medium')
                 ui.label(
                     'Tick Solo if you maintain your own observed market '
-                    'data. Import creates the schema and base data without '
-                    'downloading crowdsourced market listings or '
+                    'data. Initial Import creates the database schema and '
+                    'imports core system, station and reference data, but '
+                    'does not download crowdsourced market listings or '
                     'ship-vendor data.'
                 ).classes('text-sm text-gray-700 whitespace-pre-wrap')
                 ui.label(

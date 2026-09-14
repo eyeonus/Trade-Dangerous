@@ -11,20 +11,23 @@ from .profiles import CommandDraft, DataMode
 from .shared_draft_helpers import DraftValueHelper
 from .shared_filter_view import build_shared_filter_section
 
-_MISSING_SYSTEM_MESSAGES: dict[DataMode | None, str] = {
+_MISSING_SYSTEM_MESSAGE = 'System "{system_name}" not found.'
+
+_MISSING_SYSTEM_HELP_MESSAGES: dict[DataMode | None, str] = {
     'crowdsourced': (
-        'System "{system_name}" is not present in your Trade Dangerous '
-        'database. Run Import to update the crowdsourced data if the system '
-        'should be available.'
+        'This system is not present in your Trade Dangerous database. '
+        'If you expect it to be available, run Import to refresh the '
+        'crowdsourced data.'
     ),
     'solo': (
-        'System "{system_name}" is not present in your solo database. Check '
-        'that your solo data source collected the system when you visited it. '
-        'EDMC + UpdateTD is the recommended and supported solo workflow.'
+        'This system is not present in your solo database. '
+        'If you expect it to be available, update your solo data and try '
+        'again. EDMC + UpdateTD is the recommended and supported solo '
+        'workflow.'
     ),
     None: (
-        'System "{system_name}" cannot be checked until the initial Import '
-        'setup is complete.'
+        'This system cannot be checked until the initial Import setup is '
+        'complete.'
     ),
 }
 
@@ -158,19 +161,18 @@ class RunWorkspace(DraftValueHelper):
         warning_label_attr: str,
     ) -> None:
         label = getattr(self, warning_label_attr, None)
-        if label is None:
+        row = getattr(self, f'{warning_label_attr}_row', None)
+        if label is None or row is None:
             return
+
         system_name = getattr(self, missing_attr)
         if system_name is None or self._database_search_is_unavailable():
             label.text = ''
-            label.set_visibility(False)
+            row.set_visibility(False)
             return
-        message = _MISSING_SYSTEM_MESSAGES.get(
-            self.data_mode,
-            _MISSING_SYSTEM_MESSAGES[None],
-        )
-        label.text = message.format(system_name=system_name)
-        label.set_visibility(True)
+
+        label.text = _MISSING_SYSTEM_MESSAGE.format(system_name=system_name)
+        row.set_visibility(True)
 
     def _refresh_missing_system_warnings(self) -> None:
         self._refresh_missing_system_warning(
@@ -188,9 +190,27 @@ class RunWorkspace(DraftValueHelper):
         missing_attr: str,
         warning_label_attr: str,
     ) -> None:
-        warning_label = ui.label('')
-        warning_label.classes('text-sm text-warning whitespace-pre-wrap')
+        help_message = _MISSING_SYSTEM_HELP_MESSAGES.get(
+            self.data_mode,
+            _MISSING_SYSTEM_HELP_MESSAGES[None],
+        )
+        help_dialog = ui.dialog()
+        with help_dialog:
+            with ui.card().classes('gap-2'):
+                ui.label('System not found').classes('text-lg')
+                ui.label(help_message).classes(
+                    'text-sm text-gray-700 whitespace-pre-wrap'
+                )
+                ui.button('Close', on_click=help_dialog.close)
+
+        warning_row_attr = f'{warning_label_attr}_row'
+        with ui.row().classes('items-center gap-2') as warning_row:
+            warning_label = ui.label('')
+            warning_label.classes('text-sm text-warning')
+            ui.button('Help', on_click=help_dialog.open).props('dense')
+
         setattr(self, warning_label_attr, warning_label)
+        setattr(self, warning_row_attr, warning_row)
         self._refresh_missing_system_warning(
             missing_attr=missing_attr,
             warning_label_attr=warning_label_attr,
