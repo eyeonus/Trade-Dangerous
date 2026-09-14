@@ -2,6 +2,159 @@
 
 <!-- version list -->
 
+## v13.2.0 (2026-09-14)
+
+### Bug Fixes
+
+- **gui**: Clarify system and solo import guidance
+  ([`2ab325c`](https://github.com/eyeonus/Trade-Dangerous/commit/2ab325c90a967f2864a4e4512b7498d42b151980))
+
+- **gui**: Contain search database failures
+  ([`2ab325c`](https://github.com/eyeonus/Trade-Dangerous/commit/2ab325c90a967f2864a4e4512b7498d42b151980))
+
+- **gui**: Guide missing run systems
+  ([`2ab325c`](https://github.com/eyeonus/Trade-Dangerous/commit/2ab325c90a967f2864a4e4512b7498d42b151980))
+
+- **gui**: Hide onboarding during initial import
+  ([`2ab325c`](https://github.com/eyeonus/Trade-Dangerous/commit/2ab325c90a967f2864a4e4512b7498d42b151980))
+
+- **gui**: Preserve suppressed run warnings
+  ([`2ab325c`](https://github.com/eyeonus/Trade-Dangerous/commit/2ab325c90a967f2864a4e4512b7498d42b151980))
+
+### Chores
+
+- Ignore Codex instructions
+  ([`5b81ef8`](https://github.com/eyeonus/Trade-Dangerous/commit/5b81ef8ce9a55c763d5f2639581d966a14b090d0))
+
+- **deps**: Bump aiohttp from 3.14.1 to 3.14.3
+  ([#329](https://github.com/eyeonus/Trade-Dangerous/pull/329),
+  [`357ae1d`](https://github.com/eyeonus/Trade-Dangerous/commit/357ae1d273a0df58ce28ce604483aba140f18ae5))
+
+--- updated-dependencies: - dependency-name: aiohttp dependency-version: 3.14.3
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump cryptography from 48.0.1 to 50.0.0
+  ([#328](https://github.com/eyeonus/Trade-Dangerous/pull/328),
+  [`223eee6`](https://github.com/eyeonus/Trade-Dangerous/commit/223eee68a2c4d666758ffdd8c3305bf2d04ce218))
+
+Bumps [cryptography](https://github.com/pyca/cryptography) from 48.0.1 to 50.0.0. -
+  [Changelog](https://github.com/pyca/cryptography/blob/main/CHANGELOG.rst) -
+  [Commits](https://github.com/pyca/cryptography/compare/48.0.1...50.0.0)
+
+--- updated-dependencies: - dependency-name: cryptography dependency-version: 50.0.0
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump gitpython from 3.1.50 to 3.1.54
+  ([#326](https://github.com/eyeonus/Trade-Dangerous/pull/326),
+  [`069f1e8`](https://github.com/eyeonus/Trade-Dangerous/commit/069f1e8be12205d707a30bebfee1ce938b128df9))
+
+Bumps [gitpython](https://github.com/gitpython-developers/GitPython) from 3.1.50 to 3.1.54. -
+  [Release notes](https://github.com/gitpython-developers/GitPython/releases) -
+  [Changelog](https://github.com/gitpython-developers/GitPython/blob/main/CHANGES) -
+  [Commits](https://github.com/gitpython-developers/GitPython/compare/3.1.50...3.1.54)
+
+--- updated-dependencies: - dependency-name: gitpython dependency-version: 3.1.54
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump gitpython from 3.1.54 to 3.1.57
+  ([#327](https://github.com/eyeonus/Trade-Dangerous/pull/327),
+  [`077b883`](https://github.com/eyeonus/Trade-Dangerous/commit/077b883fcbe0ce2c20378548c4e1979281da49f7))
+
+Bumps [gitpython](https://github.com/gitpython-developers/GitPython) from 3.1.54 to 3.1.57. -
+  [Release notes](https://github.com/gitpython-developers/GitPython/releases) -
+  [Changelog](https://github.com/gitpython-developers/GitPython/blob/main/CHANGES) -
+  [Commits](https://github.com/gitpython-developers/GitPython/compare/3.1.54...3.1.57)
+
+--- updated-dependencies: - dependency-name: gitpython dependency-version: 3.1.57
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump gitpython from 3.1.57 to 3.1.58
+  ([#330](https://github.com/eyeonus/Trade-Dangerous/pull/330),
+  [`77f5f4b`](https://github.com/eyeonus/Trade-Dangerous/commit/77f5f4b8c466268d16a8379b7d1516e62832e681))
+
+Bumps [gitpython](https://github.com/gitpython-developers/GitPython) from 3.1.57 to 3.1.58. -
+  [Release notes](https://github.com/gitpython-developers/GitPython/releases) -
+  [Changelog](https://github.com/gitpython-developers/GitPython/blob/main/CHANGES) -
+  [Commits](https://github.com/gitpython-developers/GitPython/compare/3.1.57...3.1.58)
+
+--- updated-dependencies: - dependency-name: gitpython dependency-version: 3.1.58
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump gitpython from 3.1.58 to 3.1.59
+  ([#332](https://github.com/eyeonus/Trade-Dangerous/pull/332),
+  [`e27f63c`](https://github.com/eyeonus/Trade-Dangerous/commit/e27f63c94259d0fd3c15bb58b425a8c47c64e495))
+
+Bumps [gitpython](https://github.com/gitpython-developers/GitPython) from 3.1.58 to 3.1.59. -
+  [Release notes](https://github.com/gitpython-developers/GitPython/releases) -
+  [Changelog](https://github.com/gitpython-developers/GitPython/blob/main/CHANGES) -
+  [Commits](https://github.com/gitpython-developers/GitPython/compare/3.1.58...3.1.59)
+
+--- updated-dependencies: - dependency-name: gitpython dependency-version: 3.1.59
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+### Documentation
+
+- Lower AI disclosure heading
+  ([`2ab325c`](https://github.com/eyeonus/Trade-Dangerous/commit/2ab325c90a967f2864a4e4512b7498d42b151980))
+
+### Features
+
+- **gui**: Add first-run data initialisation and recovery
+  ([`2ab325c`](https://github.com/eyeonus/Trade-Dangerous/commit/2ab325c90a967f2864a4e4512b7498d42b151980))
+
+- **gui**: Classify search database failures
+  ([`2ab325c`](https://github.com/eyeonus/Trade-Dangerous/commit/2ab325c90a967f2864a4e4512b7498d42b151980))
+
+- **gui**: Establish data mode after initial import
+  ([`2ab325c`](https://github.com/eyeonus/Trade-Dangerous/commit/2ab325c90a967f2864a4e4512b7498d42b151980))
+
+- **gui**: Gate first run on import
+  ([`2ab325c`](https://github.com/eyeonus/Trade-Dangerous/commit/2ab325c90a967f2864a4e4512b7498d42b151980))
+
+- **gui**: Persist data maintenance mode
+  ([`2ab325c`](https://github.com/eyeonus/Trade-Dangerous/commit/2ab325c90a967f2864a4e4512b7498d42b151980))
+
+### Testing
+
+- **gui**: Add issue 331 acceptance regression
+  ([`2ab325c`](https://github.com/eyeonus/Trade-Dangerous/commit/2ab325c90a967f2864a4e4512b7498d42b151980))
+
+- **gui**: Update post-QA guidance coverage
+  ([`2ab325c`](https://github.com/eyeonus/Trade-Dangerous/commit/2ab325c90a967f2864a4e4512b7498d42b151980))
+
+Fixes #331
+
+
 ## v13.1.0 (2026-07-01)
 
 ### Bug Fixes
