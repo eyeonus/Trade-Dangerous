@@ -53,21 +53,63 @@ def _workspace(*, data_mode, draft, resolve_system, database_search_failed=None)
 def _attach_warning_labels(workspace):
     workspace.start_system_warning_label = MagicMock()
     workspace.start_system_warning_label.text = ''
+    workspace.start_system_warning_label_row = MagicMock()
+
     workspace.end_system_warning_label = MagicMock()
     workspace.end_system_warning_label.text = ''
+    workspace.end_system_warning_label_row = MagicMock()
 
 
-@pytest.mark.parametrize(
-    ('data_mode', 'expected_text'),
-    [
-        ('crowdsourced', 'Run Import to update the crowdsourced data'),
-        ('solo', 'not present in your solo database'),
-    ],
-)
-def test_missing_from_system_guidance_matches_data_mode(
-    data_mode,
-    expected_text,
-):
+def _fake_ui_element():
+    element = MagicMock()
+    element.classes.return_value = element
+    element.props.return_value = element
+    element.__enter__.return_value = element
+    return element
+
+
+def _patch_warning_ui(monkeypatch):
+    rendered = SimpleNamespace(
+        dialog=_fake_ui_element(),
+        labels=[],
+        rows=[],
+        buttons=[],
+    )
+
+    def make_label(text):
+        label = _fake_ui_element()
+        label.text = text
+        rendered.labels.append(label)
+        return label
+
+    def make_row():
+        row = _fake_ui_element()
+        rendered.rows.append(row)
+        return row
+
+    def make_button(text, **kwargs):
+        button = _fake_ui_element()
+        rendered.buttons.append((text, kwargs, button))
+        return button
+
+    monkeypatch.setattr(
+        run_view_module.ui,
+        'dialog',
+        MagicMock(return_value=rendered.dialog),
+    )
+    monkeypatch.setattr(
+        run_view_module.ui,
+        'card',
+        MagicMock(side_effect=_fake_ui_element),
+    )
+    monkeypatch.setattr(run_view_module.ui, 'label', make_label)
+    monkeypatch.setattr(run_view_module.ui, 'row', make_row)
+    monkeypatch.setattr(run_view_module.ui, 'button', make_button)
+    return rendered
+
+
+@pytest.mark.parametrize('data_mode', ['crowdsourced', 'solo'])
+def test_missing_from_system_shows_concise_warning(data_mode):
     draft = CommandDraft(main_values={'startSystem': 'Unknown Place'})
     workspace = _workspace(
         data_mode=data_mode,
@@ -78,14 +120,60 @@ def test_missing_from_system_guidance_matches_data_mode(
     workspace._normalize_run_state()
     assert workspace.selected_start_system_id is None
     assert workspace.missing_start_system_name == 'Unknown Place'
-    assert expected_text in workspace.start_system_warning_label.text
-    assert 'Unknown Place' in workspace.start_system_warning_label.text
+    assert workspace.start_system_warning_label.text == (
+        'System "Unknown Place" not found.'
+    )
     assert draft.main_values['startSystem'] == 'Unknown Place'
-    workspace.start_system_warning_label.set_visibility.assert_called_with(True)
-    if data_mode == 'solo':
-        assert 'EDMC + UpdateTD' in workspace.start_system_warning_label.text
-        assert 'crowdsourced' not in workspace.start_system_warning_label.text
-        assert 'Run Import' not in workspace.start_system_warning_label.text
+    workspace.start_system_warning_label_row.set_visibility.assert_called_with(
+        True
+    )
+
+
+@pytest.mark.parametrize(
+    ('data_mode', 'expected_text', 'unexpected_text'),
+    [
+        (
+            'crowdsourced',
+            'run Import to refresh the crowdsourced data',
+            'solo database',
+        ),
+        (
+            'solo',
+            'EDMC + UpdateTD is the recommended and supported solo workflow',
+            'refresh the crowdsourced data',
+        ),
+    ],
+)
+def test_missing_system_help_guidance_matches_data_mode(
+    monkeypatch,
+    data_mode,
+    expected_text,
+    unexpected_text,
+):
+    workspace = _workspace(
+        data_mode=data_mode,
+        draft=CommandDraft(),
+        resolve_system=lambda _text: None,
+    )
+    workspace.missing_start_system_name = 'Unknown Place'
+    rendered = _patch_warning_ui(monkeypatch)
+    workspace._build_missing_system_warning(
+        missing_attr='missing_start_system_name',
+        warning_label_attr='start_system_warning_label',
+    )
+    rendered_text = ' '.join(label.text for label in rendered.labels)
+    assert 'System not found' in rendered_text
+    assert expected_text in rendered_text
+    assert unexpected_text not in rendered_text
+    assert workspace.start_system_warning_label.text == (
+        'System "Unknown Place" not found.'
+    )
+    help_button = next(
+        kwargs for text, kwargs, _button in rendered.buttons
+        if text == 'Help'
+    )
+    help_button['on_click']()
+    rendered.dialog.open.assert_called_once_with()
 
 
 def test_changed_and_cleared_from_system_updates_warning():
@@ -105,7 +193,9 @@ def test_changed_and_cleared_from_system_updates_warning():
     assert workspace.missing_start_system_name is None
     assert workspace.selected_start_system_id is None
     assert 'startSystem' not in draft.main_values
-    workspace.start_system_warning_label.set_visibility.assert_called_with(False)
+    workspace.start_system_warning_label_row.set_visibility.assert_called_with(
+        False
+    )
 
 
 def test_successful_exact_resolution_clears_from_system_warning():
@@ -121,7 +211,9 @@ def test_successful_exact_resolution_clears_from_system_warning():
     workspace._set_run_system_text('Lave', **START_FIELD)
     assert workspace.selected_start_system_id == 42
     assert workspace.missing_start_system_name is None
-    workspace.start_system_warning_label.set_visibility.assert_called_with(False)
+    workspace.start_system_warning_label_row.set_visibility.assert_called_with(
+        False
+    )
 
 
 def test_from_and_to_missing_system_warnings_remain_independent():
@@ -140,7 +232,9 @@ def test_from_and_to_missing_system_warnings_remain_independent():
     assert workspace.missing_start_system_name is None
     assert workspace.missing_end_system_name == 'Missing End'
     assert 'Missing End' in workspace.end_system_warning_label.text
-    workspace.end_system_warning_label.set_visibility.assert_called_with(True)
+    workspace.end_system_warning_label_row.set_visibility.assert_called_with(
+        True
+    )
 
 
 def test_database_failure_preempts_missing_system_warning():
@@ -168,7 +262,9 @@ def test_database_failure_preempts_missing_system_warning():
     assert workspace.selected_start_system_id is None
     assert workspace.missing_start_system_name is None
     assert 'not present' not in workspace.start_system_warning_label.text
-    workspace.start_system_warning_label.set_visibility.assert_called_with(False)
+    workspace.start_system_warning_label_row.set_visibility.assert_called_with(
+        False
+    )
     shell.search_database_error_label.set_visibility.assert_called_once_with(True)
 
 
@@ -204,13 +300,19 @@ def test_database_failure_suppresses_without_forgetting_other_missing_system():
     assert shell.search_database_error is error
     assert workspace.missing_start_system_name == 'Missing Start'
     assert workspace.start_system_warning_label.text == ''
-    workspace.start_system_warning_label.set_visibility.assert_called_with(False)
+    workspace.start_system_warning_label_row.set_visibility.assert_called_with(
+        False
+    )
     workspace._set_run_system_text('Lave', **END_FIELD)
     assert shell.search_database_error is None
     assert workspace.selected_end_system_id == 42
     assert workspace.missing_start_system_name == 'Missing Start'
-    assert 'Missing Start' in workspace.start_system_warning_label.text
-    workspace.start_system_warning_label.set_visibility.assert_called_with(True)
+    assert workspace.start_system_warning_label.text == (
+        'System "Missing Start" not found.'
+    )
+    workspace.start_system_warning_label_row.set_visibility.assert_called_with(
+        True
+    )
 
 
 def test_persisted_missing_run_system_renders_guidance_on_startup(
@@ -234,7 +336,7 @@ def test_persisted_missing_run_system_renders_guidance_on_startup(
     shell.search_database_error_label.text = ''
     shell.workspace_host = MagicMock()
     shell.workspace_host.__enter__.return_value = shell.workspace_host
-    rendered_labels = []
+    rendered = _patch_warning_ui(monkeypatch)
     rendered_workspaces = []
 
     def build_missing_workspace(workspace):
@@ -245,24 +347,19 @@ def test_persisted_missing_run_system_renders_guidance_on_startup(
             warning_label_attr='start_system_warning_label',
         )
 
-    def make_label(text):
-        label = MagicMock()
-        label.text = text
-        rendered_labels.append(label)
-        return label
-
     monkeypatch.setattr(shell_module.RunWorkspace, 'build', build_missing_workspace)
-    monkeypatch.setattr(run_view_module.ui, 'label', make_label)
     shell._render_workspace()
     assert loaded_store.drafts['run'].main_values['startSystem'] == (
         'Unrecorded System'
     )
     assert shell.search_database_error is None
-    assert len(rendered_labels) == 1
     assert shell.search_database_state_listener == (
         rendered_workspaces[0]._refresh_missing_system_warnings
     )
     service.resolve_system.assert_called_once_with('Unrecorded System')
-    assert 'Unrecorded System' in rendered_labels[0].text
-    assert 'solo database' in rendered_labels[0].text
-    rendered_labels[0].set_visibility.assert_called_once_with(True)
+    rendered_text = ' '.join(label.text for label in rendered.labels)
+    assert 'System not found' in rendered_text
+    assert 'solo database' in rendered_text
+    assert 'System "Unrecorded System" not found.' in rendered_text
+    assert len(rendered.rows) == 1
+    rendered.rows[0].set_visibility.assert_called_once_with(True)

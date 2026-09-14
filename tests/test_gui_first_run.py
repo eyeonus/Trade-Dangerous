@@ -221,7 +221,11 @@ def test_first_run_import_guidance_uses_existing_solo_option(monkeypatch):
     assert 'Crowdsourced' in fake_ui.labels
     assert 'Solo' in fake_ui.labels
     assert 'normal Trade Dangerous Import' in guidance
-    assert 'schema and base data' in guidance
+    assert 'core system, station and reference data' in guidance
+    assert (
+        'does not download crowdsourced market listings or ship-vendor data'
+        in guidance
+    )
     assert 'recommended and supported workflow' in guidance
     assert 'another data source' in guidance
     assert fake_ui.links == [
