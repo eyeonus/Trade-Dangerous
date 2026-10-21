@@ -139,7 +139,12 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         RELEASE_TAG: ${{ steps.release.outputs.tag_name }}
-      run: uv run semantic-release publish --tag "$RELEASE_TAG"
+      run: |
+        if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+          gh release upload "$RELEASE_TAG" dist/* --clobber
+        else
+          uv run semantic-release publish
+        fi
 
   windows_installer:
     name: Build and upload Windows installer
