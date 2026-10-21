@@ -2,6 +2,33 @@
 
 <!-- version list -->
 
+## v13.2.2 (2026-10-21)
+
+### Bug Fixes
+
+- **journal**: Auto-detect journal path on Linux
+  ([#344](https://github.com/eyeonus/Trade-Dangerous/pull/344),
+  [`b1c985e`](https://github.com/eyeonus/Trade-Dangerous/commit/b1c985e38d9bd3ae6211b889cd9111582320b28e))
+
+- **journal**: Correct Linux journal path return annotation
+  ([#344](https://github.com/eyeonus/Trade-Dangerous/pull/344),
+  [`b1c985e`](https://github.com/eyeonus/Trade-Dangerous/commit/b1c985e38d9bd3ae6211b889cd9111582320b28e))
+
+---------
+
+Co-authored-by: Markus Strobl <mstrobl2@yahoo.com>
+
+Co-authored-by: Tromador <38956076+Tromador@users.noreply.github.com>
+
+### Chores
+
+- **ci**: Add manual stable release recovery
+  ([`a469f52`](https://github.com/eyeonus/Trade-Dangerous/commit/a469f5228a67e30d1be3d9ae70dbd6949218f63e))
+
+- **ci**: Use GitHub CLI for recovery release uploads
+  ([`7cc0562`](https://github.com/eyeonus/Trade-Dangerous/commit/7cc0562448b96fa1956a836f407f41adec2d16ff))
+
+
 ## v13.2.1 (2026-10-21)
 
 ### Bug Fixes
