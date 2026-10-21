@@ -1,3 +1,4 @@
+
 # Stable release workflow.
 # This workflow is the only automatic publishing path:
 # - runs on pushes to the stable release branch
@@ -11,6 +12,12 @@ name: Stable release publish
 on:
   push:
     branches: [release/v1]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing stable release tag to publish
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -30,6 +37,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
+      with:
+        ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
     - name: Install uv
       uses: astral-sh/setup-uv@v7
@@ -62,6 +71,7 @@ jobs:
       with:
         fetch-depth: 0
         fetch-tags: true
+        ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
     - name: Install uv
       uses: astral-sh/setup-uv@v7
@@ -80,7 +90,25 @@ jobs:
       id: release
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        RECOVERY_TAG: ${{ inputs.tag }}
       run: |
+        if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+          [[ "$RECOVERY_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "Expected a stable version tag"
+            exit 1
+          }
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "refs/tags/$RECOVERY_TAG^{commit}")"
+          git merge-base --is-ancestor HEAD origin/release/v1
+          grep -Fxq "__version__ = '${RECOVERY_TAG#v}'" tradedangerous/version.py
+          if ! gh release view "$RECOVERY_TAG" >/dev/null 2>&1; then
+            gh release create "$RECOVERY_TAG" --verify-tag --generate-notes
+          fi
+          echo "released=true" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$RECOVERY_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${RECOVERY_TAG#v}" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
         before_head="$(git rev-parse HEAD)"
         uv run semantic-release version
         after_head="$(git rev-parse HEAD)"
@@ -104,12 +132,14 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         attestations: false
+        skip-existing: ${{ github.event_name == 'workflow_dispatch' }}
 
     - name: Publish package distributions to GitHub Releases
       if: ${{ steps.release.outputs.released == 'true' }}
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: uv run semantic-release publish
+        RELEASE_TAG: ${{ steps.release.outputs.tag_name }}
+      run: uv run semantic-release publish --tag "$RELEASE_TAG"
 
   windows_installer:
     name: Build and upload Windows installer
@@ -185,7 +215,7 @@ jobs:
       run: |
         $installer = "Output\TradeDangerous-Setup-${{ needs.release.outputs.version }}.exe"
         if (-not (Test-Path $installer)) {
-          throw "Installer was not created at $installer"
+          throw "Windows installer was not created at $installer"
         }
 
     - name: Upload Windows installer to GitHub release
