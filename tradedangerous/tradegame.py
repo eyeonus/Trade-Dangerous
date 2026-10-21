@@ -155,11 +155,35 @@ class JsonFiles(str, enum.Enum):
 # The format used for timestamps.
 TS_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
+def get_linux_journal_dir() -> Path:
+    home = Path.home()
+    
+    # Potential base paths where Steam might be installed on Linux
+    possible_bases = [
+        home / ".local" / "share" / "Steam",
+        home / ".steam" / "steam",
+        home / ".steam"
+    ]
+    
+    subpath = Path(
+        "steamapps", "compatdata", "359320", "pfx", 
+        "drive_c", "users", "steamuser", 
+        "Saved Games", "Frontier Developments", "Elite Dangerous"
+    )
+    
+    for base in possible_bases:
+        full_path = base / subpath
+        if full_path.exists():
+            return full_path
+            
+    # Fallback to the modern default if none exist yet
+    return possible_bases[0] / subpath
+
 
 # Default journal directory paths by OS
 WINDOWS_JOURNAL_DIR: Final[Path]     = Path(Path.home(), "Saved Games", "Frontier Developments", "Elite Dangerous")
 MACOS_JOURNAL_DIR: Final[Path]       = Path(Path.home(), "Library", "Application Support", "Frontier Developments", "Elite Dangerous")
-
+LINUX_JOURNAL_DIR: Final[Path]       = get_linux_journal_dir()
 
 @contextmanager
 def bench(tdenv: TradeEnv, label: str) -> Generator[None]:
@@ -560,6 +584,8 @@ def journal_path(tdenv: TradeEnv, path: str | Path | None) -> Path:
         source, candidate = "windows", WINDOWS_JOURNAL_DIR
     elif MACOS_JOURNAL_DIR.exists():
         source, candidate = "macos", MACOS_JOURNAL_DIR
+    elif LINUX_JOURNAL_DIR.exists():
+        source, candidate = "linux", LINUX_JOURNAL_DIR
     
     if not candidate:
         raise GameFolderError("Could not determine the default path for this machine")
