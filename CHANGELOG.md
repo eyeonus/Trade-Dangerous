@@ -2,6 +2,146 @@
 
 <!-- version list -->
 
+## v13.2.1 (2026-10-21)
+
+### Bug Fixes
+
+- **journal**: Expand user home directory in journal paths
+  ([`3a53aea`](https://github.com/eyeonus/Trade-Dangerous/commit/3a53aea7947c85d51a638e276d8f96df931ccc2d))
+
+Fixes #342
+
+### Chores
+
+- **deps**: Bump aiohttp from 3.14.3 to 3.14.4
+  ([#339](https://github.com/eyeonus/Trade-Dangerous/pull/339),
+  [`d87049f`](https://github.com/eyeonus/Trade-Dangerous/commit/d87049fc57145a8fbf0be616b4a05c010a0f28f5))
+
+--- updated-dependencies: - dependency-name: aiohttp dependency-version: 3.14.4
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump anyio from 4.13.0 to 4.14.2
+  ([#334](https://github.com/eyeonus/Trade-Dangerous/pull/334),
+  [`9b42542`](https://github.com/eyeonus/Trade-Dangerous/commit/9b4254255a57e70c813100cbfccde6897926d0ba))
+
+Bumps [anyio](https://github.com/agronholm/anyio) from 4.13.0 to 4.14.2. - [Release
+  notes](https://github.com/agronholm/anyio/releases) -
+  [Commits](https://github.com/agronholm/anyio/compare/4.13.0...4.14.2)
+
+--- updated-dependencies: - dependency-name: anyio dependency-version: 4.14.2
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump certifi from 2026.5.20 to 2026.10.19
+  ([#341](https://github.com/eyeonus/Trade-Dangerous/pull/341),
+  [`66fea92`](https://github.com/eyeonus/Trade-Dangerous/commit/66fea9201cfc3215e665f1768c9e55ddfd3e09c3))
+
+Bumps [certifi](https://github.com/certifi/python-certifi) from 2026.5.20 to 2026.10.19. -
+  [Commits](https://github.com/certifi/python-certifi/compare/2026.05.20...2026.10.19)
+
+--- updated-dependencies: - dependency-name: certifi dependency-version: 2026.10.19
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump gitpython from 3.1.59 to 3.1.62
+  ([#336](https://github.com/eyeonus/Trade-Dangerous/pull/336),
+  [`2ef46d4`](https://github.com/eyeonus/Trade-Dangerous/commit/2ef46d455e8a5b903e5b30810035a05cd2227987))
+
+Bumps [gitpython](https://github.com/gitpython-developers/GitPython) from 3.1.59 to 3.1.62. -
+  [Release notes](https://github.com/gitpython-developers/GitPython/releases) -
+  [Changelog](https://github.com/gitpython-developers/GitPython/blob/main/CHANGES) -
+  [Commits](https://github.com/gitpython-developers/GitPython/compare/3.1.59...3.1.62)
+
+--- updated-dependencies: - dependency-name: gitpython dependency-version: 3.1.62
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump multidict from 6.7.1 to 6.9.1
+  ([#338](https://github.com/eyeonus/Trade-Dangerous/pull/338),
+  [`5d304bd`](https://github.com/eyeonus/Trade-Dangerous/commit/5d304bd8decde634c7300ca466bcb8347eb01878))
+
+Bumps [multidict](https://github.com/aio-libs/multidict) from 6.7.1 to 6.9.1. - [Release
+  notes](https://github.com/aio-libs/multidict/releases) -
+  [Changelog](https://github.com/aio-libs/multidict/blob/master/CHANGES.rst) -
+  [Commits](https://github.com/aio-libs/multidict/compare/v6.7.1...v6.9.1)
+
+--- updated-dependencies: - dependency-name: multidict dependency-version: 6.9.1
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump urllib3 from 2.7.0 to 2.8.0
+  ([#335](https://github.com/eyeonus/Trade-Dangerous/pull/335),
+  [`c98e882`](https://github.com/eyeonus/Trade-Dangerous/commit/c98e8821e96ecc292724b3668b4a589fbf1e9797))
+
+Bumps [urllib3](https://github.com/urllib3/urllib3) from 2.7.0 to 2.8.0. - [Release
+  notes](https://github.com/urllib3/urllib3/releases) -
+  [Changelog](https://github.com/urllib3/urllib3/blob/main/CHANGES.rst) -
+  [Commits](https://github.com/urllib3/urllib3/compare/2.7.0...2.8.0)
+
+--- updated-dependencies: - dependency-name: urllib3 dependency-version: 2.8.0
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump virtualenv from 21.4.2 to 21.7.13
+  ([#337](https://github.com/eyeonus/Trade-Dangerous/pull/337),
+  [`6d54715`](https://github.com/eyeonus/Trade-Dangerous/commit/6d54715ec2fc29fd2a8036c337f72f3fc2ccdccb))
+
+Bumps [virtualenv](https://github.com/pypa/virtualenv) from 21.4.2 to 21.7.13. - [Release
+  notes](https://github.com/pypa/virtualenv/releases) -
+  [Changelog](https://github.com/pypa/virtualenv/blob/main/docs/changelog.rst) -
+  [Commits](https://github.com/pypa/virtualenv/compare/21.4.2...21.7.13)
+
+--- updated-dependencies: - dependency-name: virtualenv dependency-version: 21.7.13
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps-dev**: Bump uv from 0.11.19 to 0.13.4
+  ([#340](https://github.com/eyeonus/Trade-Dangerous/pull/340),
+  [`4f838a5`](https://github.com/eyeonus/Trade-Dangerous/commit/4f838a585c30ca377866994ac5bafff6a5367caf))
+
+Bumps [uv](https://github.com/astral-sh/uv) from 0.11.19 to 0.13.4. - [Release
+  notes](https://github.com/astral-sh/uv/releases) -
+  [Changelog](https://github.com/astral-sh/uv/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/astral-sh/uv/compare/0.11.19...0.13.4)
+
+--- updated-dependencies: - dependency-name: uv dependency-version: 0.13.4
+
+dependency-type: direct:development ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+
 ## v13.2.0 (2026-09-14)
 
 ### Bug Fixes
