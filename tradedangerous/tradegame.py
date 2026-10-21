@@ -566,7 +566,7 @@ def journal_path(tdenv: TradeEnv, path: str | Path | None) -> Path:
     
     tdenv.DEBUG0("journal_path: {}: {}", source, path)
     
-    path = Path(candidate)
+    path = Path(candidate).expanduser()
     if not path.exists():
         raise GameFolderError(f"'{candidate}' does not exist")
     
