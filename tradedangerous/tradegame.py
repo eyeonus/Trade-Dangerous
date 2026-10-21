@@ -155,7 +155,7 @@ class JsonFiles(str, enum.Enum):
 # The format used for timestamps.
 TS_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
-def get_linux_journal_dir() -> Optional[Path]:
+def get_linux_journal_dir() -> Path:
     home = Path.home()
     
     # Potential base paths where Steam might be installed on Linux
